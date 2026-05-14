@@ -114,20 +114,20 @@ ul { list-style: none; }
 .app-header {
     grid-column: 2 / 3;
     grid-row: 1 / 2;
-    background-color: var(--bg-surface);
-    border-bottom: 1px solid var(--border-light);
+    background-color: var(--primary-navy); /* The premium pop of color */
+    border-bottom: none; /* Removed the border since it's a solid block now */
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 var(--space-lg);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
     z-index: 5;
 }
 
 .header-title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--primary-navy);
+    color: #ffffff; /* Crisp white text to contrast the navy */
 }
 
 .user-profile {
@@ -136,18 +136,20 @@ ul { list-style: none; }
     gap: var(--space-sm);
     font-size: 0.875rem;
     font-weight: 500;
+    color: #e2e8f0; /* Light slate for the user's name */
 }
 
 .avatar {
     width: 32px;
     height: 32px;
-    background-color: var(--primary-cerulean);
+    background-color: var(--primary-cerulean); /* Teal accent for the avatar */
     color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
+    border: 2px solid rgba(255, 255, 255, 0.2); /* Subtle premium ring */
 }
 
 /* --- Main Content Area --- */
