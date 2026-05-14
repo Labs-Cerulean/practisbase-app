@@ -18,10 +18,10 @@
     <div class="app-layout">
         
         <aside class="app-sidebar">
-           <div class="sidebar-brand">
-                <img src="/images/logo.png" alt="PractisBase Seal" style="height: 36px; margin-right: 12px; border-radius: 50%;">
-                Practis<span>Base</span>
+            <div class="sidebar-brand" style="justify-content: center; height: auto; min-height: var(--header-height); padding: var(--space-md) var(--space-md);">
+                <img src="/images/logo.png" alt="PractisBase Full Logo" style="width: 100%; max-width: 180px; height: auto; object-fit: contain;">
             </div>
+            
             
             <nav class="sidebar-nav">
                 <ul>
