@@ -114,8 +114,11 @@ ul { list-style: none; }
 .app-header {
     grid-column: 2 / 3;
     grid-row: 1 / 2;
-    background-color: var(--primary-navy); /* The premium pop of color */
-    border-bottom: none; /* Removed the border since it's a solid block now */
+    
+    /* The premium gradient transition */
+    background: linear-gradient(90deg, var(--primary-navy) 0%, var(--primary-cerulean) 100%);
+    
+    border-bottom: none; 
     display: flex;
     align-items: center;
     justify-content: space-between;
