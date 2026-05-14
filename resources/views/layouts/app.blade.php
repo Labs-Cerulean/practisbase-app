@@ -18,7 +18,8 @@
     <div class="app-layout">
         
         <aside class="app-sidebar">
-            <div class="sidebar-brand">
+           <div class="sidebar-brand">
+                <img src="/images/logo.png" alt="PractisBase Seal" style="height: 36px; margin-right: 12px; border-radius: 50%;">
                 Practis<span>Base</span>
             </div>
             
