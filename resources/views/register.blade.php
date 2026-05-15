@@ -11,7 +11,6 @@
         .auth-card { background: var(--bg-surface); padding: 2.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); width: 100%; max-width: 650px; }
         .auth-header { text-align: center; margin-bottom: 2rem; }
         
-        /* Updated Logo Size Constraint */
         .auth-header img { width: 100%; max-width: 200px; height: auto; margin-bottom: 1rem; object-fit: contain; }
         
         .form-group { margin-bottom: 1.5rem; }
@@ -24,6 +23,9 @@
         .legal-box h4:first-child { margin-top: 0; }
         .legal-box p { margin-bottom: 0.75rem; }
         .legal-box strong { color: var(--primary-navy); }
+        
+        /* New Scroll Instruction Banner */
+        .scroll-instruction { background-color: rgba(2, 132, 199, 0.08); color: var(--primary-cerulean); padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; border: 1px solid rgba(2, 132, 199, 0.2); }
         
         .checkbox-group { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 2rem; background: rgba(2, 132, 199, 0.05); padding: 1rem; border-radius: var(--radius-md); border: 1px solid rgba(2, 132, 199, 0.2); }
         .checkbox-group input { margin-top: 0.25rem; cursor: pointer; transform: scale(1.1); }
@@ -57,6 +59,12 @@
             </div>
 
             <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem;">Master Service Agreement & Privacy Policy</label>
+            
+            <div class="scroll-instruction">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                Please scroll to the bottom of the agreement to enable the accept button.
+            </div>
+
             <div class="legal-box" id="legalScrollBox">
                 <h4>1. Acceptance of Terms</h4>
                 <p>By registering for, accessing, or using PractisBase ("The Service"), you agree to be bound by these Terms of Service. If you are entering into this agreement on behalf of a clinic, firm, or other legal entity, you represent that you have the authority to bind such entity.</p>
@@ -81,8 +89,6 @@
 
                 <h4>8. Governing Law & Jurisdiction</h4>
                 <p>These Terms shall be governed and construed in accordance with the laws of the Republic of Malta, without regard to its conflict of law provisions. Any dispute arising out of or in connection with these Terms shall be subject to the exclusive jurisdiction of the Courts of Malta.</p>
-
-                <p style="text-align: center; margin-top: 2rem; font-weight: bold; color: var(--primary-cerulean); font-size: 0.85rem;">[ End of Agreement - Please scroll to the absolute bottom to accept ]</p>
             </div>
 
             <div class="checkbox-group">
