@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Artisan;
+
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -43,4 +45,10 @@ class AuthController extends Controller
         // 5. Redirect them to Step 2: The Professional Profiler
         return redirect('/onboarding/profession');
     }
+
+        // TEMPORARY ROUTE TO UPGRADE DATABASE
+    Route::get('/run-migrations', function () {
+        Artisan::call('migrate', ['--force' => true]);
+        return "Database successfully upgraded! You can now go back and register.";
+    });
 }
