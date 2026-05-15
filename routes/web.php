@@ -28,3 +28,9 @@ Route::get('/onboarding/profession', function () {
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware('auth');
+
+// TEMPORARY ROUTE TO UPGRADE DATABASE
+Route::get('/run-migrations', function () {
+    Artisan::call('migrate', ['--force' => true]);
+    return "Database successfully upgraded! You can now go back and register.";
+});

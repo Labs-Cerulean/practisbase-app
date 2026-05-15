@@ -46,9 +46,5 @@ class AuthController extends Controller
         return redirect('/onboarding/profession');
     }
 
-        // TEMPORARY ROUTE TO UPGRADE DATABASE
-    Route::get('/run-migrations', function () {
-        Artisan::call('migrate', ['--force' => true]);
-        return "Database successfully upgraded! You can now go back and register.";
-    });
+
 }
