@@ -65,8 +65,10 @@
         .tier-price span { font-size: 1rem; color: var(--text-muted); font-weight: 400; }
         
         .feature-list { list-style: none; padding: 0; margin-bottom: 2.5rem; flex-grow: 1; }
-        .feature-list li { margin-bottom: 0.75rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; }
+        .feature-list li { margin-bottom: 0.75rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.4; }
         .feature-list li::before { content: '✓'; color: var(--primary-cerulean); font-weight: bold; }
+        .feature-list li.group-header { margin-top: 1.25rem; color: var(--primary-cerulean); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .feature-list li.group-header::before { display: none; }
         
         .btn-tier { 
             display: inline-block; 
@@ -90,9 +92,13 @@
         <div style="height: 40px; overflow: hidden; display: flex; align-items: center;">
             <img src="/images/logo.png" alt="PractisBase" style="height: 100%; object-fit: contain;">
         </div>
-        <div>
-            <a href="/" style="color: var(--primary-navy); font-weight: 600; margin-right: 1.5rem;">Log In</a>
-            <a href="#" class="btn-tier btn-solid" style="padding: 0.5rem 1rem; width: auto;">Get Started</a>
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <a href="/login" style="color: var(--primary-navy); font-weight: 600; font-size: 0.95rem;">
+                Already a member? Sign in
+            </a>
+            <a href="/register" class="btn-tier btn-solid" style="padding: 0.5rem 1.25rem; width: auto; font-size: 0.95rem;">
+                Join the Professional's Club: Sign up
+            </a>
         </div>
     </header>
 
@@ -119,26 +125,30 @@
             <div class="pricing-card popular">
                 <div class="popular-badge">Most Popular</div>
                 <div class="tier-name">Standard</div>
-                <div class="tier-price">€29<span>/mo</span></div>
+                <div class="tier-price">€15.99<span>/mo</span></div>
                 <ul class="feature-list">
                     <li><strong>Unlimited Clients</strong></li>
                     <li>Custom Branding & Logo on Invoices</li>
                     <li>Expense Tracking & Receipts</li>
                     <li>Document & File Uploads</li>
                     <li><strong>Automated TA22 Form</strong></li>
+                    <li>Accountant VAT Export</li>
                 </ul>
                 <a href="#" class="btn-tier btn-solid">Upgrade to Standard</a>
             </div>
 
             <div class="pricing-card">
                 <div class="tier-name">Pro</div>
-                <div class="tier-price">€59<span>/mo</span></div>
+                <div class="tier-price">€49.99<span>/mo</span></div>
                 <ul class="feature-list">
                     <li>All Standard Features</li>
-                    <li><strong>Profession-Specific Tools:</strong></li>
-                    <li>Patient Journals (Doctors)</li>
-                    <li>Document Stamper (Architects & Periti)</li>
-                    <li>Priority Support</li>
+                    <li class="group-header">Architects & Engineers:</li>
+                    <li>Architect DMS & Document Stamper</li>
+                    <li>Certification Generator</li>
+                    <li>EMS & BMS Templating</li>
+                    <li class="group-header">Medical Professionals:</li>
+                    <li>Secure Patient Journals</li>
+                    <li>Digital Prescriptions & Referral Letters</li>
                 </ul>
                 <a href="#" class="btn-tier btn-outline">Go Pro</a>
             </div>
