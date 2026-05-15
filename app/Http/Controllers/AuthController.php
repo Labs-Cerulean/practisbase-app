@@ -46,5 +46,26 @@ class AuthController extends Controller
         return redirect('/onboarding/profession');
     }
 
+    public function saveProfession(Request $request)
+    {
+        $request->validate([
+            'profession' => 'required|string',
+            'warrant_type' => 'nullable|string',
+            'warrant_number' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+        
+        // Save the data
+        $user->update([
+            'profession' => $request->profession,
+            'warrant_type' => $request->warrant_type,
+            'warrant_number' => $request->warrant_number,
+        ]);
+
+        // Redirect to Step 3 (The Tier Selection / Stripe page)
+        return redirect('/onboarding/plans');
+    }
+
 
 }
