@@ -61,6 +61,7 @@
                     <li>Summary Dashboard</li>
                 </ul>
                 <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                    @csrf
                     <input type="hidden" name="tier" value="free">
                     <button type="submit" class="btn-tier btn-outline">Select Free</button>
                 </form>

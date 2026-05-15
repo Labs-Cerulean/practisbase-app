@@ -16,6 +16,24 @@
         .form-group { margin-bottom: 1.5rem; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem; }
         .form-group input { width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: inherit; font-size: 0.95rem; }
+
+        /* Error Alert Box */
+        .alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #f87171;
+            color: #b91c1c;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+        }
+        .alert-error ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+        .alert-error li {
+            margin-bottom: 0.25rem;
+        }
         
         /* The Enhanced Legal Scroll Box */
         .legal-box { height: 250px; overflow-y: scroll; border: 1px solid var(--border-light); background: #f8fafc; padding: 1.25rem; border-radius: var(--radius-md); font-size: 0.8rem; color: #475569; margin-bottom: 1.5rem; line-height: 1.6; }
@@ -44,7 +62,18 @@
             <p style="color: var(--text-muted); font-size: 0.95rem;">Join the standard in professional practice management.</p>
         </div>
 
+        @if ($errors->any())
+            <div class="alert-error">
+                <strong>Whoops! Please fix the following:</strong>
+                <ul>
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <form action="/register-submit" method="POST" id="registerForm">
+            @csrf
             <div class="form-group">
                 <label>Full Name / Practice Name</label>
                 <input type="text" name="name" required placeholder="e.g., Perit John Borg">
@@ -55,7 +84,7 @@
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" name="password" required>
+                <input type="password" name="password" value="{{ old('name') }}" required>
             </div>
 
             <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem;">Master Service Agreement & Privacy Policy</label>

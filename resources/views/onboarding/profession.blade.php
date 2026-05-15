@@ -47,6 +47,7 @@
         </div>
 
         <form action="/onboarding/profession-submit" method="POST">
+            @csrf
             <div class="profession-grid">
                 <label class="prof-label" id="lbl_doctor">
                     <input type="radio" name="profession" value="Medical Professional" onchange="toggleWarrant(this)">
