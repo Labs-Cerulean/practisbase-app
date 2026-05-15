@@ -10,7 +10,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable([
+    'name', 
+    'email', 
+    'password',
+    // Legal & Compliance
+    'terms_accepted_at',
+    'accepted_ip',
+    'read_duration_seconds',
+    // Professional Data
+    'profession',
+    'warrant_type',
+    'warrant_number',
+    // SaaS Tier & Referrals
+    'tier',
+    'referral_code',
+    'referred_by_id'
+])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -27,6 +43,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'terms_accepted_at' => 'datetime', // Tells Laravel this is a timestamp
         ];
     }
 }
