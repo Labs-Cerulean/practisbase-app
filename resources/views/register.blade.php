@@ -76,15 +76,15 @@
             @csrf
             <div class="form-group">
                 <label>Full Name / Practice Name</label>
-                <input type="text" name="name" required placeholder="e.g., Perit John Borg">
+                <input type="text" name="name" value="{{ old('name') }}" required placeholder="e.g., Perit John Borg">
             </div>
             <div class="form-group">
                 <label>Email Address</label>
-                <input type="email" name="email" required placeholder="john@example.com">
+                <input type="email" name="email" value="{{ old('email') }}" required placeholder="john@example.com">
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" name="password" value="{{ old('name') }}" required>
+                <input type="password" name="password" required>
             </div>
 
             <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem;">Master Service Agreement & Privacy Policy</label>
