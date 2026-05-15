@@ -93,8 +93,8 @@
 <body>
 
     <header class="public-header">
-        <div style="height: 40px; overflow: hidden; display: flex; align-items: center;">
-            <img src="/images/logo.png" alt="PractisBase" style="height: 100%; object-fit: contain;">
+        <div style="display: flex; align-items: center;">
+            <img src="/images/logo.png" alt="PractisBase" style="width: 100%; max-width: 160px; height: auto; object-fit: contain;">
         </div>
         <div style="display: flex; align-items: center; gap: 1.5rem;">
             <a href="/login" style="color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">
