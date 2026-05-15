@@ -11,7 +11,7 @@ Route::get('/login', function () {
     return "Login Page Coming Soon"; // We will build this next
 });
 Route::get('/register', function () {
-    return "Registration & Disclaimers Coming Soon"; // We will build this next
+    return view('register');
 });
 
 // 3. The Protected Dashboard

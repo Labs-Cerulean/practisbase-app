@@ -19,6 +19,10 @@ return new class extends Migration
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
+            // Legal & Compliance Tracking
+            $table->timestamp('terms_accepted_at')->nullable();
+            $table->string('accepted_ip')->nullable();
+            $table->integer('read_duration_seconds')->nullable();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
