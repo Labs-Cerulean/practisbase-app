@@ -10,6 +10,8 @@
         body { background-color: var(--bg-canvas); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 2rem; }
         .auth-card { background: var(--bg-surface); padding: 2.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); width: 100%; max-width: 650px; }
         .auth-header { text-align: center; margin-bottom: 2rem; }
+        
+        /* Updated Logo Size Constraint */
         .auth-header img { width: 100%; max-width: 200px; height: auto; margin-bottom: 1rem; object-fit: contain; }
         
         .form-group { margin-bottom: 1.5rem; }
@@ -74,8 +76,8 @@
                 <h4>6. Indemnification</h4>
                 <p>You agree to defend, indemnify, and hold harmless PractisBase and its employees from and against any claims, damages, obligations, losses, liabilities, costs, or debt (including but not limited to attorney's fees) arising from: (a) your use of and access to The Service; (b) your violation of any term of this Agreement; (c) your violation of any third-party right, including without limitation any privacy or intellectual property right; or (d) any claim that your content, professional actions, or financial submissions caused damage to a third party or resulted in regulatory action.</p>
 
-                <h4>7. Service Availability & "As-Is" Warranty</h4>
-                <p>The Service is provided on an "AS IS" and "AS AVAILABLE" basis. We disclaim all warranties of any kind, express or implied. While we utilize enterprise-grade infrastructure, we do not guarantee uninterrupted service or absolute immunity from data loss. Users are strictly advised to maintain their own independent backups of critical data.</p>
+                <h4>7. Service Availability & Data Backups</h4>
+                <p>The Service is provided on an "AS IS" and "AS AVAILABLE" basis. While we utilize enterprise-grade infrastructure, we do not guarantee absolute immunity from data loss. <strong>Users are provided with a "Data Export" tool and are strictly required to maintain their own independent backups of their client and financial records.</strong> Please note: The standard export tool downloads text and ledger data only; it does not include physical file uploads (e.g., PDFs, receipt images, or architectural documents) stored in the cloud.</p>
 
                 <h4>8. Governing Law & Jurisdiction</h4>
                 <p>These Terms shall be governed and construed in accordance with the laws of the Republic of Malta, without regard to its conflict of law provisions. Any dispute arising out of or in connection with these Terms shall be subject to the exclusive jurisdiction of the Courts of Malta.</p>
@@ -85,8 +87,8 @@
 
             <div class="checkbox-group">
                 <input type="checkbox" id="acceptTerms" name="accept_terms" disabled>
-                <label for="acceptTerms" style="font-size: 0.85rem; color: var(--text-main); font-weight: 500; line-height: 1.4;">
-                    I have thoroughly read and agree to the Master Service Agreement, specifically acknowledging the <strong style="color: var(--primary-navy);">Tax & Accounting Disclaimers</strong>, <strong style="color: var(--primary-navy);">Limitation of Liability</strong>, and <strong style="color: var(--primary-navy);">GDPR Data Processor</strong> terms.
+                <label for="acceptTerms" style="font-size: 0.9rem; color: var(--text-main); font-weight: 500; line-height: 1.4;">
+                    I have read and agree to the Master Service Agreement and Privacy Policy.
                 </label>
             </div>
 
