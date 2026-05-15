@@ -12,8 +12,7 @@
     <link rel="stylesheet" href="/css/style.css">
     
     <style>
-        /* Specific layouts for the public page, using our master variables */
-        body { background-color: var(--bg-canvas); }
+        body { background-color: var(--bg-canvas); overflow-x: hidden; }
         .public-header { 
             padding: var(--space-md) 5%; 
             background: #fff; 
@@ -22,20 +21,22 @@
             align-items: center; 
             box-shadow: var(--shadow-sm); 
         }
-        .pricing-container { max-width: 1100px; margin: 4rem auto; padding: 0 var(--space-lg); }
-        .pricing-header { text-align: center; margin-bottom: 3rem; }
-        .pricing-header h1 { color: var(--primary-navy); font-size: 2.5rem; margin-bottom: 1rem; }
-        .pricing-header p { color: var(--text-muted); font-size: 1.125rem; }
+        
+        /* TIGHTENED VERTICAL SPACING TO FIT ON ONE SCREEN */
+        .pricing-container { max-width: 1100px; margin: 2rem auto; padding: 0 var(--space-lg); }
+        .pricing-header { text-align: center; margin-bottom: 1.5rem; }
+        .pricing-header h1 { color: var(--primary-navy); font-size: 2.25rem; margin-bottom: 0.5rem; }
+        .pricing-header p { color: var(--text-muted); font-size: 1rem; }
         
         .pricing-grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
-            gap: 2rem; 
+            gap: 1.5rem; 
         }
         .pricing-card { 
             background: var(--bg-surface); 
             border-radius: var(--radius-lg); 
-            padding: 2.5rem; 
+            padding: 1.75rem; 
             box-shadow: var(--shadow-md); 
             border: 1px solid var(--border-light); 
             display: flex; 
@@ -43,40 +44,43 @@
         }
         .pricing-card.popular { 
             border: 2px solid var(--primary-cerulean); 
-            transform: scale(1.03); 
+            transform: scale(1.02); 
             position: relative; 
         }
         .popular-badge { 
             position: absolute; 
-            top: -14px; 
+            top: -12px; 
             left: 50%; 
             transform: translateX(-50%); 
             background: var(--primary-cerulean); 
             color: white; 
-            padding: 0.25rem 1rem; 
+            padding: 0.2rem 0.75rem; 
             border-radius: 20px; 
-            font-size: 0.75rem; 
+            font-size: 0.7rem; 
             font-weight: 700; 
             text-transform: uppercase; 
         }
         
-        .tier-name { font-size: 1.25rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.5rem; }
-        .tier-price { font-size: 2.5rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 1.5rem; }
-        .tier-price span { font-size: 1rem; color: var(--text-muted); font-weight: 400; }
+        .tier-name { font-size: 1.15rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.25rem; }
+        .tier-price { font-size: 2.25rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 1rem; }
+        .tier-price span { font-size: 0.9rem; color: var(--text-muted); font-weight: 400; }
         
-        .feature-list { list-style: none; padding: 0; margin-bottom: 2.5rem; flex-grow: 1; }
-        .feature-list li { margin-bottom: 0.75rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.4; }
+        .feature-list { list-style: none; padding: 0; margin-bottom: 1.5rem; flex-grow: 1; font-size: 0.9rem; }
+        .feature-list li { margin-bottom: 0.6rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.3; }
         .feature-list li::before { content: '✓'; color: var(--primary-cerulean); font-weight: bold; }
-        .feature-list li.group-header { margin-top: 1.25rem; color: var(--primary-cerulean); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* ADJUSTED PRO TIER HEADERS */
+        .feature-list li.group-header { margin-top: 1rem; margin-bottom: 0.3rem; color: var(--primary-cerulean); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .feature-list li.group-header::before { display: none; }
         
         .btn-tier { 
             display: inline-block; 
             text-align: center; 
             width: 100%; 
-            padding: 0.75rem; 
+            padding: 0.65rem; 
             border-radius: var(--radius-md); 
             font-weight: 600; 
+            font-size: 0.95rem;
             transition: all 0.2s ease; 
             cursor: pointer;
         }
@@ -93,10 +97,10 @@
             <img src="/images/logo.png" alt="PractisBase" style="height: 100%; object-fit: contain;">
         </div>
         <div style="display: flex; align-items: center; gap: 1.5rem;">
-            <a href="/login" style="color: var(--primary-navy); font-weight: 600; font-size: 0.95rem;">
+            <a href="/login" style="color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">
                 Already a member? Sign in
             </a>
-            <a href="/register" class="btn-tier btn-solid" style="padding: 0.5rem 1.25rem; width: auto; font-size: 0.95rem;">
+            <a href="/register" class="btn-tier btn-solid" style="padding: 0.5rem 1.25rem; width: auto; font-size: 0.9rem;">
                 Join the Professional's Club: Sign up
             </a>
         </div>
@@ -119,7 +123,7 @@
                     <li>Summary Dashboard</li>
                     <li>Standard Support</li>
                 </ul>
-                <a href="#" class="btn-tier btn-outline">Start for Free</a>
+                <a href="/register" class="btn-tier btn-outline">Start for Free</a>
             </div>
 
             <div class="pricing-card popular">
@@ -134,7 +138,7 @@
                     <li><strong>Automated TA22 Form</strong></li>
                     <li>Accountant VAT Export</li>
                 </ul>
-                <a href="#" class="btn-tier btn-solid">Upgrade to Standard</a>
+                <a href="/register" class="btn-tier btn-solid">Upgrade to Standard</a>
             </div>
 
             <div class="pricing-card">
@@ -142,15 +146,15 @@
                 <div class="tier-price">€49.99<span>/mo</span></div>
                 <ul class="feature-list">
                     <li>All Standard Features</li>
-                    <li class="group-header">Architects & Engineers:</li>
-                    <li>Architect DMS & Document Stamper</li>
+                    <li class="group-header">Architects:</li>
+                    <li>DMS, EMS, BMS & Document Stamper</li>
+                    <li class="group-header">Engineers:</li>
                     <li>Certification Generator</li>
-                    <li>EMS & BMS Templating</li>
                     <li class="group-header">Medical Professionals:</li>
                     <li>Secure Patient Journals</li>
                     <li>Digital Prescriptions & Referral Letters</li>
                 </ul>
-                <a href="#" class="btn-tier btn-outline">Go Pro</a>
+                <a href="/register" class="btn-tier btn-outline">Go Pro</a>
             </div>
 
         </div>
