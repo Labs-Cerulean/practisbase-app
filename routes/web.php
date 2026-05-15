@@ -30,7 +30,9 @@ Route::get('/dashboard', function () {
 })->middleware('auth');
 
 // TEMPORARY ROUTE TO UPGRADE DATABASE
-Route::get('/run-migrations', function () {
-    Artisan::call('migrate', ['--force' => true]);
-    return "Database successfully upgraded! You can now go back and register.";
+Route::get('/register', function () {
+    // This wipes the database clean and rebuilds all tables perfectly
+    \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
+    
+    return view('register');
 });
