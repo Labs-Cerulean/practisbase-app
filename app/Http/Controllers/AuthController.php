@@ -89,5 +89,28 @@ class AuthController extends Controller
         return redirect('/dashboard');
     }
 
+    public function loginSubmit(Request $request)
+    {
+        // 1. Validate the input
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
+
+        // 2. Attempt to log the user in
+        if (Auth::attempt($credentials)) {
+            // Success! Regenerate the session to prevent security fixation attacks
+            $request->session()->regenerate();
+
+            // Send them directly to the dashboard
+            return redirect()->intended('/dashboard');
+        }
+
+        // 3. Failure! Kick them back with an error message
+        return back()->withErrors([
+            'email' => 'The provided credentials do not match our records.',
+        ])->onlyInput('email');
+    }
+
 
 }

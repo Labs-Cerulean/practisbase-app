@@ -22,10 +22,13 @@ Route::get('/', function () {
 | Routes for logging in and creating a new account.
 */
 
-// The Login Page (Named 'login' so the auth bouncer knows where to redirect)
+// The actual Login view
 Route::get('/login', function () {
-    return "Login Page Coming Soon";
+    return view('login');
 })->name('login');
+
+// The route that processes the login form
+Route::post('/login-submit', [AuthController::class, 'loginSubmit']);
 
 // The Registration Page & Form Submission
 Route::get('/register', function () {
