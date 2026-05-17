@@ -12,6 +12,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* Small additions for the dynamic badges and buttons */
+        .tier-badge { background: rgba(255,255,255,0.2); color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.3); }
+        .logout-btn { background: none; border: none; color: #cbd5e1; cursor: pointer; font-weight: 600; font-size: 0.85rem; padding: 0; transition: 0.2s; }
+        .logout-btn:hover { color: #ef4444; }
+    </style>
 </head>
 <body>
 
@@ -22,27 +28,45 @@
                 <img src="/images/logo.png" alt="PractisBase Full Logo" style="width: 100%; max-width: 180px; height: auto; object-fit: contain;">
             </div>
             
-            
             <nav class="sidebar-nav">
                 <ul>
                     <li>
-                        <a href="#" class="nav-link active">Dashboard</a>
+                        <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Dashboard</a>
                     </li>
                     <li>
-                        <a href="#" class="nav-link">Clients Directory</a>
+                        <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients Directory</a>
                     </li>
                     <li>
                         <a href="#" class="nav-link">Ledger & Invoices</a>
                     </li>
-                    <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
-                        Pro Tools
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link">Patient Journals</a>
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link">Document Stamper</a>
-                    </li>
+                    
+                    @if(auth()->check() && (auth()->user()->tier === 'standard' || auth()->user()->tier === 'pro'))
+                        <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
+                            Standard Tools
+                        </li>
+                        <li><a href="#" class="nav-link">Document Storage</a></li>
+                        <li><a href="#" class="nav-link">TA22 Automation</a></li>
+                        <li><a href="#" class="nav-link">Expense Tracking</a></li>
+                    @endif
+
+                    @if(auth()->check() && auth()->user()->tier === 'pro')
+                        <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
+                            Pro Tools
+                        </li>
+                        
+                        @if(auth()->user()->profession === 'Medical Professional')
+                            <li><a href="#" class="nav-link">Patient Journals</a></li>
+                            <li><a href="#" class="nav-link">Digital Prescriptions</a></li>
+                            
+                        @elseif(auth()->user()->profession === 'Architect / Perit')
+                            <li><a href="#" class="nav-link">Architect DMS</a></li>
+                            <li><a href="#" class="nav-link">Document Stamper</a></li>
+                            
+                        @elseif(auth()->user()->profession === 'Engineer')
+                            <li><a href="#" class="nav-link">EMS / BMS Templates</a></li>
+                            <li><a href="#" class="nav-link">Certifications</a></li>
+                        @endif
+                    @endif
                 </ul>
             </nav>
         </aside>
@@ -52,10 +76,23 @@
                 @yield('page_title', 'Overview')
             </div>
             
+            @auth
             <div class="user-profile">
-                <span class="user-name">Dr. Borg</span>
-                <div class="avatar">B</div>
+                <span class="tier-badge" style="margin-right: 1rem;">{{ auth()->user()->tier }}</span>
+                
+                <div style="text-align: right; line-height: 1.2; margin-right: 0.5rem;">
+                    <div class="user-name" style="color: white;">{{ auth()->user()->name }}</div>
+                    <div style="font-size: 0.7rem; color: #cbd5e1;">{{ auth()->user()->profession }}</div>
+                </div>
+                
+                <div class="avatar">{{ substr(auth()->user()->name, 0, 1) }}</div>
+                
+                <form action="/logout" method="POST" style="margin: 0 0 0 1rem; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 1rem; display: flex; align-items: center;">
+                    @csrf
+                    <button type="submit" class="logout-btn">Log Out</button>
+                </form>
             </div>
+            @endauth
         </header>
 
         <main class="app-main">
