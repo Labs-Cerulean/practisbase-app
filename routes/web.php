@@ -68,7 +68,7 @@ Route::post('/onboarding/plans-submit', [AuthController::class, 'savePlan'])
 
 // The Master Dashboard
 Route::get('/dashboard', function () {
-    return "Welcome to the Dashboard! Your onboarding is complete.";
+    return view('dashboard');
 })->middleware('auth');
 
 // Client Management Routes
