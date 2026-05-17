@@ -70,3 +70,8 @@ Route::post('/onboarding/plans-submit', [AuthController::class, 'savePlan'])
 Route::get('/dashboard', function () {
     return "Welcome to the Dashboard! Your onboarding is complete.";
 })->middleware('auth');
+
+// Client Management Routes
+Route::get('/clients', [\App\Http\Controllers\ClientController::class, 'index']);
+Route::get('/clients/create', [\App\Http\Controllers\ClientController::class, 'create']);
+Route::post('/clients', [\App\Http\Controllers\ClientController::class, 'store']);
