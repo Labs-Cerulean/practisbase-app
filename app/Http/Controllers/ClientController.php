@@ -68,4 +68,15 @@ class ClientController extends Controller
 
         return redirect('/clients')->with('success', 'Client added successfully!');
     }
+
+    // 4. View a Specific Client Profile
+    public function show(Client $client)
+    {
+        // Security Check: Does this client belong to the logged-in user?
+        if ($client->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        return view('clients.show', compact('client'));
+    }
 }

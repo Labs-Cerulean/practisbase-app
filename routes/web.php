@@ -36,6 +36,9 @@ Route::get('/register', function () {
 });
 Route::post('/register-submit', [AuthController::class, 'registerSubmit']);
 
+// Logout Route
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
 /*
 |--------------------------------------------------------------------------
 | Protected Onboarding Routes
@@ -80,3 +83,4 @@ Route::get('/dashboard', function () {
 Route::get('/clients', [\App\Http\Controllers\ClientController::class, 'index']);
 Route::get('/clients/create', [\App\Http\Controllers\ClientController::class, 'create']);
 Route::post('/clients', [\App\Http\Controllers\ClientController::class, 'store']);
+Route::get('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'show']);
