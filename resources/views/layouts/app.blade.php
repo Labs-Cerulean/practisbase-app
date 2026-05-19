@@ -95,8 +95,27 @@
             @endauth
         </header>
 
-        <main class="app-main">
-            @yield('content')
+        <main class="app-main" style="display: flex; flex-direction: column;">
+            
+            <div style="flex-grow: 1;">
+                @yield('content')
+            </div>
+
+            <footer style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 0.8rem; gap: 1rem;">
+                
+                <div>&copy; {{ date('Y') }} PractisBase. All rights reserved.</div>
+                
+                <div style="display: flex; gap: 1.5rem;">
+                    <a href="#" style="color: var(--text-muted); transition: color 0.2s;">Privacy Policy</a>
+                    <a href="#" style="color: var(--text-muted); transition: color 0.2s;">Master Service Agreement</a>
+                    <a href="#" style="color: var(--text-muted); transition: color 0.2s;">Security & GDPR</a>
+                </div>
+
+                <div style="text-align: right;">
+                    <strong>Build 1.0.0</strong> &bull; Engine v{{ app()->version() }}
+                </div>
+                
+            </footer>
         </main>
 
     </div>
