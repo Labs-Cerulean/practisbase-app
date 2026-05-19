@@ -71,6 +71,21 @@
                 </label>
             </div>
 
+            <div id="customProfessionBox" style="display: none; background: #f8fafc; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-bottom: 1.5rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Please specify your profession</label>
+                    <input type="text" name="custom_profession" id="customProfessionInput" list="professionSuggestions" placeholder="e.g. Accountant, Lawyer, Graphic Designer">
+                    
+                    <datalist id="professionSuggestions">
+                        @if(isset($customProfessions))
+                            @foreach($customProfessions as $prof)
+                                <option value="{{ $prof }}">
+                            @endforeach
+                        @endif
+                    </datalist>
+                </div>
+            </div>
+
             <div class="warrant-section" id="warrantBox">
                 <h4 style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-navy);">Official Warrant Details</h4>
                 <div class="form-group">
@@ -95,20 +110,21 @@
 
     <script>
         function toggleWarrant(radio) {
-            // Enable the submit button once *any* option is chosen
             document.getElementById('submitBtn').disabled = false;
 
-            // Highlight selected box
             document.querySelectorAll('.prof-label').forEach(lbl => lbl.classList.remove('selected'));
             radio.parentElement.classList.add('selected');
 
-            // Show/Hide Warrant Box
             const warrantBox = document.getElementById('warrantBox');
-            const requiresWarrant = ['Medical Professional', 'Architect / Perit', 'Engineer'].includes(radio.value);
+            const customProfessionBox = document.getElementById('customProfessionBox');
+            const customInput = document.getElementById('customProfessionInput');
             
+            const requiresWarrant = ['Medical Professional', 'Architect / Perit', 'Engineer'].includes(radio.value);
+            const isOther = radio.value === 'Other';
+            
+            // Handle Warrant Box
             if (requiresWarrant) {
                 warrantBox.style.display = 'block';
-                // Auto-select the likely board for convenience
                 const dropdown = document.getElementById('warrantType');
                 if(radio.value === 'Medical Professional') dropdown.value = 'Medical Council Malta';
                 if(radio.value === 'Architect / Perit') dropdown.value = 'Periti Warranting Board';
@@ -117,6 +133,17 @@
                 warrantBox.style.display = 'none';
                 document.getElementById('warrantType').value = '';
                 document.getElementById('warrantNumber').value = '';
+            }
+
+            // Handle Custom Profession Box
+            if (isOther) {
+                customProfessionBox.style.display = 'block';
+                customInput.required = true;
+                customInput.focus();
+            } else {
+                customProfessionBox.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
             }
         }
     </script>

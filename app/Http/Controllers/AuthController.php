@@ -55,20 +55,23 @@ class AuthController extends Controller
     {
         $request->validate([
             'profession' => 'required|string',
+            'custom_profession' => 'required_if:profession,Other|max:255',
             'warrant_type' => 'nullable|string',
             'warrant_number' => 'nullable|string',
         ]);
 
         $user = Auth::user();
         
+        // If they chose "Other", we save what they typed. Otherwise, save the radio button choice.
+        $finalProfession = $request->profession === 'Other' ? $request->custom_profession : $request->profession;
+        
         // Save the data
         $user->update([
-            'profession' => $request->profession,
+            'profession' => $finalProfession,
             'warrant_type' => $request->warrant_type,
             'warrant_number' => $request->warrant_number,
         ]);
 
-        // Redirect to Step 3 (The Tier Selection / Stripe page)
         return redirect('/onboarding/plans');
     }
 

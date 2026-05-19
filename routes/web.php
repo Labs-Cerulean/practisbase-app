@@ -45,7 +45,12 @@ Route::post('/register-submit', [AuthController::class, 'registerSubmit']);
 
 // Step 2: Professional Profiler
 Route::get('/onboarding/profession', function () {
-    return view('onboarding.profession');
+    // Fetch all custom professions from the database to build our autocomplete list!
+    $customProfessions = \App\Models\User::whereNotIn('profession', [
+        'Medical Professional', 'Architect / Perit', 'Engineer', 'Tutor / Lecturer', 'Other'
+    ])->whereNotNull('profession')->distinct()->pluck('profession');
+
+    return view('onboarding.profession', compact('customProfessions'));
 })->middleware('auth');
 
 Route::post('/onboarding/profession-submit', [AuthController::class, 'saveProfession'])
