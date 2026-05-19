@@ -112,7 +112,7 @@
                 </div>
 
                 <div style="text-align: right;">
-                    <strong>Build 1.0.0</strong> &bull; Engine v{{ app()->version() }}
+                    <strong>Build {{ env('APP_VERSION', '1.0') }}.{{ substr(env('RAILWAY_GIT_COMMIT_SHA', 'dev'), 0, 7) }}</strong> &bull; Engine v{{ app()->version() }}
                 </div>
                 
             </footer>
