@@ -86,7 +86,9 @@
                 </div>
                 
                 <div class="avatar">{{ substr(auth()->user()->name, 0, 1) }}</div>
-                
+                <a href="/settings" style="color: #cbd5e1; text-decoration: none; font-size: 0.85rem; font-weight: 600; margin-left: 1rem; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 1rem; transition: 0.2s;">
+                    Settings
+                </a>
                 <form action="/logout" method="POST" style="margin: 0 0 0 1rem; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 1rem; display: flex; align-items: center;">
                     @csrf
                     <button type="submit" class="logout-btn">Log Out</button>

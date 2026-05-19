@@ -86,3 +86,9 @@ Route::post('/clients', [\App\Http\Controllers\ClientController::class, 'store']
 Route::get('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'show']);
 Route::get('/clients/{client}/edit', [\App\Http\Controllers\ClientController::class, 'edit']);
 Route::put('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'update']);
+
+
+// Account Settings Routes
+Route::get('/settings', [\App\Http\Controllers\ProfileController::class, 'edit']);
+Route::put('/settings/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile']);
+Route::put('/settings/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword']);
