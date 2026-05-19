@@ -11,7 +11,9 @@
                 {{ ucfirst($client->type) }}
             </span>
         </div>
-        <button style="background: white; border: 1px solid var(--border-light); color: var(--text-main); padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; box-shadow: var(--shadow-sm);">
+        <a href="/clients/{{ $client->id }}/edit" style="display: inline-block; background: white; border: 1px solid var(--border-light); color: var(--text-main); text-decoration: none; padding: 0.5rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; box-shadow: var(--shadow-sm);">
+            Edit Details
+        </a>
             Edit Details
         </button>
     </div>

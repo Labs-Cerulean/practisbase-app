@@ -84,3 +84,5 @@ Route::get('/clients', [\App\Http\Controllers\ClientController::class, 'index'])
 Route::get('/clients/create', [\App\Http\Controllers\ClientController::class, 'create']);
 Route::post('/clients', [\App\Http\Controllers\ClientController::class, 'store']);
 Route::get('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'show']);
+Route::get('/clients/{client}/edit', [\App\Http\Controllers\ClientController::class, 'edit']);
+Route::put('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'update']);

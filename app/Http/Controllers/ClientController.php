@@ -79,4 +79,60 @@ class ClientController extends Controller
 
         return view('clients.show', compact('client'));
     }
+
+    // 5. Show the Edit Form
+    public function edit(Client $client)
+    {
+        // Security Check
+        if ($client->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        return view('clients.edit', compact('client'));
+    }
+
+    // 6. Securely Update the Client
+    public function update(Request $request, Client $client)
+    {
+        // Security Check
+        if ($client->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $request->validate([
+            'type' => 'required|in:individual,company',
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'billing_address' => 'nullable|string',
+        ]);
+
+        $profileData = [];
+        
+        if ($request->type === 'company') {
+            $profileData['vat_number'] = $request->vat_number;
+            $profileData['registration_number'] = $request->registration_number;
+            $profileData['contact_person'] = $request->contact_person;
+        } else {
+            $profileData['id_card_number'] = $request->id_card_number;
+            
+            if (Auth::user()->profession === 'Medical Professional') {
+                $profileData['dob'] = $request->dob;
+                $profileData['gender'] = $request->gender;
+                $profileData['blood_type'] = $request->blood_type;
+                $profileData['allergies'] = $request->allergies;
+            }
+        }
+
+        $client->update([
+            'type' => $request->type,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'billing_address' => $request->billing_address,
+            'profile_data' => $profileData,
+        ]);
+
+        return redirect("/clients/{$client->id}")->with('success', 'Client updated successfully!');
+    }
 }
