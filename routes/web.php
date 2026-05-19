@@ -76,7 +76,11 @@ Route::post('/onboarding/plans-submit', [AuthController::class, 'savePlan'])
 
 // The Master Dashboard
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    // Count how many clients belong to the currently logged-in user
+    $clientCount = \App\Models\Client::where('user_id', auth()->id())->count();
+    
+    // Pass that number to the view
+    return view('dashboard', compact('clientCount'));
 })->middleware('auth');
 
 // Client Management Routes
