@@ -232,4 +232,20 @@ class InvoiceController extends Controller
         // Download the file with a clean name (e.g., INV-2026-0001.pdf)
         return $pdf->download($document->invoice_number . '.pdf');
     }
+
+    // 7. Mark Document as Paid
+    public function markAsPaid(Invoice $document)
+    {
+        $user = Auth::user();
+
+        // Security Checks
+        if ($document->user_id !== $user->id) abort(403);
+        if ($document->status === 'paid') abort(400, 'Document is already marked as paid.');
+        if ($document->status === 'cancelled') abort(400, 'Cannot mark a cancelled document as paid.');
+
+        // Update status to paid
+        $document->update(['status' => 'paid']);
+
+        return back()->with('success', 'Document ' . $document->invoice_number . ' successfully marked as paid.');
+    }
 }

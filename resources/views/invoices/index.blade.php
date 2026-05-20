@@ -100,6 +100,29 @@
                         @endif
                     </div>
 
+                    <div style="border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <a href="/ledger/{{ $doc->id }}/pdf" style="flex: 1; text-align: center; padding: 0.5rem; background: white; border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">Download PDF</a>
+                        
+                        @if(in_array($doc->status, ['unpaid', 'overdue']))
+                            <form action="/ledger/{{ $doc->id }}/pay" method="POST" style="flex: 1; margin: 0;">
+                                @csrf
+                                <button type="submit" style="width: 100%; padding: 0.5rem; background: #ecfdf5; color: #059669; border: 1px solid #10b981; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s;">Mark as Paid</button>
+                            </form>
+                        @endif
+
+                        @if($doc->type === 'rfp' && $doc->status !== 'cancelled')
+                            <form action="/ledger/{{ $doc->id }}/convert" method="POST" style="flex: 1; margin: 0;">
+                                @csrf
+                                <button type="submit" style="width: 100%; padding: 0.5rem; background: var(--primary-cerulean); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Convert to Invoice</button>
+                            </form>
+                        @elseif($doc->type === 'invoice' && $doc->status !== 'cancelled')
+                            <form action="/ledger/{{ $doc->id }}/cancel" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('Are you sure you want to cancel this invoice and issue a Credit Note? This action cannot be undone.');">
+                                @csrf
+                                <button type="submit" style="width: 100%; padding: 0.5rem; background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Issue Credit Note</button>
+                            </form>
+                        @endif
+                    </div>
+
                 </div>
             @endforeach
         </div>
