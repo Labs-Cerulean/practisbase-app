@@ -43,14 +43,8 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Profession</label>
-                        <input type="text" name="profession" id="profInput" value="{{ $user->profession }}" list="professionSuggestions" required onchange="handleProfChange()" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                        <datalist id="professionSuggestions">
-                            @if(isset($customProfessions))
-                                @foreach($customProfessions as $prof)
-                                    <option value="{{ $prof }}">
-                                @endforeach
-                            @endif
-                        </datalist>
+                        <input type="text" name="profession" id="profInput" value="{{ $user->profession }}" readonly style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #f1f5f9; color: #64748b; cursor: not-allowed; font-weight: 500;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Contact support to change your registered profession.</div>
                     </div>
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant Number (Optional)</label>
@@ -96,6 +90,68 @@
                 <div id="medicalVatAlert" style="display: {{ $user->profession === 'Medical Professional' ? 'block' : 'none' }}; margin-top: 1rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.5;">
                     <strong>⚠️ Note on Medical Exemptions (Fifth Schedule):</strong><br>
                     Under Maltese VAT Law, the medical exemption applies <strong>strictly to therapeutic care</strong> provided by professionals warranted under the Health Care Professions Act. Non-therapeutic services (e.g., purely cosmetic procedures, corporate consultancy, medico-legal reports) may be subject to standard 18% VAT. If you provide taxable services, you must register under Article 10 or 11.
+                </div>
+                <h3 style="color: var(--primary-navy); margin-top: 2rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Accepted Payment Methods</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Select how you want clients to pay you. These will be automatically formatted onto your invoices. <strong>(Select at least one)</strong></p>
+
+                @php $pm = $user->payment_methods ?? []; @endphp
+
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" name="pm_bov" value="1" id="toggleBov" onchange="toggleSection('bovSection')" {{ isset($pm['bov_mobile']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                        BOV Mobile Pay
+                    </label>
+                    <div id="bovSection" style="display: {{ isset($pm['bov_mobile']) ? 'block' : 'none' }}; margin-top: 1rem;">
+                        <input type="text" name="pm_bov_number" placeholder="Mobile Number (e.g., +356 9999 9999)" value="{{ $pm['bov_mobile'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" name="pm_revolut" value="1" id="toggleRevolut" onchange="toggleSection('revolutSection')" {{ isset($pm['revolut']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                        Revolut
+                    </label>
+                    <div id="revolutSection" style="display: {{ isset($pm['revolut']) ? 'block' : 'none' }}; margin-top: 1rem;">
+                        <input type="text" name="pm_revolut_number" placeholder="Mobile Number or Revolut Tag (@username)" value="{{ $pm['revolut'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" name="pm_bank" value="1" id="toggleBank" onchange="toggleSection('bankSection')" {{ !empty($pm['banks']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                        Bank Transfers (IBAN)
+                    </label>
+                    <div id="bankSection" style="display: {{ !empty($pm['banks']) ? 'block' : 'none' }}; margin-top: 1rem;">
+                        <div id="bankRowsContainer">
+                            @if(!empty($pm['banks']))
+                                @foreach($pm['banks'] as $bank)
+                                    <div class="bank-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        <input type="text" name="bank_names[]" value="{{ $bank['bank'] }}" placeholder="Bank (e.g., BOV)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                        <input type="text" name="ibans[]" value="{{ $bank['iban'] }}" placeholder="IBAN (e.g., MT12 BOVM...)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                        <button type="button" onclick="this.closest('.bank-row').remove()" style="padding: 0.75rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="bank-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <input type="text" name="bank_names[]" placeholder="Bank (e.g., BOV)" style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    <input type="text" name="ibans[]" placeholder="IBAN (e.g., MT12 BOVM...)" style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    <button type="button" onclick="this.closest('.bank-row').remove()" style="padding: 0.75rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
+                                </div>
+                            @endif
+                        </div>
+                        <button type="button" onclick="addBankRow()" style="margin-top: 0.5rem; background: transparent; color: var(--primary-cerulean); border: 1px dashed var(--primary-cerulean); padding: 0.5rem; border-radius: var(--radius-md); font-size: 0.85rem; cursor: pointer;">+ Add Another Bank</button>
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                        <input type="checkbox" name="pm_cheque" value="1" id="toggleCheque" onchange="toggleSection('chequeSection')" {{ isset($pm['cheque']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                        Physical Cheques
+                    </label>
+                    <div id="chequeSection" style="display: {{ isset($pm['cheque']) ? 'block' : 'none' }}; margin-top: 1rem;">
+                        <input type="text" name="pm_cheque_name" placeholder="Payable To (e.g., Dr. Jane Doe)" value="{{ $pm['cheque']['name'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
+                        <input type="text" name="pm_cheque_address" placeholder="Postal Address for Cheques" value="{{ $pm['cheque']['address'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
                 </div>
 
                 <button type="submit" style="margin-top: 1.5rem; width: 100%; background: var(--primary-cerulean); color: white; border: none; padding: 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
@@ -182,5 +238,22 @@
         document.addEventListener("DOMContentLoaded", function() {
             handleProfChange();
         });
+
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function addBankRow() {
+            const container = document.getElementById('bankRowsContainer');
+            const rowHtml = `
+                <div class="bank-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <input type="text" name="bank_names[]" placeholder="Bank (e.g., BOV)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="text" name="ibans[]" placeholder="IBAN (e.g., MT12 BOVM...)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <button type="button" onclick="this.closest('.bank-row').remove()" style="padding: 0.75rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', rowHtml);
+        }
     </script>
 @endsection

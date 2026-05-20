@@ -30,7 +30,8 @@ use Illuminate\Notifications\Notifiable;
     'employment_type',
     'date_of_birth',
     'vat_status',
-    'vat_number'
+    'vat_number',
+    'payment_methods'
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -50,6 +51,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'terms_accepted_at' => 'datetime',
             'date_of_birth' => 'date', // Tells Laravel to treat this as a smart Carbon Date object
+            'payment_methods' => 'array',
         ];
     }
 
