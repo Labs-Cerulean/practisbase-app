@@ -19,6 +19,12 @@
         </div>
     @endif
 
+    @if($errors->has('payment_error'))
+        <div style="background: #fef2f2; border: 1px solid #f87171; border-left: 4px solid #dc2626; color: #b91c1c; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-weight: 500; font-size: 0.95rem;">
+            {{ $errors->first('payment_error') }}
+        </div>
+    @endif
+
     @if(session('revenue_warning'))
         <div style="background: #fef2f2; border: 1px solid #f87171; border-left: 4px solid #dc2626; color: #b91c1c; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-weight: 500; font-size: 0.95rem; line-height: 1.4;">
             {!! session('revenue_warning') !!}
@@ -28,12 +34,12 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
         <div style="background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); border-left: 4px solid #10b981;">
             <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Collected Revenue</div>
-            <div style="font-size: 1.75rem; font-weight: 700; color: #047857; margin-top: 0.25rem;">€{{ number_format($totalPaid, 2) }}</div>
+            <div style="font-size: 1.75rem; font-weight: 700; color: #047857; margin-top: 0.25rem;">€{{ number_format($totalPaid ?? 0, 2) }}</div>
             <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Tax Invoices Only</div>
         </div>
         <div style="background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); border-left: 4px solid #ef4444;">
-            <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Outstanding Receivables</div>
-            <div style="font-size: 1.75rem; font-weight: 700; color: #b91c1c; margin-top: 0.25rem;">€{{ number_format($totalUnpaid, 2) }}</div>
+            <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Outstanding Balance</div>
+            <div style="font-size: 1.75rem; font-weight: 700; color: #b91c1c; margin-top: 0.25rem;">€{{ number_format($totalUnpaid ?? 0, 2) }}</div>
             <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Tax Invoices Only</div>
         </div>
     </div>
@@ -59,6 +65,8 @@
 
                         @if($doc->status === 'paid')
                             <span style="background: #e6f4ea; color: #137333; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: uppercase;">Paid</span>
+                        @elseif($doc->status === 'partially_paid')
+                            <span style="background: #fef08a; color: #854d0e; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: uppercase;">Partial</span>
                         @elseif($doc->status === 'unpaid')
                             <span style="background: #fef7e0; color: #b06000; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: uppercase;">Unpaid</span>
                         @elseif($doc->status === 'cancelled')
@@ -78,7 +86,11 @@
                         </div>
                         <div style="text-align: right;">
                             <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($doc->total, 2) }}</div>
-                            @if($doc->vat_total > 0)
+                            
+                            @if($doc->status === 'partially_paid' || ($doc->amount_paid > 0 && $doc->status !== 'paid'))
+                                <div style="font-size: 0.75rem; color: #059669; margin-top: 0.15rem;">Paid: €{{ number_format($doc->amount_paid, 2) }}</div>
+                                <div style="font-size: 0.75rem; color: #dc2626; font-weight: 600;">Due: €{{ number_format($doc->total - $doc->amount_paid, 2) }}</div>
+                            @elseif($doc->vat_total > 0)
                                 <div style="font-size: 0.7rem; color: var(--text-muted);">Inc. VAT</div>
                             @endif
                         </div>
@@ -87,26 +99,11 @@
                     <div style="border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         <a href="/ledger/{{ $doc->id }}/pdf" style="flex: 1; text-align: center; padding: 0.5rem; background: white; border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none; transition: 0.2s;">Download PDF</a>
                         
-                        @if($doc->type === 'rfp' && $doc->status !== 'cancelled')
-                            <form action="/ledger/{{ $doc->id }}/convert" method="POST" style="flex: 1; margin: 0;">
+                        @if(in_array($doc->status, ['unpaid', 'overdue', 'partially_paid']) && $doc->type === 'invoice')
+                            <form action="/ledger/{{ $doc->id }}/pay" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.25rem;">
                                 @csrf
-                                <button type="submit" style="width: 100%; padding: 0.5rem; background: var(--primary-cerulean); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Convert to Invoice</button>
-                            </form>
-                        @elseif($doc->type === 'invoice' && $doc->status !== 'cancelled')
-                            <form action="/ledger/{{ $doc->id }}/cancel" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('Are you sure you want to cancel this invoice and issue a Credit Note? This action cannot be undone.');">
-                                @csrf
-                                <button type="submit" style="width: 100%; padding: 0.5rem; background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Issue Credit Note</button>
-                            </form>
-                        @endif
-                    </div>
-
-                    <div style="border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <a href="/ledger/{{ $doc->id }}/pdf" style="flex: 1; text-align: center; padding: 0.5rem; background: white; border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">Download PDF</a>
-                        
-                        @if(in_array($doc->status, ['unpaid', 'overdue']))
-                            <form action="/ledger/{{ $doc->id }}/pay" method="POST" style="flex: 1; margin: 0;">
-                                @csrf
-                                <button type="submit" style="width: 100%; padding: 0.5rem; background: #ecfdf5; color: #059669; border: 1px solid #10b981; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s;">Mark as Paid</button>
+                                <input type="number" name="payment_amount" step="0.01" max="{{ $doc->total - $doc->amount_paid }}" value="{{ number_format($doc->total - $doc->amount_paid, 2, '.', '') }}" required style="width: 80px; padding: 0.4rem; border: 1px solid var(--border-light); border-radius: 6px; font-size: 0.85rem; text-align: right;">
+                                <button type="submit" style="flex: 1; padding: 0.5rem; background: #ecfdf5; color: #059669; border: 1px solid #10b981; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s;">Log Payment</button>
                             </form>
                         @endif
 

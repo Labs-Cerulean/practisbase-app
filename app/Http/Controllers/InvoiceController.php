@@ -233,19 +233,39 @@ class InvoiceController extends Controller
         return $pdf->download($document->invoice_number . '.pdf');
     }
 
-    // 7. Mark Document as Paid
-    public function markAsPaid(Invoice $document)
+    // 7. Process a Payment (Full or Partial)
+    public function processPayment(Request $request, Invoice $document)
     {
         $user = Auth::user();
 
         // Security Checks
         if ($document->user_id !== $user->id) abort(403);
-        if ($document->status === 'paid') abort(400, 'Document is already marked as paid.');
-        if ($document->status === 'cancelled') abort(400, 'Cannot mark a cancelled document as paid.');
+        if ($document->status === 'paid') abort(400, 'This document is already fully paid.');
+        if ($document->status === 'cancelled') abort(400, 'Cannot apply payments to a cancelled document.');
 
-        // Update status to paid
-        $document->update(['status' => 'paid']);
+        // Validate the incoming payment amount
+        $request->validate([
+            'payment_amount' => 'required|numeric|min:0.01'
+        ]);
 
-        return back()->with('success', 'Document ' . $document->invoice_number . ' successfully marked as paid.');
+        $paymentAmount = (float) $request->payment_amount;
+        $newTotalPaid = $document->amount_paid + $paymentAmount;
+        $balanceDue = $document->total - $newTotalPaid;
+
+        // Prevent overpayment 
+        if ($newTotalPaid > $document->total) {
+            return back()->withErrors(['payment_error' => 'Payment cannot exceed the outstanding balance of €' . number_format($document->total - $document->amount_paid, 2)]);
+        }
+
+        // Determine new status
+        $newStatus = ($newTotalPaid >= $document->total) ? 'paid' : 'partially_paid';
+
+        // Update the database
+        $document->update([
+            'amount_paid' => $newTotalPaid,
+            'status' => $newStatus
+        ]);
+
+        return back()->with('success', 'Payment of €' . number_format($paymentAmount, 2) . ' applied. Remaining balance: €' . number_format($balanceDue, 2));
     }
 }
