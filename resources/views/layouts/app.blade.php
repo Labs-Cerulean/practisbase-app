@@ -37,7 +37,7 @@
                         <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients Directory</a>
                     </li>
                     <li>
-                        <a href="#" class="nav-link">Ledger & Invoices</a>
+                        <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Ledger & Invoices</a>
                     </li>
                     
                     @if(auth()->check() && in_array(auth()->user()->tier, ['standard', 'pro-med', 'pro-arch', 'pro-eng']))
@@ -97,7 +97,7 @@
             
             @auth
             <div class="user-profile">
-                <span class="tier-badge" style="margin-right: 1rem;">{{ ucwords(str_replace('-', ' ', auth()->user()->tier)) }}</span>)
+                <span class="tier-badge" style="margin-right: 1rem;">{{ ucwords(str_replace('-', ' ', auth()->user()->tier)) }}</span>
                 
                 <div style="text-align: right; line-height: 1.2; margin-right: 0.5rem;">
                     <div class="user-name" style="color: white;">{{ auth()->user()->name }}</div>

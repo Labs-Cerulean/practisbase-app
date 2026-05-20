@@ -76,11 +76,17 @@ Route::post('/onboarding/plans-submit', [AuthController::class, 'savePlan'])
 
 // The Master Dashboard
 Route::get('/dashboard', function () {
-    // Count how many clients belong to the currently logged-in user
-    $clientCount = \App\Models\Client::where('user_id', auth()->id())->count();
+    $userId = auth()->id();
     
-    // Pass that number to the view
-    return view('dashboard', compact('clientCount'));
+    // 1. Count Clients
+    $clientCount = \App\Models\Client::where('user_id', $userId)->count();
+    
+    // 2. Calculate Pending Invoices (Unpaid or Overdue)
+    $pendingInvoicesTotal = \App\Models\Invoice::where('user_id', $userId)
+        ->whereIn('status', ['unpaid', 'overdue'])
+        ->sum('total');
+    
+    return view('dashboard', compact('clientCount', 'pendingInvoicesTotal'));
 })->middleware('auth');
 
 // Client Management Routes
@@ -96,3 +102,6 @@ Route::put('/clients/{client}', [\App\Http\Controllers\ClientController::class, 
 Route::get('/settings', [\App\Http\Controllers\ProfileController::class, 'edit']);
 Route::put('/settings/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile']);
 Route::put('/settings/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword']);
+
+// Financial Ledger Routes
+Route::get('/ledger', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('auth');

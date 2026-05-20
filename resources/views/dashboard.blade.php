@@ -17,7 +17,7 @@
         </div>
         <div style="background: white; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
             <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Pending Invoices</div>
-            <div style="font-size: 2rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.5rem;">€0.00</div>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.5rem;">€{{ number_format($pendingInvoicesTotal, 2) }}</div>
         </div>
     </div>
 
