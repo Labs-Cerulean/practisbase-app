@@ -105,3 +105,6 @@ Route::put('/settings/password', [\App\Http\Controllers\ProfileController::class
 
 // Financial Ledger Routes
 Route::get('/ledger', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('auth');
+
+Route::get('/ledger/create', [\App\Http\Controllers\InvoiceController::class, 'create']);
+Route::post('/ledger', [\App\Http\Controllers\InvoiceController::class, 'store']);
