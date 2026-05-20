@@ -6,7 +6,7 @@
     <div style="margin-bottom: var(--space-lg);">
         <h1 style="font-size: 1.75rem; color: var(--primary-navy);">Welcome back, {{ explode(' ', auth()->user()->name)[0] }}!</h1>
         <p style="color: var(--text-muted); margin-top: 0.25rem; font-size: 1.05rem;">
-            You are operating on the <strong>{{ ucfirst(auth()->user()->tier) }}</strong> tier as <strong>{{ preg_match('/^[aeiou]/i', auth()->user()->profession) ? 'an' : 'a' }} {{ auth()->user()->profession }}</strong>.
+            You are operating on the <strong>{{ ucwords(str_replace('-', ' ', auth()->user()->tier)) }}</strong> tier as <strong>{{ preg_match('/^[aeiou]/i', auth()->user()->profession) ? 'an' : 'a' }} {{ auth()->user()->profession }}</strong>.
         </p>
     </div>
     

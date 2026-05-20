@@ -22,15 +22,14 @@
             box-shadow: var(--shadow-sm); 
         }
         
-        /* TIGHTENED VERTICAL SPACING TO FIT ON ONE SCREEN */
-        .pricing-container { max-width: 1100px; margin: 2rem auto; padding: 0 var(--space-lg); }
-        .pricing-header { text-align: center; margin-bottom: 1.5rem; }
+        .pricing-container { max-width: 1200px; margin: 2rem auto; padding: 0 var(--space-lg); }
+        .pricing-header { text-align: center; margin-bottom: 2.5rem; }
         .pricing-header h1 { color: var(--primary-navy); font-size: 2.25rem; margin-bottom: 0.5rem; }
-        .pricing-header p { color: var(--text-muted); font-size: 1rem; }
+        .pricing-header p { color: var(--text-muted); font-size: 1.05rem; }
         
         .pricing-grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
             gap: 1.5rem; 
         }
         .pricing-card { 
@@ -69,20 +68,21 @@
         .feature-list li { margin-bottom: 0.6rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.3; }
         .feature-list li::before { content: '✓'; color: var(--primary-cerulean); font-weight: bold; }
         
-        /* ADJUSTED PRO TIER HEADERS */
-        .feature-list li.group-header { margin-top: 1rem; margin-bottom: 0.3rem; color: var(--primary-cerulean); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .feature-list li.group-header { margin-top: 1rem; margin-bottom: 0.3rem; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .feature-list li.group-header::before { display: none; }
         
         .btn-tier { 
             display: inline-block; 
             text-align: center; 
             width: 100%; 
-            padding: 0.65rem; 
+            padding: 0.75rem; 
             border-radius: var(--radius-md); 
             font-weight: 600; 
             font-size: 0.95rem;
             transition: all 0.2s ease; 
             cursor: pointer;
+            text-decoration: none;
+            margin-top: auto;
         }
         .btn-outline { background: transparent; border: 1px solid var(--primary-cerulean); color: var(--primary-cerulean); }
         .btn-outline:hover { background: rgba(2, 132, 199, 0.05); }
@@ -100,8 +100,8 @@
             <a href="/login" style="color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">
                 Already a member? Sign in
             </a>
-            <a href="/register" class="btn-tier btn-solid" style="padding: 0.5rem 1.25rem; width: auto; font-size: 0.9rem;">
-                Join the Professional's Club: Sign up
+            <a href="/register" class="btn-tier btn-solid" style="padding: 0.5rem 1.25rem; width: auto; font-size: 0.9rem; margin-top: 0;">
+                Join the Professional's Club
             </a>
         </div>
     </header>
@@ -132,7 +132,7 @@
                 <div class="tier-price">€15.99<span>/mo</span></div>
                 <ul class="feature-list">
                     <li><strong>Unlimited Clients</strong></li>
-                    <li>Custom Branding & Logo on Invoices</li>
+                    <li>Custom Branding & Logo</li>
                     <li>Expense Tracking & Receipts</li>
                     <li>Document & File Uploads</li>
                     <li><strong>Automated TA22 Form</strong></li>
@@ -141,20 +141,43 @@
                 <a href="/register" class="btn-tier btn-solid">Upgrade to Standard</a>
             </div>
 
-            <div class="pricing-card">
-                <div class="tier-name">Pro</div>
+            <div class="pricing-card" style="border-top: 4px solid #059669;">
+                <div class="tier-name" style="color: #059669;">Pro Medical ⚕️</div>
                 <div class="tier-price">€49.99<span>/mo</span></div>
                 <ul class="feature-list">
                     <li>All Standard Features</li>
-                    <li class="group-header">Architects:</li>
-                    <li>DMS, EMS, BMS & Document Stamper</li>
-                    <li class="group-header">Engineers:</li>
-                    <li>Certification Generator</li>
-                    <li class="group-header">Medical Professionals:</li>
+                    <li class="group-header" style="color: #059669;">Medical Tools:</li>
                     <li>Secure Patient Journals</li>
-                    <li>Digital Prescriptions & Referral Letters</li>
+                    <li>Digital Prescriptions</li>
+                    <li>Referral Letters</li>
                 </ul>
-                <a href="/register" class="btn-tier btn-outline">Go Pro</a>
+                <a href="/register" class="btn-tier btn-outline" style="border-color: #059669; color: #059669;">Select Pro Med</a>
+            </div>
+
+            <div class="pricing-card" style="border-top: 4px solid var(--primary-navy);">
+                <div class="tier-name" style="color: var(--primary-navy);">Pro Architect 📐</div>
+                <div class="tier-price">€49.99<span>/mo</span></div>
+                <ul class="feature-list">
+                    <li>All Standard Features</li>
+                    <li class="group-header" style="color: var(--primary-navy);">Architect Tools:</li>
+                    <li>Architect DMS</li>
+                    <li>Document Stamper</li>
+                    <li>Project Phase Tracking</li>
+                </ul>
+                <a href="/register" class="btn-tier btn-outline" style="border-color: var(--primary-navy); color: var(--primary-navy);">Select Pro Arch</a>
+            </div>
+
+            <div class="pricing-card" style="border-top: 4px solid #d97706;">
+                <div class="tier-name" style="color: #d97706;">Pro Engineer ⚙️</div>
+                <div class="tier-price">€49.99<span>/mo</span></div>
+                <ul class="feature-list">
+                    <li>All Standard Features</li>
+                    <li class="group-header" style="color: #d97706;">Engineering Tools:</li>
+                    <li>EMS / BMS Templates</li>
+                    <li>Certification Generator</li>
+                    <li>Technical Specs Export</li>
+                </ul>
+                <a href="/register" class="btn-tier btn-outline" style="border-color: #d97706; color: #d97706;">Select Pro Eng</a>
             </div>
 
         </div>

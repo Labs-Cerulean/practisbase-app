@@ -75,28 +75,63 @@
                     <li><strong>Unlimited Clients</strong></li>
                     <li>Custom Branding & Logo</li>
                     <li>Expense Tracking & Receipts</li>
-                    <li>Document & File Uploads</li>
                     <li><strong>Automated TA22 Form</strong></li>
                 </ul>
                 <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                    @csrf
                     <input type="hidden" name="tier" value="standard">
                     <button type="submit" class="btn-tier btn-solid">Select Standard</button>
                 </form>
             </div>
 
-            <div class="pricing-card">
-                <div class="tier-name">Pro</div>
+            <div class="pricing-card" style="border-top: 4px solid #059669;">
+                <div class="tier-name" style="color: #059669;">Pro Medical ⚕️</div>
                 <div class="tier-price">€49.99<span>/mo</span></div>
                 <ul class="feature-list">
                     <li>All Standard Features</li>
-                    <li class="group-header">Profession Tools:</li>
-                    <li>Architect DMS & Stamper</li>
+                    <li class="group-header" style="color: #059669;">Medical Tools:</li>
                     <li>Secure Patient Journals</li>
                     <li>Digital Prescriptions</li>
+                    <li>Referral Letters</li>
                 </ul>
                 <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                    <input type="hidden" name="tier" value="pro">
-                    <button type="submit" class="btn-tier btn-outline">Select Pro</button>
+                    @csrf
+                    <input type="hidden" name="tier" value="pro-med">
+                    <button type="submit" class="btn-tier btn-outline" style="border-color: #059669; color: #059669;">Select Pro Med</button>
+                </form>
+            </div>
+
+            <div class="pricing-card" style="border-top: 4px solid var(--primary-navy);">
+                <div class="tier-name" style="color: var(--primary-navy);">Pro Architect 📐</div>
+                <div class="tier-price">€49.99<span>/mo</span></div>
+                <ul class="feature-list">
+                    <li>All Standard Features</li>
+                    <li class="group-header" style="color: var(--primary-navy);">Architect Tools:</li>
+                    <li>Architect DMS</li>
+                    <li>Document Stamper</li>
+                    <li>Project Phase Tracking</li>
+                </ul>
+                <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                    @csrf
+                    <input type="hidden" name="tier" value="pro-arch">
+                    <button type="submit" class="btn-tier btn-outline" style="border-color: var(--primary-navy); color: var(--primary-navy);">Select Pro Arch</button>
+                </form>
+            </div>
+
+            <div class="pricing-card" style="border-top: 4px solid #d97706;">
+                <div class="tier-name" style="color: #d97706;">Pro Engineer ⚙️</div>
+                <div class="tier-price">€49.99<span>/mo</span></div>
+                <ul class="feature-list">
+                    <li>All Standard Features</li>
+                    <li class="group-header" style="color: #d97706;">Engineering Tools:</li>
+                    <li>EMS / BMS Templates</li>
+                    <li>Certification Generator</li>
+                    <li>Technical Specs Export</li>
+                </ul>
+                <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                    @csrf
+                    <input type="hidden" name="tier" value="pro-eng">
+                    <button type="submit" class="btn-tier btn-outline" style="border-color: #d97706; color: #d97706;">Select Pro Eng</button>
                 </form>
             </div>
 

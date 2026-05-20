@@ -12,8 +12,14 @@ class ProfileController extends Controller
     // 1. Show the Settings Page
     public function edit()
     {
+        // Fetch custom professions for the autocomplete datalist
+        $customProfessions = \App\Models\User::whereNotIn('profession', [
+            'Medical Professional', 'Architect / Perit', 'Engineer', 'Tutor / Lecturer', 'Other'
+        ])->whereNotNull('profession')->distinct()->pluck('profession');
+
         return view('profile.settings', [
-            'user' => Auth::user()
+            'user' => Auth::user(),
+            'customProfessions' => $customProfessions
         ]);
     }
 

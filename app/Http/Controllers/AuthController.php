@@ -77,18 +77,16 @@ class AuthController extends Controller
 
     public function savePlan(Request $request)
     {
-        // 1. Validate that they only sent one of our three exact tiers
+        // Validate the new expanded tiers
         $request->validate([
-            'tier' => 'required|in:free,standard,pro'
+            'tier' => 'required|in:free,standard,pro-med,pro-arch,pro-eng'
         ]);
 
-        // 2. Update their database record
         $user = Auth::user();
         $user->update([
             'tier' => $request->tier
         ]);
 
-        // 3. Send them to the application!
         return redirect('/dashboard');
     }
 

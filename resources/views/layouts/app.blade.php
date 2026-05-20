@@ -40,13 +40,32 @@
                         <a href="#" class="nav-link">Ledger & Invoices</a>
                     </li>
                     
-                    @if(auth()->check() && (auth()->user()->tier === 'standard' || auth()->user()->tier === 'pro'))
+                    @if(auth()->check() && in_array(auth()->user()->tier, ['standard', 'pro-med', 'pro-arch', 'pro-eng']))
                         <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
                             Standard Tools
                         </li>
                         <li><a href="#" class="nav-link">Document Storage</a></li>
                         <li><a href="#" class="nav-link">TA22 Automation</a></li>
                         <li><a href="#" class="nav-link">Expense Tracking</a></li>
+                    @endif
+
+                    @if(auth()->check() && str_starts_with(auth()->user()->tier, 'pro-'))
+                        <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
+                            Pro Tools
+                        </li>
+                        
+                        @if(auth()->user()->tier === 'pro-med')
+                            <li><a href="#" class="nav-link">Patient Journals</a></li>
+                            <li><a href="#" class="nav-link">Digital Prescriptions</a></li>
+                            
+                        @elseif(auth()->user()->tier === 'pro-arch')
+                            <li><a href="#" class="nav-link">Architect DMS</a></li>
+                            <li><a href="#" class="nav-link">Document Stamper</a></li>
+                            
+                        @elseif(auth()->user()->tier === 'pro-eng')
+                            <li><a href="#" class="nav-link">EMS / BMS Templates</a></li>
+                            <li><a href="#" class="nav-link">Certifications</a></li>
+                        @endif
                     @endif
 
                     @if(auth()->check() && auth()->user()->tier === 'pro')
@@ -78,7 +97,7 @@
             
             @auth
             <div class="user-profile">
-                <span class="tier-badge" style="margin-right: 1rem;">{{ auth()->user()->tier }}</span>
+                <span class="tier-badge" style="margin-right: 1rem;">{{ ucwords(str_replace('-', ' ', auth()->user()->tier)) }}</span>)
                 
                 <div style="text-align: right; line-height: 1.2; margin-right: 0.5rem;">
                     <div class="user-name" style="color: white;">{{ auth()->user()->name }}</div>

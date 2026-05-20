@@ -43,7 +43,15 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Profession</label>
-                        <input type="text" name="profession" value="{{ $user->profession }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <input type="text" name="profession" value="{{ $user->profession }}" list="professionSuggestions" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        
+                        <datalist id="professionSuggestions">
+                            @if(isset($customProfessions))
+                                @foreach($customProfessions as $prof)
+                                    <option value="{{ $prof }}">
+                                @endforeach
+                            @endif
+                        </datalist>
                     </div>
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant Number (Optional)</label>
