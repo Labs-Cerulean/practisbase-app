@@ -107,11 +107,64 @@
     </table>
 
     @if($document->notes)
-    <div class="footer-notes">
-        <strong>Notes & Information:</strong><br>
+    <div class="footer-notes" style="margin-bottom: 20px;">
+        <strong>Document Notes:</strong><br>
         {!! nl2br(e($document->notes)) !!}
     </div>
     @endif
+
+    @php
+        $pm = $user->payment_methods ?? [];
+    @endphp
+
+    @if(!empty($pm))
+    <div class="footer-notes" style="border-top: none; margin-top: 0; padding-top: 0; padding-bottom: 20px; color: #334155;">
+        <strong style="font-size: 13px; color: #0f172a; display: block; margin-bottom: 8px;">Payment Details</strong>
+        
+        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+            <tr>
+                <td style="width: 50%; vertical-align: top; padding-right: 20px;">
+                    @if(!empty($pm['banks']))
+                        <div style="margin-bottom: 10px;">
+                            <strong>Bank Transfer (IBAN)</strong><br>
+                            @foreach($pm['banks'] as $bank)
+                                {{ $bank['bank'] }}: {{ $bank['iban'] }}<br>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if(isset($pm['cheque']))
+                        <div style="margin-bottom: 10px;">
+                            <strong>Cheque Payments</strong><br>
+                            Payable to: {{ $pm['cheque']['name'] }}<br>
+                            Post to: {{ $pm['cheque']['address'] }}
+                        </div>
+                    @endif
+                </td>
+
+                <td style="width: 50%; vertical-align: top;">
+                    @if(isset($pm['bov_mobile']))
+                        <div style="margin-bottom: 10px;">
+                            <strong>BOV Mobile Pay</strong><br>
+                            {{ $pm['bov_mobile'] }}
+                        </div>
+                    @endif
+
+                    @if(isset($pm['revolut']))
+                        <div style="margin-bottom: 10px;">
+                            <strong>Revolut</strong><br>
+                            {{ $pm['revolut'] }}
+                        </div>
+                    @endif
+                </td>
+            </tr>
+        </table>
+    </div>
+    @endif
+
+    <div style="text-align: center; color: #94a3b8; font-size: 10px; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+        Generated securely by PractisBase
+    </div>
 
 </body>
 </html>
