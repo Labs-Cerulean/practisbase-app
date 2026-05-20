@@ -14,36 +14,39 @@ class InvoiceController extends Controller
     {
         $userId = Auth::id();
 
-        // Get all invoices for this professional with their client relationships loaded
+        // Get all documents (Invoices, RFPs, Credit Notes)
         $invoices = Invoice::with('client')
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Calculate Ledger KPIs dynamically
-        $totalPaid = Invoice::where('user_id', $userId)->where('status', 'paid')->sum('total');
-        $totalUnpaid = Invoice::where('user_id', $userId)->where('status', 'unpaid')->sum('total');
+        // Calculate Ledger KPIs dynamically (ONLY count official Invoices, ignore RFPs)
+        $totalPaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->where('status', 'paid')->sum('total');
+        $totalUnpaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->where('status', 'unpaid')->sum('total');
 
         return view('invoices.index', compact('invoices', 'totalPaid', 'totalUnpaid'));
     }
 
-    // 2. Show the Create Invoice Form
+    // 2. Show the Create Document Form
     public function create()
     {
-        $clients = Auth::user()->clients;
+        $user = Auth::user();
+        $clients = $user->clients;
 
-        // If they have no clients, force them to make one first!
         if ($clients->isEmpty()) {
-            return redirect('/clients/create')->with('error', 'You need to add a client before creating an invoice.');
+            return redirect('/clients/create')->with('error', 'You need to add a client before creating a document.');
         }
 
-        return view('invoices.create', compact('clients'));
+        return view('invoices.create', compact('clients', 'user'));
     }
 
-    // 3. Process and Save the Invoice
+    // 3. Process and Save the Document
     public function store(Request $request)
     {
+        $user = Auth::user();
+
         $request->validate([
+            'type' => 'required|in:invoice,rfp',
             'client_id' => 'required|exists:clients,id',
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
@@ -53,7 +56,6 @@ class InvoiceController extends Controller
             'item_qty.*' => 'required|numeric|min:0.01',
             'item_price' => 'required|array|min:1',
             'item_price.*' => 'required|numeric|min:0',
-            'apply_vat' => 'nullable|boolean',
         ]);
 
         // 1. Build the JSON items array & calculate Subtotal
@@ -75,20 +77,39 @@ class InvoiceController extends Controller
             ];
         }
 
-        // 2. Calculate VAT (Standard Malta 18% if checked)
-        $vatTotal = $request->has('apply_vat') ? $subtotal * 0.18 : 0;
+        // 2. Strict VAT Enforcement Logic
+        $vatTotal = 0;
+        // Only Article 10 users are legally allowed to apply VAT
+        if ($user->vat_status === 'article_10' && $request->has('apply_vat')) {
+            $vatTotal = $subtotal * 0.18;
+        }
         $total = $subtotal + $vatTotal;
 
-        // 3. Generate a clean Invoice Number (e.g., INV-2026-0001)
-        $latestInvoice = Invoice::where('user_id', Auth::id())->latest('id')->first();
-        $nextId = $latestInvoice ? $latestInvoice->id + 1 : 1;
-        $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        // 3. €35k Threshold Monitor (Only check if they are Art 11 and issuing a real Invoice)
+        if ($user->vat_status === 'article_11' && $request->type === 'invoice') {
+            $ytdRevenue = Invoice::where('user_id', $user->id)
+                ->where('type', 'invoice')
+                ->whereYear('issue_date', date('Y', strtotime($request->issue_date)))
+                ->sum('total');
 
-        // 4. Save to Database
-        $invoice = Invoice::create([
-            'user_id' => Auth::id(),
+            if (($ytdRevenue + $total) > 35000) {
+                // Flash a persistent warning to the session
+                session()->flash('revenue_warning', '⚠️ Legal Alert: This invoice pushed your annual revenue over €35,000. You must apply for an Article 10 VAT Registration within 30 days.');
+            }
+        }
+
+        // 4. Generate the Document Number
+        $prefix = $request->type === 'rfp' ? 'RFP-' : 'INV-';
+        $latestDoc = Invoice::where('user_id', $user->id)->where('type', $request->type)->latest('id')->first();
+        $nextId = $latestDoc ? $latestDoc->id + 1 : 1;
+        $documentNumber = $prefix . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
+        // 5. Save to Database
+        Invoice::create([
+            'user_id' => $user->id,
             'client_id' => $request->client_id,
-            'invoice_number' => $invoiceNumber,
+            'type' => $request->type,
+            'invoice_number' => $documentNumber,
             'issue_date' => $request->issue_date,
             'due_date' => $request->due_date,
             'subtotal' => $subtotal,
@@ -99,6 +120,6 @@ class InvoiceController extends Controller
             'notes' => $request->notes,
         ]);
 
-        return redirect('/ledger')->with('success', 'Invoice created successfully!');
+        return redirect('/ledger')->with('success', ucfirst($request->type) . ' generated successfully!');
     }
 }

@@ -1,17 +1,33 @@
 @extends('layouts.app')
 
-@section('page_title', 'Create Invoice')
+@section('page_title', 'Create Document')
 
 @section('content')
+    <style>
+        .active-toggle { background: white; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light); color: var(--primary-cerulean); }
+        .type-toggle:not(.active-toggle) { color: var(--text-muted); }
+    </style>
+
     <div style="max-width: 800px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h2 style="color: var(--primary-navy); margin: 0;">New Invoice</h2>
+            <h2 style="color: var(--primary-navy); margin: 0;">New Document</h2>
             <a href="/ledger" style="color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Cancel</a>
         </div>
 
         <form action="/ledger" method="POST" id="invoiceForm">
             @csrf
+
+            <div style="display: flex; gap: 1rem; margin-bottom: 2rem; background: #f8fafc; padding: 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                <label style="flex: 1; text-align: center; padding: 0.75rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s;" id="lbl_invoice" class="type-toggle active-toggle">
+                    <input type="radio" name="type" value="invoice" checked onchange="toggleDocType('invoice')" style="display: none;">
+                    📄 Tax Invoice
+                </label>
+                <label style="flex: 1; text-align: center; padding: 0.75rem; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s;" id="lbl_rfp" class="type-toggle">
+                    <input type="radio" name="type" value="rfp" onchange="toggleDocType('rfp')" style="display: none;">
+                    📨 Request for Payment
+                </label>
+            </div>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
                 <div>
@@ -61,25 +77,32 @@
             <div style="background: #f8fafc; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 2rem;">
                 
                 <div style="flex: 1; min-width: 250px;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Invoice Notes (Optional)</label>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Document Notes (Optional)</label>
                     <textarea name="notes" rows="3" placeholder="Thank you for your business..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); resize: vertical;"></textarea>
                     
-                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; font-weight: 600; cursor: pointer;">
-                        <input type="checkbox" name="apply_vat" id="vatToggle" value="1" onchange="calculateTotals()" style="width: 1.2rem; height: 1.2rem;">
-                        Add 18% VAT
-                    </label>
+                    @if($user->vat_status === 'article_10')
+                        <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; font-weight: 600; cursor: pointer;" id="vatLabelContainer">
+                            <input type="checkbox" name="apply_vat" id="vatToggle" value="1" onchange="calculateTotals()" style="width: 1.2rem; height: 1.2rem;">
+                            Add 18% Standard VAT
+                        </label>
+                    @else
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: #f1f5f9; border-left: 3px solid #94a3b8; font-size: 0.85rem; color: #475569; border-radius: 0 4px 4px 0;">
+                            <strong>VAT Exempt:</strong> As an {{ $user->vat_status === 'article_11' ? 'Article 11' : 'Exempt' }} profile, you do not charge VAT.
+                            <input type="hidden" id="vatToggle" value="0"> 
+                        </div>
+                    @endif
                 </div>
 
                 <div style="min-width: 200px; text-align: right;">
                     <div style="color: var(--text-muted); margin-bottom: 0.5rem;">Subtotal: <span id="displaySubtotal" style="font-weight: 600; color: var(--text-main);">€0.00</span></div>
-                    <div style="color: var(--text-muted); margin-bottom: 1rem;">VAT (18%): <span id="displayVat" style="font-weight: 600; color: var(--text-main);">€0.00</span></div>
+                    <div style="color: var(--text-muted); margin-bottom: 1rem;">VAT: <span id="displayVat" style="font-weight: 600; color: var(--text-main);">€0.00</span></div>
                     
                     <div style="font-size: 1.5rem; color: var(--primary-navy); font-weight: 700; margin-bottom: 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1rem;">
                         Total: <span id="displayTotal">€0.00</span>
                     </div>
 
                     <button type="submit" style="width: 100%; padding: 1rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
-                        Save Invoice
+                        Save Document
                     </button>
                 </div>
 
@@ -88,6 +111,12 @@
     </div>
 
     <script>
+        function toggleDocType(type) {
+            document.getElementById('lbl_invoice').classList.remove('active-toggle');
+            document.getElementById('lbl_rfp').classList.remove('active-toggle');
+            document.getElementById('lbl_' + type).classList.add('active-toggle');
+        }
+
         function addRow() {
             const container = document.getElementById('itemsContainer');
             const rowHtml = `
@@ -129,7 +158,8 @@
                 subtotal += (qty * price);
             });
 
-            const applyVat = document.getElementById('vatToggle').checked;
+            const vatElement = document.getElementById('vatToggle');
+            const applyVat = vatElement && vatElement.type === 'checkbox' ? vatElement.checked : false;
             const vat = applyVat ? (subtotal * 0.18) : 0;
             const total = subtotal + vat;
 

@@ -49,18 +49,18 @@
             <div class="form-group">
                 <label>2. What is your VAT Registration Status?</label>
                 
+                <select name="vat_status" id="vatStatus" class="form-select" onchange="handleVatChange()" required>
+                    <option value="">Select your VAT Article...</option>
+                    <option value="article_11">Article 11 (Exempt - Annual revenue UNDER €35,000)</option>
+                    <option value="article_10">Article 10 (Standard - Annual revenue OVER €35,000)</option>
+                    <option value="exempt">VAT Exempt (Fifth Schedule - E.g. Education, Insurance, Medical)</option>
+                </select>
+
                 @if($user->profession === 'Medical Professional')
-                    <div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 1rem; border-radius: var(--radius-md); color: #0369a1; font-size: 0.95rem; line-height: 1.4;">
-                        <strong>Medical Exemption applied.</strong> As a medical professional, your services fall under the Fifth Schedule (Exempt Without Credit). You do not charge VAT.
+                    <div style="margin-top: 1rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.5;">
+                        <strong>⚠️ Note on Medical Exemptions (Fifth Schedule):</strong><br>
+                        Under Maltese VAT Law, the medical exemption applies <strong>strictly to therapeutic care</strong> provided by professionals warranted under the Health Care Professions Act. Non-therapeutic services (e.g., purely cosmetic procedures, corporate consultancy, medico-legal reports) may be subject to standard 18% VAT. If you provide taxable services, you must register under Article 10 or 11.
                     </div>
-                    <input type="hidden" name="vat_status" value="exempt">
-                @else
-                    <select name="vat_status" id="vatStatus" class="form-select" onchange="handleVatChange()" required>
-                        <option value="">Select your VAT Article...</option>
-                        <option value="article_11">Article 11 (Exempt - Annual revenue UNDER €35,000)</option>
-                        <option value="article_10">Article 10 (Standard - Annual revenue OVER €35,000)</option>
-                        <option value="exempt">VAT Exempt (Fifth Schedule - E.g. Education, Insurance)</option>
-                    </select>
                 @endif
             </div>
 
@@ -99,9 +99,6 @@
 
         function handleVatChange() {
             const vatStatus = document.getElementById('vatStatus');
-            // If Medical, the select doesn't exist, so we abort to prevent JS errors
-            if (!vatStatus) return; 
-
             const vatGroup = document.getElementById('vatNumberGroup');
             const vatInput = document.getElementById('vatNumberInput');
 
