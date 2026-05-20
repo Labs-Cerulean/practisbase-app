@@ -122,4 +122,113 @@ class InvoiceController extends Controller
 
         return redirect('/ledger')->with('success', ucfirst($request->type) . ' generated successfully!');
     }
+
+    // 4. Convert an RFP to a Tax Invoice
+    public function convertToInvoice(Invoice $document)
+    {
+        $user = Auth::user();
+
+        // Security Checks
+        if ($document->user_id !== $user->id) abort(403);
+        if ($document->type !== 'rfp') abort(400, 'Only RFPs can be converted.');
+        if ($document->status === 'cancelled') abort(400, 'Cannot convert a cancelled RFP.');
+
+        // 1. Check the €35k limit for Article 11 users BEFORE converting
+        if ($user->vat_status === 'article_11') {
+            $ytdRevenue = Invoice::where('user_id', $user->id)
+                ->where('type', 'invoice')
+                ->whereYear('issue_date', date('Y'))
+                ->sum('total');
+
+            if (($ytdRevenue + $document->total) > 35000) {
+                session()->flash('revenue_warning', '⚠️ Legal Alert: Converting this RFP pushed your annual revenue over €35,000. You must apply for an Article 10 VAT Registration within 30 days.');
+            }
+        }
+
+        // 2. Generate the New Invoice Number
+        $latestInvoice = Invoice::where('user_id', $user->id)->where('type', 'invoice')->latest('id')->first();
+        $nextId = $latestInvoice ? $latestInvoice->id + 1 : 1;
+        $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
+        // 3. Create the New Official Invoice
+        $newInvoice = Invoice::create([
+            'user_id' => $user->id,
+            'client_id' => $document->client_id,
+            'type' => 'invoice',
+            'linked_document_id' => $document->id, // Link it back to the original RFP
+            'invoice_number' => $invoiceNumber,
+            'issue_date' => date('Y-m-d'), // Issued today
+            'due_date' => $document->due_date,
+            'subtotal' => $document->subtotal,
+            'vat_total' => $document->vat_total,
+            'total' => $document->total,
+            'status' => 'unpaid',
+            'items' => $document->items,
+            'notes' => 'Converted from RFP: ' . $document->invoice_number,
+        ]);
+
+        // 4. Mark the old RFP as cancelled/closed
+        $document->update(['status' => 'cancelled']);
+
+        return back()->with('success', 'RFP successfully converted to Tax Invoice ' . $invoiceNumber);
+    }
+
+    // 5. Cancel an Invoice by Issuing a Credit Note
+    public function issueCreditNote(Invoice $document)
+    {
+        $user = Auth::user();
+
+        // Security Checks
+        if ($document->user_id !== $user->id) abort(403);
+        if ($document->type !== 'invoice') abort(400, 'Credit Notes can only be issued against Tax Invoices.');
+        if ($document->status === 'cancelled') abort(400, 'This invoice is already cancelled.');
+
+        // 1. Generate the Credit Note Number
+        $latestCN = Invoice::where('user_id', $user->id)->where('type', 'credit_note')->latest('id')->first();
+        $nextId = $latestCN ? $latestCN->id + 1 : 1;
+        $cnNumber = 'CN-' . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+
+        // 2. Create the Credit Note (Values are technically negative in accounting, but we store them as positive and handle math via the type)
+        Invoice::create([
+            'user_id' => $user->id,
+            'client_id' => $document->client_id,
+            'type' => 'credit_note',
+            'linked_document_id' => $document->id, // Link it to the original Invoice
+            'invoice_number' => $cnNumber,
+            'issue_date' => date('Y-m-d'),
+            'due_date' => date('Y-m-d'),
+            'subtotal' => $document->subtotal,
+            'vat_total' => $document->vat_total,
+            'total' => $document->total,
+            'status' => 'paid', // Credit notes are instantly "settled"
+            'items' => $document->items,
+            'notes' => 'Issued to cancel Invoice: ' . $document->invoice_number,
+        ]);
+
+        // 3. Update the original invoice status
+        $document->update(['status' => 'cancelled']);
+
+        return back()->with('success', 'Credit Note ' . $cnNumber . ' successfully issued and linked.');
+    }
+
+    // 6. Generate and Download PDF Document
+    public function downloadPdf(Invoice $document)
+    {
+        $user = Auth::user();
+
+        // Security Check
+        if ($document->user_id !== $user->id) abort(403);
+
+        // Load the client data so we can print their address on the invoice
+        $document->load('client');
+
+        // Render the PDF using a dedicated Blade view
+        $pdf = Pdf::loadView('invoices.pdf', compact('document', 'user'));
+
+        // Format for standard European A4 Paper
+        $pdf->setPaper('a4', 'portrait');
+
+        // Download the file with a clean name (e.g., INV-2026-0001.pdf)
+        return $pdf->download($document->invoice_number . '.pdf');
+    }
 }

@@ -114,3 +114,6 @@ Route::put('/settings/password', [\App\Http\Controllers\ProfileController::class
 Route::get('/ledger', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('auth');
 Route::get('/ledger/create', [\App\Http\Controllers\InvoiceController::class, 'create'])->middleware('auth');
 Route::post('/ledger', [\App\Http\Controllers\InvoiceController::class, 'store'])->middleware('auth');
+Route::post('/ledger/{document}/convert', [\App\Http\Controllers\InvoiceController::class, 'convertToInvoice'])->middleware('auth');
+Route::post('/ledger/{document}/cancel', [\App\Http\Controllers\InvoiceController::class, 'issueCreditNote'])->middleware('auth');
+Route::get('/ledger/{document}/pdf', [\App\Http\Controllers\InvoiceController::class, 'downloadPdf'])->middleware('auth');
