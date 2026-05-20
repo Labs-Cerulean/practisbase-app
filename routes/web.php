@@ -59,7 +59,15 @@ Route::get('/onboarding/profession', function () {
 Route::post('/onboarding/profession-submit', [AuthController::class, 'saveProfession'])
     ->middleware('auth');
 
-// Step 3: Plan Selection (Dev Bypass)
+// Step 3: Financial & Compliance Setup
+Route::get('/onboarding/financial', function () {
+    return view('onboarding.financial', ['user' => auth()->user()]);
+})->middleware('auth');
+
+Route::post('/onboarding/financial', [AuthController::class, 'saveFinancial'])
+    ->middleware('auth');
+
+// Step 4: Plan Selection
 Route::get('/onboarding/plans', function () {
     return view('onboarding.plans');
 })->middleware('auth');
@@ -90,21 +98,19 @@ Route::get('/dashboard', function () {
 })->middleware('auth');
 
 // Client Management Routes
-Route::get('/clients', [\App\Http\Controllers\ClientController::class, 'index']);
-Route::get('/clients/create', [\App\Http\Controllers\ClientController::class, 'create']);
-Route::post('/clients', [\App\Http\Controllers\ClientController::class, 'store']);
-Route::get('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'show']);
-Route::get('/clients/{client}/edit', [\App\Http\Controllers\ClientController::class, 'edit']);
-Route::put('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'update']);
-
+Route::get('/clients', [\App\Http\Controllers\ClientController::class, 'index'])->middleware('auth');
+Route::get('/clients/create', [\App\Http\Controllers\ClientController::class, 'create'])->middleware('auth');
+Route::post('/clients', [\App\Http\Controllers\ClientController::class, 'store'])->middleware('auth');
+Route::get('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'show'])->middleware('auth');
+Route::get('/clients/{client}/edit', [\App\Http\Controllers\ClientController::class, 'edit'])->middleware('auth');
+Route::put('/clients/{client}', [\App\Http\Controllers\ClientController::class, 'update'])->middleware('auth');
 
 // Account Settings Routes
-Route::get('/settings', [\App\Http\Controllers\ProfileController::class, 'edit']);
-Route::put('/settings/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile']);
-Route::put('/settings/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword']);
+Route::get('/settings', [\App\Http\Controllers\ProfileController::class, 'edit'])->middleware('auth');
+Route::put('/settings/profile', [\App\Http\Controllers\ProfileController::class, 'updateProfile'])->middleware('auth');
+Route::put('/settings/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->middleware('auth');
 
 // Financial Ledger Routes
 Route::get('/ledger', [\App\Http\Controllers\InvoiceController::class, 'index'])->middleware('auth');
-
-Route::get('/ledger/create', [\App\Http\Controllers\InvoiceController::class, 'create']);
-Route::post('/ledger', [\App\Http\Controllers\InvoiceController::class, 'store']);
+Route::get('/ledger/create', [\App\Http\Controllers\InvoiceController::class, 'create'])->middleware('auth');
+Route::post('/ledger', [\App\Http\Controllers\InvoiceController::class, 'store'])->middleware('auth');

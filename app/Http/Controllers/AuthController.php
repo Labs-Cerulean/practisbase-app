@@ -72,6 +72,31 @@ class AuthController extends Controller
             'warrant_number' => $request->warrant_number,
         ]);
 
+        return redirect('/onboarding/financial');
+    }
+
+    public function saveFinancial(Request $request)
+    {
+        $user = Auth::user();
+        
+        // If they are a medical professional, the law dictates they are VAT Exempt (Fifth Schedule).
+        $isMedical = $user->profession === 'Medical Professional';
+
+        $request->validate([
+            'employment_type' => 'required|in:full_time,part_time',
+            'date_of_birth' => 'required_if:employment_type,full_time|nullable|date',
+            // If medical, we ignore their VAT input and force exempt. Otherwise, they must pick one.
+            'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
+            'vat_number' => 'required_if:vat_status,article_10,article_11|nullable|string',
+        ]);
+
+        $user->update([
+            'employment_type' => $request->employment_type,
+            'date_of_birth' => $request->employment_type === 'full_time' ? $request->date_of_birth : null,
+            'vat_status' => $isMedical ? 'exempt' : $request->vat_status,
+            'vat_number' => in_array($request->vat_status, ['article_10', 'article_11']) ? $request->vat_number : null,
+        ]);
+
         return redirect('/onboarding/plans');
     }
 
