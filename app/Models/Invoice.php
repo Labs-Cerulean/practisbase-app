@@ -11,7 +11,8 @@ class Invoice extends Model
 
     protected $fillable = [
         'user_id', 'client_id', 'invoice_number', 'issue_date', 
-        'due_date', 'subtotal', 'vat_total', 'total', 'status', 'items', 'notes'
+        'due_date', 'subtotal', 'vat_total', 'total', 'status', 
+        'type', 'linked_document_id', 'items', 'notes'
     ];
 
     protected $casts = [
@@ -30,5 +31,17 @@ class Invoice extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    // If this is an Invoice, it might be linked to a previous RFP
+    public function linkedDocument()
+    {
+        return $this->belongsTo(Invoice::class, 'linked_document_id');
+    }
+
+    // If this is an RFP, it might have subsequent Invoices or Credit Notes linked TO it
+    public function relatedDocuments()
+    {
+        return $this->hasMany(Invoice::class, 'linked_document_id');
     }
 }

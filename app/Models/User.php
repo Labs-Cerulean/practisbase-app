@@ -25,7 +25,12 @@ use Illuminate\Notifications\Notifiable;
     // SaaS Tier & Referrals
     'tier',
     'referral_code',
-    'referred_by_id'
+    'referred_by_id',
+    // Fiscal & Tax Data (NEW)
+    'employment_type',
+    'date_of_birth',
+    'vat_status',
+    'vat_number'
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -43,7 +48,21 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'terms_accepted_at' => 'datetime', // Tells Laravel this is a timestamp
+            'terms_accepted_at' => 'datetime',
+            'date_of_birth' => 'date', // Tells Laravel to treat this as a smart Carbon Date object
         ];
+    }
+
+    /**
+     * Relationships
+     */
+    public function clients()
+    {
+        return $this->hasMany(Client::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
     }
 }
