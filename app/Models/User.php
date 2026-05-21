@@ -31,7 +31,14 @@ use Illuminate\Notifications\Notifiable;
     'date_of_birth',
     'vat_status',
     'vat_number',
-    'payment_methods'
+    'payment_instructions',
+    'payment_methods',
+    
+    // Live Fiscal Report Settings (NEW)
+    'tax_computation',
+    'primary_salary',
+    'max_ssc_paid',
+    'estimated_expenses',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -50,8 +57,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'terms_accepted_at' => 'datetime',
-            'date_of_birth' => 'date', // Tells Laravel to treat this as a smart Carbon Date object
+            'date_of_birth' => 'date',
             'payment_methods' => 'array',
+            'max_ssc_paid' => 'boolean', // Ensures 1/0 from DB becomes true/false in PHP
+            'primary_salary' => 'decimal:2',
+            'estimated_expenses' => 'decimal:2',
         ];
     }
 
