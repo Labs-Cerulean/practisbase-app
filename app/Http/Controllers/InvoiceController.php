@@ -12,20 +12,23 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
-    // 1. Show the Master Financial Ledger
+    // 1. Show the Master Financial Ledger (UPGRADED)
     public function index()
     {
         $userId = Auth::id();
 
-        // Get all documents (Invoices, RFPs, Credit Notes)
-        $invoices = Invoice::with(['client', 'payments', 'childDocuments'])
+        // ONLY fetch Top-Level documents, but eager load their entire family tree!
+        $invoices = Invoice::with(['client', 'payments', 'childDocuments.payments', 'childDocuments.childDocuments'])
             ->where('user_id', $userId)
+            ->whereNull('parent_document_id') // Hides children from the main list
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Calculate Ledger KPIs dynamically (ONLY count official Invoices, ignore RFPs)
-        $totalPaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->where('status', 'paid')->sum('total');
-        $totalUnpaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->where('status', 'unpaid')->sum('total');
+        // FIXED KPI MATH: Accurately calculate cash collected across ALL invoices (including partials)
+        $totalPaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('amount_paid');
+        
+        // Unpaid is the total value of all invoices minus what has already been collected
+        $totalUnpaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum(DB::raw('total - amount_paid'));
 
         return view('invoices.index', compact('invoices', 'totalPaid', 'totalUnpaid'));
     }
@@ -488,8 +491,41 @@ class InvoiceController extends Controller
                     'amount_paid' => max(0, $document->amount_paid - $totalTransferred)
                 ]);
             }
+
+            // 7. Auto-Close the RFP if it has been fully drawn down!
+            if ($conversionAmount == $maxAllowable) {
+                $document->update(['status' => 'converted']);
+            }
         });
 
         return back()->with('success', 'Tax Invoice ' . $invNumber . ' generated for €' . number_format($conversionAmount, 2) . '. Payments transferred where applicable.');
+    }
+
+    // 11. Reverse/Delete a Payment
+    public function deletePayment(\App\Models\Payment $payment)
+    {
+        $user = Auth::user();
+        $invoice = $payment->invoice;
+
+        // Security Check
+        if ($payment->user_id !== $user->id) abort(403);
+
+        DB::transaction(function () use ($payment, $invoice) {
+            // 1. Deduct the amount from the parent invoice
+            $newPaid = max(0, $invoice->amount_paid - $payment->amount);
+            
+            // 2. Re-evaluate the status
+            $newStatus = ($newPaid == 0) ? 'unpaid' : 'partially_paid';
+
+            $invoice->update([
+                'amount_paid' => $newPaid,
+                'status' => $newStatus
+            ]);
+
+            // 3. Destroy the payment record
+            $payment->delete();
+        });
+
+        return back()->with('success', 'Payment reversed successfully. Invoice balances have been recalculated.');
     }
 }
