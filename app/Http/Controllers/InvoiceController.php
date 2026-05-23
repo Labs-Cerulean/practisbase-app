@@ -127,7 +127,7 @@ class InvoiceController extends Controller
     }
 
     // 4. Convert an RFP to a Tax Invoice
-    public function convertToInvoice(Invoice $document)
+    /*public function convertToInvoice(Invoice $document)
     {
         $user = Auth::user();
 
@@ -174,7 +174,7 @@ class InvoiceController extends Controller
         $document->update(['status' => 'cancelled']);
 
         return back()->with('success', 'RFP successfully converted to Tax Invoice ' . $invoiceNumber);
-    }
+    }*/
 
     // 5. Cancel an Invoice by Issuing a Credit Note
     /*public function issueCreditNote(Invoice $document)
@@ -388,5 +388,90 @@ class InvoiceController extends Controller
         });
 
         return back()->with('success', 'Credit Note ' . $cnNumber . ' successfully issued for €' . number_format($creditTotal, 2));
+    }
+    // 10. Convert RFP to (Partial or Full) Tax Invoice
+    public function convertToInvoice(Request $request, Invoice $document)
+    {
+        $user = Auth::user();
+
+        // Security Checks
+        if ($document->user_id !== $user->id) abort(403);
+        if ($document->type !== 'rfp') abort(400, 'Only RFPs can be converted to Invoices.');
+
+        $request->validate([
+            'conversion_amount' => 'required|numeric|min:0.01'
+        ]);
+
+        $conversionAmount = (float) $request->conversion_amount;
+
+        // 1. Calculate Allowable Conversion
+        $existingConversions = $document->childDocuments()->where('type', 'invoice')->sum('total');
+        $maxAllowable = $document->total - $existingConversions;
+
+        if ($conversionAmount > $maxAllowable) {
+            return back()->withErrors(['payment_error' => 'Conversion cannot exceed the remaining RFP value of €' . number_format($maxAllowable, 2)]);
+        }
+
+        // 2. Pro-Rata VAT Math
+        $vatRate = $document->vat_total > 0 ? 0.18 : 0;
+        if ($vatRate > 0) {
+            $subtotal = $conversionAmount / 1.18;
+            $vat = $conversionAmount - $subtotal;
+        } else {
+            $subtotal = $conversionAmount;
+            $vat = 0;
+        }
+
+        // 3. Generate Sequential Invoice Number (e.g., INV-20260523-0004)
+        $invCount = Invoice::where('user_id', $user->id)->where('type', 'invoice')->count() + 1;
+        $invNumber = 'INV-' . date('Ymd') . '-' . str_pad($invCount, 4, '0', STR_PAD_LEFT);
+
+        DB::transaction(function () use ($user, $document, $conversionAmount, $subtotal, $vat, $maxAllowable, $invNumber) {
+            
+            // 4. Create the Child Tax Invoice
+            $newInvoice = Invoice::create([
+                'user_id' => $user->id,
+                'client_id' => $document->client_id,
+                'parent_document_id' => $document->id, // Linked to the RFP!
+                'type' => 'invoice',
+                'invoice_number' => $invNumber,
+                'issue_date' => now(),
+                'due_date' => now()->addDays(14),
+                'subtotal' => $subtotal,
+                'vat_total' => $vat,
+                'total' => $conversionAmount,
+                'amount_paid' => 0,
+                'status' => 'unpaid',
+            ]);
+
+            // 5. Intelligent Payment Transfer 
+            // If they already logged a €10k payment on the RFP, move it to this new Invoice!
+            $remainingToTransfer = $conversionAmount;
+            $totalTransferred = 0;
+            
+            foreach ($document->payments as $payment) {
+                // If the payment fits inside this new invoice, transfer it over
+                if ($remainingToTransfer >= $payment->amount) {
+                    $payment->update(['invoice_id' => $newInvoice->id]);
+                    $remainingToTransfer -= $payment->amount;
+                    $totalTransferred += $payment->amount;
+                }
+            }
+
+            // 6. Update document statuses based on the transferred cash
+            if ($totalTransferred > 0) {
+                $newInvoice->update([
+                    'amount_paid' => $totalTransferred,
+                    'status' => ($totalTransferred >= $conversionAmount) ? 'paid' : 'partially_paid'
+                ]);
+                
+                // Reduce parent RFP's amount_paid to reflect that the cash has moved to the official invoice
+                $document->update([
+                    'amount_paid' => max(0, $document->amount_paid - $totalTransferred)
+                ]);
+            }
+        });
+
+        return back()->with('success', 'Tax Invoice ' . $invNumber . ' generated for €' . number_format($conversionAmount, 2) . '. Payments transferred where applicable.');
     }
 }

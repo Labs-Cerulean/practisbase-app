@@ -138,10 +138,27 @@
                         @endif
 
                         @if($doc->type === 'rfp' && $doc->status !== 'cancelled')
-                            <form action="/ledger/{{ $doc->id }}/convert" method="POST" style="flex: 1; margin: 0;">
-                                @csrf
-                                <button type="submit" style="width: 100%; padding: 0.5rem; background: var(--primary-cerulean); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Convert to Invoice</button>
-                            </form>
+                            @php
+                                $existingConversions = $doc->childDocuments ? $doc->childDocuments->where('type', 'invoice')->sum('total') : 0;
+                                $maxConvertible = $doc->total - $existingConversions;
+                            @endphp
+                            
+                            @if($maxConvertible > 0)
+                                <form action="/ledger/{{ $doc->id }}/convert" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.5rem; align-items: center;" onsubmit="return confirm('Generate an official Tax Invoice for this amount?');">
+                                    @csrf
+                                    <div style="position: relative; display: flex; align-items: center; width: 120px;">
+                                        <span style="position: absolute; left: 10px; color: #4338ca; font-weight: 600; font-size: 0.95rem;">€</span>
+                                        <input type="number" name="conversion_amount" step="0.01" max="{{ $maxConvertible }}" value="{{ number_format($maxConvertible, 2, '.', '') }}" required 
+                                            style="width: 100%; padding: 0.5rem 0.5rem 0.5rem 1.6rem; border: 2px solid #c7d2fe; border-radius: 6px; font-size: 0.95rem; font-weight: 700; color: #3730a3; background-color: #eef2ff; outline: none; transition: 0.2s;" 
+                                            onfocus="this.style.borderColor='#6366f1'; this.style.backgroundColor='#ffffff';" 
+                                            onblur="this.style.borderColor='#c7d2fe'; this.style.backgroundColor='#eef2ff';">
+                                    </div>
+                                    <button type="submit" style="flex: 1; padding: 0.55rem 1rem; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s;" onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='#4f46e5'">
+                                        Generate Invoice
+                                    </button>
+                                </form>
+                            @endif
+                        @endif
                         @if($doc->type === 'invoice' && $doc->status !== 'cancelled')
                             @php
                                 $existingCredits = $doc->childDocuments ? $doc->childDocuments->where('type', 'credit_note')->sum('total') : 0;
