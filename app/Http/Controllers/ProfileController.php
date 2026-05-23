@@ -44,6 +44,11 @@ class ProfileController extends Controller
             'date_of_birth' => 'required_if:employment_type,full_time|nullable|date',
             'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
             'vat_number' => 'required_if:vat_status,article_10,article_11|nullable|string',
+
+            // Fiscal Validations (NEW)
+            'tax_computation' => 'required|in:single,married,parent',
+            'primary_salary' => 'required|numeric|min:0',
+            'estimated_expenses' => 'required|numeric|min:0',
             
             // Payment Validations
             'pm_cheque_name' => 'required_if:pm_cheque,1|nullable|string',
@@ -86,6 +91,11 @@ class ProfileController extends Controller
             'vat_status' => $isMedical ? 'exempt' : $request->vat_status,
             'vat_number' => in_array($request->vat_status, ['article_10', 'article_11']) ? $request->vat_number : null,
             'payment_methods' => $paymentMethods, // Save the new JSON object!
+
+            'tax_computation' => $request->tax_computation, // NEW
+            'primary_salary' => $request->primary_salary, // NEW
+            'max_ssc_paid' => $request->has('max_ssc_paid'), // NEW
+            'estimated_expenses' => $request->estimated_expenses, // NEW
         ]);
 
         return back()->with('success', 'Profile updated successfully.');

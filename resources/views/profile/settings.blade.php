@@ -91,6 +91,52 @@
                     <strong>⚠️ Note on Medical Exemptions (Fifth Schedule):</strong><br>
                     Under Maltese VAT Law, the medical exemption applies <strong>strictly to therapeutic care</strong> provided by professionals warranted under the Health Care Professions Act. Non-therapeutic services (e.g., purely cosmetic procedures, corporate consultancy, medico-legal reports) may be subject to standard 18% VAT. If you provide taxable services, you must register under Article 10 or 11.
                 </div>
+
+                <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Fiscal Configuration</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">These details are required to accurately generate your Live Fiscal Report. <br><em>Note: This information is strictly for calculation purposes and does not appear on your invoices.</em></p>
+                
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                    
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Tax Computation Status</label>
+                        <select name="tax_computation" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: inherit; background: white;">
+                            <option value="" disabled {{ !$user->tax_computation ? 'selected' : '' }}>Select your status</option>
+                            <option value="single" {{ $user->tax_computation === 'single' ? 'selected' : '' }}>Single</option>
+                            <option value="married" {{ $user->tax_computation === 'married' ? 'selected' : '' }}>Married</option>
+                            <option value="parent" {{ $user->tax_computation === 'parent' ? 'selected' : '' }}>Parent</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Primary Employment Salary (Gross)</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">If this practice is your secondary income, enter your main job's annual salary. Otherwise, enter 0.</p>
+                        <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
+                            <span style="color: var(--text-muted); font-weight: 600;">€</span>
+                            <input type="number" name="primary_salary" step="0.01" min="0" value="{{ $user->primary_salary ?? '0.00' }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox" name="max_ssc_paid" value="1" {{ $user->max_ssc_paid ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                            I already pay the maximum Social Security (SSC) at my primary job.
+                        </label>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-left: 1.7rem; margin-top: 0.25rem;">Checking this box legally exempts your part-time self-employed income from further SSC contributions.</p>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Estimated Annual Allowable Expenses</label>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">Used to calculate your Net Profit. (e.g., equipment, fuel, software subscriptions).</p>
+                        <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
+                            <span style="color: var(--text-muted); font-weight: 600;">€</span>
+                            <input type="number" name="estimated_expenses" step="0.01" min="0" value="{{ $user->estimated_expenses ?? '0.00' }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
                 <h3 style="color: var(--primary-navy); margin-top: 2rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Accepted Payment Methods</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Select how you want clients to pay you. These will be automatically formatted onto your invoices. <strong>(Select at least one)</strong></p>
 

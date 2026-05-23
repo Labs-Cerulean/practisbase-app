@@ -119,6 +119,7 @@ Route::post('/ledger/{document}/cancel', [\App\Http\Controllers\InvoiceControlle
 Route::get('/ledger/{document}/pdf', [\App\Http\Controllers\InvoiceController::class, 'downloadPdf'])->middleware('auth');
 Route::post('/ledger/{document}/pay', [\App\Http\Controllers\InvoiceController::class, 'processPayment'])->middleware('auth');
 
+/*
 Route::get('/load-tax-data', function () {
     // 1. Force Laravel to run our specific seeder
     \Illuminate\Support\Facades\Artisan::call('db:seed', [
@@ -134,4 +135,4 @@ Route::get('/load-tax-data', function () {
         'total_records_loaded' => $rates->count(),
         'database_contents' => $rates
     ]);
-});
+});*/
