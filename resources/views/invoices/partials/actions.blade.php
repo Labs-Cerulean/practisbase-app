@@ -37,7 +37,7 @@
             @csrf
             <div style="position: relative; display: flex; align-items: center; width: 120px;">
                 <span style="position: absolute; left: 10px; color: #64748b; font-weight: 600; font-size: 0.95rem;">€</span>
-                <input type="number" name="payment_amount" step="0.01" max="{{ $document->total - $document->amount_paid }}" value="{{ number_format($document->total - $document->amount_paid, 2, '.', '') }}" required 
+                <input type="number" name="payment_amount" step="0.01" max="{{ $maxPayable }}" value="{{ number_format($maxPayable, 2, '.', '') }}" required 
                     style="width: 100%; padding: 0.5rem 0.5rem 0.5rem 1.6rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; font-weight: 700; color: var(--primary-navy); background-color: #f8fafc; outline: none;">
             </div>
             <button type="submit" style="flex: 1; padding: 0.55rem 1rem; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">

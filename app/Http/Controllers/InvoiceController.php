@@ -248,53 +248,44 @@ class InvoiceController extends Controller
         if ($document->status === 'paid') abort(400, 'This document is already fully paid.');
         if ($document->status === 'cancelled') abort(400, 'Cannot apply payments to a cancelled document.');
 
-        // Validate the incoming payment amount
         $request->validate([
             'payment_amount' => 'required|numeric|min:0.01'
         ]);
 
         $paymentAmount = (float) $request->payment_amount;
-        $newTotalPaid = $document->amount_paid + $paymentAmount;
-        $balanceDue = $document->total - $newTotalPaid;
+        
+        // --- THE FIX: CALCULATE THE FAMILY BALANCE ---
+        // We must factor in payments made to child documents to prevent overpaying the parent RFP!
+        $familyPaid = $document->amount_paid;
+        if ($document->type === 'rfp') {
+            $familyPaid += $document->childDocuments()->sum('amount_paid');
+        }
+        
+        $familyBalanceDue = $document->total - $familyPaid;
 
-        // Prevent overpayment 
-        if ($newTotalPaid > $document->total) {
-            return back()->withErrors(['payment_error' => 'Payment cannot exceed the outstanding balance of €' . number_format($document->total - $document->amount_paid, 2)]);
+        // Prevent overpayment of the project
+        if (round($paymentAmount, 2) > round($familyBalanceDue, 2)) {
+            return back()->withErrors(['payment_error' => 'Payment cannot exceed the remaining project balance of €' . number_format($familyBalanceDue, 2)]);
         }
 
-        // Determine new status
+        $newTotalPaid = $document->amount_paid + $paymentAmount;
         $newStatus = ($newTotalPaid >= $document->total) ? 'paid' : 'partially_paid';
 
-        // Execute a secure Database Transaction
-        // This ensures that if creating the Payment fails, the Invoice isn't updated (preventing bad math)
         DB::transaction(function () use ($user, $document, $paymentAmount, $newTotalPaid, $newStatus) {
-            
-            // 1. Log the individual payment record
             Payment::create([
                 'user_id' => $user->id,
                 'invoice_id' => $document->id,
                 'amount' => $paymentAmount,
-                'payment_date' => now(), // Logs the exact date and time the button was clicked
+                'payment_date' => now(),
             ]);
 
-            // 2. Update the parent document
             $document->update([
                 'amount_paid' => $newTotalPaid,
                 'status' => $newStatus
             ]);
         });
 
-        // Tailor the success message based on document type
-        $docType = $document->type === 'rfp' ? 'RFP' : 'Invoice';
-        $message = 'Payment of €' . number_format($paymentAmount, 2) . ' applied to ' . $docType . '.';
-        
-        if ($balanceDue > 0) {
-            $message .= ' Remaining balance: €' . number_format($balanceDue, 2);
-        } else {
-            $message .= ' Document is now fully paid.';
-        }
-
-        return back()->with('success', $message);
+        return back()->with('success', 'Payment of €' . number_format($paymentAmount, 2) . ' applied successfully.');
     }
 
     // 8. Download Payment Receipt (PDF)
