@@ -23,6 +23,7 @@
         .totals-table { width: 100%; border-collapse: collapse; }
         .totals-table td { padding: 8px 12px; text-align: right; }
         .totals-table .grand-total { font-size: 18px; font-weight: bold; color: #0f172a; border-top: 2px solid #cbd5e1; padding-top: 15px; }
+        .totals-table .balance-due { font-size: 16px; font-weight: bold; color: #dc2626; border-top: 1px solid #e2e8f0; padding-top: 10px; }
         
         .footer-notes { margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; line-height: 1.5; }
     </style>
@@ -64,6 +65,10 @@
                 <td><strong>Due Date:</strong><br>{{ $document->due_date->format('d M Y') }}</td>
             @endif
             <td><strong>Status:</strong><br>{{ strtoupper($document->status) }}</td>
+            
+            @if($document->parentDocument)
+                <td><strong>Reference:</strong><br>{{ $document->parentDocument->invoice_number }}</td>
+            @endif
         </tr>
     </table>
 
@@ -81,8 +86,8 @@
             <tr>
                 <td>{{ $item['description'] }}</td>
                 <td class="text-center">{{ $item['quantity'] }}</td>
-                <td class="text-right">€{{ number_format($item['unit_price'], 2) }}</td>
-                <td class="text-right">€{{ number_format($item['row_total'], 2) }}</td>
+                <td class="text-right">€{{ number_format($item['price'] ?? $item['unit_price'], 2) }}</td>
+                <td class="text-right">€{{ number_format($item['amount'] ?? $item['row_total'], 2) }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -104,6 +109,19 @@
             <td class="grand-total">Total:</td>
             <td class="grand-total">€{{ number_format($document->total, 2) }}</td>
         </tr>
+        
+        @if(in_array($document->type, ['invoice', 'rfp']) && $document->amount_paid > 0)
+        <tr>
+            <td></td>
+            <td style="color: #64748b; padding-top: 15px;">Less Amount Paid:</td>
+            <td style="padding-top: 15px; color: #10b981;">- €{{ number_format($document->amount_paid, 2) }}</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td class="balance-due">Balance Due:</td>
+            <td class="balance-due">€{{ number_format($document->total - $document->amount_paid, 2) }}</td>
+        </tr>
+        @endif
     </table>
 
     @if($document->notes)
@@ -117,7 +135,7 @@
         $pm = $user->payment_methods ?? [];
     @endphp
 
-    @if(!empty($pm))
+    @if(!empty($pm) && $document->type !== 'credit_note')
     <div class="footer-notes" style="border-top: none; margin-top: 0; padding-top: 0; padding-bottom: 20px; color: #334155;">
         <strong style="font-size: 13px; color: #0f172a; display: block; margin-bottom: 8px;">Payment Details</strong>
         
