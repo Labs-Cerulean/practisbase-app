@@ -8,7 +8,7 @@
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">Live Fiscal Report ({{ $currentYear }})</h1>
             <p style="color: var(--text-muted); font-size: 0.95rem;">Real-time estimates of your tax, VAT, and SSC liabilities.</p>
         </div>
-        <a href="/profile" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">
+        <a href="/settings" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">
             ⚙️ Edit Tax Settings
         </a>
     </div>
