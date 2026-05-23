@@ -23,12 +23,13 @@ class ReportController extends Controller
         $netProfit = max(0, $collectedRevenue - $user->estimated_expenses);
 
         // 2. Fetch the Government Rules for the current year
-        $computationType = 'income_' . $user->tax_computation; // e.g., 'income_single'
+        $computationType = 'income_' . $user->tax_computation;
         
-        $taxBrackets = TaxRate::where('year', $currentYear)->where('type', $computationType)->first()->rates_json ?? [];
-        $ta22Rules = TaxRate::where('year', $currentYear)->where('type', 'ta22')->first()->rates_json ?? [];
-        $sscPtRules = TaxRate::where('year', $currentYear)->where('type', 'ssc_pt')->first()->rates_json ?? [];
-        $sscFtRules = TaxRate::where('year', $currentYear)->where('type', 'ssc_ft')->first()->rates_json ?? [];
+        // Using value() instead of first() prevents crashes if the user hasn't saved their settings yet!
+        $taxBrackets = TaxRate::where('year', $currentYear)->where('type', $computationType)->value('rates_json') ?? [];
+        $ta22Rules = TaxRate::where('year', $currentYear)->where('type', 'ta22')->value('rates_json') ?? [];
+        $sscPtRules = TaxRate::where('year', $currentYear)->where('type', 'ssc_pt')->value('rates_json') ?? [];
+        $sscFtRules = TaxRate::where('year', $currentYear)->where('type', 'ssc_ft')->value('rates_json') ?? [];
 
         // 3. Initialize Liabilities
         $incomeTaxLiability = 0;

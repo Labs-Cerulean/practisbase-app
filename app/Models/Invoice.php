@@ -44,4 +44,21 @@ class Invoice extends Model
     {
         return $this->hasMany(Invoice::class, 'linked_document_id');
     }
+    // A document can have multiple partial payments
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    // A Credit Note belongs to an original Invoice
+    public function parentDocument()
+    {
+        return $this->belongsTo(Invoice::class, 'parent_document_id');
+    }
+
+    // An original Invoice can have multiple Credit Notes (if correcting mistakes over time)
+    public function childDocuments()
+    {
+        return $this->hasMany(Invoice::class, 'parent_document_id');
+    }
 }
