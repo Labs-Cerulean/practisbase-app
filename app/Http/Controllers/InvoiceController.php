@@ -369,7 +369,7 @@ class InvoiceController extends Controller
             Invoice::create([
                 'user_id' => $user->id,
                 'client_id' => $document->client_id,
-                'parent_document_id' => $document->id, // Linking it to the parent!
+                'parent_document_id' => $document->id,
                 'type' => 'credit_note',
                 'invoice_number' => $cnNumber,
                 'issue_date' => now(),
@@ -378,7 +378,16 @@ class InvoiceController extends Controller
                 'vat_total' => $creditVat,
                 'total' => $creditTotal,
                 'amount_paid' => 0, 
-                'status' => 'paid', // Credit notes don't require payment, they are inherently resolved
+                'status' => 'paid', 
+                // NEW: Provide a summary line item for the credit
+                'items' => [
+                    [
+                        'description' => 'Partial Credit / Reversal against ' . $document->invoice_number,
+                        'quantity' => 1,
+                        'price' => $creditSubtotal,
+                        'amount' => $creditSubtotal
+                    ]
+                ]
             ]);
 
             // 5. If they credited the absolute maximum remaining amount, mark the parent as cancelled
@@ -432,7 +441,7 @@ class InvoiceController extends Controller
             $newInvoice = Invoice::create([
                 'user_id' => $user->id,
                 'client_id' => $document->client_id,
-                'parent_document_id' => $document->id, // Linked to the RFP!
+                'parent_document_id' => $document->id, 
                 'type' => 'invoice',
                 'invoice_number' => $invNumber,
                 'issue_date' => now(),
@@ -442,6 +451,15 @@ class InvoiceController extends Controller
                 'total' => $conversionAmount,
                 'amount_paid' => 0,
                 'status' => 'unpaid',
+                // NEW: Provide a summary line item for the milestone
+                'items' => [
+                    [
+                        'description' => 'Milestone Billing for ' . $document->invoice_number,
+                        'quantity' => 1,
+                        'price' => $subtotal,
+                        'amount' => $subtotal
+                    ]
+                ]
             ]);
 
             // 5. Intelligent Payment Transfer 
