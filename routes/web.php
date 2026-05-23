@@ -118,3 +118,20 @@ Route::post('/ledger/{document}/convert', [\App\Http\Controllers\InvoiceControll
 Route::post('/ledger/{document}/cancel', [\App\Http\Controllers\InvoiceController::class, 'issueCreditNote'])->middleware('auth');
 Route::get('/ledger/{document}/pdf', [\App\Http\Controllers\InvoiceController::class, 'downloadPdf'])->middleware('auth');
 Route::post('/ledger/{document}/pay', [\App\Http\Controllers\InvoiceController::class, 'processPayment'])->middleware('auth');
+
+Route::get('/load-tax-data', function () {
+    // 1. Force Laravel to run our specific seeder
+    \Illuminate\Support\Facades\Artisan::call('db:seed', [
+        '--class' => 'TaxRateSeeder'
+    ]);
+    
+    // 2. Fetch all the data from the database to prove it worked
+    $rates = \App\Models\TaxRate::all();
+    
+    // 3. Print it directly to the browser screen
+    return response()->json([
+        'message' => 'Success! The Maltese tax code has been securely loaded into your database.',
+        'total_records_loaded' => $rates->count(),
+        'database_contents' => $rates
+    ]);
+});
