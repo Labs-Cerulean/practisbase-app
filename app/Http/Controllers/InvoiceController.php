@@ -249,7 +249,7 @@ class InvoiceController extends Controller
         if ($document->status === 'cancelled') abort(400, 'Cannot apply payments to a cancelled document.');
 
         $request->validate([
-            'payment_amount' => 'required|numeric|min:0.01'
+            'payment_amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date'
         ]);
 
