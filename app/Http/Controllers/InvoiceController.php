@@ -250,6 +250,7 @@ class InvoiceController extends Controller
 
         $request->validate([
             'payment_amount' => 'required|numeric|min:0.01'
+            'payment_date' => 'required|date'
         ]);
 
         $paymentAmount = (float) $request->payment_amount;
@@ -276,7 +277,7 @@ class InvoiceController extends Controller
                 'user_id' => $user->id,
                 'invoice_id' => $document->id,
                 'amount' => $paymentAmount,
-                'payment_date' => now(),
+                'payment_date' => $request->payment_date,                
             ]);
 
             $document->update([
@@ -518,5 +519,35 @@ class InvoiceController extends Controller
         });
 
         return back()->with('success', 'Payment reversed successfully. Invoice balances have been recalculated.');
+    }
+
+    // 12. Move a Payment from an RFP to a Child Invoice
+    public function transferPayment(Request $request, \App\Models\Payment $payment)
+    {
+        $user = Auth::user();
+        if ($payment->user_id !== $user->id) abort(403);
+
+        $request->validate(['target_invoice_id' => 'required|exists:invoices,id']);
+        
+        $targetInvoice = Invoice::where('id', $request->target_invoice_id)->where('user_id', $user->id)->firstOrFail();
+        $oldInvoice = $payment->invoice;
+
+        DB::transaction(function () use ($payment, $oldInvoice, $targetInvoice) {
+            // 1. Deduct from Parent RFP
+            $oldPaid = max(0, $oldInvoice->amount_paid - $payment->amount);
+            $oldInvoice->update(['amount_paid' => $oldPaid]);
+
+            // 2. Add to Child Invoice
+            $newPaid = $targetInvoice->amount_paid + $payment->amount;
+            $targetInvoice->update([
+                'amount_paid' => $newPaid,
+                'status' => ($newPaid >= $targetInvoice->total) ? 'paid' : 'partially_paid'
+            ]);
+
+            // 3. Move the physical payment record
+            $payment->update(['invoice_id' => $targetInvoice->id]);
+        });
+
+        return back()->with('success', 'Payment successfully moved to Invoice ' . $targetInvoice->invoice_number);
     }
 }

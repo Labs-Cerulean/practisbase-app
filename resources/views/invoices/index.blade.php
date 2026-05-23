@@ -96,6 +96,26 @@
                                         </div>
                                         
                                         @include('invoices.partials.actions', ['document' => $child, 'maxPayable' => $child->total - $child->amount_paid])
+
+                                        @if($child->childDocuments && $child->childDocuments->count() > 0)
+                                            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0;">
+                                                @foreach($child->childDocuments as $grandchild)
+                                                    <div style="margin-left: 1rem; border-left: 2px solid #fca5a5; padding-left: 1rem; margin-bottom: 0.5rem;">
+                                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+                                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                                <strong style="color: #b91c1c;">{{ $grandchild->invoice_number }}</strong>
+                                                                <span style="background: #fee2e2; color: #b91c1c; font-size: 0.6rem; padding: 0.1rem 0.3rem; border-radius: 3px;">CREDIT NOTE</span>
+                                                            </div>
+                                                            <strong style="color: #dc2626;">-€{{ number_format($grandchild->total, 2) }}</strong>
+                                                        </div>
+                                                        <div style="margin-top: 0.5rem;">
+                                                            @include('invoices.partials.actions', ['document' => $grandchild, 'maxPayable' => 0])
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                        
                                     </div>
                                 </div>
                             @endforeach
@@ -103,7 +123,7 @@
                     @endif
 
                     <div style="background: var(--primary-navy); color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                        <div style="font-size: 0.85rem; text-transform: uppercase; font-weight: 600; color: #94a3b8;">Project Situation</div>
+                        <div style="font-size: 0.85rem; text-transform: uppercase; font-weight: 600; color: #94a3b8;">Summary:</div>
                         <div style="display: flex; gap: 2rem;">
                             <div style="text-align: right;">
                                 <div style="font-size: 0.75rem; color: #cbd5e1;">Total Value</div>
@@ -119,7 +139,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             @endforeach
         </div>

@@ -22,6 +22,18 @@
                         @csrf @method('DELETE')
                         <button type="submit" style="color: #ef4444; background: none; border: none; font-size: 0.8rem; cursor: pointer; font-weight: 600; padding: 0;">✖ Reverse</button>
                     </form>
+                    
+                    @if($document->type === 'rfp' && $document->childDocuments && $document->childDocuments->where('type', 'invoice')->count() > 0)
+                        <form action="/ledger/payments/{{ $payment->id }}/transfer" method="POST" style="margin: 0;">
+                            @csrf @method('PATCH')
+                            <select name="target_invoice_id" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 0.2rem; border-radius: 4px; border: 1px solid #cbd5e1; background: white; color: var(--primary-navy);">
+                                <option value="">↳ Move to Invoice...</option>
+                                @foreach($document->childDocuments->where('type', 'invoice') as $childInv)
+                                    <option value="{{ $childInv->id }}">{{ $childInv->invoice_number }}</option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
                 </div>
             </div>
         @endforeach
@@ -32,17 +44,16 @@
     <a href="/ledger/{{ $document->id }}/pdf" style="flex: 1; text-align: center; padding: 0.5rem; background: white; border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none; transition: 0.2s;">Download PDF</a>
     
     @if(in_array($document->status, ['unpaid', 'overdue', 'partially_paid']))
-        <form action="/ledger/{{ $document->id }}/pay" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.5rem; align-items: center;" 
-            onsubmit="return {{ $document->type === 'rfp' ? "confirm('Note: Payments logged against an RFP will NOT appear on your Fiscal Report. You must convert this RFP to a Tax Invoice to officially log the revenue. Proceed?')" : 'true' }};">
+        <form action="/ledger/{{ $document->id }}/pay" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.5rem; align-items: center;" onsubmit="return {{ $document->type === 'rfp' ? "confirm('Payments logged against an RFP will NOT appear on your Fiscal Report. Proceed?')" : 'true' }};">
             @csrf
+            <input type="date" name="payment_date" value="{{ date('Y-m-d') }}" required style="padding: 0.5rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
+            
             <div style="position: relative; display: flex; align-items: center; width: 120px;">
                 <span style="position: absolute; left: 10px; color: #64748b; font-weight: 600; font-size: 0.95rem;">€</span>
-                <input type="number" name="payment_amount" step="0.01" max="{{ $maxPayable }}" value="{{ number_format($maxPayable, 2, '.', '') }}" required 
-                    style="width: 100%; padding: 0.5rem 0.5rem 0.5rem 1.6rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; font-weight: 700; color: var(--primary-navy); background-color: #f8fafc; outline: none;">
+                <input type="number" name="payment_amount" step="0.01" max="{{ $maxPayable }}" value="{{ number_format($maxPayable, 2, '.', '') }}" required style="width: 100%; padding: 0.5rem 0.5rem 0.5rem 1.6rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; font-weight: 700; color: var(--primary-navy); background-color: #f8fafc; outline: none;">
             </div>
-            <button type="submit" style="flex: 1; padding: 0.55rem 1rem; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
-                Log Payment
-            </button>
+            
+            <button type="submit" style="flex: 1; padding: 0.55rem 1rem; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Log Payment</button>
         </form>
     @endif
 
