@@ -114,10 +114,10 @@
                     <strong>Est. VAT Due:</strong>
                     <strong style="color: #dc2626;">€{{ number_format($vatLiability, 2) }}</strong>
                 </div>
-            @else
+            @elseif($user->vat_status === 'article_11')
                 @php
                     $threshold = 35000;
-                    $percent = min(100, ($collectedRevenue / $threshold) * 100);
+                    $percent = min(100, ($invoicedRevenue / $threshold) * 100);
                 @endphp
                 <div style="margin-bottom: 1rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
@@ -130,11 +130,16 @@
                     </div>
                     
                     <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem; text-align: center;">
-                        €{{ number_format($collectedRevenue, 2) }} / €35,000.00
+                        Billed: €{{ number_format($invoicedRevenue, 2) }} / €35,000.00
                     </div>
                 </div>
                 <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
                     <strong>Action Required:</strong> Submit your annual declaration confirming your revenue remains under the threshold.
+                </div>
+            @else
+                <div style="margin-bottom: 1rem; text-align: center; color: #166534; background: #f0fdf4; padding: 1rem; border-radius: var(--radius-md);">
+                    <strong>VAT Exempt</strong><br>
+                    <span style="font-size: 0.85rem;">Fifth Schedule Exemption Active</span>
                 </div>
             @endif
         </div>
