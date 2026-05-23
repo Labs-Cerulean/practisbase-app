@@ -45,7 +45,9 @@
                             Standard Tools
                         </li>
                         <li><a href="#" class="nav-link">Document Storage</a></li>
-                        <li><a href="#" class="nav-link">TA22 Automation</a></li>
+                        <a href="/reports" style="display: block; padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; font-weight: 500; border-radius: var(--radius-md); margin-bottom: 0.5rem; transition: 0.2s;">
+                            📊 Live Fiscal Report
+                        </a>
                         <li><a href="#" class="nav-link">Expense Tracking</a></li>
                     @endif
 
