@@ -118,6 +118,8 @@ Route::post('/ledger/{document}/convert', [\App\Http\Controllers\InvoiceControll
 Route::post('/ledger/{document}/cancel', [\App\Http\Controllers\InvoiceController::class, 'issueCreditNote'])->middleware('auth');
 Route::get('/ledger/{document}/pdf', [\App\Http\Controllers\InvoiceController::class, 'downloadPdf'])->middleware('auth');
 Route::post('/ledger/{document}/pay', [\App\Http\Controllers\InvoiceController::class, 'processPayment'])->middleware('auth');
+Route::get('/ledger/payments/{payment}/receipt', [\App\Http\Controllers\InvoiceController::class, 'downloadReceipt'])->middleware('auth');
+Route::post('/ledger/{document}/credit', [\App\Http\Controllers\InvoiceController::class, 'issueCreditNote'])->middleware('auth');
 
 Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('auth');
 

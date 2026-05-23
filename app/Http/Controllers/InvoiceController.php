@@ -7,6 +7,8 @@ use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Payment;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
@@ -16,7 +18,7 @@ class InvoiceController extends Controller
         $userId = Auth::id();
 
         // Get all documents (Invoices, RFPs, Credit Notes)
-        $invoices = Invoice::with('client')
+        $invoices = Invoice::with(['client', 'payments', 'childDocuments'])
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -260,12 +262,131 @@ class InvoiceController extends Controller
         // Determine new status
         $newStatus = ($newTotalPaid >= $document->total) ? 'paid' : 'partially_paid';
 
-        // Update the database
-        $document->update([
-            'amount_paid' => $newTotalPaid,
-            'status' => $newStatus
+        // Execute a secure Database Transaction
+        // This ensures that if creating the Payment fails, the Invoice isn't updated (preventing bad math)
+        DB::transaction(function () use ($user, $document, $paymentAmount, $newTotalPaid, $newStatus) {
+            
+            // 1. Log the individual payment record
+            Payment::create([
+                'user_id' => $user->id,
+                'invoice_id' => $document->id,
+                'amount' => $paymentAmount,
+                'payment_date' => now(), // Logs the exact date and time the button was clicked
+            ]);
+
+            // 2. Update the parent document
+            $document->update([
+                'amount_paid' => $newTotalPaid,
+                'status' => $newStatus
+            ]);
+        });
+
+        // Tailor the success message based on document type
+        $docType = $document->type === 'rfp' ? 'RFP' : 'Invoice';
+        $message = 'Payment of €' . number_format($paymentAmount, 2) . ' applied to ' . $docType . '.';
+        
+        if ($balanceDue > 0) {
+            $message .= ' Remaining balance: €' . number_format($balanceDue, 2);
+        } else {
+            $message .= ' Document is now fully paid.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    // 8. Download Payment Receipt (PDF)
+    public function downloadReceipt(\App\Models\Payment $payment)
+    {
+        $user = Auth::user();
+        
+        // Load the associated invoice and client
+        $payment->load('invoice.client');
+
+        // Security Check: Does this payment belong to the authenticated user?
+        if ($payment->user_id !== $user->id) abort(403);
+        
+        // Strict Rule: No receipts for RFPs
+        if ($payment->invoice->type !== 'invoice') abort(400, 'Receipts cannot be issued for Requests for Payment.');
+
+        // Generate the PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.receipt', [
+            'payment' => $payment,
+            'invoice' => $payment->invoice,
+            'client' => $payment->invoice->client,
+            'user' => $user
         ]);
 
-        return back()->with('success', 'Payment of €' . number_format($paymentAmount, 2) . ' applied. Remaining balance: €' . number_format($balanceDue, 2));
+        // Download format: Receipt_INV-001_2026-05-23.pdf
+        $filename = 'Receipt_' . $payment->invoice->invoice_number . '_' . $payment->payment_date->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    // 9. Issue a Partial or Full Credit Note
+    public function issueCreditNote(Request $request, Invoice $document)
+    {
+        $user = Auth::user();
+
+        // Security & Legal Checks
+        if ($document->user_id !== $user->id) abort(403);
+        if ($document->type !== 'invoice') abort(400, 'Credit notes can only be issued against official Tax Invoices.');
+        if ($document->status === 'cancelled') abort(400, 'This invoice is already fully cancelled.');
+
+        $request->validate([
+            'credit_amount' => 'required|numeric|min:0.01'
+        ]);
+
+        $creditTotal = (float) $request->credit_amount;
+
+        // 1. Calculate Maximum Allowable Credit
+        // You cannot issue more credit than the value of the invoice!
+        $existingCredits = $document->childDocuments()->where('type', 'credit_note')->sum('total');
+        $maxAllowableCredit = $document->total - $existingCredits;
+
+        if ($creditTotal > $maxAllowableCredit) {
+            return back()->withErrors(['payment_error' => 'Credit amount cannot exceed the remaining invoice value of €' . number_format($maxAllowableCredit, 2)]);
+        }
+
+        // 2. Reverse VAT Proportionally
+        // If the parent invoice had VAT, the credit note must extract 18% from the requested total
+        $vatRate = $document->vat_total > 0 ? 0.18 : 0;
+        
+        if ($vatRate > 0) {
+            $creditSubtotal = $creditTotal / 1.18;
+            $creditVat = $creditTotal - $creditSubtotal;
+        } else {
+            $creditSubtotal = $creditTotal;
+            $creditVat = 0;
+        }
+
+        // 3. Generate a Sequential Credit Note Number (e.g., CN-INV-004-1)
+        $cnCount = $document->childDocuments()->count() + 1;
+        $cnNumber = 'CN-' . $document->invoice_number . '-' . $cnCount;
+
+        // 4. Create the Child Document securely
+        DB::transaction(function () use ($user, $document, $cnNumber, $creditSubtotal, $creditVat, $creditTotal, $maxAllowableCredit) {
+            
+            Invoice::create([
+                'user_id' => $user->id,
+                'client_id' => $document->client_id,
+                'parent_document_id' => $document->id, // Linking it to the parent!
+                'type' => 'credit_note',
+                'invoice_number' => $cnNumber,
+                'issue_date' => now(),
+                'due_date' => now(),
+                'subtotal' => $creditSubtotal,
+                'vat_total' => $creditVat,
+                'total' => $creditTotal,
+                'amount_paid' => 0, 
+                'status' => 'paid', // Credit notes don't require payment, they are inherently resolved
+            ]);
+
+            // 5. If they credited the absolute maximum remaining amount, mark the parent as cancelled
+            if ($creditTotal == $maxAllowableCredit && $document->amount_paid == 0) {
+                $document->update(['status' => 'cancelled']);
+            }
+        });
+
+        return back()->with('success', 'Credit Note ' . $cnNumber . ' successfully issued for €' . number_format($creditTotal, 2));
     }
 }

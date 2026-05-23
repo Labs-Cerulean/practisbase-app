@@ -96,6 +96,29 @@
                         </div>
                     </div>
 
+                    @if($doc->payments->count() > 0)
+                        <div style="margin-top: 1rem; margin-bottom: 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.75rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem;">Payment History</div>
+                            
+                            @foreach($doc->payments as $payment)
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0; font-size: 0.85rem;">
+                                    <div>
+                                        <span style="color: var(--text-main); font-weight: 500;">€{{ number_format($payment->amount, 2) }}</span>
+                                        <span style="color: var(--text-muted); margin-left: 0.5rem;">on {{ $payment->payment_date->format('d M Y') }}</span>
+                                    </div>
+                                    
+                                    @if($doc->type === 'invoice')
+                                        <a href="/ledger/payments/{{ $payment->id }}/receipt" style="color: var(--primary-cerulean); text-decoration: none; font-weight: 600; font-size: 0.8rem; background: #e0f2fe; padding: 0.2rem 0.5rem; border-radius: 4px; transition: 0.2s;" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'">
+                                            ↓ Receipt
+                                        </a>
+                                    @else
+                                        <span style="color: #94a3b8; font-size: 0.75rem; font-style: italic;" title="Convert RFP to Invoice to issue receipts.">Receipt Locked</span>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <div style="border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         <a href="/ledger/{{ $doc->id }}/pdf" style="flex: 1; text-align: center; padding: 0.5rem; background: white; border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none; transition: 0.2s;">Download PDF</a>
                         
@@ -119,11 +142,27 @@
                                 @csrf
                                 <button type="submit" style="width: 100%; padding: 0.5rem; background: var(--primary-cerulean); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Convert to Invoice</button>
                             </form>
-                        @elseif($doc->type === 'invoice' && $doc->status !== 'cancelled')
-                            <form action="/ledger/{{ $doc->id }}/cancel" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('Are you sure you want to cancel this invoice and issue a Credit Note? This action cannot be undone.');">
-                                @csrf
-                                <button type="submit" style="width: 100%; padding: 0.5rem; background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Issue Credit Note</button>
-                            </form>
+                        @if($doc->type === 'invoice' && $doc->status !== 'cancelled')
+                            @php
+                                $existingCredits = $doc->childDocuments ? $doc->childDocuments->where('type', 'credit_note')->sum('total') : 0;
+                                $maxCredit = $doc->total - $existingCredits;
+                            @endphp
+                            
+                            @if($maxCredit > 0)
+                                <form action="/ledger/{{ $doc->id }}/credit" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.5rem; align-items: center;" onsubmit="return confirm('Issue a Credit Note for this amount? This will permanently reduce the taxable value of this invoice.');">
+                                    @csrf
+                                    <div style="position: relative; display: flex; align-items: center; width: 120px;">
+                                        <span style="position: absolute; left: 10px; color: #ef4444; font-weight: 600; font-size: 0.95rem;">-€</span>
+                                        <input type="number" name="credit_amount" step="0.01" max="{{ $maxCredit }}" value="{{ number_format($maxCredit, 2, '.', '') }}" required 
+                                            style="width: 100%; padding: 0.5rem 0.5rem 0.5rem 1.8rem; border: 2px solid #fca5a5; border-radius: 6px; font-size: 0.95rem; font-weight: 700; color: #b91c1c; background-color: #fef2f2; outline: none; transition: 0.2s;" 
+                                            onfocus="this.style.borderColor='#ef4444'; this.style.backgroundColor='#ffffff';" 
+                                            onblur="this.style.borderColor='#fca5a5'; this.style.backgroundColor='#fef2f2';">
+                                    </div>
+                                    <button type="submit" style="flex: 1; padding: 0.55rem 1rem; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                                        Issue Credit
+                                    </button>
+                                </form>
+                            @endif
                         @endif
                     </div>
 
