@@ -177,7 +177,7 @@ class InvoiceController extends Controller
     }
 
     // 5. Cancel an Invoice by Issuing a Credit Note
-    public function issueCreditNote(Invoice $document)
+    /*public function issueCreditNote(Invoice $document)
     {
         $user = Auth::user();
 
@@ -212,7 +212,7 @@ class InvoiceController extends Controller
         $document->update(['status' => 'cancelled']);
 
         return back()->with('success', 'Credit Note ' . $cnNumber . ' successfully issued and linked.');
-    }
+    }*/
 
     // 6. Generate and Download PDF Document
     public function downloadPdf(Invoice $document)
