@@ -272,7 +272,7 @@ class InvoiceController extends Controller
         $newTotalPaid = $document->amount_paid + $paymentAmount;
         $newStatus = ($newTotalPaid >= $document->total) ? 'paid' : 'partially_paid';
 
-        DB::transaction(function () use ($user, $document, $paymentAmount, $newTotalPaid, $newStatus) {
+        DB::transaction(function () use ($user, $document, $paymentAmount, $newTotalPaid, $newStatus, $request) {
             Payment::create([
                 'user_id' => $user->id,
                 'invoice_id' => $document->id,
