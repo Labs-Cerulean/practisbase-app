@@ -602,7 +602,7 @@ class InvoiceController extends Controller
         }
 
         DB::transaction(function () use ($user, $document, $refundAmount, $request) {
-            // Log the refund as a NEGATIVE payment
+            // 1. Log the refund as a NEGATIVE payment against the Master Document
             Payment::create([
                 'user_id' => $user->id,
                 'invoice_id' => $document->id,
@@ -610,10 +610,40 @@ class InvoiceController extends Controller
                 'payment_date' => $request->refund_date,
             ]);
 
-            // Deduct the cash from the document's total paid
-            $document->update([
-                'amount_paid' => max(0, $document->amount_paid - $refundAmount)
-            ]);
+            // 2. Smart Cash Deduction (Hunt down the cash in the family tree)
+            $remainingToDeduct = $refundAmount;
+
+            // Try to deduct from the Master Document first
+            if ($document->amount_paid > 0) {
+                $deduct = min($document->amount_paid, $remainingToDeduct);
+                $newPaid = $document->amount_paid - $deduct;
+                
+                $status = $document->status;
+                if (in_array($status, ['paid', 'partially_paid'])) {
+                     $status = ($newPaid == 0) ? 'unpaid' : (($newPaid >= $document->total) ? 'paid' : 'partially_paid');
+                }
+
+                $document->update(['amount_paid' => $newPaid, 'status' => $status]);
+                $remainingToDeduct -= $deduct;
+            }
+
+            // 3. If cash is still owed, reach into the Child Invoices and deduct from them
+            if ($remainingToDeduct > 0 && $document->type === 'rfp') {
+                foreach ($document->childDocuments()->where('type', 'invoice')->get() as $child) {
+                    if ($child->amount_paid > 0) {
+                        $deduct = min($child->amount_paid, $remainingToDeduct);
+                        $newPaid = $child->amount_paid - $deduct;
+                        
+                        $child->update([
+                            'amount_paid' => $newPaid,
+                            'status' => ($newPaid == 0) ? 'unpaid' : (($newPaid >= $child->total) ? 'paid' : 'partially_paid')
+                        ]);
+                        
+                        $remainingToDeduct -= $deduct;
+                        if ($remainingToDeduct <= 0) break;
+                    }
+                }
+            }
         });
 
         return back()->with('success', 'Refund of €' . number_format($refundAmount, 2) . ' logged successfully. The account is now balanced.');

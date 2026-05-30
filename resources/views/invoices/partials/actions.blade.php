@@ -57,7 +57,7 @@
         </form>
     @endif
 
-    @if(isset($familyBalance) && $familyBalance < 0)
+    @if(isset($familyBalance) && $familyBalance < 0 && is_null($document->parent_document_id))
         @php $maxRefund = abs($familyBalance); @endphp
         <form action="/ledger/{{ $document->id }}/refund" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.5rem; align-items: center;" onsubmit="return confirm('Log a refund to the client? This will securely deduct from your total collected revenue.');">
             @csrf
