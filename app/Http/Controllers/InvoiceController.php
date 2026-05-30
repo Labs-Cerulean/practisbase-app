@@ -24,12 +24,13 @@ class InvoiceController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // FIXED KPI MATH: Accurately calculate cash collected across ALL invoices (including partials)
+        // FIXED KPI MATH: Accurately calculate global cash factoring in Credit Notes
+        $totalInvoices = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('total');
+        $totalCredits = Invoice::where('user_id', $userId)->where('type', 'credit_note')->sum('total');
         $totalPaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('amount_paid');
         
-        // Unpaid is the total value of all invoices minus what has already been collected
-        $totalUnpaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum(DB::raw('total - amount_paid'));
-
+        // Unpaid is the total value of all invoices, minus credits, minus what has already been collected
+        $totalUnpaid = max(0, $totalInvoices - $totalCredits - $totalPaid);
         return view('invoices.index', compact('invoices', 'totalPaid', 'totalUnpaid'));
     }
 
@@ -558,5 +559,63 @@ class InvoiceController extends Controller
         });
 
         return back()->with('success', 'Payment successfully moved to Invoice ' . $targetInvoice->invoice_number);
+    }
+
+    // 13. Process a Refund (For Overpaid Documents)
+    public function processRefund(Request $request, Invoice $document)
+    {
+        $user = Auth::user();
+        if ($document->user_id !== $user->id) abort(403);
+
+        $request->validate([
+            'refund_amount' => 'required|numeric|min:0.01',
+            'refund_date' => 'required|date'
+        ]);
+
+        $refundAmount = (float) $request->refund_amount;
+
+        // Calculate the family overpayment
+        $familyPaid = $document->amount_paid;
+        $familyCredits = 0;
+
+        if ($document->type === 'rfp') {
+            $familyPaid += $document->childDocuments()->sum('amount_paid');
+            $familyCredits += $document->childDocuments()->where('type', 'credit_note')->sum('total');
+            foreach($document->childDocuments as $child) {
+                $familyCredits += $child->childDocuments()->where('type', 'credit_note')->sum('total');
+            }
+        } elseif ($document->type === 'invoice') {
+            $familyCredits += $document->childDocuments()->where('type', 'credit_note')->sum('total');
+        }
+
+        $effectiveValue = $document->total - $familyCredits;
+        $familyBalance = $effectiveValue - $familyPaid; 
+
+        if ($familyBalance >= 0) {
+            return back()->withErrors(['payment_error' => 'This project is not overpaid. No refund required.']);
+        }
+
+        $maxRefund = abs($familyBalance);
+
+        if (round($refundAmount, 2) > round($maxRefund, 2)) {
+            return back()->withErrors(['payment_error' => 'Refund cannot exceed the overpaid amount of €' . number_format($maxRefund, 2)]);
+        }
+
+        DB::transaction(function () use ($user, $document, $refundAmount, $request) {
+            // Log the refund as a NEGATIVE payment
+            Payment::create([
+                'user_id' => $user->id,
+                'invoice_id' => $document->id,
+                'amount' => -$refundAmount, 
+                'payment_date' => $request->refund_date,
+            ]);
+
+            // Deduct the cash from the document's total paid
+            $document->update([
+                'amount_paid' => max(0, $document->amount_paid - $refundAmount)
+            ]);
+        });
+
+        return back()->with('success', 'Refund of €' . number_format($refundAmount, 2) . ' logged successfully. The account is now balanced.');
     }
 }

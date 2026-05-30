@@ -122,6 +122,7 @@ Route::get('/ledger/payments/{payment}/receipt', [\App\Http\Controllers\InvoiceC
 Route::post('/ledger/{document}/credit', [\App\Http\Controllers\InvoiceController::class, 'issueCreditNote'])->middleware('auth');
 Route::delete('/ledger/payments/{payment}', [\App\Http\Controllers\InvoiceController::class, 'deletePayment'])->middleware('auth');
 Route::patch('/ledger/payments/{payment}/transfer', [\App\Http\Controllers\InvoiceController::class, 'transferPayment'])->middleware('auth');
+Route::post('/ledger/{document}/refund', [\App\Http\Controllers\InvoiceController::class, 'processRefund'])->middleware('auth');
 
 Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('auth');
 

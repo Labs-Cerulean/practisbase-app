@@ -82,7 +82,7 @@
                         </div>
 
                         <div style="margin-top: 1rem;">
-                            @include('invoices.partials.actions', ['document' => $parent, 'maxPayable' => max(0, $familyBalance)])
+                            @include('invoices.partials.actions', ['document' => $parent, 'maxPayable' => max(0, $familyBalance), 'familyBalance' => $familyBalance])
                         </div>
                     </div>
 
@@ -107,7 +107,11 @@
                                             </div>
                                         </div>
                                         
-                                        @include('invoices.partials.actions', ['document' => $child, 'maxPayable' => $child->total - $child->amount_paid])
+                                        @php
+                                            $childCredits = $child->childDocuments ? $child->childDocuments->where('type', 'credit_note')->sum('total') : 0;
+                                            $childBalance = ($child->total - $childCredits) - $child->amount_paid;
+                                        @endphp
+                                        @include('invoices.partials.actions', ['document' => $child, 'maxPayable' => max(0, $childBalance), 'familyBalance' => $childBalance])
 
                                         @if($child->childDocuments && $child->childDocuments->count() > 0)
                                             <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0;">

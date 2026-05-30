@@ -57,6 +57,21 @@
         </form>
     @endif
 
+    @if(isset($familyBalance) && $familyBalance < 0)
+        @php $maxRefund = abs($familyBalance); @endphp
+        <form action="/ledger/{{ $document->id }}/refund" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.5rem; align-items: center;" onsubmit="return confirm('Log a refund to the client? This will securely deduct from your total collected revenue.');">
+            @csrf
+            <input type="date" name="refund_date" value="{{ date('Y-m-d') }}" required style="padding: 0.5rem; border: 2px solid #fde047; border-radius: 6px; font-size: 0.85rem; color: #854d0e; outline: none; background: #fefce8;">
+            
+            <div style="position: relative; display: flex; align-items: center; width: 120px;">
+                <span style="position: absolute; left: 10px; color: #ca8a04; font-weight: 600; font-size: 0.95rem;">€</span>
+                <input type="number" name="refund_amount" step="0.01" max="{{ $maxRefund }}" value="{{ number_format($maxRefund, 2, '.', '') }}" required style="width: 100%; padding: 0.5rem 0.5rem 0.5rem 1.6rem; border: 2px solid #fde047; border-radius: 6px; font-size: 0.95rem; font-weight: 700; color: #854d0e; background-color: #fefce8; outline: none;">
+            </div>
+            
+            <button type="submit" style="flex: 1; padding: 0.55rem 1rem; background: #eab308; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Issue Refund</button>
+        </form>
+    @endif
+
     @if($document->type === 'rfp' && $document->status !== 'cancelled')
         @php
             $existingConversions = $document->childDocuments ? $document->childDocuments->where('type', 'invoice')->sum('total') : 0;
