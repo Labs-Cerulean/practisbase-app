@@ -12,26 +12,79 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
-    // 1. Show the Master Financial Ledger (UPGRADED)
-    public function index()
+    // 1. Show the Master Financial Ledger (Intelligent AR Dashboard)
+    public function index(Request $request)
     {
         $userId = Auth::id();
 
-        // ONLY fetch Top-Level documents, but eager load their entire family tree!
-        $invoices = Invoice::with(['client', 'payments', 'childDocuments.payments', 'childDocuments.childDocuments'])
-            ->where('user_id', $userId)
-            ->whereNull('parent_document_id') // Hides children from the main list
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // FIXED KPI MATH: Accurately calculate global cash factoring in Credit Notes
+        // --- 1. INTELLIGENT KPI ENGINE ---
+        // Official Revenue (Invoices minus Credit Notes)
         $totalInvoices = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('total');
         $totalCredits = Invoice::where('user_id', $userId)->where('type', 'credit_note')->sum('total');
-        $totalPaid = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('amount_paid');
-        
-        // Unpaid is the total value of all invoices, minus credits, minus what has already been collected
-        $totalUnpaid = max(0, $totalInvoices - $totalCredits - $totalPaid);
-        return view('invoices.index', compact('invoices', 'totalPaid', 'totalUnpaid'));
+        $netInvoiced = $totalInvoices - $totalCredits;
+
+        // Total Pipeline (To avoid double counting, we ONLY sum Level 0 Masters, then deduct credits)
+        $topLevelTotal = Invoice::where('user_id', $userId)->whereNull('parent_document_id')->sum('total');
+        $totalPipeline = $topLevelTotal - $totalCredits; 
+
+        // Unbilled Pipeline (What is locked in RFPs but not yet invoiced)
+        $unbilledPipeline = max(0, $totalPipeline - $netInvoiced);
+
+        // Cash Analysis (Refunds are naturally deducted because we save them as negative numbers!)
+        $totalCollected = Payment::where('user_id', $userId)->sum('amount');
+        $rfpCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'rfp'))->sum('amount');
+        $invoiceCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))->sum('amount');
+
+
+        // --- 2. FILTERING & SORTING ENGINE ---
+        $query = Invoice::with(['client', 'payments', 'childDocuments.payments', 'childDocuments.childDocuments'])
+            ->where('user_id', $userId)
+            ->whereNull('parent_document_id'); // Only fetch Masters
+
+        // Client Filter
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        // Type Filter
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // Sorting
+        $sort = $request->input('sort', 'date_desc');
+        switch ($sort) {
+            case 'date_asc': $query->orderBy('issue_date', 'asc'); break;
+            case 'value_desc': $query->orderBy('total', 'desc'); break;
+            case 'value_asc': $query->orderBy('total', 'asc'); break;
+            default: $query->orderBy('issue_date', 'desc'); break; // date_desc
+        }
+
+        $invoices = $query->get();
+
+        // Status Filter (Must be done in PHP because 'Balanced' relies on Family Math)
+        if ($request->filled('status')) {
+            $invoices = $invoices->filter(function($parent) use ($request) {
+                $familyPaid = $parent->amount_paid + $parent->childDocuments->sum('amount_paid');
+                $familyCredits = $parent->childDocuments->where('type', 'credit_note')->sum('total');
+                foreach($parent->childDocuments as $child) {
+                    $familyCredits += $child->childDocuments ? $child->childDocuments->where('type', 'credit_note')->sum('total') : 0;
+                }
+                $balance = ($parent->total - $familyCredits) - $familyPaid;
+
+                if ($request->status === 'open') return round($balance, 2) > 0;
+                if ($request->status === 'balanced') return round($balance, 2) == 0;
+                if ($request->status === 'overpaid') return round($balance, 2) < 0;
+                return true;
+            });
+        }
+
+        $clients = Client::where('user_id', $userId)->orderBy('name')->get();
+
+        return view('invoices.index', compact(
+            'invoices', 'clients', 'totalPipeline', 'netInvoiced', 
+            'unbilledPipeline', 'totalCollected', 'rfpCash', 'invoiceCash'
+        ));
     }
 
     // 2. Show the Create Document Form
