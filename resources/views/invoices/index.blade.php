@@ -47,8 +47,20 @@
                 @php
                     // --- THE PROJECT SITUATION MATH ---
                     $familyPaid = $parent->amount_paid + $parent->childDocuments->sum('amount_paid');
-                    $familyBalance = max(0, $parent->total - $familyPaid);
+                    
+                    // 1. Sum direct credit notes (Level 1)
                     $familyCredits = $parent->childDocuments->where('type', 'credit_note')->sum('total');
+                    
+                    // 2. Sum grandchild credit notes (Level 2)
+                    foreach($parent->childDocuments as $child) {
+                        $familyCredits += $child->childDocuments ? $child->childDocuments->where('type', 'credit_note')->sum('total') : 0;
+                    }
+
+                    // 3. The actual legal value of the project after all credits are applied
+                    $effectiveValue = $parent->total - $familyCredits;
+                    
+                    // 4. The Balance (If negative, the client overpaid!)
+                    $familyBalance = $effectiveValue - $familyPaid;
                 @endphp
 
                 <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);">
@@ -70,7 +82,7 @@
                         </div>
 
                         <div style="margin-top: 1rem;">
-                            @include('invoices.partials.actions', ['document' => $parent, 'maxPayable' => $familyBalance])
+                            @include('invoices.partials.actions', ['document' => $parent, 'maxPayable' => max(0, $familyBalance)])
                         </div>
                     </div>
 
@@ -126,16 +138,20 @@
                         <div style="font-size: 0.85rem; text-transform: uppercase; font-weight: 600; color: #94a3b8;">Summary:</div>
                         <div style="display: flex; gap: 2rem;">
                             <div style="text-align: right;">
-                                <div style="font-size: 0.75rem; color: #cbd5e1;">Total Value</div>
-                                <div style="font-weight: 600;">€{{ number_format($parent->total, 2) }}</div>
+                                <div style="font-size: 0.75rem; color: #cbd5e1;">Effective Value</div>
+                                <div style="font-weight: 600;">€{{ number_format($effectiveValue, 2) }}</div>
                             </div>
                             <div style="text-align: right;">
                                 <div style="font-size: 0.75rem; color: #cbd5e1;">Total Paid</div>
                                 <div style="font-weight: 600; color: #34d399;">€{{ number_format($familyPaid, 2) }}</div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 0.75rem; color: #cbd5e1;">Outstanding</div>
-                                <div style="font-weight: 700; color: {{ $familyBalance > 0 ? '#fca5a5' : '#cbd5e1' }};">€{{ number_format($familyBalance, 2) }}</div>
+                                <div style="font-size: 0.75rem; color: {{ $familyBalance < 0 ? '#fde047' : '#cbd5e1' }};">
+                                    {{ $familyBalance < 0 ? 'Overpaid (Credit Due)' : 'Outstanding' }}
+                                </div>
+                                <div style="font-weight: 700; color: {{ $familyBalance > 0 ? '#fca5a5' : ($familyBalance < 0 ? '#fde047' : '#cbd5e1') }};">
+                                    {{ $familyBalance < 0 ? '-' : '' }}€{{ number_format(abs($familyBalance), 2) }}
+                                </div>
                             </div>
                         </div>
                     </div>

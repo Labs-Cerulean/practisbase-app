@@ -255,14 +255,23 @@ class InvoiceController extends Controller
 
         $paymentAmount = (float) $request->payment_amount;
         
-        // --- THE FIX: CALCULATE THE FAMILY BALANCE ---
-        // We must factor in payments made to child documents to prevent overpaying the parent RFP!
+        // --- CALCULATE THE FAMILY BALANCE ---
         $familyPaid = $document->amount_paid;
+        $familyCredits = 0;
+
         if ($document->type === 'rfp') {
             $familyPaid += $document->childDocuments()->sum('amount_paid');
+            $familyCredits += $document->childDocuments()->where('type', 'credit_note')->sum('total');
+            
+            foreach($document->childDocuments as $child) {
+                $familyCredits += $child->childDocuments()->where('type', 'credit_note')->sum('total');
+            }
+        } elseif ($document->type === 'invoice') {
+            $familyCredits += $document->childDocuments()->where('type', 'credit_note')->sum('total');
         }
         
-        $familyBalanceDue = $document->total - $familyPaid;
+        $effectiveValue = $document->total - $familyCredits;
+        $familyBalanceDue = $effectiveValue - $familyPaid;
 
         // Prevent overpayment of the project
         if (round($paymentAmount, 2) > round($familyBalanceDue, 2)) {
