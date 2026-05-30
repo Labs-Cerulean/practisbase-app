@@ -655,45 +655,53 @@ class InvoiceController extends Controller
         }
 
         DB::transaction(function () use ($user, $document, $refundAmount, $request) {
-            // 1. Log the refund as a NEGATIVE payment against the Master Document
-            Payment::create([
-                'user_id' => $user->id,
-                'invoice_id' => $document->id,
-                'amount' => -$refundAmount, 
-                'payment_date' => $request->refund_date,
-            ]);
+            
+            $remainingToRefund = $refundAmount;
 
-            // 2. Smart Cash Deduction (Hunt down the cash in the family tree)
-            $remainingToDeduct = $refundAmount;
-
-            // Try to deduct from the Master Document first
+            // 1. Try to deduct from the Master Document first
             if ($document->amount_paid > 0) {
-                $deduct = min($document->amount_paid, $remainingToDeduct);
+                $deduct = min($document->amount_paid, $remainingToRefund);
                 $newPaid = $document->amount_paid - $deduct;
                 
+                // Log the negative payment against THIS specific document
+                Payment::create([
+                    'user_id' => $user->id,
+                    'invoice_id' => $document->id,
+                    'amount' => -$deduct, 
+                    'payment_date' => $request->refund_date,
+                ]);
+
                 $status = $document->status;
                 if (in_array($status, ['paid', 'partially_paid'])) {
                      $status = ($newPaid == 0) ? 'unpaid' : (($newPaid >= $document->total) ? 'paid' : 'partially_paid');
                 }
 
                 $document->update(['amount_paid' => $newPaid, 'status' => $status]);
-                $remainingToDeduct -= $deduct;
+                $remainingToRefund -= $deduct;
             }
 
-            // 3. If cash is still owed, reach into the Child Invoices and deduct from them
-            if ($remainingToDeduct > 0 && $document->type === 'rfp') {
+            // 2. If cash is still owed, reach into the Child Invoices and deduct from them
+            if ($remainingToRefund > 0 && $document->type === 'rfp') {
                 foreach ($document->childDocuments()->where('type', 'invoice')->get() as $child) {
                     if ($child->amount_paid > 0) {
-                        $deduct = min($child->amount_paid, $remainingToDeduct);
+                        $deduct = min($child->amount_paid, $remainingToRefund);
                         $newPaid = $child->amount_paid - $deduct;
                         
+                        // Log the negative payment against THIS CHILD document!
+                        Payment::create([
+                            'user_id' => $user->id,
+                            'invoice_id' => $child->id,
+                            'amount' => -$deduct, 
+                            'payment_date' => $request->refund_date,
+                        ]);
+
                         $child->update([
                             'amount_paid' => $newPaid,
                             'status' => ($newPaid == 0) ? 'unpaid' : (($newPaid >= $child->total) ? 'paid' : 'partially_paid')
                         ]);
                         
-                        $remainingToDeduct -= $deduct;
-                        if ($remainingToDeduct <= 0) break;
+                        $remainingToRefund -= $deduct;
+                        if ($remainingToRefund <= 0) break;
                     }
                 }
             }
