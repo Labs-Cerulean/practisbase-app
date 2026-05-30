@@ -26,22 +26,22 @@
         </div>
     @endif
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
         
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
             <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Pipeline & Revenue</div>
             
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Total Projected Pipeline</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Total Projected</div>
                 <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($totalPipeline, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Unbilled (RFP Holding)</div>
-                <div style="font-size: 0.95rem; font-weight: 600; color: #4338ca;">€{{ number_format($unbilledPipeline, 2) }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Official Invoiced</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #0369a1;">€{{ number_format($netInvoiced, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Official Tax Invoiced</div>
-                <div style="font-size: 0.95rem; font-weight: 600; color: #0369a1;">€{{ number_format($netInvoiced, 2) }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Unbilled (RFP)</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #4338ca;">€{{ number_format($unbilledPipeline, 2) }}</div>
             </div>
         </div>
 
@@ -49,16 +49,33 @@
             <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Cash Collected</div>
             
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Total Cash Received</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Total Received</div>
                 <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($totalCollected, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Cash on RFPs (Unofficial)</div>
-                <div style="font-size: 0.95rem; font-weight: 600; color: #64748b;">€{{ number_format($rfpCash, 2) }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Official (Invoices)</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #059669;">€{{ number_format($invoiceCash, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Cash on Invoices (Official)</div>
-                <div style="font-size: 0.95rem; font-weight: 600; color: #059669;">€{{ number_format($invoiceCash, 2) }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Unofficial (RFPs)</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #64748b;">€{{ number_format($rfpCash, 2) }}</div>
+            </div>
+        </div>
+
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Outstanding Dues</div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Total Global Dues</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #dc2626;">€{{ number_format($totalDues, 2) }}</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Official Dues</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #ef4444;">€{{ number_format($officialDues, 2) }}</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Unbilled Dues</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #f87171;">€{{ number_format($unbilledDues, 2) }}</div>
             </div>
         </div>
     </div>
@@ -70,12 +87,6 @@
             @foreach($clients as $client)
                 <option value="{{ $client->id }}" {{ request('client_id') == $client->id ? 'selected' : '' }}>{{ $client->name }}</option>
             @endforeach
-        </select>
-
-        <select name="type" style="flex: 1; min-width: 150px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
-            <option value="">All Master Types</option>
-            <option value="rfp" {{ request('type') == 'rfp' ? 'selected' : '' }}>Master RFPs</option>
-            <option value="invoice" {{ request('type') == 'invoice' ? 'selected' : '' }}>Standalone Invoices</option>
         </select>
 
         <select name="status" style="flex: 1; min-width: 150px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
@@ -94,7 +105,7 @@
 
         <div style="display: flex; gap: 0.5rem;">
             <button type="submit" style="padding: 0.5rem 1rem; background: var(--primary-navy); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Filter</button>
-            @if(request()->anyFilled(['client_id', 'type', 'status', 'sort']))
+            @if(request()->anyFilled(['client_id', 'status', 'sort']))
                 <a href="/ledger" style="padding: 0.5rem 1rem; background: #f1f5f9; color: #475569; text-decoration: none; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">Clear</a>
             @endif
         </div>

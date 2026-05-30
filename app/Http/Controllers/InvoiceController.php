@@ -30,11 +30,15 @@ class InvoiceController extends Controller
         // Unbilled Pipeline (What is locked in RFPs but not yet invoiced)
         $unbilledPipeline = max(0, $totalPipeline - $netInvoiced);
 
-        // Cash Analysis (Refunds are naturally deducted because we save them as negative numbers!)
+        // Cash Analysis 
         $totalCollected = Payment::where('user_id', $userId)->sum('amount');
         $rfpCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'rfp'))->sum('amount');
         $invoiceCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))->sum('amount');
 
+        // NEW: Dues Analysis
+        $officialDues = max(0, $netInvoiced - $invoiceCash);
+        $unbilledDues = max(0, $unbilledPipeline - $rfpCash);
+        $totalDues = $officialDues + $unbilledDues;
 
         // --- 2. FILTERING & SORTING ENGINE ---
         $query = Invoice::with(['client', 'payments', 'childDocuments.payments', 'childDocuments.childDocuments'])
@@ -46,23 +50,18 @@ class InvoiceController extends Controller
             $query->where('client_id', $request->client_id);
         }
 
-        // Type Filter
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Sorting
+        // Sorting (Fixed: Now uses created_at to factor in exact time of day)
         $sort = $request->input('sort', 'date_desc');
         switch ($sort) {
-            case 'date_asc': $query->orderBy('issue_date', 'asc'); break;
+            case 'date_asc': $query->orderBy('created_at', 'asc'); break;
             case 'value_desc': $query->orderBy('total', 'desc'); break;
             case 'value_asc': $query->orderBy('total', 'asc'); break;
-            default: $query->orderBy('issue_date', 'desc'); break; // date_desc
+            default: $query->orderBy('created_at', 'desc'); break; // date_desc
         }
 
         $invoices = $query->get();
 
-        // Status Filter (Must be done in PHP because 'Balanced' relies on Family Math)
+        // Status Filter 
         if ($request->filled('status')) {
             $invoices = $invoices->filter(function($parent) use ($request) {
                 $familyPaid = $parent->amount_paid + $parent->childDocuments->sum('amount_paid');
@@ -79,11 +78,12 @@ class InvoiceController extends Controller
             });
         }
 
-        $clients = Client::where('user_id', $userId)->orderBy('name')->get();
+        $clients = \App\Models\Client::where('user_id', $userId)->orderBy('name')->get();
 
         return view('invoices.index', compact(
             'invoices', 'clients', 'totalPipeline', 'netInvoiced', 
-            'unbilledPipeline', 'totalCollected', 'rfpCash', 'invoiceCash'
+            'unbilledPipeline', 'totalCollected', 'rfpCash', 'invoiceCash',
+            'totalDues', 'officialDues', 'unbilledDues'
         ));
     }
 
