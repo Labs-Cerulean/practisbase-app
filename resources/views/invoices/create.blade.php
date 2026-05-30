@@ -168,5 +168,59 @@
             document.getElementById('displayVat').innerText = '€' + vat.toFixed(2);
             document.getElementById('displayTotal').innerText = '€' + total.toFixed(2);
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find the dropdown
+            const typeSelect = document.querySelector('select[name="type"]');
+            if (!typeSelect) return;
+
+            // Find the page header and submit button
+            const pageTitle = document.querySelector('h1');
+            const submitBtn = document.querySelector('button[type="submit"]');
+
+            // Create a dynamic alert banner to inject under the title
+            const headerContainer = pageTitle.parentElement;
+            const banner = document.createElement('div');
+            banner.style.cssText = "display: none; padding: 1rem; border-radius: 8px; margin-top: 1.5rem; font-size: 0.95rem; transition: all 0.2s ease-in-out; box-shadow: var(--shadow-sm);";
+            headerContainer.appendChild(banner);
+
+            function updateUX() {
+                if (typeSelect.value === 'rfp') {
+                    // --- RFP MODE (PURPLE) ---
+                    pageTitle.innerHTML = 'New <span style="color: #4f46e5;">Request for Payment</span>';
+                    
+                    banner.style.display = 'block';
+                    banner.style.backgroundColor = '#eef2ff';
+                    banner.style.color = '#3730a3';
+                    banner.style.borderLeft = '4px solid #4f46e5';
+                    banner.innerHTML = '<strong>💡 Pro-Forma Mode Active:</strong> This is an unofficial holding document. It will not impact your fiscal Tax or VAT reports until you convert it into a Tax Invoice.';
+                    
+                    if (submitBtn) {
+                        submitBtn.style.backgroundColor = '#4f46e5';
+                        submitBtn.innerText = 'Generate Master RFP';
+                    }
+                } else {
+                    // --- TAX INVOICE MODE (BLUE) ---
+                    pageTitle.innerHTML = 'New <span style="color: #0369a1;">Tax Invoice</span>';
+                    
+                    banner.style.display = 'block';
+                    banner.style.backgroundColor = '#f0f9ff';
+                    banner.style.color = '#075985';
+                    banner.style.borderLeft = '4px solid #0284c7';
+                    banner.innerHTML = '<strong>📄 Official Fiscal Mode:</strong> Generating this document will permanently record it in your ledger and count towards your VAT/Tax thresholds.';
+                    
+                    if (submitBtn) {
+                        submitBtn.style.backgroundColor = 'var(--primary-cerulean, #0284c7)'; // Falls back to standard blue if CSS var fails
+                        submitBtn.innerText = 'Generate Tax Invoice';
+                    }
+                }
+            }
+
+            // Listen for the user changing the dropdown
+            typeSelect.addEventListener('change', updateUX);
+            
+            // Run it immediately on page load to set the initial state
+            updateUX(); 
+        });
     </script>
 @endsection
