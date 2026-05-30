@@ -43,7 +43,7 @@
 <div style="border-top: 1px solid var(--border-light); padding-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
     <a href="/ledger/{{ $document->id }}/pdf" style="flex: 1; text-align: center; padding: 0.5rem; background: white; border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none; transition: 0.2s;">Download PDF</a>
     
-    @if(in_array($document->status, ['unpaid', 'overdue', 'partially_paid']))
+    @if(in_array($document->status, ['unpaid', 'overdue', 'partially_paid']) && $maxPayable > 0)
         <form action="/ledger/{{ $document->id }}/pay" method="POST" style="flex: 1; margin: 0; display: flex; gap: 0.5rem; align-items: center;" onsubmit="return {{ $document->type === 'rfp' ? "confirm('Payments logged against an RFP will NOT appear on your Fiscal Report. Proceed?')" : 'true' }};">
             @csrf
             <input type="date" name="payment_date" value="{{ date('Y-m-d') }}" required style="padding: 0.5rem; border: 2px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">

@@ -137,16 +137,21 @@
                     $familyBalance = $effectiveValue - $familyPaid;
                 @endphp
 
-                <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);">
+                <div style="background: {{ $familyBalance == 0 ? '#f8fafc' : 'white' }}; border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); opacity: {{ $familyBalance == 0 ? '0.75' : '1' }}; transition: 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='{{ $familyBalance == 0 ? '0.75' : '1' }}'">
                     
-                    <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-light); border-left: 4px solid {{ $parent->type === 'rfp' ? '#4f46e5' : 'var(--primary-cerulean)' }};">
+                    <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-light); border-left: 4px solid {{ $familyBalance == 0 ? '#10b981' : ($parent->type === 'rfp' ? '#4f46e5' : 'var(--primary-cerulean)') }};">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div>
                                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                                    <strong style="color: var(--primary-navy); font-size: 1.2rem;">{{ $parent->invoice_number }}</strong>
-                                    <span style="background: {{ $parent->type === 'rfp' ? '#e0e7ff' : '#e0f2fe' }}; color: {{ $parent->type === 'rfp' ? '#4338ca' : '#0369a1' }}; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px;">
-                                        {{ $parent->type === 'rfp' ? 'RFP / PROJECT MASTER' : 'TAX INVOICE' }}
-                                    </span>
+                                    <strong style="color: var(--primary-navy); font-size: 1.2rem; text-decoration: {{ $familyBalance == 0 && $effectiveValue == 0 ? 'line-through' : 'none' }};">{{ $parent->invoice_number }}</strong>
+                                    
+                                    @if($familyBalance == 0)
+                                        <span style="background: #d1fae5; color: #065f46; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px;">✔ BALANCED & CLOSED</span>
+                                    @else
+                                        <span style="background: {{ $parent->type === 'rfp' ? '#e0e7ff' : '#e0f2fe' }}; color: {{ $parent->type === 'rfp' ? '#4338ca' : '#0369a1' }}; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px;">
+                                            {{ $parent->type === 'rfp' ? 'RFP / PROJECT MASTER' : 'TAX INVOICE' }}
+                                        </span>
+                                    @endif
                                 </div>
                                 <div style="color: var(--text-main); font-weight: 600; font-size: 1rem;">{{ $parent->client->name }}</div>
                             </div>

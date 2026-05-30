@@ -35,9 +35,9 @@ class InvoiceController extends Controller
         $rfpCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'rfp'))->sum('amount');
         $invoiceCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))->sum('amount');
 
-        // NEW: Dues Analysis
-        $officialDues = max(0, $netInvoiced - $invoiceCash);
-        $unbilledDues = max(0, $unbilledPipeline - $rfpCash);
+        // NEW: Dues Analysis (Fixed: max(0, $cash) prevents refunds from creating fake debt)
+        $officialDues = max(0, $netInvoiced - max(0, $invoiceCash));
+        $unbilledDues = max(0, $unbilledPipeline - max(0, $rfpCash));
         $totalDues = $officialDues + $unbilledDues;
 
         // --- 2. FILTERING & SORTING ENGINE ---
