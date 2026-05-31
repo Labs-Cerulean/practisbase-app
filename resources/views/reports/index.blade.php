@@ -246,16 +246,19 @@
                         
                         <div style="margin-bottom: 1rem;">
                             <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">Payment Type</label>
-                            <select name="payment_type" required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                            <select name="payment_type" id="payment_type_select" required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
                                 <option value="income_tax">Provisional Tax (Income)</option>
                                 <option value="ssc">Provisional Tax (SSC)</option>
                                 <option value="vat">VAT Settlement</option>
                             </select>
                         </div>
                         
+                        <div id="smartGuideBox" style="margin-bottom: 1.5rem; padding: 0.85rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 0.8rem; color: #1e3a8a; line-height: 1.5;">
+                            </div>
+                        
                         <div style="margin-bottom: 1rem;">
                             <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">Amount Paid (€)</label>
-                            <input type="number" name="amount" step="0.01" min="0.01" required placeholder="0.00" style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                            <input type="number" name="amount" id="payment_amount_input" step="0.01" min="0.01" required placeholder="0.00" style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
                         </div>
 
                         <div style="margin-bottom: 1.5rem;">
@@ -263,7 +266,7 @@
                             <input type="date" name="payment_date" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
                         </div>
                         
-                        <button type="submit" style="width: 100%; padding: 0.75rem; background: var(--primary-navy); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Log Payment</button>
+                        <button type="submit" style="width: 100%; padding: 0.75rem; background: var(--primary-navy); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Log Payment</button>
                     </form>
                 </div>
             @endif
@@ -363,7 +366,7 @@
     </div>
 
     <script>
-        // Load the JSON breakdown data passed directly from the Laravel Controller!
+        // --- CALCULATION BREAKDOWN MODAL ENGINE ---
         const breakdowns = @json($breakdowns);
 
         function showBreakdown(type, title) {
@@ -380,11 +383,8 @@
                 modalContent.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 2rem 0;">No calculation data available.</div>';
             } else {
                 for (const [key, value] of Object.entries(data)) {
-                    // Make the final totals bold and dark blue
                     const isTotal = key.includes('Final');
-                    // Make deductions red
                     const isDeduction = key.includes('Less');
-                    
                     const valueColor = isDeduction ? '#dc2626' : (isTotal ? 'var(--primary-navy)' : 'var(--text-main)');
                     
                     modalContent.innerHTML += `
@@ -403,12 +403,49 @@
             document.getElementById('calcModal').style.display = 'none';
         }
         
-        // Close modal if user clicks outside the white box
         window.onclick = function(event) {
             const modal = document.getElementById('calcModal');
             if (event.target == modal) {
                 closeModal();
             }
+        }
+
+        // --- SMART PAYMENT GUIDE ENGINE ---
+        const liveBalances = {
+            'income_tax': {{ max(0, $taxBalance) }},
+            'ssc': {{ max(0, $sscBalance) }},
+            'vat': {{ max(0, $vatBalance) }}
+        };
+
+        const totalLiabilities = {
+            'income_tax': {{ $totalTaxLiability }},
+            'ssc': {{ $sscLiability }},
+            'vat': {{ $vatLiability }}
+        };
+
+        function updateSmartGuide() {
+            const select = document.getElementById('payment_type_select');
+            if(!select) return;
+            
+            const type = select.value;
+            const guideBox = document.getElementById('smartGuideBox');
+            
+            const balance = liveBalances[type].toFixed(2);
+            const total = totalLiabilities[type].toFixed(2);
+            
+            if (type === 'income_tax') {
+                guideBox.innerHTML = `<strong>💡 Income Tax Guide:</strong> Your estimated total liability for the year is €${total}. After prior payments, your remaining balance is <strong>€${balance}</strong>. <br><br><span style="color: #3b82f6; font-size: 0.75rem;"><strong>Schedule:</strong> Provisional Tax is normally paid in installments: 20% by Apr 30, 30% by Aug 31, and 50% by Dec 21.</span>`;
+            } else if (type === 'ssc') {
+                guideBox.innerHTML = `<strong>💡 SSC Guide:</strong> Your estimated total liability for the year is €${total}. After prior payments, your remaining balance is <strong>€${balance}</strong>. <br><br><span style="color: #3b82f6; font-size: 0.75rem;"><strong>Schedule:</strong> Provisional SSC is normally paid in 4-month chunks alongside your Income Tax deadlines.</span>`;
+            } else if (type === 'vat') {
+                guideBox.innerHTML = `<strong>💡 VAT Guide:</strong> You have an outstanding collected VAT balance of <strong>€${balance}</strong>. <br><br><span style="color: #3b82f6; font-size: 0.75rem;"><strong>Schedule:</strong> Standard Article 10 VAT is legally required to be settled quarterly with the VAT department.</span>`;
+            }
+        }
+
+        const paymentTypeSelect = document.getElementById('payment_type_select');
+        if(paymentTypeSelect) {
+            paymentTypeSelect.addEventListener('change', updateSmartGuide);
+            updateSmartGuide(); 
         }
     </script>
 @endsection
