@@ -89,12 +89,27 @@ Route::get('/dashboard', function () {
     // 1. Count Clients
     $clientCount = \App\Models\Client::where('user_id', $userId)->count();
     
-    // 2. Calculate Pending Invoices (Unpaid or Overdue)
-    $pendingInvoicesTotal = \App\Models\Invoice::where('user_id', $userId)
-        ->whereIn('status', ['unpaid', 'overdue'])
-        ->sum('total');
+    // 2. Intelligent AR Math for Dashboard
+    $totalInvoices = \App\Models\Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('total');
+    $totalCredits = \App\Models\Invoice::where('user_id', $userId)->where('type', 'credit_note')->sum('total');
+    $netInvoiced = $totalInvoices - $totalCredits;
+
+    $topLevelTotal = \App\Models\Invoice::where('user_id', $userId)->whereNull('parent_document_id')->sum('total');
+    $totalPipeline = $topLevelTotal - $totalCredits; 
+    $unbilledPipeline = max(0, $totalPipeline - $netInvoiced);
+
+    $invoiceCash = \App\Models\Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))->sum('amount');
+    $rfpCash = \App\Models\Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'rfp'))->sum('amount');
+    $totalCollected = $invoiceCash + $rfpCash;
+
+    $officialDues = max(0, $netInvoiced - max(0, $invoiceCash));
+    $unbilledDues = max(0, $unbilledPipeline - max(0, $rfpCash));
+    $totalDues = $officialDues + $unbilledDues;
     
-    return view('dashboard', compact('clientCount', 'pendingInvoicesTotal'));
+    return view('dashboard', compact(
+        'clientCount', 'totalPipeline', 'netInvoiced', 'unbilledPipeline', 
+        'totalCollected', 'totalDues', 'officialDues', 'unbilledDues'
+    ));
 })->middleware('auth');
 
 // Client Management Routes
