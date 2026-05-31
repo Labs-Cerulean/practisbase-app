@@ -41,7 +41,7 @@
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Issue Date</label>
-                    <input type="date" name="issue_date" value="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="date" name="issue_date" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Due Date</label>

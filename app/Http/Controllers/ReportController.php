@@ -15,7 +15,20 @@ class ReportController extends Controller
     {
         $user = Auth::user();
         
-        $selectedYear = $request->input('year', date('Y'));
+        // --- SMART YEAR BOUNDARIES ---
+        $currentYear = (int) date('Y');
+
+        // Find the absolute earliest year this user has ever recorded data
+        $earliestInvoice = Invoice::where('user_id', $user->id)->orderBy('issue_date', 'asc')->first();
+        $earliestPayment = Payment::where('user_id', $user->id)->orderBy('payment_date', 'asc')->first();
+        
+        $earliestYear = $currentYear;
+        if ($earliestInvoice) $earliestYear = min($earliestYear, (int) date('Y', strtotime($earliestInvoice->issue_date)));
+        if ($earliestPayment) $earliestYear = min($earliestYear, (int) date('Y', strtotime($earliestPayment->payment_date)));
+
+        // Get requested year, but FORCE it within logical boundaries
+        $requestedYear = (int) $request->input('year', $currentYear);
+        $selectedYear = max($earliestYear, min($currentYear, $requestedYear));
         
         $isYearClosed = DB::table('fiscal_years')
             ->where('user_id', $user->id)
@@ -174,7 +187,8 @@ class ReportController extends Controller
         }
 
         return view('reports.index', compact(
-            'user', 'selectedYear', 'isYearClosed', 'uninvoicedRfpCount', 'uninvoicedRfpCash',
+            'user', 'selectedYear', 'currentYear', 'earliestYear', 'isYearClosed', // <-- Added currentYear & earliestYear here!
+            'uninvoicedRfpCount', 'uninvoicedRfpCash',
             'collectedRevenue', 'invoicedRevenue', 'netProfit', 'ta22Liability', 
             'incomeTaxLiability', 'sscLiability', 'vatLiability', 'appliedRatesYear', 'breakdowns'
         ));

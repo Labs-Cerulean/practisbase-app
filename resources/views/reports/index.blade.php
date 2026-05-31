@@ -29,8 +29,17 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
-            <a href="/reports?year={{ $selectedYear - 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&larr; {{ $selectedYear - 1 }}</a>
-            <a href="/reports?year={{ $selectedYear + 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">{{ $selectedYear + 1 }} &rarr;</a>
+            @if($selectedYear > $earliestYear)
+                <a href="/reports?year={{ $selectedYear - 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&larr; {{ $selectedYear - 1 }}</a>
+            @else
+                <span style="padding: 0.5rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #cbd5e1; font-weight: 600; cursor: not-allowed;" title="No fiscal data recorded prior to {{ $earliestYear }}">&larr; {{ $selectedYear - 1 }}</span>
+            @endif
+
+            @if($selectedYear < $currentYear)
+                <a href="/reports?year={{ $selectedYear + 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">{{ $selectedYear + 1 }} &rarr;</a>
+            @else
+                <span style="padding: 0.5rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #cbd5e1; font-weight: 600; cursor: not-allowed;" title="Cannot view future tax years">{{ $selectedYear + 1 }} &rarr;</span>
+            @endif
         </div>
     </div>
 
