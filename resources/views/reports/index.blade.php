@@ -128,23 +128,29 @@
                 @php
                     $threshold = 35000;
                     $percent = min(100, ($invoicedRevenue / $threshold) * 100);
+                    $isOverThreshold = $invoicedRevenue > $threshold;
                 @endphp
                 <div style="margin-bottom: 1rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                         <span style="color: var(--text-muted); font-size: 0.9rem;">Article 11 Threshold Progress</span>
-                        <strong style="color: var(--text-main);">{{ number_format($percent, 1) }}%</strong>
+                        <strong style="color: {{ $isOverThreshold ? '#dc2626' : 'var(--text-main)' }};">{{ number_format($percent, 1) }}%</strong>
                     </div>
                     
                     <div style="width: 100%; background-color: #f1f5f9; border-radius: 9999px; height: 0.75rem; overflow: hidden;">
-                        <div style="background-color: {{ $percent > 90 ? '#ef4444' : ($percent > 75 ? '#f59e0b' : '#10b981') }}; height: 100%; width: {{ $percent }}%;"></div>
+                        <div style="background-color: {{ $isOverThreshold ? '#dc2626' : ($percent > 90 ? '#ef4444' : ($percent > 75 ? '#f59e0b' : '#10b981')) }}; height: 100%; width: {{ $percent }}%;"></div>
                     </div>
                     
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem; text-align: center;">
+                    <div style="font-size: 0.75rem; color: {{ $isOverThreshold ? '#dc2626' : 'var(--text-muted)' }}; margin-top: 0.75rem; text-align: center; font-weight: {{ $isOverThreshold ? '700' : '400' }};">
                         Billed: €{{ number_format($invoicedRevenue, 2) }} / €35,000.00
                     </div>
                 </div>
-                <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
-                    <strong>Action Required:</strong> Submit your annual declaration confirming your revenue remains under the threshold.
+                
+                <div style="border-top: 1px solid {{ $isOverThreshold ? '#fecaca' : 'var(--border-light)' }}; padding-top: 0.75rem; font-size: 0.85rem; color: {{ $isOverThreshold ? '#991b1b' : 'var(--text-muted)' }}; background: {{ $isOverThreshold ? '#fef2f2' : 'transparent' }}; margin: -1.5rem; margin-top: 1rem; padding: 1.5rem; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg);">
+                    @if($isOverThreshold)
+                        <strong>🚨 CRITICAL ACTION REQUIRED:</strong> You have exceeded the €35,000 exempt threshold. By law, you must register for Article 10 (Standard VAT) within 30 days.
+                    @else
+                        <strong>Action Required:</strong> Submit your annual declaration confirming your revenue remains under the threshold.
+                    @endif
                 </div>
             @else
                 <div style="margin-bottom: 1rem; text-align: center; color: #166534; background: #f0fdf4; padding: 1rem; border-radius: var(--radius-md);">
