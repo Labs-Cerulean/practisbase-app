@@ -29,8 +29,8 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
-            <a href="/report?year={{ $selectedYear - 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&larr; {{ $selectedYear - 1 }}</a>
-            <a href="/report?year={{ $selectedYear + 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">{{ $selectedYear + 1 }} &rarr;</a>
+            <a href="/reports?year={{ $selectedYear - 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&larr; {{ $selectedYear - 1 }}</a>
+            <a href="/reports?year={{ $selectedYear + 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">{{ $selectedYear + 1 }} &rarr;</a>
         </div>
     </div>
 
@@ -56,11 +56,11 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
         
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Income Overview</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Income Overview (Accrual)</div>
             
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Official Collected</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($collectedRevenue, 2) }}</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Official Invoiced</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($invoicedRevenue, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
                 <div style="font-size: 0.8rem; color: var(--text-muted);">Estimated Expenses</div>
@@ -69,6 +69,9 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="font-size: 0.8rem; color: var(--text-muted);">Net Taxable Profit</div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: var(--primary-navy);">€{{ number_format($netProfit, 2) }}</div>
+            </div>
+            <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                <strong>Actual Cash Collected:</strong> €{{ number_format($collectedRevenue, 2) }}
             </div>
         </div>
 
@@ -167,7 +170,7 @@
                             }
                         @endphp
                         
-                        <form method="POST" action="/report/close-year" style="margin: 0;" onsubmit="return confirm('{{ $warningMsg }}');">
+                        <form method="POST" action="/reports/close-year" style="margin: 0;" onsubmit="return confirm('{{ $warningMsg }}');">
                             @csrf
                             <input type="hidden" name="year" value="{{ $selectedYear }}">
                             <button type="submit" style="padding: 0.6rem 1.25rem; background: #dc2626; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">

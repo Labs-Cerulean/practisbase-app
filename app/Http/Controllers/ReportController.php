@@ -37,17 +37,7 @@ class ReportController extends Controller
 
         // --- 4. STRICT FISCAL REVENUE ENGINE ---
         
-        // Cash-Basis (Income Tax & SSC): Only Official Cash that hit the bank THIS selected year.
-        $collectedRevenue = Payment::where('user_id', $user->id)
-            ->whereYear('payment_date', $selectedYear)
-            ->whereHas('invoice', function($q) {
-                $q->where('type', 'invoice'); // Crucial: Ignores RFP cash!
-            })
-            ->sum('amount');
-
-        $netProfit = max(0, $collectedRevenue - $user->estimated_expenses);
-
-        // Accrual-Basis (VAT Threshold): Total Billed THIS selected year.
+        // Accrual-Basis: Total Official Revenue Billed THIS selected year.
         $totalInvoiced = Invoice::where('user_id', $user->id)
             ->where('type', 'invoice')
             ->whereYear('issue_date', $selectedYear)
@@ -59,6 +49,17 @@ class ReportController extends Controller
             ->sum('total');
             
         $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
+
+        // Cash-Basis: Kept strictly for the "Cash Collected" metric, NOT used for tax math.
+        $collectedRevenue = Payment::where('user_id', $user->id)
+            ->whereYear('payment_date', $selectedYear)
+            ->whereHas('invoice', function($q) {
+                $q->where('type', 'invoice');
+            })
+            ->sum('amount');
+
+        // --- ACCRUAL PROFIT CALCULATION ---
+        $netProfit = max(0, $invoicedRevenue - $user->estimated_expenses);
 
         // --- 5. FETCH GOVERNMENT BRACKETS ---
         $computationType = 'income_' . $user->tax_computation;
@@ -74,10 +75,11 @@ class ReportController extends Controller
         $sscLiability = 0;
         $vatLiability = 0;
 
-        // --- MATH ENGINE: VAT ---
+        // --- MATH ENGINE: VAT (Accrual Basis) ---
         if ($user->vat_status === 'article_10') {
-            $vatLiability = $collectedRevenue - ($collectedRevenue / 1.18);
-            $netProfit = max(0, ($collectedRevenue / 1.18) - $user->estimated_expenses);
+            $vatLiability = $invoicedRevenue - ($invoicedRevenue / 1.18);
+            // Deduct VAT from the revenue before calculating Income Tax/SSC profit!
+            $netProfit = max(0, ($invoicedRevenue / 1.18) - $user->estimated_expenses);
         }
 
         // --- MATH ENGINE: INCOME TAX ---
@@ -145,12 +147,10 @@ class ReportController extends Controller
         $year = $request->year;
         $user = Auth::user();
 
-        // Security 1: Cannot close current or future years (Mathematically impossible)
+        // Security 1: Cannot close current or future years
         if ($year >= date('Y')) {
             return back()->withErrors(['fiscal_error' => 'You cannot close the current fiscal year until December 31st has passed.']);
         }
-
-        // REMOVED SECURITY 2: We now allow the user to proceed at their own risk if they have uninvoiced RFPs.
 
         // Permanently Lock the Year
         DB::table('fiscal_years')->insertOrIgnore([
