@@ -93,23 +93,43 @@
             
             @if($user->employment_type === 'part_time')
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">TA22 (Part-Time)</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($ta22Liability, 2) }}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                        TA22 (Part-Time)
+                        <button onclick="showBreakdown('ta22', 'TA22 Scheme')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
+                    </div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('ta22', 'TA22 Scheme')" title="View Breakdown">
+                        €{{ number_format($ta22Liability, 2) }}
+                    </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Income Tax (Spillover)</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($incomeTaxLiability, 2) }}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                        Income Tax (Spillover)
+                        <button onclick="showBreakdown('income_tax', 'Spillover Income Tax')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
+                    </div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('income_tax', 'Spillover Income Tax')" title="View Breakdown">
+                        €{{ number_format($incomeTaxLiability, 2) }}
+                    </div>
                 </div>
             @else
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Income Tax</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($incomeTaxLiability, 2) }}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                        Income Tax
+                        <button onclick="showBreakdown('income_tax', 'Income Tax')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
+                    </div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('income_tax', 'Income Tax')" title="View Breakdown">
+                        €{{ number_format($incomeTaxLiability, 2) }}
+                    </div>
                 </div>
             @endif
             
             <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Social Security (SSC)</div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($sscLiability, 2) }}</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                    Social Security (SSC)
+                    <button onclick="showBreakdown('ssc', 'Social Security (SSC)')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
+                </div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('ssc', 'Social Security (SSC)')" title="View Breakdown">
+                    €{{ number_format($sscLiability, 2) }}
+                </div>
             </div>
         </div>
 
@@ -202,4 +222,71 @@
         </div>
     </div>
 
+    <div id="calcModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: white; border-radius: var(--radius-lg); width: 90%; max-width: 500px; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative;">
+            <button onclick="closeModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; transition: 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">&times;</button>
+            
+            <h3 id="modalTitle" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span>🧮</span> <span id="modalTitleText">Calculation Breakdown</span>
+            </h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 1rem;">Here is exactly how this liability was calculated based on your legal tax profile.</p>
+            
+            <div id="modalContent" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                </div>
+            
+            <div style="margin-top: 2rem; text-align: right; border-top: 1px solid var(--border-light); padding-top: 1rem;">
+                <button onclick="closeModal()" style="padding: 0.5rem 1.5rem; background: var(--primary-navy); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Understood</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load the JSON breakdown data passed directly from the Laravel Controller!
+        const breakdowns = @json($breakdowns);
+
+        function showBreakdown(type, title) {
+            const modal = document.getElementById('calcModal');
+            const modalTitleText = document.getElementById('modalTitleText');
+            const modalContent = document.getElementById('modalContent');
+
+            modalTitleText.innerText = title + ' Calculation';
+            modalContent.innerHTML = '';
+
+            const data = breakdowns[type];
+            
+            if (!data) {
+                modalContent.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 2rem 0;">No calculation data available.</div>';
+            } else {
+                for (const [key, value] of Object.entries(data)) {
+                    // Make the final totals bold and dark blue
+                    const isTotal = key.includes('Final');
+                    // Make deductions red
+                    const isDeduction = key.includes('Less');
+                    
+                    const valueColor = isDeduction ? '#dc2626' : (isTotal ? 'var(--primary-navy)' : 'var(--text-main)');
+                    
+                    modalContent.innerHTML += `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 0.5rem; border-bottom: ${isTotal ? 'none' : '1px dashed #e2e8f0'}; font-weight: ${isTotal ? '700' : '400'}; margin-top: ${isTotal ? '0.5rem' : '0'};">
+                            <span style="color: ${isTotal ? 'var(--primary-navy)' : 'var(--text-muted)'}; font-size: ${isTotal ? '0.95rem' : '0.85rem'}; padding-right: 1rem;">${key}</span>
+                            <span style="color: ${valueColor}; font-size: ${isTotal ? '1.1rem' : '0.9rem'}; text-align: right;">${value}</span>
+                        </div>
+                    `;
+                }
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('calcModal').style.display = 'none';
+        }
+        
+        // Close modal if user clicks outside the white box
+        window.onclick = function(event) {
+            const modal = document.getElementById('calcModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
 @endsection
