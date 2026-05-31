@@ -50,7 +50,7 @@ class ReportController extends Controller
             
         $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
 
-        // Cash-Basis: Kept strictly for the "Cash Collected" metric, NOT used for tax math.
+        // Cash-Basis: Kept strictly for the "Cash Collected" metric
         $collectedRevenue = Payment::where('user_id', $user->id)
             ->whereYear('payment_date', $selectedYear)
             ->whereHas('invoice', function($q) {
@@ -61,13 +61,20 @@ class ReportController extends Controller
         // --- ACCRUAL PROFIT CALCULATION ---
         $netProfit = max(0, $invoicedRevenue - $user->estimated_expenses);
 
-        // --- 5. FETCH GOVERNMENT BRACKETS ---
-        $computationType = 'income_' . $user->tax_computation;
+        // --- 5. FETCH GOVERNMENT BRACKETS (WITH SAFE FALLBACKS) ---
+        // Fallback to 'single' if user skipped onboarding
+        $compType = $user->tax_computation ?: 'single'; 
+        $computationType = 'income_' . $compType;
         
-        $taxBrackets = TaxRate::where('year', $selectedYear)->where('type', $computationType)->first()?->rates_json ?? [];
-        $ta22Rules = TaxRate::where('year', $selectedYear)->where('type', 'ta22')->first()?->rates_json ?? [];
-        $sscPtRules = TaxRate::where('year', $selectedYear)->where('type', 'ssc_pt')->first()?->rates_json ?? [];
-        $sscFtRules = TaxRate::where('year', $selectedYear)->where('type', 'ssc_ft')->first()?->rates_json ?? [];
+        // DETECT WHICH YEAR'S RATES WE ARE ACTUALLY USING
+        $exactRateExists = TaxRate::where('type', $computationType)->where('year', $selectedYear)->exists();
+        $appliedRatesYear = $exactRateExists ? $selectedYear : TaxRate::where('type', $computationType)->orderBy('year', 'desc')->value('year');
+
+        // Uses the helper method to fetch rates safely
+        $taxBrackets = $this->getRatesSafely($computationType, $selectedYear);
+        $ta22Rules   = $this->getRatesSafely('ta22', $selectedYear);
+        $sscPtRules  = $this->getRatesSafely('ssc_pt', $selectedYear);
+        $sscFtRules  = $this->getRatesSafely('ssc_ft', $selectedYear);
 
         // --- 6. INITIALIZE LIABILITIES ---
         $incomeTaxLiability = 0;
@@ -78,7 +85,6 @@ class ReportController extends Controller
         // --- MATH ENGINE: VAT (Accrual Basis) ---
         if ($user->vat_status === 'article_10') {
             $vatLiability = $invoicedRevenue - ($invoicedRevenue / 1.18);
-            // Deduct VAT from the revenue before calculating Income Tax/SSC profit!
             $netProfit = max(0, ($invoicedRevenue / 1.18) - $user->estimated_expenses);
         }
 
@@ -112,14 +118,24 @@ class ReportController extends Controller
                 $sscLiability = min($netProfit * $ptRate, $maxCap);
             }
         } else {
-            foreach ($sscFtRules as $bracket) {
-                if ($netProfit >= $bracket['min'] && $netProfit <= ($bracket['max'] + 0.99)) {
-                    if (isset($bracket['weekly_rate']) && $bracket['weekly_rate'] < 1) {
-                         $sscLiability = $netProfit * $bracket['weekly_rate'];
-                    } else {
-                         $sscLiability = $bracket['weekly_rate'] * 52;
+            if (!empty($sscFtRules)) {
+                $matchedBracket = null;
+                foreach ($sscFtRules as $bracket) {
+                    if ($netProfit >= $bracket['min'] && $netProfit <= ($bracket['max'] + 0.99)) {
+                        $matchedBracket = $bracket;
+                        break;
                     }
-                    break;
+                }
+                
+                // Fallback: If profit exceeds the highest defined database bracket, apply the top bracket
+                if (!$matchedBracket) {
+                    $matchedBracket = end($sscFtRules);
+                }
+
+                if (isset($matchedBracket['weekly_rate']) && $matchedBracket['weekly_rate'] < 1) {
+                     $sscLiability = $netProfit * $matchedBracket['weekly_rate'];
+                } else {
+                     $sscLiability = $matchedBracket['weekly_rate'] * 52;
                 }
             }
         }
@@ -136,23 +152,21 @@ class ReportController extends Controller
             'ta22Liability', 
             'incomeTaxLiability', 
             'sscLiability', 
-            'vatLiability'
+            'vatLiability',
+            'appliedRatesYear' // <-- ADD THIS HERE
         ));
     }
 
-    // --- 7. THE YEAR-END CLOSING ENGINE ---
     public function closeYear(Request $request)
     {
         $request->validate(['year' => 'required|integer']);
         $year = $request->year;
         $user = Auth::user();
 
-        // Security 1: Cannot close current or future years
         if ($year >= date('Y')) {
             return back()->withErrors(['fiscal_error' => 'You cannot close the current fiscal year until December 31st has passed.']);
         }
 
-        // Permanently Lock the Year
         DB::table('fiscal_years')->insertOrIgnore([
             'user_id' => $user->id,
             'year' => $year,
@@ -164,15 +178,37 @@ class ReportController extends Controller
         return back()->with('success', "Fiscal Year {$year} has been permanently closed and locked. You may now send this final report to your accountant.");
     }
 
+    // --- HELPER METHODS ---
+
+    /**
+     * Fetches rates for a specific year, gracefully falling back to the most recent year if missing.
+     */
+    private function getRatesSafely($type, $year)
+    {
+        $rate = TaxRate::where('type', $type)->where('year', $year)->first();
+        
+        if (!$rate) {
+            $rate = TaxRate::where('type', $type)->orderBy('year', 'desc')->first();
+        }
+        
+        return $rate?->rates_json ?? [];
+    }
+
+    /**
+     * Calculates tax across brackets, falling back to highest bracket if income exceeds limits.
+     */
     private function calculateProgressiveTax($income, $brackets)
     {
-        $tax = 0;
+        if (empty($brackets)) return 0;
+        
         foreach ($brackets as $bracket) {
             if ($income >= $bracket['min'] && $income <= ($bracket['max'] + 0.99)) {
-                $tax = ($income * $bracket['rate']) - $bracket['subtract'];
-                break;
+                return max(0, ($income * $bracket['rate']) - $bracket['subtract']);
             }
         }
-        return max(0, $tax);
+        
+        // Fallback: If income is higher than the max of the highest bracket
+        $lastBracket = end($brackets);
+        return max(0, ($income * $lastBracket['rate']) - $lastBracket['subtract']);
     }
 }

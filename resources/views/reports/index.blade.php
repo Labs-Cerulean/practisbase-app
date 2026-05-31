@@ -53,6 +53,16 @@
         </div>
     @endif
 
+    @if($appliedRatesYear && $appliedRatesYear != $selectedYear)
+        <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
+            <div style="font-size: 1.5rem;">📊</div>
+            <div>
+                <h3 style="color: #854d0e; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem;">Estimated Tax Rates Applied</h3>
+                <p style="color: #a16207; font-size: 0.85rem; margin: 0;">The official government tax and SSC brackets for <strong>{{ $selectedYear }}</strong> have not been published/loaded into the system yet. Your liabilities are currently being estimated using the <strong>{{ $appliedRatesYear }}</strong> rates.</p>
+            </div>
+        </div>
+    @endif
+
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
         
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
@@ -76,7 +86,10 @@
         </div>
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Tax Liabilities</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
+                <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase;">Tax Liabilities</div>
+                <span style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">USING {{ $appliedRatesYear }} RATES</span>
+            </div>
             
             @if($user->employment_type === 'part_time')
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
