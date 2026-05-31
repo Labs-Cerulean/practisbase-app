@@ -1,118 +1,112 @@
 @extends('layouts.app')
 
-@section('page_title', 'Live Fiscal Report')
+@section('page_title', 'Fiscal Report')
 
 @section('content')
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+
+    @if(session('success'))
+        <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px solid #a7f3d0;">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if($errors->has('fiscal_error'))
+        <div style="background: #fef2f2; color: #991b1b; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px solid #fecaca; font-weight: 600;">
+            {{ $errors->first('fiscal_error') }}
+        </div>
+    @endif
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <div>
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">Live Fiscal Report ({{ $currentYear }})</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">Real-time estimates of your tax, VAT, and SSC liabilities.</p>
+            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">
+                Fiscal Report: {{ $selectedYear }}
+                @if($isYearClosed)
+                    <span style="background: #e2e8f0; color: #475569; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; vertical-align: middle; margin-left: 0.5rem;">🔒 CLOSED & FINAL</span>
+                @else
+                    <span style="background: #fef08a; color: #854d0e; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; vertical-align: middle; margin-left: 0.5rem;">📝 LIVE DRAFT</span>
+                @endif
+            </h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">Review your strict fiscal tax and VAT liabilities.</p>
         </div>
-        <a href="/settings" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">
-            ⚙️ Edit Tax Settings
-        </a>
-    </div>
-
-    <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 2rem; font-size: 0.9rem; line-height: 1.5;">
-        <strong>Disclaimer:</strong> This report provides a live estimate based strictly on your PractisBase ledger and saved profile settings. It does not account for external personal wealth factors (e.g., rental income, dividends, specific allowances). Always consult your accountant for final CFR submissions.
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">YTD Collected Revenue</div>
-            <div style="font-size: 2rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($collectedRevenue, 2) }}</div>
-            @if($user->vat_status === 'article_10')
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Includes 18% VAT</div>
-            @endif
-        </div>
-
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">Estimated Net Profit</div>
-            <div style="font-size: 2rem; font-weight: 700; color: #059669;">€{{ number_format($netProfit, 2) }}</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">After €{{ number_format($user->estimated_expenses, 2) }} estimated expenses</div>
+        
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="/report?year={{ $selectedYear - 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&larr; {{ $selectedYear - 1 }}</a>
+            <a href="/report?year={{ $selectedYear + 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">{{ $selectedYear + 1 }} &rarr;</a>
         </div>
     </div>
 
-    <h2 style="font-size: 1.25rem; color: var(--primary-navy); border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem; margin-bottom: 1.5rem;">Estimated Liabilities</h2>
+    @if(!$isYearClosed && $uninvoicedRfpCount > 0)
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1);">
+            <div style="font-size: 1.75rem;">⚠️</div>
+            <div>
+                <h3 style="color: #991b1b; font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">Disclaimer: Uninvoiced Cash Detected</h3>
+                <p style="color: #b91c1c; font-size: 0.85rem; margin: 0; margin-bottom: 0.75rem;">You have <strong>{{ $uninvoicedRfpCount }} Pro-Forma RFP(s)</strong> holding <strong>€{{ number_format($uninvoicedRfpCash, 2) }}</strong> in cash. Because these are not converted into Official Tax Invoices, this cash is completely excluded from this Fiscal Report. PractisBase strongly advises converting these prior to closing your year. If you proceed, you accept full liability for any tax reporting discrepancies.</p>
+                <a href="/ledger?type=rfp&status=open" style="display: inline-block; background: #ef4444; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">Review Uninvoiced RFPs &rarr;</a>
+            </div>
+        </div>
+    @else
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
+            <div style="font-size: 1.5rem;">💡</div>
+            <div>
+                <h3 style="color: #1e3a8a; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem;">Strict Fiscal Mode Active</h3>
+                <p style="color: #1e40af; font-size: 0.85rem; margin: 0;">This report calculates your tax liabilities using strictly <strong>Official Tax Invoices</strong> and their associated payments. Pro-Forma RFPs are safely excluded until officially converted.</p>
+            </div>
+        </div>
+    @endif
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
         
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm); border-top: 4px solid var(--primary-cerulean);">
-            <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-navy); font-size: 1.1rem;">Income Tax</h3>
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Income Overview</div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Official Collected</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($collectedRevenue, 2) }}</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Estimated Expenses</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #ef4444;">-€{{ number_format($user->estimated_expenses, 2) }}</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Net Taxable Profit</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: var(--primary-navy);">€{{ number_format($netProfit, 2) }}</div>
+            </div>
+        </div>
+
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Tax Liabilities</div>
             
             @if($user->employment_type === 'part_time')
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">TA22 Flat Tax (10%)</span>
-                        <strong style="color: var(--text-main);">€{{ number_format($ta22Liability, 2) }}</strong>
-                    </div>
-                    @if($incomeTaxLiability > 0)
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">Progressive Tax (Spillover)</span>
-                        <strong style="color: var(--text-main);">€{{ number_format($incomeTaxLiability, 2) }}</strong>
-                    </div>
-                    @endif
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">TA22 (Part-Time)</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($ta22Liability, 2) }}</div>
                 </div>
-                <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 1.1rem;">
-                    <strong>Total Income Tax:</strong>
-                    <strong style="color: #dc2626;">€{{ number_format($ta22Liability + $incomeTaxLiability, 2) }}</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Income Tax (Spillover)</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($incomeTaxLiability, 2) }}</div>
                 </div>
             @else
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">Progressive Tax Rates</span>
-                        <strong style="color: var(--text-main);">€{{ number_format($incomeTaxLiability, 2) }}</strong>
-                    </div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Based on {{ ucfirst($user->tax_computation) }} computation with €{{ number_format($user->primary_salary, 2) }} base salary.</div>
-                </div>
-                <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 1.1rem;">
-                    <strong>Total Due:</strong>
-                    <strong style="color: #dc2626;">€{{ number_format($incomeTaxLiability, 2) }}</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Income Tax</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($incomeTaxLiability, 2) }}</div>
                 </div>
             @endif
-        </div>
-
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm); border-top: 4px solid #8b5cf6;">
-            <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-navy); font-size: 1.1rem;">Social Security (SSC)</h3>
             
-            @if($user->employment_type === 'part_time' && $user->max_ssc_paid)
-                <div style="background: #f0fdf4; color: #166534; padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.9rem; text-align: center; margin-bottom: 1rem;">
-                    <strong>Exempt</strong><br>You indicated maximum SSC is paid by your primary employer.
-                </div>
-                <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 1.1rem;">
-                    <strong>Total SSC:</strong>
-                    <strong style="color: #166534;">€0.00</strong>
-                </div>
-            @else
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">
-                            {{ $user->employment_type === 'part_time' ? '15% Pro-rata' : 'Class 2 Contributions' }}
-                        </span>
-                        <strong style="color: var(--text-main);">€{{ number_format($sscLiability, 2) }}</strong>
-                    </div>
-                </div>
-                <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 1.1rem;">
-                    <strong>Total SSC:</strong>
-                    <strong style="color: #dc2626;">€{{ number_format($sscLiability, 2) }}</strong>
-                </div>
-            @endif
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Social Security (SSC)</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($sscLiability, 2) }}</div>
+            </div>
         </div>
 
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.5rem; box-shadow: var(--shadow-sm); border-top: 4px solid #f59e0b;">
-            <h3 style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-navy); font-size: 1.1rem;">VAT Tracking</h3>
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">VAT Tracking</div>
             
             @if($user->vat_status === 'article_10')
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">Standard VAT (18%)</span>
-                        <strong style="color: var(--text-main);">€{{ number_format($vatLiability, 2) }}</strong>
-                    </div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Payable quarterly. You may deduct input VAT on your final return.</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">VAT Collected</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($vatLiability, 2) }}</div>
                 </div>
-                <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; display: flex; justify-content: space-between; font-size: 1.1rem;">
-                    <strong>Est. VAT Due:</strong>
-                    <strong style="color: #dc2626;">€{{ number_format($vatLiability, 2) }}</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
+                    Based on 18% standard rate. Adjust manually if using 5% or 7% rates.
                 </div>
             @elseif($user->vat_status === 'article_11')
                 @php
@@ -143,5 +137,47 @@
                 </div>
             @endif
         </div>
+
     </div>
+
+    <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-light);">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; background: {{ $isYearClosed ? '#f8fafc' : 'white' }}; border: 1px solid {{ $isYearClosed ? '#e2e8f0' : '#cbd5e1' }}; padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+            <div style="flex: 1; min-width: 300px;">
+                <h3 style="font-size: 1.1rem; color: var(--primary-navy); margin-bottom: 0.25rem; font-weight: 700;">{{ $isYearClosed ? 'Final Fiscal Report' : 'Close Fiscal Year' }}</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; line-height: 1.5;">
+                    {{ $isYearClosed ? "This year is permanently locked. You can safely send this official report to your accountant." : "Lock this year to generate your official, unchangeable report for your accountant. Once locked, no documents or payments can be backdated to " . $selectedYear . "." }}
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <button style="padding: 0.6rem 1.25rem; background: white; border: 1px solid var(--border-light); color: var(--primary-navy); border-radius: 6px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    Download {{ $isYearClosed ? 'Final' : 'Draft' }} PDF
+                </button>
+                
+                @if(!$isYearClosed)
+                    @if($selectedYear >= date('Y'))
+                        <button disabled style="padding: 0.6rem 1.25rem; background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; border-radius: 6px; font-weight: 600; cursor: not-allowed;" title="You cannot close a year until it has ended.">
+                            Year Ends Dec 31
+                        </button>
+                    @else
+                        @php
+                            $warningMsg = "Are you absolutely sure? This will permanently lock {$selectedYear}. You will not be able to issue invoices or backdate payments to this year.";
+                            if ($uninvoicedRfpCount > 0) {
+                                $warningMsg = "LIABILITY WARNING:\n\nYou have €" . number_format($uninvoicedRfpCash, 2) . " sitting in unofficial RFPs.\n\nThis money will NOT be included in your official Fiscal Report. PractisBase accepts no liability for resulting tax discrepancies. \n\nAre you absolutely sure you want to proceed and lock {$selectedYear}?";
+                            }
+                        @endphp
+                        
+                        <form method="POST" action="/report/close-year" style="margin: 0;" onsubmit="return confirm('{{ $warningMsg }}');">
+                            @csrf
+                            <input type="hidden" name="year" value="{{ $selectedYear }}">
+                            <button type="submit" style="padding: 0.6rem 1.25rem; background: #dc2626; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); transition: 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+                                🔒 Lock {{ $selectedYear }}
+                            </button>
+                        </form>
+                    @endif
+                @endif
+            </div>
+        </div>
+    </div>
+
 @endsection

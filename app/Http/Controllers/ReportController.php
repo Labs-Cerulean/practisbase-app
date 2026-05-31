@@ -3,38 +3,72 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\TaxRate;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        $currentYear = date('Y');
+        
+        // 1. DYNAMIC YEAR TRAVERSAL
+        $selectedYear = $request->input('year', date('Y'));
+        
+        // 2. CHECK IF YEAR IS LOCKED
+        $isYearClosed = DB::table('fiscal_years')
+            ->where('user_id', $user->id)
+            ->where('year', $selectedYear)
+            ->exists();
 
-        // 1. Get Financial Totals
-        // Cash-Basis: Only what has actually hit the bank account
-        $collectedRevenue = Invoice::where('user_id', $user->id)
-            ->where('type', 'invoice')
-            ->whereYear('issue_date', $currentYear)
-            ->sum('amount_paid');
+        // 3. HUNT FOR HIDDEN CASH (Paid but Uninvoiced RFPs)
+        $uninvoicedRfps = Invoice::where('user_id', $user->id)
+            ->where('type', 'rfp')
+            ->where('amount_paid', '>', 0)
+            ->where('status', '!=', 'converted')
+            ->whereYear('issue_date', '<=', $selectedYear)
+            ->get();
+            
+        $uninvoicedRfpCount = $uninvoicedRfps->count();
+        $uninvoicedRfpCash = $uninvoicedRfps->sum('amount_paid');
+
+        // --- 4. STRICT FISCAL REVENUE ENGINE ---
+        
+        // Cash-Basis (Income Tax & SSC): Only Official Cash that hit the bank THIS selected year.
+        $collectedRevenue = Payment::where('user_id', $user->id)
+            ->whereYear('payment_date', $selectedYear)
+            ->whereHas('invoice', function($q) {
+                $q->where('type', 'invoice'); // Crucial: Ignores RFP cash!
+            })
+            ->sum('amount');
 
         $netProfit = max(0, $collectedRevenue - $user->estimated_expenses);
 
-        // Accrual-Basis: Total Billed (Needed strictly for VAT Article 11 Compliance)
-        $invoicedRevenue = Invoice::where('user_id', $user->id)->where('type', 'invoice')->whereYear('issue_date', $currentYear)->sum('total') 
-                         - Invoice::where('user_id', $user->id)->where('type', 'credit_note')->whereYear('issue_date', $currentYear)->sum('total');
+        // Accrual-Basis (VAT Threshold): Total Billed THIS selected year.
+        $totalInvoiced = Invoice::where('user_id', $user->id)
+            ->where('type', 'invoice')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('total');
+            
+        $totalCredited = Invoice::where('user_id', $user->id)
+            ->where('type', 'credit_note')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('total');
+            
+        $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
 
-        // 2. Fetch the Government Rules safely (Restoring the array casts)
+        // --- 5. FETCH GOVERNMENT BRACKETS ---
         $computationType = 'income_' . $user->tax_computation;
         
-        $taxBrackets = TaxRate::where('year', $currentYear)->where('type', $computationType)->first()?->rates_json ?? [];
-        $ta22Rules = TaxRate::where('year', $currentYear)->where('type', 'ta22')->first()?->rates_json ?? [];
-        $sscPtRules = TaxRate::where('year', $currentYear)->where('type', 'ssc_pt')->first()?->rates_json ?? [];
-        $sscFtRules = TaxRate::where('year', $currentYear)->where('type', 'ssc_ft')->first()?->rates_json ?? [];
+        $taxBrackets = TaxRate::where('year', $selectedYear)->where('type', $computationType)->first()?->rates_json ?? [];
+        $ta22Rules = TaxRate::where('year', $selectedYear)->where('type', 'ta22')->first()?->rates_json ?? [];
+        $sscPtRules = TaxRate::where('year', $selectedYear)->where('type', 'ssc_pt')->first()?->rates_json ?? [];
+        $sscFtRules = TaxRate::where('year', $selectedYear)->where('type', 'ssc_ft')->first()?->rates_json ?? [];
 
-        // 3. Initialize Liabilities
+        // --- 6. INITIALIZE LIABILITIES ---
         $incomeTaxLiability = 0;
         $ta22Liability = 0;
         $sscLiability = 0;
@@ -77,7 +111,6 @@ class ReportController extends Controller
             }
         } else {
             foreach ($sscFtRules as $bracket) {
-                // FIXED: Adding 0.99 to max to catch decimal net profits!
                 if ($netProfit >= $bracket['min'] && $netProfit <= ($bracket['max'] + 0.99)) {
                     if (isset($bracket['weekly_rate']) && $bracket['weekly_rate'] < 1) {
                          $sscLiability = $netProfit * $bracket['weekly_rate'];
@@ -91,15 +124,44 @@ class ReportController extends Controller
 
         return view('reports.index', compact(
             'user', 
-            'currentYear', 
+            'selectedYear', 
+            'isYearClosed',
+            'uninvoicedRfpCount',
+            'uninvoicedRfpCash',
             'collectedRevenue', 
-            'invoicedRevenue', // NEW: Sent to the view for VAT limits
+            'invoicedRevenue', 
             'netProfit', 
             'ta22Liability', 
             'incomeTaxLiability', 
             'sscLiability', 
             'vatLiability'
         ));
+    }
+
+    // --- 7. THE YEAR-END CLOSING ENGINE ---
+    public function closeYear(Request $request)
+    {
+        $request->validate(['year' => 'required|integer']);
+        $year = $request->year;
+        $user = Auth::user();
+
+        // Security 1: Cannot close current or future years (Mathematically impossible)
+        if ($year >= date('Y')) {
+            return back()->withErrors(['fiscal_error' => 'You cannot close the current fiscal year until December 31st has passed.']);
+        }
+
+        // REMOVED SECURITY 2: We now allow the user to proceed at their own risk if they have uninvoiced RFPs.
+
+        // Permanently Lock the Year
+        DB::table('fiscal_years')->insertOrIgnore([
+            'user_id' => $user->id,
+            'year' => $year,
+            'closed_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', "Fiscal Year {$year} has been permanently closed and locked. You may now send this final report to your accountant.");
     }
 
     private function calculateProgressiveTax($income, $brackets)

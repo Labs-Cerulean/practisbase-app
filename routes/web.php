@@ -125,6 +125,7 @@ Route::patch('/ledger/payments/{payment}/transfer', [\App\Http\Controllers\Invoi
 Route::post('/ledger/{document}/refund', [\App\Http\Controllers\InvoiceController::class, 'processRefund'])->middleware('auth');
 
 Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('auth');
+Route::post('/report/close-year', [\App\Http\Controllers\ReportController::class, 'closeYear'])->middleware('auth');
 
 /*
 Route::get('/load-tax-data', function () {
