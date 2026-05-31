@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\TaxRate;
+use App\Models\TaxPayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,6 @@ class ReportController extends Controller
         // --- SMART YEAR BOUNDARIES ---
         $currentYear = (int) date('Y');
 
-        // Find the absolute earliest year this user has ever recorded data
         $earliestInvoice = Invoice::where('user_id', $user->id)->orderBy('issue_date', 'asc')->first();
         $earliestPayment = Payment::where('user_id', $user->id)->orderBy('payment_date', 'asc')->first();
         
@@ -26,7 +26,6 @@ class ReportController extends Controller
         if ($earliestInvoice) $earliestYear = min($earliestYear, (int) date('Y', strtotime($earliestInvoice->issue_date)));
         if ($earliestPayment) $earliestYear = min($earliestYear, (int) date('Y', strtotime($earliestPayment->payment_date)));
 
-        // Get requested year, but FORCE it within logical boundaries
         $requestedYear = (int) $request->input('year', $currentYear);
         $selectedYear = max($earliestYear, min($currentYear, $requestedYear));
         
@@ -46,11 +45,23 @@ class ReportController extends Controller
         $uninvoicedRfpCash = $uninvoicedRfps->sum('amount_paid');
 
         // --- ACCRUAL FISCAL REVENUE ENGINE ---
-        $totalInvoiced = Invoice::where('user_id', $user->id)->where('type', 'invoice')->whereYear('issue_date', $selectedYear)->sum('total');
-        $totalCredited = Invoice::where('user_id', $user->id)->where('type', 'credit_note')->whereYear('issue_date', $selectedYear)->sum('total');
+        $totalInvoiced = Invoice::where('user_id', $user->id)
+            ->where('type', 'invoice')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('total');
+            
+        $totalCredited = Invoice::where('user_id', $user->id)
+            ->where('type', 'credit_note')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('total');
+            
         $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
 
-        $collectedRevenue = Payment::where('user_id', $user->id)->whereYear('payment_date', $selectedYear)->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))->sum('amount');
+        $collectedRevenue = Payment::where('user_id', $user->id)
+            ->whereYear('payment_date', $selectedYear)
+            ->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))
+            ->sum('amount');
+            
         $netProfit = max(0, $invoicedRevenue - $user->estimated_expenses);
 
         // --- FETCH GOVERNMENT BRACKETS ---
@@ -167,13 +178,13 @@ class ReportController extends Controller
                 if (!$matchedBracket) $matchedBracket = end($sscFtRules);
 
                 if (isset($matchedBracket['weekly_rate']) && $matchedBracket['weekly_rate'] < 1) {
-                     $sscLiability = $netProfit * $matchedBracket['weekly_rate'];
-                     $calcStr = '€' . number_format($netProfit, 2) . ' × ' . ($matchedBracket['weekly_rate'] * 100) . '%';
-                     $rateStr = ($matchedBracket['weekly_rate'] * 100) . '% of profit';
+                    $sscLiability = $netProfit * $matchedBracket['weekly_rate'];
+                    $calcStr = '€' . number_format($netProfit, 2) . ' × ' . ($matchedBracket['weekly_rate'] * 100) . '%';
+                    $rateStr = ($matchedBracket['weekly_rate'] * 100) . '% of profit';
                 } else {
-                     $sscLiability = ($matchedBracket['weekly_rate'] ?? 0) * 52;
-                     $calcStr = '€' . number_format($matchedBracket['weekly_rate'] ?? 0, 2) . ' × 52 weeks';
-                     $rateStr = '€' . number_format($matchedBracket['weekly_rate'] ?? 0, 2) . ' / week';
+                    $sscLiability = ($matchedBracket['weekly_rate'] ?? 0) * 52;
+                    $calcStr = '€' . number_format($matchedBracket['weekly_rate'] ?? 0, 2) . ' × 52 weeks';
+                    $rateStr = '€' . number_format($matchedBracket['weekly_rate'] ?? 0, 2) . ' / week';
                 }
 
                 $breakdowns['ssc'] = [
@@ -186,14 +197,68 @@ class ReportController extends Controller
             }
         }
 
+        // --- FETCH TAX PAYMENTS ---
+        $taxPayments = TaxPayment::where('user_id', $user->id)
+            ->where('year', $selectedYear)
+            ->orderBy('payment_date', 'desc')
+            ->get();
+        
+        $ptTaxPaid = $taxPayments->where('payment_type', 'income_tax')->sum('amount');
+        $ptSscPaid = $taxPayments->where('payment_type', 'ssc')->sum('amount');
+        $vatPaid = $taxPayments->where('payment_type', 'vat')->sum('amount');
+
+        $totalTaxLiability = $incomeTaxLiability + $ta22Liability;
+        $taxBalance = $totalTaxLiability - $ptTaxPaid;
+        $sscBalance = $sscLiability - $ptSscPaid;
+        $vatBalance = $vatLiability - $vatPaid;
+
         return view('reports.index', compact(
-            'user', 'selectedYear', 'currentYear', 'earliestYear', 'isYearClosed', // <-- Added currentYear & earliestYear here!
-            'uninvoicedRfpCount', 'uninvoicedRfpCash',
+            'user', 'selectedYear', 'currentYear', 'earliestYear', 'isYearClosed', 'uninvoicedRfpCount', 'uninvoicedRfpCash',
             'collectedRevenue', 'invoicedRevenue', 'netProfit', 'ta22Liability', 
-            'incomeTaxLiability', 'sscLiability', 'vatLiability', 'appliedRatesYear', 'breakdowns'
+            'incomeTaxLiability', 'sscLiability', 'vatLiability', 'appliedRatesYear', 'breakdowns',
+            'taxPayments', 'ptTaxPaid', 'ptSscPaid', 'vatPaid', 'totalTaxLiability', 'taxBalance', 'sscBalance', 'vatBalance'
         ));
     }
 
+    // --- SAVE TAX PAYMENT ---
+    public function storeTaxPayment(Request $request)
+    {
+        $request->validate([
+            'year' => 'required|integer',
+            'payment_type' => 'required|in:income_tax,ssc,vat',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_date' => 'required|date|before_or_equal:today',
+        ]);
+
+        if (DB::table('fiscal_years')->where('user_id', Auth::id())->where('year', $request->year)->exists()) {
+            return back()->withErrors(['fiscal_error' => 'Cannot modify payments for a closed fiscal year.']);
+        }
+
+        TaxPayment::create([
+            'user_id' => Auth::id(),
+            'year' => $request->year,
+            'payment_type' => $request->payment_type,
+            'amount' => $request->amount,
+            'payment_date' => $request->payment_date,
+        ]);
+
+        return back()->with('success', 'Tax payment logged successfully.');
+    }
+
+    // --- DELETE TAX PAYMENT ---
+    public function destroyTaxPayment($id)
+    {
+        $payment = TaxPayment::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        
+        if (DB::table('fiscal_years')->where('user_id', Auth::id())->where('year', $payment->year)->exists()) {
+            return back()->withErrors(['fiscal_error' => 'Cannot modify payments for a closed fiscal year.']);
+        }
+
+        $payment->delete();
+        return back()->with('success', 'Tax payment removed.');
+    }
+
+    // --- THE YEAR-END CLOSING ENGINE ---
     public function closeYear(Request $request)
     {
         $request->validate(['year' => 'required|integer']);
@@ -205,21 +270,29 @@ class ReportController extends Controller
         }
 
         DB::table('fiscal_years')->insertOrIgnore([
-            'user_id' => $user->id, 'year' => $year,
-            'closed_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+            'user_id' => $user->id,
+            'year' => $year,
+            'closed_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return back()->with('success', "Fiscal Year {$year} has been permanently closed and locked. You may now send this final report to your accountant.");
     }
 
+    // --- HELPER METHODS ---
+
     private function getRatesSafely($type, $year)
     {
         $rate = TaxRate::where('type', $type)->where('year', $year)->first();
-        if (!$rate) $rate = TaxRate::where('type', $type)->orderBy('year', 'desc')->first();
+        
+        if (!$rate) {
+            $rate = TaxRate::where('type', $type)->orderBy('year', 'desc')->first();
+        }
+        
         return $rate?->rates_json ?? [];
     }
 
-    // NEW: Returns both the calculation AND the bracket used!
     private function calculateProgressiveTaxWithBracket($income, $brackets)
     {
         if (empty($brackets)) return ['tax' => 0, 'bracket' => null];
@@ -232,6 +305,7 @@ class ReportController extends Controller
                 ];
             }
         }
+        
         $lastBracket = end($brackets);
         return [
             'tax' => max(0, ($income * $lastBracket['rate']) - $lastBracket['subtract']),

@@ -96,7 +96,7 @@
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase;">Tax Liabilities</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase;">Tax & SSC Settlement</div>
                 <span style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">USING {{ $appliedRatesYear }} RATES</span>
             </div>
             
@@ -106,16 +106,16 @@
                         TA22 (Part-Time)
                         <button onclick="showBreakdown('ta22', 'TA22 Scheme')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
                     </div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('ta22', 'TA22 Scheme')" title="View Breakdown">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('ta22', 'TA22 Scheme')" title="View Breakdown">
                         €{{ number_format($ta22Liability, 2) }}
                     </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
                         Income Tax (Spillover)
                         <button onclick="showBreakdown('income_tax', 'Spillover Income Tax')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
                     </div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('income_tax', 'Spillover Income Tax')" title="View Breakdown">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('income_tax', 'Spillover Income Tax')" title="View Breakdown">
                         €{{ number_format($incomeTaxLiability, 2) }}
                     </div>
                 </div>
@@ -125,19 +125,48 @@
                         Income Tax
                         <button onclick="showBreakdown('income_tax', 'Income Tax')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
                     </div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('income_tax', 'Income Tax')" title="View Breakdown">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('income_tax', 'Income Tax')" title="View Breakdown">
                         €{{ number_format($incomeTaxLiability, 2) }}
                     </div>
                 </div>
             @endif
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
                     Social Security (SSC)
                     <button onclick="showBreakdown('ssc', 'Social Security (SSC)')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
                 </div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626; cursor: pointer; border-bottom: 1px dotted #dc2626;" onclick="showBreakdown('ssc', 'Social Security (SSC)')" title="View Breakdown">
+                <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('ssc', 'Social Security (SSC)')" title="View Breakdown">
                     €{{ number_format($sscLiability, 2) }}
+                </div>
+            </div>
+
+            <div style="padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Less: PT Tax Paid</div>
+                    <div style="font-size: 0.95rem; font-weight: 600; color: #059669;">-€{{ number_format($ptTaxPaid, 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Less: PT SSC Paid</div>
+                    <div style="font-size: 0.95rem; font-weight: 600; color: #059669;">-€{{ number_format($ptSscPaid, 2) }}</div>
+                </div>
+            </div>
+
+            <div style="background: {{ $taxBalance > 0 || $sscBalance > 0 ? '#fef2f2' : '#f0fdf4' }}; padding: 1rem; border-radius: var(--radius-md); border: 1px solid {{ $taxBalance > 0 || $sscBalance > 0 ? '#fecaca' : '#bbf7d0' }};">
+                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: {{ $taxBalance > 0 || $sscBalance > 0 ? '#991b1b' : '#166534' }}; margin-bottom: 0.5rem;">Final June Settlement</div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main);">Income Tax Balance</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $taxBalance > 0 ? '#dc2626' : ($taxBalance < 0 ? '#059669' : 'var(--text-main)') }};">
+                        {{ $taxBalance < 0 ? 'Refund: ' : '' }}€{{ number_format(abs($taxBalance), 2) }}
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.85rem; color: var(--text-main);">SSC Balance</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $sscBalance > 0 ? '#dc2626' : ($sscBalance < 0 ? '#059669' : 'var(--text-main)') }};">
+                        {{ $sscBalance < 0 ? 'Refund: ' : '' }}€{{ number_format(abs($sscBalance), 2) }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -148,7 +177,17 @@
             @if($user->vat_status === 'article_10')
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">VAT Collected</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">€{{ number_format($vatLiability, 2) }}</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($vatLiability, 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Less: VAT Paid</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #059669;">-€{{ number_format($vatPaid, 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">VAT Balance</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $vatBalance > 0 ? '#dc2626' : ($vatBalance < 0 ? '#059669' : 'var(--text-main)') }};">
+                        {{ $vatBalance < 0 ? 'Refund: ' : '' }}€{{ number_format(abs($vatBalance), 2) }}
+                    </div>
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
                     Based on 18% standard rate. Adjust manually if using 5% or 7% rates.
@@ -188,7 +227,81 @@
                 </div>
             @endif
         </div>
+    </div>
 
+    <div style="margin-top: 3rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <div>
+                <h3 style="margin: 0; color: var(--primary-navy); font-size: 1.1rem;">Government Payment Ledger</h3>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Log your Provisional Tax (PT) or VAT payments here to update your final settlement balance.</p>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; padding: 1.5rem;">
+            @if(!$isYearClosed)
+                <div style="border-right: 1px dashed var(--border-light); padding-right: 2rem;">
+                    <form method="POST" action="/reports/tax-payments">
+                        @csrf
+                        <input type="hidden" name="year" value="{{ $selectedYear }}">
+                        
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">Payment Type</label>
+                            <select name="payment_type" required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                                <option value="income_tax">Provisional Tax (Income)</option>
+                                <option value="ssc">Provisional Tax (SSC)</option>
+                                <option value="vat">VAT Settlement</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">Amount Paid (€)</label>
+                            <input type="number" name="amount" step="0.01" min="0.01" required placeholder="0.00" style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem;">Date Paid</label>
+                            <input type="date" name="payment_date" value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem;">
+                        </div>
+                        
+                        <button type="submit" style="width: 100%; padding: 0.75rem; background: var(--primary-navy); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Log Payment</button>
+                    </form>
+                </div>
+            @endif
+
+            <div>
+                <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 1rem;">{{ $selectedYear }} Payment History</h4>
+                
+                @if($taxPayments->isEmpty())
+                    <div style="padding: 2rem; text-align: center; background: #f8fafc; border-radius: 8px; color: var(--text-muted); font-size: 0.9rem; border: 1px dashed #cbd5e1;">
+                        No government payments logged for this year yet.
+                    </div>
+                @else
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        @foreach($taxPayments as $payment)
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: 6px; background: white;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--primary-navy);">
+                                        {{ $payment->payment_type === 'income_tax' ? 'Provisional Income Tax' : ($payment->payment_type === 'ssc' ? 'Provisional SSC' : 'VAT Payment') }}
+                                    </div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ date('M d, Y', strtotime($payment->payment_date)) }}</div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-weight: 700; color: #059669;">€{{ number_format($payment->amount, 2) }}</span>
+                                    
+                                    @if(!$isYearClosed)
+                                        <form method="POST" action="/reports/tax-payments/{{ $payment->id }}" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this payment record?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" style="background: none; border: none; color: #ef4444; font-size: 1rem; cursor: pointer;" title="Delete Payment">&times;</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
     <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-light);">

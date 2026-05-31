@@ -141,6 +141,8 @@ Route::post('/ledger/{document}/refund', [\App\Http\Controllers\InvoiceControlle
 
 Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('auth');
 Route::post('/reports/close-year', [\App\Http\Controllers\ReportController::class, 'closeYear'])->middleware('auth');
+Route::post('/reports/tax-payments', [\App\Http\Controllers\ReportController::class, 'storeTaxPayment'])->middleware('auth');
+Route::delete('/reports/tax-payments/{id}', [\App\Http\Controllers\ReportController::class, 'destroyTaxPayment'])->middleware('auth');
 
 /*
 Route::get('/load-tax-data', function () {
