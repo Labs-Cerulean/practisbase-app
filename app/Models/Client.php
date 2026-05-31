@@ -37,4 +37,12 @@ class Client extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Relationship: A client has many Invoices/RFPs
+     */
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
 }
