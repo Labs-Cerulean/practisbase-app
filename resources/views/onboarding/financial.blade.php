@@ -65,9 +65,11 @@
             </div>
 
             <div class="form-group" id="vatNumberGroup" style="display: none;">
-                <label>VAT Number</label>
+                <label>VAT Number <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
                 <input type="text" name="vat_number" id="vatNumberInput" class="form-input" placeholder="MT...">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem;">Required for Article 10 and 11 registrations.</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.3rem; line-height: 1.4;">
+                    Skip if you do not have an MT number yet. Add it later in Settings — we only require it when you issue an Article 10 invoice or charge 18% VAT.
+                </div>
             </div>
 
             <button type="submit" class="btn-submit">Continue to Plans &rarr;</button>
@@ -104,7 +106,7 @@
 
             if (vatStatus.value === 'article_10' || vatStatus.value === 'article_11') {
                 vatGroup.style.display = 'block';
-                vatInput.required = true;
+                vatInput.required = false;
             } else {
                 vatGroup.style.display = 'none';
                 vatInput.required = false;

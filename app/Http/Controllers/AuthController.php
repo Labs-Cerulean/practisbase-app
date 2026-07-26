@@ -87,14 +87,20 @@ class AuthController extends Controller
             'date_of_birth' => 'required_if:employment_type,full_time|nullable|date',
             // If medical, we ignore their VAT input and force exempt. Otherwise, they must pick one.
             'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
-            'vat_number' => 'required_if:vat_status,article_10,article_11|nullable|string',
+            // Optional at onboarding — many starters do not have an MT number yet.
+            'vat_number' => 'nullable|string|max:50',
         ]);
+
+        $vatStatus = $isMedical ? 'exempt' : $request->vat_status;
+        $vatNumber = in_array($vatStatus, ['article_10', 'article_11'], true)
+            ? ($request->vat_number ?: null)
+            : null;
 
         $user->update([
             'employment_type' => $request->employment_type,
             'date_of_birth' => $request->employment_type === 'full_time' ? $request->date_of_birth : null,
-            'vat_status' => $isMedical ? 'exempt' : $request->vat_status,
-            'vat_number' => in_array($request->vat_status, ['article_10', 'article_11']) ? $request->vat_number : null,
+            'vat_status' => $vatStatus,
+            'vat_number' => $vatNumber,
         ]);
 
         return redirect('/onboarding/plans');
