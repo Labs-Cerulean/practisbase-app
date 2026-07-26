@@ -17,10 +17,11 @@ When PractisBase is "complete", a Maltese self-employed professional can:
 4. **Self-serve their plan** — Upgrade/downgrade Free → Standard → Pro (Medical / Architect / Engineer) from Settings; Free hard-capped at **5 lifetime clients** (deletes do not free a slot).
 5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Live Fiscal Report, Expenses, Document Storage, Accountant Download, TA22 generation, Pro industry modules.
 6. **Export professional PDFs** — Branded invoices/RFPs/credit notes/receipts (Standard+ custom logo).
-7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals, **practitioner-held recovery code** encryption (Labs cannot decrypt; lost key = unrecoverable; backup requires code + signed acknowledgment); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
+7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals, **practitioner-held recovery code** encryption (Labs cannot decrypt; lost key = unrecoverable; backup requires code + signed acknowledgment), including **encrypted journal attachments** (photos/files); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
 8. **Pay Cerulean Labs** — Real Stripe billing replaces the current DEV bypass.
+9. **Deliver signed paid documents (late)** — Create, sign/stamp, and sell one-time download links (prescriptions first; stamped drawings / certs later) with patient/client payment → single download → fiscal ledger entry.
 
-Everything below is sequenced **backwards from that end state**: foundations first (security, tiers, legal), then core product surface, then monetized features, then Pro verticals, then documents and billing polish.
+Everything below is sequenced **backwards from that end state**: foundations first (security, tiers, legal), then core product surface, then monetized features, then Pro verticals, then documents and billing polish, then paid document commerce.
 
 ---
 
@@ -178,9 +179,45 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 12. **C5 — Client delete:** **Soft-archive** (hide; keep rows for invoice history). Lifetime `clients_created_count` still never decrements.
 13. **VAT number at signup/onboarding:** **Optional.** Collect VAT **status** (Art 10 / 11 / exempt) during fiscal onboarding so ledger math works; do **not** require an MT VAT number to finish signup. Many starters are not VAT-registered yet. Ask for the number in Settings anytime; **hard-require only when it is legally needed to issue** — i.e. Article 10 users creating an invoice or applying 18% VAT (document must show the supplier VAT ID). Article 11 / exempt / medical: number remains optional (show on PDFs if present).
 14. **Forgot password:** Login must offer a forgot-password flow (email reset link). Password reset **never** unlocks the medical vault (already locked in List A). Build in Phase 2 with core auth UX.
+15. **Encrypted journal attachments (photos / files):** Doctors may attach images and documents to clinical journal entries. Attachments are **special-category data** and follow the same vault rules as journal text — never plaintext at rest, never Labs-decryptable, never served without vault unlock. Architecture locked below; ship in **Phase 5** (after Phase 4 vault foundations).
+16. **Signed Document Commerce (Phase 7 — last roadmap phase):** Practitioners create, sign, and stamp professional documents on PractisBase, issue a **one-time-use patient/client payment link**, collect payment, then release a **single download**. First vertical: **medical prescriptions**. Same rails later for architects (stamped drawings / declarations) and engineers (certificates). Depends on Phase 5 PDFs + Phase 6 Stripe. Do **not** start before launch billing is real.
 
-### ROADMAP STATUS: LOCKED — Phase 0–1 shipped; revisions #13–14 applied
-Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order (Phase 2 next).
+### Encrypted journal attachments — how we tackle it (decision #15)
+
+**Problem:** A clinical photo or PDF in R2 without encryption would break the practitioner-held vault promise (Labs or a bucket leak could read health images).
+
+**Approach (server-side encrypt with vault DEK — same trust model as journal ciphertext):**
+
+1. **Upload only while vault unlocked.** Controller refuses attachment writes if session DEK is absent.
+2. **Encrypt file bytes with the vault DEK** (libsodium secretbox / same helper family as clinical fields). Prefer chunked encryption for larger files; store nonce + ciphertext only.
+3. **Store ciphertext on private R2** via `TenantStorage` under a medical path, e.g. `medical/{user_id}/vault_{vault_id}/attachments/{uuid}.bin`. Bucket stays private; no public object URLs.
+4. **DB metadata row** (scoped `user_id` + opaque patient/entry ids): encrypted original filename + mime (or encrypt as one JSON blob), byte size, ciphertext storage key, content hash of ciphertext, created_at. Never store plaintext filename in searchable cleartext if it can contain clinical clues (prefer encrypted).
+5. **Download / view:** Auth + vault unlock → decrypt in memory / stream → response. No long-lived plaintext cache on disk. Optional in-session thumbnail only (do not persist plaintext thumbs).
+6. **Allowlist + limits:** e.g. `image/jpeg`, `image/png`, `image/webp`, `application/pdf`; hard max size (e.g. 10–15 MB). Reject executables and exotic types.
+7. **Weekly backup / new vault restore:** Attachment ciphertext must be included in the medical backup pack (still encrypted under the vault key, or re-wrapped for the export format). New-vault restore re-encrypts under the new DEK like journal rows.
+8. **Tier lock:** On leave `pro-med`, attachment ciphertext retained locked with the vault — same as journals. No plaintext export on downgrade.
+9. **Not the same as Standard Document Storage:** Expense receipts / logos / Arch DMS use normal account auth (decision C3). Only **Pro Medical journal attachments** use the vault DEK.
+
+**Explicit non-goals for v1:** Client-side-only encryption in the browser; end-to-end patient-facing photo upload portals; OCR of attachment contents into cleartext search.
+
+### Signed Document Commerce — Phase 7 shape (decision #16)
+
+**Happy path (prescriptions):**
+
+1. Doctor (vault unlocked) creates a prescription from a patient/journal context.
+2. System generates a branded PDF; doctor **signs and stamps** (reuse Document Stamper patterns / warrant overlay).
+3. Doctor sets a fee (or €0 free issue) and creates a **delivery link** — high-entropy one-time token, expiry, optional max views = 1 after payment.
+4. Patient opens link (no PractisBase account required): sees practitioner name, document type, amount, pays via **Stripe Checkout** (Connect or destination charge so **the doctor is paid**, not Labs).
+5. On `checkout.session.completed`: mark token **paid**; allow **exactly one** PDF download (or short download window then burn). Unpaid / expired / already-used → dead link.
+6. **Fiscal integrity:** Successful patient payment must land in the doctor’s PractisBase ledger (invoice + payment, or equivalent income document) so VAT/income tax math stays honest. RFP rules still apply if they issue a pro-forma first — official fiscal weight only on invoice.
+7. **Clinical privacy:** Public link page must **not** expose diagnoses, full journal, or patient identifiers beyond what the Rx PDF itself needs. Prefer opaque token; avoid putting patient name in the URL.
+8. **Storage:** Paid PDF ciphertext or access-controlled private object; never a permanent public S3/R2 URL. After burn, further GETs 410/404.
+9. **Extensibility:** Same `document_deliveries` rails for Arch stamped packs and Eng certificates — document type enum, profession-gated templates, shared payment + one-time download machinery.
+
+**Dependencies:** Phase 4 vault + stamper foundations; Phase 5 Rx/PDF generation; Phase 6 real Stripe + webhooks; legal review (telemedicine / Rx issuance rules in Malta — product is a tool, not a substitute for professional duty).
+
+### ROADMAP STATUS: LOCKED — Phase 0–3 shipped; revisions #13–16 applied
+Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order (Phase 4 foundations next; Phase 7 last).
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
@@ -398,12 +435,14 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer Certification Generator.
 * Domain rules: BCA Method Statements (Arch); certification photo + expiry (Eng). Clarify EMS/BMS template content with domain expert before locking schemas.
 
-### Phase 5: Document Generation & PDF Export
-*Outcome: Every official document is downloadable and brandable.*
+### Phase 5: Document Generation, PDF Export & Vault Attachments
+*Outcome: Every official document is downloadable and brandable; medical journals can hold encrypted photos/files.*
 
 * PDF engine already partially present (DomPDF in ledger) — harden templates for Official Invoice, RFP, Credit Note, Payment Receipt.
 * Standard+ injects logo/branding; Free uses PractisBase-safe defaults + disclaimer footer.
 * Medical PDFs that include clinical content (Rx, referrals) only generate after vault unlock; never cache plaintext clinical PDFs in world-readable storage.
+* **Encrypted journal attachments (decision #15):** upload/encrypt/store/download per architecture above; include in weekly medical backup; MIME allowlist + size caps; IDOR via `user_id` + vault session.
+* Prescription **authoring + signed PDF** (doctor-side) lives here; **paid one-time patient links** wait for Phase 7.
 
 ### Phase 6: Billing & Launch Polish (end-game ops)
 *Outcome: Real money, real legal posture, production confidence.*
@@ -416,6 +455,18 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Disclaimers: Fiscal Report/PDFs ≠ certified accountant advice; Medical ≠ sole clinical system of record / continuity-of-care disclaimer.
 * **List B legal** (tax retention vs delete account; erasure vs lost-key; DPA): resolve before account-deletion features and Pro Medical launch — still open.
 * Referral codes (`referral_code` / `referred_by_id` already on User) wired if part of launch.
+* **Stripe Connect / destination charges design spike** (for Phase 7 doctor payouts) — document approach; no need to ship patient payment links yet.
+
+### Phase 7: Signed Document Commerce (LAST — post-launch enrichment)
+*Outcome: One-time paid delivery of signed/stamped professional documents; prescriptions first, other professions next.*
+
+* **Depends on:** Phase 5 signed PDFs + Phase 6 live Stripe (+ Connect decision).
+* Doctor creates Rx → signs/stamps → sets fee → shares one-time link.
+* Patient pays → receives single download; token burned; unpaid/expired/used links fail closed.
+* Auto-post income into practitioner ledger (invoice + payment) so fiscal reports stay accurate.
+* Reuse rails for Architect / Engineer document types when templates are ready.
+* Legal/compliance review for prescription issuance and tele-delivery in Malta before marketing the feature.
+* **Out of scope until this phase:** Patient accounts, multi-download subscriptions, marketplace discovery.
 
 ---
 
@@ -465,6 +516,8 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Pre-start decisions locked:** A yes (Railway EU = verify at go-live); B deferred; C1 new vault + restore-from-weekly-backup guide + keep old ciphertext; C2 per-session unlock; C3 Arch/Eng normal auth; **C4 Accountant Download for Standard+ (full ledger pack, doctor sends)**; C5 soft-archive.
 * **Password reset never unlocks medical vault.** Forgot-password shipped in Phase 2 (decision #14).
 * **VAT number optional at onboarding** (decision #13); required only for Art 10 invoice / apply-VAT.
-* **Phase 0–2 merged to `13.x`.** Phase 3: expenses + accountant pack + TA22 PDF + logo branding + Cloudflare R2 for blobs.
-* **Manual SQL:** run `database/manual/phase3_postgresql.sql` on Railway (`expenses` table + `users.logo_path`). Phase 0 SQL already applied if shipped.
-* **Blob storage:** Receipts/logos use `TenantStorage` → disk from `TENANT_DISK`. Production: Cloudflare R2 (`TENANT_DISK=r2` + `R2_*` env). Bucket should stay **private**; downloads are auth-gated. Prefer **EU** R2 location.
+* **Encrypted journal attachments (decision #15):** Phase 5 — ciphertext on private R2 under vault DEK; not the same as Standard document storage.
+* **Signed Document Commerce (decision #16 / Phase 7):** Last phase — create/sign/stamp → one-time pay link → single download → ledger income. Rx first; Arch/Eng later.
+* **Phase 0–3 merged to `13.x`.** Phase 4 Pro foundations in flight / next. Phase 7 is explicitly last.
+* **Manual SQL:** run `database/manual/phase3_postgresql.sql` on Railway (`expenses` table + `users.logo_path`). Phase 0 SQL already applied if shipped. Phase 4 SQL when that PR merges.
+* **Blob storage:** Receipts/logos use `TenantStorage` → disk from `TENANT_DISK`. Production: Cloudflare R2 (`TENANT_DISK=r2` + `R2_*` env). Bucket should stay **private**; downloads are auth-gated. Prefer **EU** R2 location. Medical attachments will use the same disk with **extra vault encryption**.
