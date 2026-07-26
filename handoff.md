@@ -30,6 +30,74 @@ Everything below is sequenced **backwards from that end state**: foundations fir
 * **Pre-launch:** No real users in production yet. Schema and infra may be corrected freely; still build correctly so we do not re-learn tenancy later.
 * **Free fiscal access:** Free tier does **not** get Live Fiscal Report. Gate `/reports` behind Standard+ (incomplete 5-client books can produce misleading liability pictures).
 * **Free client quota:** Cap is **5 lifetime clients**. Soft-deleting or hard-deleting a client **does not** restore a slot. Upgrade to Standard+ unlocks unlimited + fiscal report.
+* **Tier transitions:** All upgrade / downgrade / Pro-package switches are first-class Phase 0 policy (see **Tier Transition Matrix** below). Encode in shared helpers before Settings plan-switching UI. **Never delete tenant data on downgrade** — gate features; retain rows.
+
+### Tier Transition Matrix (Phase 0 — design + encode)
+
+Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.  
+**Standard+** = everything except `free`. **Pro** = any `pro-*`.
+
+#### Invariants (all permutations)
+1. **`clients_created_count` never resets** and never decrements (not on delete, not on downgrade, not on upgrade).
+2. **No data destruction on plan change.** Invoices, clients, payments, tax payments, expenses (when built), Pro module rows — retained.
+3. **Entitlements are evaluated at request time** from `users.tier` (later: Stripe subscription status). Middleware/helpers are the source of truth; Blade nav is cosmetic.
+4. **Profession is independent of tier.** Profession stays support-only to change. Fifth Schedule VAT exempt follows **profession === Medical Professional**, not `tier === pro-med`. A tutor on `pro-med` (if allowed) does not become VAT-exempt; a doctor on `free` remains VAT-exempt.
+5. **Billing Client ≠ Patient.** After Phase 0 medical containment, Clients stay commercial counterparties on every tier. Pro Medical journals (Phase 4) are separate records; upgrading Free→`pro-med` does not reinterpret existing clients as clinical patients.
+
+#### Capability matrix
+
+| Capability | free | standard | pro-med | pro-arch | pro-eng |
+|---|---|---|---|---|---|
+| Dashboard + Clients + Ledger | yes | yes | yes | yes | yes |
+| Create client | if lifetime &lt; 5 | unlimited | unlimited | unlimited | unlimited |
+| Live Fiscal Report `/reports` | no | yes | yes | yes | yes |
+| Expenses / docs / branding / TA22 / VAT export | no | yes | yes | yes | yes |
+| Patient Journals / Rx / referrals | no | no | yes | no | no |
+| Architect DMS / stamper / phases | no | no | no | yes | no |
+| EMS/BMS / certifications | no | no | no | no | yes |
+
+#### Upgrade paths (examples)
+
+| From → To | Clients | Fiscal report | Pro modules | Notes |
+|---|---|---|---|---|
+| free → standard | Unlock unlimited creates; lifetime counter kept | Unlock `/reports` | — | Existing ≤5 clients remain; can add more |
+| free → pro-med (or any Pro) | Same as → standard | Unlock | Unlock that Pro package only | Clients stay billing-only; journals start empty (Phase 4) |
+| standard → pro-* | Still unlimited | Still on | Unlock that package | |
+| pro-X → pro-Y (switch) | Still unlimited | Still on | **Lose X UI/API; gain Y.** X data retained but locked (read-only export later; no delete) | Switching Medical→Arch must not wipe journals |
+
+#### Downgrade paths (examples)
+
+| From → To | Clients | Fiscal report | Prior paid data |
+|---|---|---|---|
+| standard/pro → free | **Keep all existing clients** (even if &gt;5 or lifetime &gt;5). **Block new creates** if `clients_created_count >= 5`. Deletes still do not free slots. | **Revoke** `/reports` (upgrade CTA) | Expenses/docs/Pro rows retained; routes return upgrade gate. Ledger/invoices for existing clients remain fully usable (core Free capability). |
+| pro-* → standard | Unlimited creates remain | Remains | Pro package UI/API revoked; Pro data retained/locked |
+| pro-X → free | Same Free downgrade rules | Revoke | Standard + Pro feature data retained/locked |
+
+#### Edge cases to encode in Phase 0 helpers (not leave implicit)
+
+| Scenario | Required behaviour |
+|---|---|
+| Free user creates 5 clients, upgrades to `pro-med`, creates 10 more, downgrades to Free | Lifetime count = 15 → **cannot create** any new client. All 15 clients + their invoices remain accessible in directory/ledger. No `/reports`. No journals UI. |
+| Free user at 3/5 upgrades to standard then back to Free without new creates | Lifetime still 3 → can create 2 more. |
+| User on `pro-med` with journals (Phase 4) switches to `pro-arch` | Journals inaccessible via app routes; data retained for return to `pro-med` or support export. Arch tools empty/fresh. |
+| User on `pro-med` downgrades to Free | Journals locked; billing clients untouched; `/reports` locked. |
+| Medical profession on Free | VAT exempt via profession; still no `/reports`; still 5-client lifetime cap. |
+| Non-medical profession selects `pro-med` at onboarding | **Allowed in DEV/onboarding for now** (tier is product package, not licence). Do not auto-change profession. Soft warning in UI optional Phase 1. |
+| Downgrade while fiscal year closed | Year-lock still wins for mutations; tier gate is separate. |
+| Stripe grace / failed payment (Phase 6) | Treat as entitlement tier = `free` (or last paid) per webhook policy; same downgrade rules — **still no data wipe**. |
+
+#### Phase 0 deliverable for transitions (code, not just docs)
+* Centralise entitlements in one place, e.g. `App\Support\TierPolicy` or `User` methods:
+  * `isPaid()`, `isPro()`, `proPackage()`, `canAccessReports()`, `canAddClient()`, `lifetimeClientCount()`, `canAccessStandardTools()`, `canAccessProPackage('med'|'arch'|'eng')`
+  * `assertCanAddClient()` used by `ClientController@store`
+* Any future Settings DEV plan switch / Stripe webhook **only changes `users.tier`** and relies on these helpers — no per-controller special cases.
+* Middleware `tier:standard` means “Standard+” (includes all `pro-*`). Middleware `tier:pro-med` means exact package (or explicit list).
+* Do **not** implement full Settings subscription UX in Phase 0 if deferred — but **do** implement the policy object + use it anywhere tier is already checked (sidebar can call same helpers).
+
+#### Open for developer confirmation (defaults above if silent)
+1. Downgrade to Free with &gt;5 existing clients → **keep all visible** (recommended) vs hide/archive excess.
+2. Pro package switch → locked retention (recommended) vs force export-then-delete.
+3. Whether Pro tier selection should be **profession-gated** (e.g. only Medical Professional → `pro-med`) — default **no** for testing flexibility.
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
@@ -76,8 +144,9 @@ The core fiscal engine is functioning:
 | `TaxPayment` `$guarded = []` | Medium | **0** |
 | Document numbers derived from `latest id + 1` | Medium | **0** (pre-launch renumber strategy) |
 | Dead layout branch `tier === 'pro'` | Low | **0** cleanup |
-| Free 5-client lifetime quota not enforced | High | **1** |
-| `/reports` open to Free (should be Standard+) | High | **1** middleware + nav |
+| No central TierPolicy for upgrade/downgrade permutations | Critical | **0** encode matrix |
+| Free 5-client lifetime quota not enforced | High | **1** (uses Phase 0 policy) |
+| `/reports` open to Free (should be Standard+) | High | **1** middleware using Phase 0 policy |
 | No tier / onboarding middleware | High | **1** |
 | Settings has no subscription panel | Medium | **1** |
 | Full Pro Medical delinked schema | Critical later | **4** |
@@ -134,19 +203,30 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 1. Remove dead sidebar branch `tier === 'pro'` (canonical values are `pro-med` / `pro-arch` / `pro-eng`).
 2. Manual ANSI SQL notes for `tax_payments` / `fiscal_years` if incomplete — **no migrations unless requested**.
 
-#### 0G. Companion UI only (no redesign)
+#### 0G. Tier transition policy (encode now)
+1. Implement `TierPolicy` / `User` entitlement helpers per **Tier Transition Matrix** above (`canAddClient`, `canAccessReports`, Pro package checks, etc.).
+2. Add manual SQL for `users.clients_created_count` (integer not null default 0) even if Free cap enforcement UI is Phase 1 — counter + `canAddClient()` must exist in Phase 0 so upgrades/downgrades have a single rule.
+3. Wire sidebar Soft gates to the same helpers (no duplicated `in_array(tier, …)` sprawl).
+4. Document DEV plan-change as “set `users.tier` only; policy reacts” — Settings card can land in Phase 1 but must not invent new rules.
+5. Acceptance scenarios (manual or feature tests when feasible):
+   * free(5 creates) → pro-med → +N clients → free: create blocked; all clients visible; `/reports` denied.
+   * free(3) → standard → free: 2 creates remain.
+   * pro-med → pro-arch: med routes denied; arch allowed (stubs OK); no data delete.
+   * standard → free: `/reports` denied; ledger OK.
+
+#### 0H. Companion UI only (no redesign)
 *UI that must change for Phase 0 backend fixes to be honest — not dashboard polish or Settings subscription.*
 
 1. **Medical:** Remove Clinical Profile blocks from Client create/edit; Client show whitelists billing keys only (no `@foreach` dump of `profile_data`).
 2. **Profession:** Settings profession field `disabled` (not merely `readonly` — readonly still POSTs) + helper text; server ignores profession (0D).
 3. **Dates:** Confirm `max="{{ date('Y-m-d') }}"` on every issue/payment/refund date input that 0C validates (create + actions partial already mostly correct).
 4. **Nav integrity:**
-   * Keep Live Fiscal Report under Standard+ nav (not Free). Fix the malformed bare `<a>` into a proper `<li><a class="nav-link">` inside Standard Tools.
+   * Keep Live Fiscal Report under Standard+ nav (not Free). Fix the malformed bare `<a>` into a proper `<li><a class="nav-link">` inside Standard Tools. Drive visibility via `canAccessReports()` / paid helpers.
    * Delete the dead `tier === 'pro'` duplicate Pro Tools block.
    * Prefer **hide** stub `#` links for unbuilt features until they exist (optional in Phase 0; full tier wiring in Phase 1).
 5. **Closed fiscal year (0C):** Where ledger actions would mutate a locked year, disable buttons / show a short lock banner (mirror reports closed-year UX) — no silent server 400s only.
 
-#### 0H. Phase 0 acceptance criteria
+#### 0I. Phase 0 acceptance criteria
 * [ ] Cross-tenant `client_id` rejected on invoice create.
 * [ ] No clinical UI or persistence on Clients; JSON scrubbed; show page billing-only.
 * [ ] Closed-year ledger mutation blocked; UI disables/explains when locked.
@@ -155,23 +235,23 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * [ ] `TaxPayment` not unguarded.
 * [ ] Document numbers stable under delete/recreate.
 * [ ] Dead `tier === 'pro'` branch gone; reports nav link structurally fixed (still Standard+-gated).
+* [ ] `TierPolicy` (or equivalent) covers Free↔Standard↔each Pro upgrade/downgrade/switch rules; `clients_created_count` column present; downgrade never wipes data.
 
-**Explicitly NOT Phase 0 UI:** Giving Free `/reports`, Settings subscription card, `N / 5` quota banners, dashboard redesign, building Expense/Pro screens, visual redesign / new CSS frameworks.
+**Explicitly NOT Phase 0 UI:** Settings subscription card polish, full `N / 5` marketing banners, dashboard redesign, building Expense/Pro screens, visual redesign / new CSS frameworks. (Counter + `canAddClient` are Phase 0; pretty Settings CTA is Phase 1.)
 
 ### Phase 1: Subscriptions, T&Cs & Multi-Tenant Security
 *Outcome: Free lifetime 5-client cap; tier middleware for paid extras; Settings plan card; onboarding/T&Cs cannot be skipped. Tenant IDOR already closed in Phase 0.*
 
-#### 1A. Lifetime Free client quota
-* Enforce **5 lifetime clients** for Free in `ClientController@store` (and block create UI when at cap).
-* **Deletes do not free a slot.** Prefer `users.clients_created_count` (increment-only; manual SQL). Never decrement on delete.
-* `User` helpers: `lifetimeClientCount()`, `canAddClient()`, `isPaid()`, `hasMinTier('standard')`, `proPackage()`.
+#### 1A. Lifetime Free client quota (UI + enforcement on top of Phase 0 policy)
+* Enforce creates via `canAddClient()` / `assertCanAddClient()` in `ClientController@store` (and block create UI when at cap).
+* Settings + create page show `N / 5` lifetime usage and explain deletes/downgrades do not restore slots.
+* Relies on Phase 0 `clients_created_count` + Tier Transition Matrix — do not reimplement rules in the controller.
 
 #### 1B. Tier feature middleware
-* `EnsureUserTier` aliased as `tier` in `bootstrap/app.php`.
-* **Gate `/reports` behind Standard+** (middleware must treat `standard`, `pro-med`, `pro-arch`, `pro-eng` as allowed). Free users who hit `/reports` get an upgrade redirect/flash — not a silent 403 only.
-* Rationale: a 5-lifetime-client Free book is an incomplete practice ledger; full liability math can mislead.
-* Also prepare gates for Expenses / Document Storage / VAT Export / TA22 / Pro when those land.
-* Nav already hides report from Free (Standard Tools block); Phase 1 enforces it server-side.
+* `EnsureUserTier` aliased as `tier` in `bootstrap/app.php`, backed by the same Phase 0 `TierPolicy`.
+* **Gate `/reports` behind Standard+.** Free → upgrade redirect/flash.
+* Prepare gates for Expenses / Document Storage / VAT Export / TA22 / Pro packages.
+* Settings DEV plan switch only updates `users.tier`; run through transition acceptance scenarios.
 
 #### 1C. Settings — subscription & profile
 * Subscription card: tier badge, `N / 5` lifetime usage copy (deletes do not restore), upgrade CTAs that call out unlimited clients **and** Live Fiscal Report (DEV plan switch OK until Stripe).
@@ -242,12 +322,13 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 Phase 0A IDOR + TaxPayment fillable
     → Phase 0B medical containment + SQL scrub + Client show whitelist
     → Phase 0C year-lock helper + before_or_equal:today + lock UI on ledger
-    → Phase 0D/0G profession disabled in Settings
+    → Phase 0D/0H profession disabled in Settings
     → Phase 0E document numbering fix
-    → Phase 0F/0G nav: fix reports link markup; keep Standard+-only; remove tier===pro
-Phase 1 lifetime client counter + helpers
-    → tier + onboarding middleware (including /reports Standard+)
-    → Settings Subscription card + N/5 usage UI
+    → Phase 0G TierPolicy + clients_created_count SQL + sidebar uses helpers
+    → Phase 0F/0H nav markup fix (reports stay Standard+); remove tier===pro
+Phase 1 enforce canAddClient in store + N/5 UI
+    → tier + onboarding middleware (reports Standard+)
+    → Settings Subscription / DEV plan switch (tier column only)
     → route group wiring
 ```
 
@@ -276,5 +357,6 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Pre-launch:** No real users — infra/schema fixes are in scope; still prefer correct tenancy patterns.
 * **Start implementing Phase 0 first** (integrity/containment), then Phase 1 (SaaS gates), per "Suggested Build Order".
 * **Free:** **no** Live Fiscal Report; **5 lifetime clients** (counter, never decremented on delete). Upgrade to Standard+ for `/reports` + unlimited clients.
-* **Medical:** Phase 0 containment is mandatory before/with Phase 1; full delinked Pro Medical schema is Phase 4 — never put clinical fields back on `Client`.
-* **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6.
+* **Transitions:** Phase 0 encodes Tier Transition Matrix (keep data on downgrade; block Free creates when lifetime ≥ 5 even if upgraded-then-downgraded with many clients).
+* **Medical:** Phase 0 containment is mandatory; full delinked Pro Medical schema is Phase 4 — never put clinical fields back on `Client`.
+* **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6 — policy must still hold.
