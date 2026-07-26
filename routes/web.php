@@ -10,6 +10,12 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Pro\Medical\VaultController as MedicalVaultController;
+use App\Http\Controllers\Pro\Medical\PatientController;
+use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
+use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
+use App\Http\Controllers\Pro\Architect\StamperController;
+use App\Http\Controllers\Pro\Engineer\CertificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -140,4 +146,36 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
     });
 
     Route::put('/settings/branding', [ProfileController::class, 'updateBranding']);
+
+    Route::middleware('pro:med')->prefix('pro/medical')->group(function () {
+        Route::get('/vault/setup', [MedicalVaultController::class, 'setupForm']);
+        Route::post('/vault/setup', [MedicalVaultController::class, 'setup']);
+        Route::get('/vault/unlock', [MedicalVaultController::class, 'unlockForm']);
+        Route::post('/vault/unlock', [MedicalVaultController::class, 'unlock'])->middleware('throttle:10,1');
+        Route::post('/vault/lock', [MedicalVaultController::class, 'lock']);
+
+        Route::middleware('vault')->group(function () {
+            Route::get('/patients', [PatientController::class, 'index']);
+            Route::get('/patients/create', [PatientController::class, 'create']);
+            Route::post('/patients', [PatientController::class, 'store']);
+            Route::get('/patients/{patient}', [PatientController::class, 'show']);
+            Route::get('/patients/{patient}/entries/create', [ClinicalEntryController::class, 'create']);
+            Route::post('/patients/{patient}/entries', [ClinicalEntryController::class, 'store']);
+        });
+    });
+
+    Route::middleware('pro:arch')->prefix('pro/architect')->group(function () {
+        Route::get('/projects', [ArchitectProjectController::class, 'index']);
+        Route::get('/projects/create', [ArchitectProjectController::class, 'create']);
+        Route::post('/projects', [ArchitectProjectController::class, 'store']);
+        Route::get('/stamper', [StamperController::class, 'form']);
+        Route::post('/stamper', [StamperController::class, 'generate']);
+    });
+
+    Route::middleware('pro:eng')->prefix('pro/engineer')->group(function () {
+        Route::get('/certifications', [CertificationController::class, 'index']);
+        Route::get('/certifications/create', [CertificationController::class, 'create']);
+        Route::post('/certifications', [CertificationController::class, 'store']);
+        Route::get('/certifications/{certification}/photo', [CertificationController::class, 'downloadPhoto']);
+    });
 });

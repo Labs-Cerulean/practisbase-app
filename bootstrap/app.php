@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'tier' => \App\Http\Middleware\EnsureUserTier::class,
             'terms' => \App\Http\Middleware\EnsureTermsAccepted::class,
             'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
+            'pro' => \App\Http\Middleware\EnsureProPackage::class,
+            'vault' => \App\Http\Middleware\EnsureMedicalVaultUnlocked::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

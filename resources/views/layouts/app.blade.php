@@ -66,20 +66,20 @@
                             <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
                                 Pro Tools
                             </li>
-                            <li><a href="#" class="nav-link">Patient Journals</a></li>
-                            <li><a href="#" class="nav-link">Digital Prescriptions</a></li>
+                            <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical*') ? 'active' : '' }}">Patient Journals</a></li>
+                            <li><a href="/pro/medical/patients" class="nav-link">Digital Prescriptions</a></li>
                         @elseif(auth()->user()->canAccessProPackage('arch'))
                             <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
                                 Pro Tools
                             </li>
-                            <li><a href="#" class="nav-link">Architect DMS</a></li>
-                            <li><a href="#" class="nav-link">Document Stamper</a></li>
+                            <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') ? 'active' : '' }}">Architect DMS</a></li>
+                            <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Document Stamper</a></li>
                         @elseif(auth()->user()->canAccessProPackage('eng'))
                             <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
                                 Pro Tools
                             </li>
-                            <li><a href="#" class="nav-link">EMS / BMS Templates</a></li>
-                            <li><a href="#" class="nav-link">Certifications</a></li>
+                            <li><a href="/pro/engineer/certifications" class="nav-link {{ request()->is('pro/engineer*') ? 'active' : '' }}">Certifications</a></li>
+                            <li><span class="nav-link" style="opacity: 0.55; cursor: default;">EMS / BMS Templates</span></li>
                         @endif
                     @endauth
                 </ul>
