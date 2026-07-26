@@ -43,3 +43,10 @@ Whenever writing math, controllers, or logic for the ledger/reporting, you must 
 - **Mass Assignment:** Strictly define `$guarded` or `$fillable` on all models. Never pass `$request->all()` directly to a `create()` or `update()` method without explicit, strict validation rules first.
 - **XSS Protection:** Always use standard Blade syntax `{{ $var }}` which runs `htmlspecialchars`. Never use unescaped syntax `{!! $var !!}` unless rendering explicitly sanitized, internally generated HTML.
 - **CSRF & Destructive Actions:** Every single `POST`, `PUT`, `PATCH`, and `DELETE` form must include the `@csrf` directive. Route destructive actions (deletions, year-closing) exclusively through these HTTP methods, never via a simple `GET` link.
+
+## 7. Anti-Patterns & Lessons Learned (DO NOT REPEAT)
+- **Do Not Truncate Code:** Never provide truncated code blocks for complex logic or views. Always provide the full, untruncated file to prevent the user from having to stitch code together.
+- **Do Not Cause UI Regressions:** When updating a Blade file to add a new feature, absolutely ensure you do not overwrite or simplify existing granular UI logic (e.g., accidentally merging the detailed TA22/Spillover breakdowns into a single "Income Tax" row).
+- **Do Not Blindly Trust State:** Being registered as "Article 11" does not mean the user is legally compliant. Always dynamically check actual invoiced revenue against the €35k limit and trigger a UI violation warning if breached.
+- **Do Not Allow Zeroed Fallbacks:** If a database query for a specific tax year is missing, returning `0` will wipe out the user's liability math. Always fallback to the closest previous year's brackets.
+- **Raw SQL Formatting Rules:** When providing raw SQL commands for the user to run manually, NEVER include inline comments (`--`) or obscure casts (`::json`) as these routinely trigger syntax errors in standard PostgreSQL GUI editors. Provide clean, standard ANSI SQL.
