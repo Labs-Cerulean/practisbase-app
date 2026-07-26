@@ -17,7 +17,7 @@ When PractisBase is "complete", a Maltese self-employed professional can:
 4. **Self-serve their plan** — Upgrade/downgrade Free → Standard → Pro (Medical / Architect / Engineer) from Settings; Free hard-capped at **5 lifetime clients** (deletes do not free a slot).
 5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Live Fiscal Report, Expenses, Document Storage, VAT Export, TA22 generation, Pro industry modules.
 6. **Export professional PDFs** — Branded invoices/RFPs/credit notes/receipts (Standard+ custom logo).
-7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals (GDPR); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
+7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals, **practitioner-held recovery code** encryption (Labs cannot decrypt; lost key = unrecoverable; backup requires code + signed acknowledgment); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
 8. **Pay Cerulean Labs** — Real Stripe billing replaces the current DEV bypass.
 
 Everything below is sequenced **backwards from that end state**: foundations first (security, tiers, legal), then core product surface, then monetized features, then Pro verticals, then documents and billing polish.
@@ -169,7 +169,59 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 3. Pro tier selection → **profession-gated**.
 4. **Go-live patient/clinical data:** Encrypted at rest; **practitioner holds the only recovery code**; backup/download decrypt requires that code; doctor must sign that **lost code = permanently unrecoverable** (Cerulean Labs cannot reset).
 
-### 1. Free Tier (€0/mo)
+### Pre-start considerations (mindset checklist)
+
+Items below are the remaining “end in mind” traps worth deciding or documenting **before coding Phase 0**. Not all are Phase 0 work; all should be conscious so we do not paint into a corner.
+
+#### A. Lock as invariants now (recommended defaults — confirm or amend)
+
+| Topic | Recommended lock |
+|---|---|
+| **Roles** | Doctor = **data controller** of patient data; Cerulean Labs / PractisBase = **processor**. Support never decrypts, never asks for the recovery code in clear chat/email, never “resets” the vault. |
+| **Password reset ≠ vault recovery** | Forgot-password / email change / new device login **must not** unlock or rotate the medical recovery code. Separate systems. |
+| **v1 tenancy** | **Single-user accounts only** (no practice staff seats sharing one vault). Multi-user practices would break the “only they hold the key” story — defer deliberately. |
+| **Vault vs ledger** | Recovery code protects **patient/clinical** stores only. Invoices, clients, tax, expenses use normal account auth. |
+| **Not a hospital EPR** | Product + T&Cs: PractisBase Medical is a **practice aid**, not the sole clinical system of record; lost key / downtime does not replace continuity-of-care obligations. |
+| **Support boundary** | Support may help with billing/ledger; medical ciphertext is opaque to Labs. Document in runbooks (Phase 6). |
+| **No clinical email** | App must not put clinical content in emails/notifications (reminders at most: “you have an unlock required”). |
+| **EU hosting** | Production DB/files for medical (and preferably all) stay in **EU/EEA** (Malta-friendly). Treat as go-live gate. |
+
+#### B. Legal / retention tensions (need conscious policy — Phase 6 legal, design now)
+
+| Tension | Why it matters |
+|---|---|
+| **Tax retention vs account deletion** | Maltese fiscal records often need multi-year retention. “Delete my account” cannot silently destroy invoice/tax history the user (or CFR) may still need. Separate **ledger retention** policy from **medical erasure**. |
+| **GDPR erasure vs retain-locked ciphertext** | User may request erasure of patient data while still subscribed, or after downgrade. Erasure = delete/crypto-shred vault material **on verified request** — distinct from “lost key” (cannot erase what you cannot identify? actually they can still delete ciphertext rows as account owner). Define: owner-authenticated erasure allowed; Labs cannot restore after erasure either. |
+| **Lost key vs patient rights** | If doctor loses the code, patient cannot get their journal out of PractisBase. Mitigate in law/UX via “not sole record” disclaimer + encourage patient-facing copies where legally appropriate — do not build Labs backdoor. |
+| **DPA / medical addendum** | Processor terms + recovery-code acknowledgment must ship before Pro Medical prod (Phase 6). |
+
+#### C. Product decisions still open (need your call)
+
+1. **Lost recovery code:** Only “data gone forever,” or also offer **“start new empty vault”** (old ciphertext orphaned forever)?  
+2. **Vault unlock UX:** Re-enter code every browser session vs unlock once per device with timed re-lock? (Security vs friction — affects XSS/session design.)  
+3. **Pro Arch / Eng sensitive files** (cert photos, client project docs): normal account auth only for v1, or same class of user-held encryption later?  
+4. **Accountant access (Standard VAT export):** Doctor downloads and sends file, or future “share with accountant” seat? v1 = doctor-only download assumed.  
+5. **Client hard-delete vs archive:** Lifetime counter already ignores delete; prefer **archive/soft-hide** so invoice history never dangles on missing FKs?  
+
+#### D. Explicitly out of scope for v1 (do not block Phase 0)
+
+* Team/practice roles and shared medical vaults  
+* Labs-assisted key recovery / escrow  
+* Mobile apps / offline journals  
+* Automated Medical Council warrant verification  
+* Full ISO/HIPAA theatre beyond GDPR + encryption story above  
+
+#### E. Ready-to-start gate for Phase 0
+
+Phase 0 may start when you accept section **A** defaults (or amend them) and either answer **C** or allow documented defaults:
+
+* C1 default: lost code → unrecoverable; optional **new empty vault** allowed, old data forever locked.  
+* C2 default: unlock per session (re-auth code when session starts / after timeout) — safer with Blade session apps.  
+* C3 default: Arch/Eng **not** user-held encrypted in v1 (revisit if needed).  
+* C4 default: doctor-only downloads.  
+* C5 default: prefer **soft-archive** clients when delete ships; counter still never decrements.
+
+**Phase 0 does not implement the medical vault** — it only avoids designs that fight it (no clinical-on-Client; TierPolicy hooks; profession gates).
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
 * **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, Standard Support.
 * **Out of scope for Free:** Live Fiscal Report, Expenses, Document Storage, custom branding, VAT Export, Automated TA22 generation, Pro modules. *(Nav soft-hides; Phase 1 hardens with middleware.)*
@@ -396,8 +448,8 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Webhooks update `users.tier`; failed payment → grace → downgrade path that re-applies 5-client rule without deleting data; medical vault stays encrypted/locked.
 * Terms versioning + re-acceptance modal when legal text changes.
 * **Medical addendum:** Launch-ready wording for recovery-code unrecoverability acknowledgment; align master T&Cs with practitioner-held key model.
-* **Go-live gate:** Pro Medical must not accept real patient data in production until encryption + code reveal + signed acknowledgment + export-with-code are shipped and legally reviewed.
-* Disclaimers on Fiscal Report and PDFs: tool ≠ certified accountant advice.
+* **Go-live gate:** Pro Medical must not accept real patient data in production until encryption + code reveal + signed acknowledgment + export-with-code are shipped and legally reviewed; EU hosting; DPA/processor terms; support runbook “never request recovery code.”
+* Disclaimers: Fiscal Report/PDFs ≠ certified accountant advice; Medical ≠ sole clinical system of record / continuity-of-care disclaimer.
 * Referral codes (`referral_code` / `referred_by_id` already on User) wired if part of launch.
 
 ---
@@ -445,4 +497,6 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Free:** **no** Live Fiscal Report; **5 lifetime clients** (counter, never decremented on delete). Upgrade to Standard+ for `/reports` + unlimited clients.
 * **Transitions:** Phase 0 encodes matrix — keep all clients visible on Free downgrade; Pro switch retain locked; Pro selection profession-gated; medical access = tier AND profession; no data wipe on plan change.
 * **GDPR:** Clinical-on-Client unsafe today — Phase 0 scrub mandatory. Phase 4: delinked stores + practitioner-held recovery code (encrypt at rest; backup needs code; lost code = unrecoverable; Labs cannot reset). Phase 6: legal go-live gate before real patient data.
+* **Pre-start:** See “Pre-start considerations” — confirm section A invariants; C1–C5 have documented defaults if unanswered.
 * **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6 — policy must still hold.
+* **Password reset never unlocks medical vault.**
