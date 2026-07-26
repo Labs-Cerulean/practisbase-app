@@ -6,7 +6,10 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
         <div>
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">Financial Ledger</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">Manage your RFPs, Invoices, and payments.</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">Manage RFPs, invoices, and payments.</p>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.4rem 0 0; line-height: 1.4;">
+                RFP cash is <strong style="color: var(--text-main);">non-fiscal</strong> (€0.00 official weight) until converted to a tax invoice.
+            </p>
         </div>
         <a href="/ledger/create" style="background: var(--primary-cerulean); color: white; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: 0.2s;">
             + New Document
@@ -40,7 +43,7 @@
                 <div style="font-size: 0.95rem; font-weight: 600; color: #0369a1;">€{{ number_format($netInvoiced, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Unbilled (RFP)</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Unbilled (RFP · non-fiscal)</div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: #4338ca;">€{{ number_format($unbilledPipeline, 2) }}</div>
             </div>
         </div>
@@ -57,7 +60,7 @@
                 <div style="font-size: 0.95rem; font-weight: 600; color: #059669;">€{{ number_format($invoiceCash, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Unofficial (RFPs)</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Unofficial (RFPs · €0 fiscal)</div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: #64748b;">€{{ number_format($rfpCash, 2) }}</div>
             </div>
         </div>
@@ -89,6 +92,12 @@
             @endforeach
         </select>
 
+        <select name="doc_type" style="flex: 1; min-width: 150px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
+            <option value="">All document types</option>
+            <option value="invoice" {{ request('doc_type') == 'invoice' ? 'selected' : '' }}>Tax invoices only</option>
+            <option value="rfp" {{ request('doc_type') == 'rfp' ? 'selected' : '' }}>RFPs only (non-fiscal)</option>
+        </select>
+
         <select name="status" style="flex: 1; min-width: 150px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
             <option value="">All Balances</option>
             <option value="open" {{ request('status') == 'open' ? 'selected' : '' }}>Outstanding / Open</option>
@@ -105,7 +114,7 @@
 
         <div style="display: flex; gap: 0.5rem;">
             <button type="submit" style="padding: 0.5rem 1rem; background: var(--primary-navy); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Filter</button>
-            @if(request()->anyFilled(['client_id', 'status', 'sort']))
+            @if(request()->anyFilled(['client_id', 'status', 'sort', 'doc_type']))
                 <a href="/ledger" style="padding: 0.5rem 1rem; background: #f1f5f9; color: #475569; text-decoration: none; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">Clear</a>
             @endif
         </div>

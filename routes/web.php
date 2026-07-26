@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 
@@ -37,6 +39,15 @@ Route::get('/register-submit', function () {
 });
 
 Route::post('/register-submit', [AuthController::class, 'registerSubmit']);
+
+Route::get('/forgot-password', [PasswordResetController::class, 'showForgotForm'])->middleware('guest');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])
+    ->middleware(['guest', 'throttle:5,1']);
+Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])
+    ->middleware('guest')
+    ->name('password.reset');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])
+    ->middleware(['guest', 'throttle:5,1']);
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -80,39 +91,16 @@ Route::middleware(['auth', 'terms'])->group(function () {
 */
 
 Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
-    Route::get('/dashboard', function () {
-        $userId = auth()->id();
-
-        $clientCount = \App\Models\Client::where('user_id', $userId)->count();
-
-        $totalInvoices = \App\Models\Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('total');
-        $totalCredits = \App\Models\Invoice::where('user_id', $userId)->where('type', 'credit_note')->sum('total');
-        $netInvoiced = $totalInvoices - $totalCredits;
-
-        $topLevelTotal = \App\Models\Invoice::where('user_id', $userId)->whereNull('parent_document_id')->sum('total');
-        $totalPipeline = $topLevelTotal - $totalCredits;
-        $unbilledPipeline = max(0, $totalPipeline - $netInvoiced);
-
-        $invoiceCash = \App\Models\Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))->sum('amount');
-        $rfpCash = \App\Models\Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'rfp'))->sum('amount');
-        $totalCollected = $invoiceCash + $rfpCash;
-
-        $officialDues = max(0, $netInvoiced - max(0, $invoiceCash));
-        $unbilledDues = max(0, $unbilledPipeline - max(0, $rfpCash));
-        $totalDues = $officialDues + $unbilledDues;
-
-        return view('dashboard', compact(
-            'clientCount', 'totalPipeline', 'netInvoiced', 'unbilledPipeline',
-            'totalCollected', 'totalDues', 'officialDues', 'unbilledDues'
-        ));
-    });
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
     Route::get('/clients', [ClientController::class, 'index']);
     Route::get('/clients/create', [ClientController::class, 'create']);
     Route::post('/clients', [ClientController::class, 'store']);
-    Route::get('/clients/{client}', [ClientController::class, 'show']);
-    Route::get('/clients/{client}/edit', [ClientController::class, 'edit']);
-    Route::put('/clients/{client}', [ClientController::class, 'update']);
+    Route::get('/clients/{client}', [ClientController::class, 'show'])->withTrashed();
+    Route::get('/clients/{client}/edit', [ClientController::class, 'edit'])->withTrashed();
+    Route::put('/clients/{client}', [ClientController::class, 'update'])->withTrashed();
+    Route::delete('/clients/{client}', [ClientController::class, 'archive'])->withTrashed();
+    Route::post('/clients/{client}/restore', [ClientController::class, 'restore'])->withTrashed();
 
     Route::get('/settings', [ProfileController::class, 'edit']);
     Route::put('/settings/profile', [ProfileController::class, 'updateProfile']);

@@ -52,6 +52,11 @@ class InvoiceController extends Controller
             $query->where('client_id', $request->client_id);
         }
 
+        // Document type filter (RFP vs official invoice masters)
+        if ($request->filled('doc_type') && in_array($request->doc_type, ['invoice', 'rfp'], true)) {
+            $query->where('type', $request->doc_type);
+        }
+
         // Sorting (Fixed: Now uses created_at to factor in exact time of day)
         $sort = $request->input('sort', 'date_desc');
         switch ($sort) {

@@ -27,10 +27,10 @@ class Invoice extends Model
         return $this->belongsTo(User::class);
     }
 
-    // Get the client billed on this invoice
+    // Get the client billed on this invoice (include soft-archived clients for ledger history)
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     // If this is an Invoice, it might be linked to a previous RFP

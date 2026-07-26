@@ -7,7 +7,7 @@
         @unless(auth()->user()->isPaid())
             <div style="background: {{ auth()->user()->canAddClient() ? '#eff6ff' : '#fef2f2' }}; border: 1px solid {{ auth()->user()->canAddClient() ? '#bfdbfe' : '#f87171' }}; color: {{ auth()->user()->canAddClient() ? '#1e40af' : '#b91c1c' }}; padding: 0.85rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.85rem; font-weight: 600;">
                 Free plan: {{ auth()->user()->lifetimeClientCount() }} / {{ auth()->user()->freeClientCap() }} lifetime clients used.
-                Deleting a client does not free a slot.
+                Deleting or archiving a client does not free a slot.
                 @unless(auth()->user()->canAddClient())
                     Upgrade in Settings for unlimited clients.
                 @endunless
