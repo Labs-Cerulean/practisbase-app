@@ -13,9 +13,9 @@ When PractisBase is "complete", a Maltese self-employed professional can:
 
 1. **Register** with enforceable T&Cs (liability disclaimer), complete fiscal onboarding, and land on a tier-aware dashboard.
 2. **Operate a compliant ledger** — Clients, RFPs, Invoices, Credit Notes, Payments — with IDOR-proof tenant isolation, no future-dating, and locked fiscal years.
-3. **See trustworthy tax math** — Live Fiscal Report with auditable breakdowns (TA22, SSC, VAT, PT settlement); Free tier stays within marketing limits; paid tiers unlock full tools.
-4. **Self-serve their plan** — Upgrade/downgrade Free → Standard → Pro (Medical / Architect / Engineer) from Settings; Free hard-capped at 5 clients.
-5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Expenses, Document Storage, VAT Export, TA22 generation, Pro industry modules.
+3. **See trustworthy tax math** — Live Fiscal Report with auditable breakdowns (TA22, SSC, VAT, PT settlement). **Free includes the fiscal summary**; paid tiers unlock Expenses, branding, exports, Pro modules.
+4. **Self-serve their plan** — Upgrade/downgrade Free → Standard → Pro (Medical / Architect / Engineer) from Settings; Free hard-capped at **5 lifetime clients** (deletes do not free a slot).
+5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Expenses, Document Storage, VAT Export, TA22 generation, Pro industry modules (not the core fiscal summary).
 6. **Export professional PDFs** — Branded invoices/RFPs/credit notes/receipts (Standard+ custom logo).
 7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals (GDPR); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
 8. **Pay Cerulean Labs** — Real Stripe billing replaces the current DEV bypass.
@@ -26,14 +26,19 @@ Everything below is sequenced **backwards from that end state**: foundations fir
 
 ## The SaaS Architecture & Monetization
 
+### Product decisions (locked)
+* **Pre-launch:** No real users in production yet. Schema and infra may be corrected freely; still build correctly so we do not re-learn tenancy later.
+* **Free fiscal access:** Free tier **may use the Live Fiscal Report / summary**. Do not middleware-gate `/reports` behind Standard.
+* **Free client quota:** Cap is **5 lifetime clients**. Soft-deleting or hard-deleting a client **does not** restore a slot. Upgrade to Standard+ unlocks unlimited.
+
 ### 1. Free Tier (€0/mo)
-* **Limits:** Maximum of **5 Clients** (enforced in controller + surfaced in UI).
-* **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, Standard Support.
-* **Out of scope for Free:** Live Fiscal Report deep tools, Expenses, Document Storage, branding, Pro modules. *(Nav already soft-hides some of these; Phase 1 hardens with middleware.)*
+* **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
+* **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, **Live Fiscal Report / summary**, Standard Support.
+* **Out of scope for Free:** Expenses, Document Storage, custom branding, VAT Export, Automated TA22 generation, Pro modules. *(Nav may soft-hide these; Phase 1 hardens with middleware.)*
 
 ### 2. Standard Tier (€15.99/mo)
 * **Limits:** Unlimited Clients.
-* **Capabilities:** Custom Branding & Logo on documents, Expense Tracking & Receipts, Document & File Uploads, Automated TA22 Form generation, Accountant VAT Export, Live Fiscal Report.
+* **Capabilities:** Everything in Free, plus Custom Branding & Logo on documents, Expense Tracking & Receipts, Document & File Uploads, Automated TA22 Form generation, Accountant VAT Export.
 
 ### 3. Pro Tiers (€49.99/mo)
 All Pro tiers include everything in Standard, plus one industry package:
@@ -63,11 +68,11 @@ The core fiscal engine is functioning:
 | Gap | Severity | Notes |
 |-----|----------|-------|
 | No `app/Http/Middleware` / empty `bootstrap/app.php` aliases | High | No tier, onboarding, or T&Cs gate |
-| Free 5-client limit not enforced | High | `ClientController@store` has no count check |
+| Free 5-client lifetime quota not enforced | High | `ClientController@store` has no count check; no lifetime counter / soft-delete policy yet |
 | `InvoiceController@store` `client_id` => `exists:clients,id` without `user_id` | Critical | Cross-tenant client attach IDOR |
 | `TaxPayment` model `$guarded = []` | Medium | Mass-assignment risk |
 | Settings has no subscription panel | Medium | Tier only set at onboarding |
-| `/reports` reachable by Free users | Medium | Nav hidden; route open |
+| Sidebar hides Live Fiscal Report from Free | Product bug | Free should see `/reports`; currently Standard+ only in nav |
 | Onboarding incomplete users can hit `/dashboard` | Medium | Login skips onboarding check |
 | Medical fields stored on `clients.profile_data` | Future (P4) | Conflicts with GDPR delink end-state |
 | Stripe / Cashier absent | Future (billing) | DEV bypass banner on plans page |
@@ -89,19 +94,24 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 ### Phase 1: Subscriptions, T&Cs & Multi-Tenant Security  ← **CURRENT FOCUS**
 *Outcome: A Free user cannot exceed 5 clients; a user cannot touch another tenant's rows; paid features are server-gated; Settings shows plan + legal stance; incomplete onboarding cannot skip into the app.*
 
-#### 1A. Tenant isolation & limits
-* Enforce **5-client Free cap** in `ClientController@store` (and block create UI when at cap).
-* Prefer a small shared helper / `User` method: `canAddClient()`, `isPaid()`, `hasTier($min)`, `proPackage()`.
+#### 1A. Tenant isolation & lifetime Free client quota
+* Enforce **5 lifetime clients** for Free in `ClientController@store` (and block create UI when at cap).
+* **Deletes do not free a slot.** Preferred infra (pre-launch, schema malleable):
+  1. Add `users.clients_created_count` (integer, default 0), increment only on successful create; **never** decrement on delete; OR
+  2. Soft-delete clients (`deleted_at`) and count `withTrashed()` toward the Free cap.
+  *Recommendation: (1) monotonic counter — simple, survives hard deletes, easy to show `used / 5` in Settings. Provide manual PostgreSQL for the column.*
+* Prefer shared `User` helpers: `lifetimeClientCount()`, `canAddClient()`, `isPaid()`, `hasMinTier('standard')`, `proPackage()`.
 * Keep per-query `where('user_id', Auth::id())` as the law (no relying on UI alone).
 
 #### 1B. Tier feature middleware
 * Add middleware e.g. `EnsureUserTier` aliased in `bootstrap/app.php` as `tier`.
 * Usage: `->middleware(['auth', 'tier:standard'])` or `tier:pro-med,pro-arch,pro-eng`.
-* Gate `/reports` and future Standard/Pro routes; Free gets clear upgrade redirect/flash, not silent 403 only.
-* Replace Blade-only nav as the sole gate (nav may still soft-hide, but server decides).
+* **Do not gate `/reports` for Free** — Free keeps the fiscal summary. Gate Expenses / Document Storage / VAT Export / TA22 / Pro routes when those land.
+* Fix sidebar so Free users see Live Fiscal Report; keep Standard/Pro tool stubs soft-hidden until built.
+* Free hitting a paid route gets upgrade redirect/flash, not a silent 403 only.
 
 #### 1C. Settings — subscription & profile
-* Extend `/settings` with a **Subscription** card: current tier badge, limit usage (e.g. `3 / 5 clients`), upgrade CTAs to plan picker (Stripe later; for now reuse onboarding plan UI or a Settings-safe plan change in DEV mode).
+* Extend `/settings` with a **Subscription** card: current tier badge, lifetime usage (e.g. `3 / 5 clients used` — clarify deletes do not restore), upgrade CTAs (Stripe later; DEV plan switch OK for now).
 * Keep existing fiscal/password sections intact (no UI regression).
 
 #### 1D. Legal T&Cs acceptance flow
@@ -110,11 +120,12 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Leave room for future `terms_version` column (manual SQL when needed) without blocking Phase 1.
 
 #### 1E. Phase 1 acceptance criteria
-* [ ] Free user at 5 clients: POST `/clients` rejected with clear message; create page disabled/warned.
-* [ ] Free user hitting `/reports` redirected or blocked with upgrade path.
+* [ ] Free user after 5 creates: POST `/clients` rejected even if some clients were deleted; create page disabled/warned.
+* [ ] Settings shows lifetime usage `N / 5` for Free (not merely active row count).
+* [ ] Free can open `/reports` (nav link visible).
 * [ ] Cross-user `client_id` on invoice create fails validation.
-* [ ] Settings shows tier + client usage.
 * [ ] Incomplete onboarding cannot use `/dashboard` / `/ledger` / `/clients`.
+* [ ] Paid-only routes (when present) blocked for Free with upgrade path.
 * [ ] All mutations remain CSRF + `user_id` scoped; no new Tailwind/React.
 
 ### Phase 2: Main Dashboard & Core Ledger UI
@@ -164,11 +175,11 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 
 ```
 Phase 0 IDOR fixes
-    → User tier helper methods
+    → users.clients_created_count (manual SQL) + User helpers
     → EnsureUserTier + EnsureOnboardingComplete middleware
-    → Free 5-client cap (controller + create UI)
-    → Gate /reports (and prepare aliases for future routes)
-    → Settings Subscription card
+    → Free lifetime 5-client cap (controller + create UI; no decrement on delete)
+    → Unhide /reports for Free in sidebar; prepare tier aliases for future paid routes
+    → Settings Subscription card (lifetime usage copy)
     → T&Cs / onboarding route groups in web.php
 ```
 
@@ -194,5 +205,7 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 
 * **Branch base:** `13.x`
 * **Stack in repo:** Laravel 13 / PHP 8.3+ (handoff historically said 11.x — follow the repo)
-* **Start implementing Phase 1** from "Suggested Build Order" above unless the developer revises priorities.
+* **Pre-launch:** No real users — infra/schema fixes are in scope; still prefer correct tenancy patterns.
+* **Start implementing Phase 0+1** from "Suggested Build Order" above unless the developer revises priorities.
+* **Free:** fiscal summary allowed; **5 lifetime clients** (counter, never decremented on delete).
 * **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6.
