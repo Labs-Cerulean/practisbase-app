@@ -38,8 +38,8 @@
         <div class="col text-right">
             <span class="label">Received From:</span>
             <strong>{{ $client->name }}</strong><br>
-            @if($client->address){{ $client->address }}<br>@endif
-            @if($client->vat_number)VAT: {{ $client->vat_number }}@endif
+            @if(!empty($client->billing_address)){!! nl2br(e($client->billing_address)) !!}<br>@endif
+            @if(!empty($client->profile_data['vat_number']))VAT: {{ $client->profile_data['vat_number'] }}@endif
         </div>
     </div>
 

@@ -104,7 +104,15 @@
         </tr>
         <tr>
             <td></td>
-            <td style="color: #64748b;">VAT (18%):</td>
+            <td style="color: #64748b;">
+                @if((float) $document->vat_total > 0)
+                    VAT (18%):
+                @elseif(($user->vat_status ?? '') === 'article_11')
+                    VAT (Art. 11 exempt):
+                @else
+                    VAT:
+                @endif
+            </td>
             <td>€{{ number_format($document->vat_total, 2) }}</td>
         </tr>
         <tr>
@@ -184,7 +192,11 @@
     @endif
 
     <div style="text-align: center; color: #94a3b8; font-size: 10px; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-        Generated securely by PractisBase
+        Generated securely by PractisBase.
+        @if(! $user->canAccessStandardTools())
+            Free-tier document — custom branding available on Standard+.
+        @endif
+        This document is a bookkeeping aid and not certified accounting advice.
     </div>
 
 </body>

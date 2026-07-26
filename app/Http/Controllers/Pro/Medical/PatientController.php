@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pro\Medical;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClinicalAttachment;
 use App\Models\ClinicalEntry;
 use App\Models\MedicalVault;
 use App\Models\Patient;
@@ -90,23 +91,45 @@ class PatientController extends Controller
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
         $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
 
+        $attachmentsByEntry = ClinicalAttachment::where('user_id', $user->id)
+            ->where('patient_id', $patient->id)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('clinical_entry_id');
+
         $entries = ClinicalEntry::where('user_id', $user->id)
             ->where('patient_id', $patient->id)
             ->orderByDesc('entry_date')
             ->orderByDesc('id')
             ->get()
-            ->map(function (ClinicalEntry $entry) use ($key) {
+            ->map(function (ClinicalEntry $entry) use ($key, $attachmentsByEntry) {
                 try {
                     $data = MedicalVaultCrypto::decrypt($entry->payload_ciphertext, $entry->payload_nonce, $key);
                 } catch (\Throwable) {
                     $data = ['title' => '[Unable to decrypt]', 'body' => ''];
                 }
 
+                $attachments = ($attachmentsByEntry->get($entry->id) ?? collect())->map(function (ClinicalAttachment $attachment) use ($key) {
+                    try {
+                        $meta = MedicalVaultCrypto::decrypt($attachment->meta_ciphertext, $attachment->meta_nonce, $key);
+                    } catch (\Throwable) {
+                        $meta = ['original_name' => '[Unable to decrypt]', 'mime' => 'unknown'];
+                    }
+
+                    return [
+                        'id' => $attachment->id,
+                        'name' => $meta['original_name'] ?? 'Attachment',
+                        'mime' => $meta['mime'] ?? 'unknown',
+                        'byte_size' => $attachment->byte_size,
+                    ];
+                });
+
                 return [
                     'model' => $entry,
                     'title' => $data['title'] ?? 'Entry',
                     'body' => $data['body'] ?? '',
                     'type_label' => ClinicalEntry::TYPES[$entry->entry_type] ?? $entry->entry_type,
+                    'attachments' => $attachments,
                 ];
             });
 
