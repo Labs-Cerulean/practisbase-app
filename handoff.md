@@ -75,8 +75,8 @@ Everything below is sequenced **backwards from that end state**: foundations fir
 2. **Legal acknowledgment (blocking):** Doctor must sign/accept: *“I understand that if I lose this recovery code, my patient data will be permanently unrecoverable by me or by Cerulean Labs. PractisBase cannot reset this key.”* Persist acceptance timestamp, IP, and code challenge (same pattern as T&Cs: `accepted_at`, `accepted_ip`, optionally read-duration). Store only a **verifier** (e.g. salted hash of the recovery code) if needed to validate future entry — never the code itself in recoverable form.
 3. **At rest:** Clinical/patient special-category fields encrypted. App session unlock: doctor enters recovery code (or unlocks via session key derived after code entry) to use journals in-product.
 4. **Backup / data download:** Export flow **must** prompt for the recovery code. Only after successful verification does the download contain **decrypted** patient data. Wrong/missing code → no plaintext export (encrypted blob only is unacceptable as a “backup” UX — fail closed).
-5. **Lost key:** No server-side recovery path. UI/support copy states data is unrecoverable. Optional: allow starting a **new empty** encrypted vault (old ciphertext remains undecryptable) — product decision at implement time; default document as “new vault only, old data forever locked.”
-6. **Tier downgrade / retain locked:** Ciphertext remains; without recovery code + `pro-med` entitlement, no decrypt in app. Re-upgrade still requires the **same** recovery code to unlock historical data.
+5. **Lost key:** No server-side recovery of the old code. Doctor may open a **new empty vault** with a **new** recovery code; the **previous vault ciphertext stays on file** (still encrypted) so if the old code is later found, that vault can be unlocked again. Labs cannot unlock either vault. **Weekly medical backup is mandatory in product** (acknowledgment + overdue reminders) because key-loss risk is massive.
+6. **Tier downgrade / retain locked:** Ciphertext remains; without recovery code + `pro-med` entitlement, no decrypt in app. Re-upgrade still requires the **same** recovery code for that vault to unlock historical data.
 7. **Billing Clients / invoices / fiscal data:** Not covered by this vault (commercial ledger remains usable with normal auth). Only patient/clinical stores use the practitioner key.
 
 **Phase placement:**
@@ -168,60 +168,14 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 2. Pro package switch → **retain locked** (no export-then-delete by default).
 3. Pro tier selection → **profession-gated**.
 4. **Go-live patient/clinical data:** Encrypted at rest; **practitioner holds the only recovery code**; backup/download decrypt requires that code; doctor must sign that **lost code = permanently unrecoverable** (Cerulean Labs cannot reset).
-
-### Pre-start considerations (mindset checklist)
-
-Items below are the remaining “end in mind” traps worth deciding or documenting **before coding Phase 0**. Not all are Phase 0 work; all should be conscious so we do not paint into a corner.
-
-#### A. Lock as invariants now (recommended defaults — confirm or amend)
-
-| Topic | Recommended lock |
-|---|---|
-| **Roles** | Doctor = **data controller** of patient data; Cerulean Labs / PractisBase = **processor**. Support never decrypts, never asks for the recovery code in clear chat/email, never “resets” the vault. |
-| **Password reset ≠ vault recovery** | Forgot-password / email change / new device login **must not** unlock or rotate the medical recovery code. Separate systems. |
-| **v1 tenancy** | **Single-user accounts only** (no practice staff seats sharing one vault). Multi-user practices would break the “only they hold the key” story — defer deliberately. |
-| **Vault vs ledger** | Recovery code protects **patient/clinical** stores only. Invoices, clients, tax, expenses use normal account auth. |
-| **Not a hospital EPR** | Product + T&Cs: PractisBase Medical is a **practice aid**, not the sole clinical system of record; lost key / downtime does not replace continuity-of-care obligations. |
-| **Support boundary** | Support may help with billing/ledger; medical ciphertext is opaque to Labs. Document in runbooks (Phase 6). |
-| **No clinical email** | App must not put clinical content in emails/notifications (reminders at most: “you have an unlock required”). |
-| **EU hosting** | Production DB/files for medical (and preferably all) stay in **EU/EEA** (Malta-friendly). Treat as go-live gate. |
-
-#### B. Legal / retention tensions (need conscious policy — Phase 6 legal, design now)
-
-| Tension | Why it matters |
-|---|---|
-| **Tax retention vs account deletion** | Maltese fiscal records often need multi-year retention. “Delete my account” cannot silently destroy invoice/tax history the user (or CFR) may still need. Separate **ledger retention** policy from **medical erasure**. |
-| **GDPR erasure vs retain-locked ciphertext** | User may request erasure of patient data while still subscribed, or after downgrade. Erasure = delete/crypto-shred vault material **on verified request** — distinct from “lost key” (cannot erase what you cannot identify? actually they can still delete ciphertext rows as account owner). Define: owner-authenticated erasure allowed; Labs cannot restore after erasure either. |
-| **Lost key vs patient rights** | If doctor loses the code, patient cannot get their journal out of PractisBase. Mitigate in law/UX via “not sole record” disclaimer + encourage patient-facing copies where legally appropriate — do not build Labs backdoor. |
-| **DPA / medical addendum** | Processor terms + recovery-code acknowledgment must ship before Pro Medical prod (Phase 6). |
-
-#### C. Product decisions still open (need your call)
-
-1. **Lost recovery code:** Only “data gone forever,” or also offer **“start new empty vault”** (old ciphertext orphaned forever)?  
-2. **Vault unlock UX:** Re-enter code every browser session vs unlock once per device with timed re-lock? (Security vs friction — affects XSS/session design.)  
-3. **Pro Arch / Eng sensitive files** (cert photos, client project docs): normal account auth only for v1, or same class of user-held encryption later?  
-4. **Accountant access (Standard VAT export):** Doctor downloads and sends file, or future “share with accountant” seat? v1 = doctor-only download assumed.  
-5. **Client hard-delete vs archive:** Lifetime counter already ignores delete; prefer **archive/soft-hide** so invoice history never dangles on missing FKs?  
-
-#### D. Explicitly out of scope for v1 (do not block Phase 0)
-
-* Team/practice roles and shared medical vaults  
-* Labs-assisted key recovery / escrow  
-* Mobile apps / offline journals  
-* Automated Medical Council warrant verification  
-* Full ISO/HIPAA theatre beyond GDPR + encryption story above  
-
-#### E. Ready-to-start gate for Phase 0
-
-Phase 0 may start when you accept section **A** defaults (or amend them) and either answer **C** or allow documented defaults:
-
-* C1 default: lost code → unrecoverable; optional **new empty vault** allowed, old data forever locked.  
-* C2 default: unlock per session (re-auth code when session starts / after timeout) — safer with Blade session apps.  
-* C3 default: Arch/Eng **not** user-held encrypted in v1 (revisit if needed).  
-* C4 default: doctor-only downloads.  
-* C5 default: prefer **soft-archive** clients when delete ships; counter still never decrements.
-
-**Phase 0 does not implement the medical vault** — it only avoids designs that fight it (no clinical-on-Client; TierPolicy hooks; profession gates).
+5. **Pre-start List A — accepted:** Doctor = controller / Labs = processor (support never reads/resets recovery code); password reset ≠ vault unlock; single-user v1; vault = clinical only; not sole clinical EPR; no clinical emails.
+6. **Hosting:** Prefer EU/EEA for production. Current target host: **Railway (basic paid tier)** — confirm whether a European region is available before Pro Medical go-live. If only non-EU regions are available on that plan, escalate as a **launch blocker for patient data** (ledger-only launch may still be possible). Not a Phase 0 coding blocker.
+7. **Pre-start List B — deferred:** Tax retention vs account deletion, GDPR erasure vs lost-key, DPA wording — **not decided**; resolve with legal before Pro Medical / account-deletion go-live (Phase 6). Do not block Phase 0.
+8. **C1 — Lost recovery code:** Doctor may create a **new empty vault with a new key**. The **old vault ciphertext remains stored** (still encrypted) so if the old key is later found, historical data can still be unlocked. Labs still cannot recover either vault without the relevant code. **Mandate weekly medical backup** in product UX + acknowledgment (risk of key loss is massive); nag/reminder when backup is overdue.
+9. **C2 — Vault unlock:** Re-enter recovery code **every new login/session** (safer).
+10. **C3 — Arch/Eng files:** Normal account auth only in v1 (no practitioner-held encryption).
+11. **C4 — Accountant:** Doctor downloads and sends files themselves (no accountant seat in v1).
+12. **C5 — Client delete:** **Soft-archive** (hide; keep rows for invoice history). Lifetime `clients_created_count` still never decrements.
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
 * **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, Standard Support.
 * **Out of scope for Free:** Live Fiscal Report, Expenses, Document Storage, custom branding, VAT Export, Automated TA22 generation, Pro modules. *(Nav soft-hides; Phase 1 hardens with middleware.)*
@@ -426,10 +380,11 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
   * Digital Prescriptions / Referral Letters use clinical store + controlled identity join only.
 * **Practitioner-held recovery code (mandatory before any real patient data in prod):**
   * Generate one-time recovery code at Pro Medical vault setup; doctor confirms save.
-  * Persist signed acknowledgment: lost key ⇒ unrecoverable by doctor or Cerulean Labs (`accepted_at`, `accepted_ip`, etc.).
+  * Persist signed acknowledgment: lost key ⇒ Cerulean cannot recover; doctor must keep weekly backups (`accepted_at`, `accepted_ip`, etc.).
   * Encrypt patient/clinical payloads at rest; store code verifier only, never recoverable plaintext code on server.
-  * In-app use requires unlock with code (session-scoped key after unlock).
-  * **Backup/download:** always prompt for recovery code; release **decrypted** export only on success; fail closed otherwise.
+  * In-app use requires unlock with code **every login/session**.
+  * **Backup/download:** always prompt for recovery code; release **decrypted** export only on success; fail closed otherwise. Surface **weekly backup mandate** + overdue nag.
+  * **Lost code:** offer **new empty vault + new key**; **retain old vault ciphertext** in case old key is found later; no Labs reset.
   * No support “reset key” path.
 * Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer Certification Generator.
 * Domain rules: BCA Method Statements (Arch); certification photo + expiry (Eng). Clarify EMS/BMS template content with domain expert before locking schemas.
@@ -448,8 +403,9 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Webhooks update `users.tier`; failed payment → grace → downgrade path that re-applies 5-client rule without deleting data; medical vault stays encrypted/locked.
 * Terms versioning + re-acceptance modal when legal text changes.
 * **Medical addendum:** Launch-ready wording for recovery-code unrecoverability acknowledgment; align master T&Cs with practitioner-held key model.
-* **Go-live gate:** Pro Medical must not accept real patient data in production until encryption + code reveal + signed acknowledgment + export-with-code are shipped and legally reviewed; EU hosting; DPA/processor terms; support runbook “never request recovery code.”
+* **Go-live gate:** Pro Medical must not accept real patient data in production until encryption + code reveal + signed acknowledgment + export-with-code + weekly backup UX are shipped and legally reviewed; **confirm Railway EU/EEA region** (or move host) before patient data; DPA/processor terms; support runbook “never request recovery code.”
 * Disclaimers: Fiscal Report/PDFs ≠ certified accountant advice; Medical ≠ sole clinical system of record / continuity-of-care disclaimer.
+* **List B legal** (tax retention vs delete account; erasure vs lost-key; DPA): resolve before account-deletion features and Pro Medical launch — still open.
 * Referral codes (`referral_code` / `referred_by_id` already on User) wired if part of launch.
 
 ---
@@ -497,6 +453,6 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Free:** **no** Live Fiscal Report; **5 lifetime clients** (counter, never decremented on delete). Upgrade to Standard+ for `/reports` + unlimited clients.
 * **Transitions:** Phase 0 encodes matrix — keep all clients visible on Free downgrade; Pro switch retain locked; Pro selection profession-gated; medical access = tier AND profession; no data wipe on plan change.
 * **GDPR:** Clinical-on-Client unsafe today — Phase 0 scrub mandatory. Phase 4: delinked stores + practitioner-held recovery code (encrypt at rest; backup needs code; lost code = unrecoverable; Labs cannot reset). Phase 6: legal go-live gate before real patient data.
-* **Pre-start:** See “Pre-start considerations” — confirm section A invariants; C1–C5 have documented defaults if unanswered.
-* **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6 — policy must still hold.
+* **Pre-start decisions locked:** A yes (Railway EU region = verify at go-live); B deferred to legal; C1 new vault + keep old ciphertext + weekly backup mandate; C2 per-session unlock; C3/C4/C5 = a.
 * **Password reset never unlocks medical vault.**
+* **Ready for Phase 0 implementation** when asked.
