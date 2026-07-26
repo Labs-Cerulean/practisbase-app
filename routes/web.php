@@ -16,6 +16,7 @@ use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
 use App\Http\Controllers\Pro\Engineer\CertificationController;
+use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
 
 /*
 |--------------------------------------------------------------------------
@@ -173,6 +174,9 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
     });
 
     Route::middleware('pro:eng')->prefix('pro/engineer')->group(function () {
+        Route::get('/projects', [EngineerProjectController::class, 'index']);
+        Route::get('/projects/create', [EngineerProjectController::class, 'create']);
+        Route::post('/projects', [EngineerProjectController::class, 'store']);
         Route::get('/certifications', [CertificationController::class, 'index']);
         Route::get('/certifications/create', [CertificationController::class, 'create']);
         Route::post('/certifications', [CertificationController::class, 'store']);

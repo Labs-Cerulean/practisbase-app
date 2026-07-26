@@ -78,7 +78,8 @@
                             <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
                                 Pro Tools
                             </li>
-                            <li><a href="/pro/engineer/certifications" class="nav-link {{ request()->is('pro/engineer*') ? 'active' : '' }}">Certifications</a></li>
+                            <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') ? 'active' : '' }}">Engineering Projects</a></li>
+                            <li><a href="/pro/engineer/certifications" class="nav-link {{ request()->is('pro/engineer/certifications*') ? 'active' : '' }}">Certifications</a></li>
                             <li><span class="nav-link" style="opacity: 0.55; cursor: default;">EMS / BMS Templates</span></li>
                         @endif
                     @endauth
