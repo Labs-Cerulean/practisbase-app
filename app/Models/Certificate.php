@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Certificate extends Model
+{
+    protected $table = 'certificates';
+
+    protected $fillable = [
+        'user_id',
+        'title',
+        'subject_name',
+        'kind',
+        'issued_on',
+        'expires_on',
+        'photo_path',
+        'notes',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'issued_on' => 'date',
+            'expires_on' => 'date',
+        ];
+    }
+
+    public const KINDS = [
+        'certificate' => 'Certificate',
+        'declaration' => 'Declaration',
+        'attestation' => 'Attestation',
+        'medical_certificate' => 'Medical certificate',
+        'fitness' => 'Fitness / clearance',
+        'other' => 'Other',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_on !== null && $this->expires_on->lt(now()->startOfDay());
+    }
+}
