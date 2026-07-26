@@ -7,8 +7,10 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\TaxPayment;
+use App\Support\SimpleZipWriter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Throwable;
 use ZipArchive;
 
 class AccountantDownloadController extends Controller
@@ -31,50 +33,54 @@ class AccountantDownloadController extends Controller
         ]);
 
         $year = (int) $validated['year'];
-
-        $tmp = tempnam(sys_get_temp_dir(), 'pb_acct_');
-        $zip = new ZipArchive();
-
-        if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
-            return back()->withErrors(['export' => 'Could not create export archive.']);
-        }
-
-        $zip->addFromString(
-            "{$year}-documents.csv",
-            $this->documentsCsv($user->id, $year)
-        );
-        $zip->addFromString(
-            "{$year}-payments.csv",
-            $this->paymentsCsv($user->id, $year)
-        );
-        $zip->addFromString(
-            "{$year}-clients.csv",
-            $this->clientsCsv($user->id)
-        );
-        $zip->addFromString(
-            "{$year}-expenses.csv",
-            $this->expensesCsv($user->id, $year)
-        );
-        $zip->addFromString(
-            "{$year}-tax-payments.csv",
-            $this->taxPaymentsCsv($user->id, $year)
-        );
-        $zip->addFromString(
-            "{$year}-vat-summary.csv",
-            $this->vatSummaryCsv($user, $year)
-        );
-        $zip->addFromString(
-            'README.txt',
-            $this->readme($user->name, $year)
-        );
-
-        $zip->close();
-
         $filename = 'practisbase-accountant-' . $year . '-' . $user->id . '.zip';
 
-        return response()->download($tmp, $filename, [
-            'Content-Type' => 'application/zip',
-        ])->deleteFileAfterSend(true);
+        try {
+            $files = [
+                "{$year}-documents.csv" => $this->documentsCsv($user->id, $year),
+                "{$year}-payments.csv" => $this->paymentsCsv($user->id, $year),
+                "{$year}-clients.csv" => $this->clientsCsv($user->id),
+                "{$year}-expenses.csv" => $this->expensesCsv($user->id, $year),
+                "{$year}-tax-payments.csv" => $this->taxPaymentsCsv($user->id, $year),
+                "{$year}-vat-summary.csv" => $this->vatSummaryCsv($user, $year),
+                'README.txt' => $this->readme($user->name, $year),
+            ];
+
+            $tmp = tempnam(sys_get_temp_dir(), 'pb_acct_');
+            if ($tmp === false) {
+                return back()->withErrors(['export' => 'Could not create a temporary export file.']);
+            }
+
+            // Prefer ext-zip when available; otherwise pure-PHP store ZIP (Railway often lacks php-zip).
+            if (class_exists(ZipArchive::class)) {
+                $zip = new ZipArchive();
+                if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) {
+                    @unlink($tmp);
+
+                    return back()->withErrors(['export' => 'Could not create export archive.']);
+                }
+                foreach ($files as $name => $contents) {
+                    $zip->addFromString($name, $contents);
+                }
+                $zip->close();
+            } else {
+                $zip = new SimpleZipWriter();
+                foreach ($files as $name => $contents) {
+                    $zip->addFile($name, $contents);
+                }
+                $zip->writeTo($tmp);
+            }
+
+            return response()->download($tmp, $filename, [
+                'Content-Type' => 'application/zip',
+            ])->deleteFileAfterSend(true);
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->withErrors([
+                'export' => 'Accountant download failed. Please try again or contact support if it persists.',
+            ]);
+        }
     }
 
     private function csv(array $headers, array $rows): string
@@ -109,7 +115,7 @@ class AccountantDownloadController extends Controller
                 $fiscal,
                 optional($doc->issue_date)->format('Y-m-d'),
                 optional($doc->due_date)->format('Y-m-d'),
-                $doc->client->name ?? '',
+                optional($doc->client)->name ?? '',
                 $doc->client_id,
                 number_format((float) $doc->subtotal, 2, '.', ''),
                 number_format((float) $doc->vat_total, 2, '.', ''),
