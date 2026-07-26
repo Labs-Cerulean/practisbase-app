@@ -74,7 +74,7 @@ The core fiscal engine is functioning:
 | Settings has no subscription panel | Medium | Tier only set at onboarding |
 | Sidebar hides Live Fiscal Report from Free | Product bug | Free should see `/reports`; currently Standard+ only in nav |
 | Onboarding incomplete users can hit `/dashboard` | Medium | Login skips onboarding check |
-| Medical fields stored on `clients.profile_data` | Future (P4) | Conflicts with GDPR delink end-state |
+| Clinical/medical fields on billing `clients.profile_data` | Critical (contain now) | DOB/gender collected as "Clinical Profile" on the invoice Client; controller also accepts `blood_type`/`allergies`. Must stop in Phase 0 — full Pro Medical schema remains Phase 4 |
 | Stripe / Cashier absent | Future (billing) | DEV bypass banner on plans page |
 
 ---
@@ -83,13 +83,31 @@ The core fiscal engine is functioning:
 
 Phases are ordered so later work never fights earlier architecture. Each phase ends with a shippable, testable slice.
 
+### Why medical data was scary — and where the fix lives
+
+**What is wrong today (not theoretical):** For `profession === 'Medical Professional'`, Client create/edit shows a **Clinical Profile** block (DOB, gender). `ClientController` writes those into the same `clients.profile_data` JSON used for billing extras (VAT number, ID card, etc.), and also accepts `blood_type` / `allergies` even when the form does not show them. `clients/show` dumps the whole JSON. That mixes **billing identity** with **health-adjacent data** on one row — the opposite of the GDPR delink rule in `.cursorrules` / Pro Medical.
+
+**Why you almost did not see a fix:** The original brief parked "delink PII from medical details" inside **Phase 4 (Pro Medical)**. That is the right place for the *full* patient/journal schema, but it is the **wrong** place to keep collecting clinical fields on Clients. With no real users, we can and must **contain** this in Phase 0 so no bad shape hardens before launch.
+
+| When | What | Intent |
+|------|------|--------|
+| **Phase 0 (now)** | Stop the bleed — remove clinical UI/controller writes; scrub JSON; billing-only `profile_data` | No new mixed data |
+| **Phase 4** | Build proper Pro Medical tables (opaque patient ref ≠ clinical journal payload) | Real GDPR architecture |
+
 ### Phase 0 — Baseline Hardening (do first inside / with Phase 1)
-*Close security holes before building product surface on top of them.*
+*Close security holes and stop medical data collecting on the wrong entity.*
 
 1. Fix `client_id` validation to require ownership: `exists:clients,id,user_id,{Auth::id()}`.
 2. Audit every `find`/`Route::bind` path for `user_id` scoping (Clients, Invoices, Payments, TaxPayments).
 3. Tighten `TaxPayment` fillable/guarded; never `$request->all()` into creates.
-4. Provide clean ANSI PostgreSQL (no `--` comments, no `::json` casts) for any missing `tax_payments` / `fiscal_years` columns if prod is incomplete — **no Laravel migrations unless explicitly requested**.
+4. **Medical containment (mandatory):**
+   * Remove the Clinical Profile block from `clients/create` and `clients/edit`.
+   * Stop writing `dob`, `gender`, `blood_type`, `allergies` (and any clinical keys) in `ClientController@store` / `@update`.
+   * Restrict `profile_data` to **billing/identity only**: e.g. `vat_number`, `registration_number`, `contact_person`, `id_card_number`.
+   * Stop dumping raw clinical keys on `clients/show` (whitelist billing keys).
+   * Manual PostgreSQL to strip clinical keys from any existing `clients.profile_data` (safe pre-launch).
+   * Do **not** invent Patient Journal tables yet — that is Phase 4. Goal here: Client = commercial counterparty only.
+5. Provide clean ANSI PostgreSQL for any missing `tax_payments` / `fiscal_years` columns if prod is incomplete — **no Laravel migrations unless explicitly requested**.
 
 ### Phase 1: Subscriptions, T&Cs & Multi-Tenant Security  ← **CURRENT FOCUS**
 *Outcome: A Free user cannot exceed 5 clients; a user cannot touch another tenant's rows; paid features are server-gated; Settings shows plan + legal stance; incomplete onboarding cannot skip into the app.*
@@ -146,10 +164,13 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Custom branding/logo fields on user profile → consumed by PDF phase.
 
 ### Phase 4: Pro Tier Foundations & Stamping
-*Outcome: Industry packages scaffolded on a GDPR-safe data model.*
+*Outcome: Industry packages scaffolded on a GDPR-safe data model (Phase 0 already ensured Clients stay billing-only).*
 
 * Global Document Stamper (signatures/warrants on PDFs) — shared by Arch (primary) and reusable.
-* **Medical GDPR schema (manual SQL):** separate PII entity from journal/clinical records; no clinical payload on `clients.profile_data` long-term; migrate carefully.
+* **Pro Medical GDPR schema (manual SQL) — the real fix, not the containment:**
+  * Billing `clients` remain commercial counterparties only (Phase 0 invariant).
+  * Introduce a separate patient/PII store and a separate clinical/journal store linked by opaque IDs so a journal row cannot be joined to name/email/ID card in one careless query.
+  * Digital Prescriptions / Referral Letters read clinical store + minimal display identity via controlled join, never by stuffing health fields back onto `clients.profile_data`.
 * Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer Certification Generator.
 * Domain rules: BCA Method Statements (Arch); certification photo + expiry (Eng). Clarify EMS/BMS template content with domain expert before locking schemas.
 
@@ -175,6 +196,7 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 
 ```
 Phase 0 IDOR fixes
+    → Phase 0 medical containment (strip clinical from Clients; billing-only profile_data)
     → users.clients_created_count (manual SQL) + User helpers
     → EnsureUserTier + EnsureOnboardingComplete middleware
     → Free lifetime 5-client cap (controller + create UI; no decrement on delete)
@@ -182,6 +204,12 @@ Phase 0 IDOR fixes
     → Settings Subscription card (lifetime usage copy)
     → T&Cs / onboarding route groups in web.php
 ```
+
+Phase 0 medical acceptance:
+* [ ] No Clinical Profile UI on Client create/edit.
+* [ ] Controller never persists clinical keys on `clients.profile_data`.
+* [ ] Existing JSON scrubbed via manual SQL if any clinical keys exist.
+* [ ] Client show only displays billing/identity extras.
 
 Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear testing affordance in Settings so Pro UI can be exercised.
 
@@ -208,4 +236,5 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Pre-launch:** No real users — infra/schema fixes are in scope; still prefer correct tenancy patterns.
 * **Start implementing Phase 0+1** from "Suggested Build Order" above unless the developer revises priorities.
 * **Free:** fiscal summary allowed; **5 lifetime clients** (counter, never decremented on delete).
+* **Medical:** Phase 0 containment is mandatory before/with Phase 1; full delinked Pro Medical schema is Phase 4 — never put clinical fields back on `Client`.
 * **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6.
