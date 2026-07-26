@@ -66,28 +66,6 @@
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">ID Card Number</label>
                     <input type="text" name="id_card_number" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
-
-                @if(auth()->user()->profession === 'Medical Professional')
-                    <div style="background: rgba(2, 132, 199, 0.05); border: 1px solid rgba(2, 132, 199, 0.2); padding: 1.5rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
-                        <h4 style="margin-top: 0; margin-bottom: 1rem; color: var(--primary-cerulean);">Clinical Profile</h4>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                            <div>
-                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem;">Date of Birth</label>
-                                <input type="date" name="dob" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                            </div>
-                            <div>
-                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.85rem;">Gender</label>
-                                <select name="gender" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                                    <option value="">Select...</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                @endif
             </div>
 
             <div style="position: sticky; bottom: 1rem; margin-top: 2rem;">

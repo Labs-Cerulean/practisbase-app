@@ -460,4 +460,5 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **GDPR:** Clinical-on-Client unsafe today — Phase 0 scrub mandatory. Phase 4: delinked stores + practitioner-held recovery code (encrypt at rest; backup needs code; lost code = unrecoverable; Labs cannot reset). Phase 6: legal go-live gate before real patient data.
 * **Pre-start decisions locked:** A yes (Railway EU = verify at go-live); B deferred; C1 new vault + restore-from-weekly-backup guide + keep old ciphertext; C2 per-session unlock; C3 Arch/Eng normal auth; **C4 Accountant Download for Standard+ (full ledger pack, doctor sends)**; C5 soft-archive.
 * **Password reset never unlocks medical vault.**
-* **Ready for Phase 0 implementation** when asked.
+* **Ready for Phase 0 implementation** — in progress on `cursor/phase-0-integrity-a8e3`.
+* **Manual SQL required:** run `database/manual/phase0_postgresql.sql` (clients_created_count, deleted_at prep, clinical key scrub).

@@ -40,54 +40,38 @@
                         <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Ledger & Invoices</a>
                     </li>
                     
-                    @if(auth()->check() && in_array(auth()->user()->tier, ['standard', 'pro-med', 'pro-arch', 'pro-eng']))
-                        <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
-                            Standard Tools
-                        </li>
-                        <li><a href="#" class="nav-link">Document Storage</a></li>
-                        <a href="/reports" style="display: block; padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; font-weight: 500; border-radius: var(--radius-md); margin-bottom: 0.5rem; transition: 0.2s;">
-                            Live Fiscal Report
-                        </a>
-                        <li><a href="#" class="nav-link">Expense Tracking</a></li>
-                    @endif
+                    @auth
+                        @if(auth()->user()->canAccessReports())
+                            <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
+                                Standard Tools
+                            </li>
+                            <li>
+                                <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">
+                                    Live Fiscal Report
+                                </a>
+                            </li>
+                        @endif
 
-                    @if(auth()->check() && str_starts_with(auth()->user()->tier, 'pro-'))
-                        <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
-                            Pro Tools
-                        </li>
-                        
-                        @if(auth()->user()->tier === 'pro-med')
+                        @if(auth()->user()->canAccessProPackage('med'))
+                            <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
+                                Pro Tools
+                            </li>
                             <li><a href="#" class="nav-link">Patient Journals</a></li>
                             <li><a href="#" class="nav-link">Digital Prescriptions</a></li>
-                            
-                        @elseif(auth()->user()->tier === 'pro-arch')
+                        @elseif(auth()->user()->canAccessProPackage('arch'))
+                            <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
+                                Pro Tools
+                            </li>
                             <li><a href="#" class="nav-link">Architect DMS</a></li>
                             <li><a href="#" class="nav-link">Document Stamper</a></li>
-                            
-                        @elseif(auth()->user()->tier === 'pro-eng')
+                        @elseif(auth()->user()->canAccessProPackage('eng'))
+                            <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
+                                Pro Tools
+                            </li>
                             <li><a href="#" class="nav-link">EMS / BMS Templates</a></li>
                             <li><a href="#" class="nav-link">Certifications</a></li>
                         @endif
-                    @endif
-
-                    @if(auth()->check() && auth()->user()->tier === 'pro')
-                        <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
-                            Pro Tools
-                        </li>
-                        
-                        @if(auth()->user()->profession === 'Medical Professional')
-                            <li><a href="#" class="nav-link">Patient Journals</a></li>
-                            <li><a href="#" class="nav-link">Digital Prescriptions</a></li>
-                            
-                        @elseif(auth()->user()->profession === 'Architect / Perit')
-                            <li><a href="#" class="nav-link">Architect DMS</a></li>
-                            <li><a href="#" class="nav-link">Document Stamper</a></li>
-                            
-                        @elseif(auth()->user()->profession === 'Engineer')
-                            <li><a href="#" class="nav-link">EMS / BMS Templates</a></li>
-                            <li><a href="#" class="nav-link">Certifications</a></li>
-                        @endif
-                    @endif
+                    @endauth
                 </ul>
             </nav>
         </aside>
