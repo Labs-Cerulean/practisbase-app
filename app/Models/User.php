@@ -123,11 +123,13 @@ class User extends Authenticatable
             return null;
         }
 
-        if (! \Illuminate\Support\Facades\Storage::disk('local')->exists($this->logo_path)) {
+        $disk = \App\Support\TenantStorage::disk();
+
+        if (! $disk->exists($this->logo_path)) {
             return null;
         }
 
-        $binary = \Illuminate\Support\Facades\Storage::disk('local')->get($this->logo_path);
+        $binary = $disk->get($this->logo_path);
         $ext = strtolower(pathinfo($this->logo_path, PATHINFO_EXTENSION));
         $mime = match ($ext) {
             'jpg', 'jpeg' => 'image/jpeg',

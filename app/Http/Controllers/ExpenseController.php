@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use App\Support\FiscalYearGuard;
+use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 class ExpenseController extends Controller
 {
@@ -57,8 +57,8 @@ class ExpenseController extends Controller
         $receiptPath = null;
         if ($request->hasFile('receipt')) {
             $receiptPath = $request->file('receipt')->store(
-                'tenants/' . $user->id . '/receipts',
-                'local'
+                TenantStorage::receiptsPath($user->id),
+                TenantStorage::diskName()
             );
         }
 
@@ -89,7 +89,7 @@ class ExpenseController extends Controller
         }
 
         if ($expense->receipt_path) {
-            Storage::disk('local')->delete($expense->receipt_path);
+            TenantStorage::disk()->delete($expense->receipt_path);
         }
 
         $expense->delete();
@@ -105,11 +105,11 @@ class ExpenseController extends Controller
             abort(403);
         }
 
-        if (! $expense->receipt_path || ! Storage::disk('local')->exists($expense->receipt_path)) {
+        if (! $expense->receipt_path || ! TenantStorage::disk()->exists($expense->receipt_path)) {
             abort(404, 'Receipt file not found.');
         }
 
-        return Storage::disk('local')->download(
+        return TenantStorage::disk()->download(
             $expense->receipt_path,
             'receipt-' . $expense->id . '.' . pathinfo($expense->receipt_path, PATHINFO_EXTENSION)
         );

@@ -51,7 +51,7 @@
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Receipt upload <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
                 <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf" style="width: 100%; padding: 0.5rem 0;">
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or PDF · max 5MB · stored privately under your tenant folder.</p>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or PDF · max 5MB · stored privately on your tenant object storage (Cloudflare R2 in production).</p>
             </div>
 
             <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save Expense</button>

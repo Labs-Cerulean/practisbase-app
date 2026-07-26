@@ -465,5 +465,6 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Pre-start decisions locked:** A yes (Railway EU = verify at go-live); B deferred; C1 new vault + restore-from-weekly-backup guide + keep old ciphertext; C2 per-session unlock; C3 Arch/Eng normal auth; **C4 Accountant Download for Standard+ (full ledger pack, doctor sends)**; C5 soft-archive.
 * **Password reset never unlocks medical vault.** Forgot-password shipped in Phase 2 (decision #14).
 * **VAT number optional at onboarding** (decision #13); required only for Art 10 invoice / apply-VAT.
-* **Phase 0–2 merged to `13.x`.** Phase 3: expenses + accountant pack + TA22 PDF + logo branding.
+* **Phase 0–2 merged to `13.x`.** Phase 3: expenses + accountant pack + TA22 PDF + logo branding + Cloudflare R2 for blobs.
 * **Manual SQL:** run `database/manual/phase3_postgresql.sql` on Railway (`expenses` table + `users.logo_path`). Phase 0 SQL already applied if shipped.
+* **Blob storage:** Receipts/logos use `TenantStorage` → disk from `TENANT_DISK`. Production: Cloudflare R2 (`TENANT_DISK=r2` + `R2_*` env). Bucket should stay **private**; downloads are auth-gated. Prefer **EU** R2 location.

@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
+use App\Support\TenantStorage;
 
 class ProfileController extends Controller
 {
@@ -123,7 +123,7 @@ class ProfileController extends Controller
         ]);
 
         if ($request->boolean('remove_logo') && $user->logo_path) {
-            Storage::disk('local')->delete($user->logo_path);
+            TenantStorage::disk()->delete($user->logo_path);
             $user->update(['logo_path' => null]);
 
             return back()->with('success', 'Logo removed. Documents will use PractisBase defaults.');
@@ -131,12 +131,12 @@ class ProfileController extends Controller
 
         if ($request->hasFile('logo')) {
             if ($user->logo_path) {
-                Storage::disk('local')->delete($user->logo_path);
+                TenantStorage::disk()->delete($user->logo_path);
             }
 
             $path = $request->file('logo')->store(
-                'tenants/' . $user->id . '/branding',
-                'local'
+                TenantStorage::brandingPath($user->id),
+                TenantStorage::diskName()
             );
 
             $user->update(['logo_path' => $path]);

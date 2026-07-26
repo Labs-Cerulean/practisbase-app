@@ -280,7 +280,7 @@
                     @method('PUT')
                     <div style="margin-bottom: 1rem;">
                         <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB · stored privately under your tenant folder.</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB · private object storage (Cloudflare R2 in production).</p>
                     </div>
                     @if($user->logo_path)
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1rem; cursor: pointer;">
