@@ -40,6 +40,9 @@
                     @endif
                 </div>
                 <div class="provider-details">
+                    @if($user->logoDataUri())
+                        <img src="{{ $user->logoDataUri() }}" alt="Logo" style="max-height: 70px; max-width: 180px; margin-bottom: 10px;"><br>
+                    @endif
                     <strong>{{ $user->name }}</strong><br>
                     {{ $user->profession }}<br>
                     @if($user->warrant_number) Warrant No: {{ $user->warrant_number }}<br> @endif

@@ -26,6 +26,13 @@
                 @endif
             </h1>
             <p style="color: var(--text-muted); font-size: 0.95rem;">Review your strict fiscal tax and VAT liabilities.</p>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                <a href="/exports/accountant" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Accountant Download</a>
+                <a href="/expenses?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Expense Ledger</a>
+                @if($user->employment_type === 'part_time')
+                    <a href="/reports/ta22.pdf?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Download TA22 summary PDF</a>
+                @endif
+            </div>
         </div>
         
         <div style="display: flex; gap: 0.5rem;">
@@ -82,8 +89,10 @@
                 <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($invoicedRevenue, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Estimated Expenses</div>
-                <div style="font-size: 0.95rem; font-weight: 600; color: #ef4444;">-€{{ number_format($user->estimated_expenses, 2) }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">
+                    {{ $expenseInfo['source'] === 'ledger' ? 'Expense ledger' : 'Estimated expenses' }}
+                </div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #ef4444;">-€{{ number_format($deductibleExpenses, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="font-size: 0.8rem; color: var(--text-muted);">Net Taxable Profit</div>
@@ -91,6 +100,9 @@
             </div>
             <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
                 <strong>Actual Cash Collected:</strong> €{{ number_format($collectedRevenue, 2) }}
+                @if($expenseInfo['source'] === 'estimate' && auth()->user()->canAccessStandardTools())
+                    <div style="margin-top: 0.35rem;">Using Settings estimate — <a href="/expenses?year={{ $selectedYear }}" style="color: var(--primary-cerulean); font-weight: 600;">log expenses</a> to replace it.</div>
+                @endif
             </div>
         </div>
 

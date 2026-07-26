@@ -27,6 +27,9 @@
     <div class="flex-container">
         <div class="col">
             <span class="label">Issued By:</span>
+            @if($user->logoDataUri())
+                <img src="{{ $user->logoDataUri() }}" alt="Logo" style="max-height: 50px; max-width: 140px; margin-bottom: 8px;"><br>
+            @endif
             <strong>{{ $user->name }}</strong><br>
             @if($user->profession){{ $user->profession }}<br>@endif
             @if($user->vat_number)VAT: {{ $user->vat_number }}<br>@endif

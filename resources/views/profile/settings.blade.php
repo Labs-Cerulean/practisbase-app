@@ -187,7 +187,7 @@
 
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Estimated Annual Allowable Expenses</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">Used to calculate your Net Profit. (e.g., equipment, fuel, software subscriptions).</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">Fallback used when the Expense Ledger for a year is empty (or on Free). Standard+ ledger totals override this when &gt; €0.</p>
                         <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
                             <span style="color: var(--text-muted); font-weight: 600;">€</span>
                             <input type="number" name="estimated_expenses" step="0.01" min="0" value="{{ $user->estimated_expenses ?? '0.00' }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
@@ -265,6 +265,35 @@
                 </button>
             </div>
         </form>
+
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Document Branding</h3>
+            @if($user->canAccessStandardTools())
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Upload a logo for invoice / RFP PDFs (Standard+).</p>
+                @if($user->logoDataUri())
+                    <div style="margin-bottom: 1rem;">
+                        <img src="{{ $user->logoDataUri() }}" alt="Current logo" style="max-height: 64px; max-width: 200px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
+                    </div>
+                @endif
+                <form action="/settings/branding" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+                    <div style="margin-bottom: 1rem;">
+                        <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB · stored privately under your tenant folder.</p>
+                    </div>
+                    @if($user->logo_path)
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1rem; cursor: pointer;">
+                            <input type="checkbox" name="remove_logo" value="1">
+                            Remove current logo
+                        </label>
+                    @endif
+                    <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Save Branding</button>
+                </form>
+            @else
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Custom logo branding is included with Standard and Pro. Upgrade in the Subscription card above.</p>
+            @endif
+        </div>
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
             <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Security</h3>
