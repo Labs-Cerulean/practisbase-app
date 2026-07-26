@@ -11,9 +11,30 @@ class ProfileController extends Controller
 {
     public function edit()
     {
+        $user = Auth::user();
+        $allowedTiers = \App\Support\TierPolicy::allowedTiersForProfession($user->profession);
+
         return view('profile.settings', [
-            'user' => Auth::user(),
+            'user' => $user,
+            'allowedTiers' => $allowedTiers,
         ]);
+    }
+
+    public function updatePlan(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'tier' => 'required|in:free,standard,pro-med,pro-arch,pro-eng',
+        ]);
+
+        \App\Support\TierPolicy::assertTierAllowedForProfession($user, $request->tier);
+
+        $user->update([
+            'tier' => $request->tier,
+        ]);
+
+        return back()->with('success', 'Plan updated (DEV mode — Stripe not connected yet). Your entitlements now follow: ' . $request->tier . '.');
     }
 
     public function updateProfile(Request $request)

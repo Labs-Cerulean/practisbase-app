@@ -119,4 +119,43 @@ class User extends Authenticatable
     {
         return \App\Support\TierPolicy::proPackage($this);
     }
+
+    public function hasAcceptedTerms(): bool
+    {
+        return $this->terms_accepted_at !== null;
+    }
+
+    public function isOnboardingComplete(): bool
+    {
+        return filled($this->profession) && filled($this->employment_type) && filled($this->tier);
+    }
+
+    public function onboardingRedirectPath(): string
+    {
+        if (! filled($this->profession)) {
+            return '/onboarding/profession';
+        }
+
+        if (! filled($this->employment_type)) {
+            return '/onboarding/financial';
+        }
+
+        return '/onboarding/plans';
+    }
+
+    public function freeClientCap(): int
+    {
+        return \App\Support\TierPolicy::FREE_CLIENT_LIFETIME_CAP;
+    }
+
+    public function clientUsageLabel(): string
+    {
+        $used = $this->lifetimeClientCount();
+
+        if ($this->isPaid()) {
+            return $used . ' lifetime clients created (unlimited on your plan)';
+        }
+
+        return $used . ' / ' . $this->freeClientCap() . ' lifetime clients used';
+    }
 }
