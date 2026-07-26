@@ -21,11 +21,21 @@ Route::get('/login', function () {
     return view('login');
 })->name('login');
 
+// Accidental GET (refresh/bookmark) must not 405 — send them back to the form
+Route::get('/login-submit', function () {
+    return redirect('/login');
+});
+
 Route::post('/login-submit', [AuthController::class, 'loginSubmit']);
 
 Route::get('/register', function () {
     return view('register');
 });
+
+Route::get('/register-submit', function () {
+    return redirect('/register');
+});
+
 Route::post('/register-submit', [AuthController::class, 'registerSubmit']);
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
