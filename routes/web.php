@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\AccountantDownloadController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileController;
@@ -125,5 +127,17 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::post('/reports/close-year', [ReportController::class, 'closeYear']);
         Route::post('/reports/tax-payments', [ReportController::class, 'storeTaxPayment']);
         Route::delete('/reports/tax-payments/{id}', [ReportController::class, 'destroyTaxPayment']);
+        Route::get('/reports/ta22.pdf', [ReportController::class, 'downloadTa22']);
+
+        Route::get('/expenses', [ExpenseController::class, 'index']);
+        Route::get('/expenses/create', [ExpenseController::class, 'create']);
+        Route::post('/expenses', [ExpenseController::class, 'store']);
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
+        Route::get('/expenses/{expense}/receipt', [ExpenseController::class, 'downloadReceipt']);
+
+        Route::get('/exports/accountant', [AccountantDownloadController::class, 'index']);
+        Route::post('/exports/accountant', [AccountantDownloadController::class, 'download']);
     });
+
+    Route::put('/settings/branding', [ProfileController::class, 'updateBranding']);
 });

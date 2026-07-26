@@ -40,6 +40,7 @@ use Illuminate\Notifications\Notifiable;
     'max_ssc_paid',
     'estimated_expenses',
     'clients_created_count',
+    'logo_path',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -78,6 +79,66 @@ class User extends Authenticatable
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    /**
+     * Standard+ with ledger rows for the year → use ledger total.
+     * Otherwise fall back to estimated_expenses (Free / empty ledger).
+     *
+     * @return array{amount: float, source: string, ledger_total: float, estimate: float}
+     */
+    public function deductibleExpensesForYear(int $year): array
+    {
+        $estimate = (float) ($this->estimated_expenses ?? 0);
+        $ledgerTotal = (float) Expense::where('user_id', $this->id)
+            ->whereYear('expense_date', $year)
+            ->selectRaw('COALESCE(SUM(amount + vat_amount), 0) as total')
+            ->value('total');
+
+        if ($this->canAccessStandardTools() && $ledgerTotal > 0) {
+            return [
+                'amount' => $ledgerTotal,
+                'source' => 'ledger',
+                'ledger_total' => $ledgerTotal,
+                'estimate' => $estimate,
+            ];
+        }
+
+        return [
+            'amount' => $estimate,
+            'source' => 'estimate',
+            'ledger_total' => $ledgerTotal,
+            'estimate' => $estimate,
+        ];
+    }
+
+    public function logoDataUri(): ?string
+    {
+        if (! filled($this->logo_path)) {
+            return null;
+        }
+
+        $disk = \App\Support\TenantStorage::disk();
+
+        if (! $disk->exists($this->logo_path)) {
+            return null;
+        }
+
+        $binary = $disk->get($this->logo_path);
+        $ext = strtolower(pathinfo($this->logo_path, PATHINFO_EXTENSION));
+        $mime = match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
+
+        return 'data:' . $mime . ';base64,' . base64_encode($binary);
     }
 
     public function lifetimeClientCount(): int

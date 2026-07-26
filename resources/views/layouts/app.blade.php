@@ -50,6 +50,16 @@
                                     Live Fiscal Report
                                 </a>
                             </li>
+                            <li>
+                                <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">
+                                    Expenses
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/exports/accountant" class="nav-link {{ request()->is('exports*') ? 'active' : '' }}">
+                                    Accountant Download
+                                </a>
+                            </li>
                         @endif
 
                         @if(auth()->user()->canAccessProPackage('med'))

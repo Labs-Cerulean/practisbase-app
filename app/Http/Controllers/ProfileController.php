@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Support\TenantStorage;
 
 class ProfileController extends Controller
 {
@@ -104,6 +105,46 @@ class ProfileController extends Controller
         ]);
 
         return back()->with('success', 'Profile updated successfully.');
+    }
+
+    public function updateBranding(Request $request)
+    {
+        $user = Auth::user();
+
+        if (! $user->canAccessStandardTools()) {
+            return redirect('/settings')->withErrors([
+                'branding' => 'Custom logo branding is available on Standard and Pro plans.',
+            ]);
+        }
+
+        $request->validate([
+            'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'remove_logo' => 'nullable|boolean',
+        ]);
+
+        if ($request->boolean('remove_logo') && $user->logo_path) {
+            TenantStorage::disk()->delete($user->logo_path);
+            $user->update(['logo_path' => null]);
+
+            return back()->with('success', 'Logo removed. Documents will use PractisBase defaults.');
+        }
+
+        if ($request->hasFile('logo')) {
+            if ($user->logo_path) {
+                TenantStorage::disk()->delete($user->logo_path);
+            }
+
+            $path = $request->file('logo')->store(
+                TenantStorage::brandingPath($user->id),
+                TenantStorage::diskName()
+            );
+
+            $user->update(['logo_path' => $path]);
+
+            return back()->with('success', 'Logo uploaded. It will appear on new PDF downloads.');
+        }
+
+        return back()->withErrors(['logo' => 'Choose an image to upload, or check remove logo.']);
     }
 
     public function updatePassword(Request $request)

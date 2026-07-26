@@ -61,8 +61,11 @@ class ReportController extends Controller
             ->whereYear('payment_date', $selectedYear)
             ->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))
             ->sum('amount');
+
+        $expenseInfo = $user->deductibleExpensesForYear($selectedYear);
+        $deductibleExpenses = $expenseInfo['amount'];
             
-        $netProfit = max(0, $invoicedRevenue - $user->estimated_expenses);
+        $netProfit = max(0, $invoicedRevenue - $deductibleExpenses);
 
         // --- FETCH GOVERNMENT BRACKETS ---
         $compType = $user->tax_computation ?: 'single'; 
@@ -91,7 +94,7 @@ class ReportController extends Controller
         // --- MATH ENGINE: VAT ---
         if ($user->vat_status === 'article_10') {
             $vatLiability = $invoicedRevenue - ($invoicedRevenue / 1.18);
-            $netProfit = max(0, ($invoicedRevenue / 1.18) - $user->estimated_expenses);
+            $netProfit = max(0, ($invoicedRevenue / 1.18) - $deductibleExpenses);
         }
 
         // --- MATH ENGINE: INCOME TAX & TA22 ---
@@ -216,8 +219,55 @@ class ReportController extends Controller
             'user', 'selectedYear', 'currentYear', 'earliestYear', 'isYearClosed', 'uninvoicedRfpCount', 'uninvoicedRfpCash',
             'collectedRevenue', 'invoicedRevenue', 'netProfit', 'ta22Liability', 
             'incomeTaxLiability', 'sscLiability', 'vatLiability', 'appliedRatesYear', 'breakdowns',
-            'taxPayments', 'ptTaxPaid', 'ptSscPaid', 'vatPaid', 'totalTaxLiability', 'taxBalance', 'sscBalance', 'vatBalance'
+            'taxPayments', 'ptTaxPaid', 'ptSscPaid', 'vatPaid', 'totalTaxLiability', 'taxBalance', 'sscBalance', 'vatBalance',
+            'deductibleExpenses', 'expenseInfo'
         ));
+    }
+
+    public function downloadTa22(Request $request)
+    {
+        $user = Auth::user();
+
+        if ($user->employment_type !== 'part_time') {
+            return redirect('/reports')->withErrors([
+                'fiscal_error' => 'TA22 summary is only available for part-time self-employed profiles.',
+            ]);
+        }
+
+        $selectedYear = (int) $request->input('year', date('Y'));
+        $expenseInfo = $user->deductibleExpensesForYear($selectedYear);
+        $deductibleExpenses = $expenseInfo['amount'];
+
+        $totalInvoiced = Invoice::where('user_id', $user->id)
+            ->where('type', 'invoice')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('total');
+        $totalCredited = Invoice::where('user_id', $user->id)
+            ->where('type', 'credit_note')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('total');
+        $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
+
+        if ($user->vat_status === 'article_10') {
+            $netProfit = max(0, ($invoicedRevenue / 1.18) - $deductibleExpenses);
+        } else {
+            $netProfit = max(0, $invoicedRevenue - $deductibleExpenses);
+        }
+
+        $ta22Rules = $this->getRatesSafely('ta22', $selectedYear);
+        $ta22Cap = $ta22Rules['max_limit'] ?? 12000;
+        $ta22Rate = $ta22Rules['rate'] ?? 0.10;
+        $amountEligibleForTa22 = min($netProfit, $ta22Cap);
+        $ta22Liability = $amountEligibleForTa22 * $ta22Rate;
+        $spilloverProfit = max(0, $netProfit - $ta22Cap);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.ta22', compact(
+            'user', 'selectedYear', 'invoicedRevenue', 'deductibleExpenses', 'expenseInfo',
+            'netProfit', 'ta22Cap', 'ta22Rate', 'amountEligibleForTa22', 'ta22Liability', 'spilloverProfit'
+        ));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->download('TA22-summary-' . $selectedYear . '.pdf');
     }
 
     // --- SAVE TAX PAYMENT ---
