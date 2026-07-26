@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tier' => \App\Http\Middleware\EnsureUserTier::class,
+            'terms' => \App\Http\Middleware\EnsureTermsAccepted::class,
+            'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -29,6 +29,53 @@
             </div>
         @endif
 
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Subscription</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 1.25rem;">
+                Current plan drives client limits and Live Fiscal Report access. Deletes do <strong>not</strong> free Free-tier client slots.
+            </p>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;">
+                <span style="display: inline-block; background: rgba(2, 132, 199, 0.1); color: var(--primary-cerulean); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.35rem 0.75rem; border-radius: 20px; border: 1px solid rgba(2, 132, 199, 0.25);">
+                    {{ ucwords(str_replace('-', ' ', $user->tier ?: 'free')) }}
+                </span>
+                <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 600;">
+                    {{ $user->clientUsageLabel() }}
+                </span>
+            </div>
+
+            @unless($user->isPaid())
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #92400e; font-size: 0.85rem; line-height: 1.45;">
+                    Free includes Dashboard + ledger only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard or Pro for <strong>unlimited clients</strong> and the <strong>Live Fiscal Report</strong>.
+                </div>
+            @endunless
+
+            <div style="background: #fef3c7; color: #b45309; text-align: left; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; border: 1px solid #fde68a;">
+                DEV MODE: Plan changes below update your account instantly. Stripe billing is not connected yet.
+            </div>
+
+            <form action="/settings/plan" method="POST">
+                @csrf
+                @method('PUT')
+                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Change plan</label>
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                    <select name="tier" required style="flex: 1; min-width: 180px; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                        @foreach(($allowedTiers ?? ['free', 'standard']) as $tierOption)
+                            <option value="{{ $tierOption }}" {{ ($user->tier ?: 'free') === $tierOption ? 'selected' : '' }}>
+                                {{ ucwords(str_replace('-', ' ', $tierOption)) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <button type="submit" style="padding: 0.75rem 1.25rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                        Update Plan
+                    </button>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    Pro packages are limited to your registered profession. Contact support to change profession.
+                </div>
+            </form>
+        </div>
+
         <form action="/settings/profile" method="POST">
             @csrf
             @method('PUT')
