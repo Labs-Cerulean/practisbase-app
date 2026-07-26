@@ -17,7 +17,7 @@ When PractisBase is "complete", a Maltese self-employed professional can:
 4. **Self-serve their plan** — Upgrade/downgrade Free → Standard → Pro (Medical / Architect / Engineer) from Settings; Free hard-capped at **5 lifetime clients** (deletes do not free a slot).
 5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Live Fiscal Report, Expenses, Document Storage, Accountant Download, TA22 generation, Pro industry modules.
 6. **Export professional PDFs** — Branded invoices/RFPs/credit notes/receipts (Standard+ custom logo).
-7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals, **practitioner-held recovery code** encryption (Labs cannot decrypt; lost key = unrecoverable; backup requires code + signed acknowledgment); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
+7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals, **practitioner-held recovery code** encryption (Labs cannot decrypt; lost key = unrecoverable; backup requires code + signed acknowledgment); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer projects; **Certificates & Declarations shared across all Pro packages** (doctors, architects, engineers).
 8. **Pay Cerulean Labs** — Real Stripe billing replaces the current DEV bypass.
 
 Everything below is sequenced **backwards from that end state**: foundations first (security, tiers, legal), then core product surface, then monetized features, then Pro verticals, then documents and billing polish.
@@ -118,7 +118,9 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 | Expenses / docs / branding / TA22 / Accountant Download | no | yes | yes | yes | yes |
 | Patient Journals / Rx / referrals | no | no | yes | no | no |
 | Architect DMS / stamper / phases | no | no | no | yes | no |
-| EMS/BMS / certifications | no | no | no | no | yes |
+| Engineering projects | no | no | no | no | yes |
+| Certificates & declarations (shared Pro) | no | no | yes | yes | yes |
+| EMS/BMS templates | no | no | no | no | later |
 
 #### Upgrade paths (examples)
 
@@ -179,7 +181,9 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 13. **VAT number at signup/onboarding:** **Optional.** Collect VAT **status** (Art 10 / 11 / exempt) during fiscal onboarding so ledger math works; do **not** require an MT VAT number to finish signup. Many starters are not VAT-registered yet. Ask for the number in Settings anytime; **hard-require only when it is legally needed to issue** — i.e. Article 10 users creating an invoice or applying 18% VAT (document must show the supplier VAT ID). Article 11 / exempt / medical: number remains optional (show on PDFs if present).
 14. **Forgot password:** Login must offer a forgot-password flow (email reset link). Password reset **never** unlocks the medical vault (already locked in List A). Build in Phase 2 with core auth UX.
 
-### ROADMAP STATUS: LOCKED — Phase 0–1 shipped; revisions #13–14 applied
+15. **Certificates & declarations are shared Pro tools** — not Engineer-only. Doctors (medical certificates / fitness / attestations), Architects (declarations), and Engineers (certs with photo/expiry) all use `/pro/certificates`. Document Stamper remains Arch-primary for PDF stamp sheets; the certificate register is the shared log.
+
+### ROADMAP STATUS: LOCKED — Phase 0–1 shipped; revisions #13–15 applied
 Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order (Phase 2 next).
 
 ### 1. Free Tier (€0/mo)
@@ -192,10 +196,10 @@ Product decisions above are frozen for build. Further changes require an explici
 * **Capabilities:** Everything in Free, plus **Live Fiscal Report**, Custom Branding & Logo on documents, Expense Tracking & Receipts, Document & File Uploads, Automated TA22 Form generation, **Accountant Download** (full ledger pack for the user’s accountant).
 
 ### 3. Pro Tiers (€49.99/mo)
-All Pro tiers include everything in Standard, plus one industry package:
-* **Pro Medical (`pro-med`):** Secure Patient Journals, Digital Prescriptions, Referral Letters. *GDPR: PII must be delinked from medical details in the database.*
-* **Pro Architect (`pro-arch`):** Architect DMS, Document Stamper, Project Phase Tracking. *BCA-aligned Method Statements / declarations.*
-* **Pro Engineer (`pro-eng`):** EMS / BMS Templates, Certification Generator, Technical Specs Export. *Certification logs with photo upload + expiry management.*
+All Pro tiers include everything in Standard, plus one industry package **and** shared **Certificates & Declarations**:
+* **Pro Medical (`pro-med`):** Secure Patient Journals, Digital Prescriptions, Referral Letters, medical certificates / fitness declarations. *GDPR: PII must be delinked from medical details in the database.*
+* **Pro Architect (`pro-arch`):** Architect DMS, Document Stamper, Project Phase Tracking, professional declarations. *BCA-aligned Method Statements / declarations.*
+* **Pro Engineer (`pro-eng`):** Engineering projects, EMS / BMS Templates (later), certificate logs with photo + expiry. *Technical specs export later.*
 
 **Canonical tier values in code today:** `free`, `standard`, `pro-med`, `pro-arch`, `pro-eng` (stored on `users.tier`).
 
@@ -395,8 +399,8 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
   * **Backup/download:** always prompt for recovery code; release **decrypted** export only on success; fail closed otherwise. Surface **weekly backup mandate** + overdue nag.
   * **Lost code → new vault:** wizard creates new key/vault, **guides upload of latest backup**, restores into new vault (re-encrypt under new key). Aim for **≤ ~1 week** clinical loss if weekly backups were kept. Retain old vault ciphertext if old key resurfaces.
   * No support “reset key” path.
-* Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer Certification Generator.
-* Domain rules: BCA Method Statements (Arch); certification photo + expiry (Eng). Clarify EMS/BMS template content with domain expert before locking schemas.
+* Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer projects, **shared Certificates & Declarations** (all Pro packages — doctors, architects, and engineers all issue these).
+* Domain rules: BCA Method Statements (Arch); certification photo + expiry on shared certificate register; EMS/BMS template content with domain expert before locking schemas.
 
 ### Phase 5: Document Generation & PDF Export
 *Outcome: Every official document is downloadable and brandable.*

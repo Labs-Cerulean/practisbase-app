@@ -73,11 +73,12 @@ CREATE TABLE IF NOT EXISTS engineer_projects (
 
 CREATE INDEX IF NOT EXISTS engineer_projects_user_id_index ON engineer_projects (user_id);
 
-CREATE TABLE IF NOT EXISTS engineer_certifications (
+CREATE TABLE IF NOT EXISTS certificates (
     id bigserial PRIMARY KEY,
     user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title varchar(255) NOT NULL,
     subject_name varchar(255) NULL,
+    kind varchar(50) NOT NULL DEFAULT 'certificate',
     issued_on date NOT NULL,
     expires_on date NULL,
     photo_path varchar(500) NULL,
@@ -86,4 +87,4 @@ CREATE TABLE IF NOT EXISTS engineer_certifications (
     updated_at timestamp without time zone NULL
 );
 
-CREATE INDEX IF NOT EXISTS engineer_certifications_user_id_index ON engineer_certifications (user_id);
+CREATE INDEX IF NOT EXISTS certificates_user_id_index ON certificates (user_id);

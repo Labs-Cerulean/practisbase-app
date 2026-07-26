@@ -5,12 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class EngineerCertification extends Model
+class Certificate extends Model
 {
+    protected $table = 'certificates';
+
     protected $fillable = [
         'user_id',
         'title',
         'subject_name',
+        'kind',
         'issued_on',
         'expires_on',
         'photo_path',
@@ -24,6 +27,15 @@ class EngineerCertification extends Model
             'expires_on' => 'date',
         ];
     }
+
+    public const KINDS = [
+        'certificate' => 'Certificate',
+        'declaration' => 'Declaration',
+        'attestation' => 'Attestation',
+        'medical_certificate' => 'Medical certificate',
+        'fitness' => 'Fitness / clearance',
+        'other' => 'Other',
+    ];
 
     public function user(): BelongsTo
     {

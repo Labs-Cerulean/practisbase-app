@@ -15,7 +15,7 @@ use App\Http\Controllers\Pro\Medical\PatientController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
-use App\Http\Controllers\Pro\Engineer\CertificationController;
+use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
 
 /*
@@ -173,13 +173,18 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::post('/stamper', [StamperController::class, 'generate']);
     });
 
+    Route::middleware('pro:med,arch,eng')->prefix('pro/certificates')->group(function () {
+        Route::get('/', [CertificateController::class, 'index']);
+        Route::get('/create', [CertificateController::class, 'create']);
+        Route::post('/', [CertificateController::class, 'store']);
+        Route::get('/{certificate}/photo', [CertificateController::class, 'downloadPhoto']);
+    });
+
     Route::middleware('pro:eng')->prefix('pro/engineer')->group(function () {
         Route::get('/projects', [EngineerProjectController::class, 'index']);
         Route::get('/projects/create', [EngineerProjectController::class, 'create']);
         Route::post('/projects', [EngineerProjectController::class, 'store']);
-        Route::get('/certifications', [CertificationController::class, 'index']);
-        Route::get('/certifications/create', [CertificationController::class, 'create']);
-        Route::post('/certifications', [CertificationController::class, 'store']);
-        Route::get('/certifications/{certification}/photo', [CertificationController::class, 'downloadPhoto']);
+        Route::redirect('/certifications', '/pro/certificates');
+        Route::redirect('/certifications/create', '/pro/certificates/create');
     });
 });
