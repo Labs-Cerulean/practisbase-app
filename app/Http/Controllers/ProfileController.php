@@ -54,7 +54,8 @@ class ProfileController extends Controller
             'employment_type' => 'required|in:full_time,part_time',
             'date_of_birth' => 'required_if:employment_type,full_time|nullable|date',
             'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
-            'vat_number' => 'required_if:vat_status,article_10,article_11|nullable|string',
+            // Optional until Article 10 invoice / apply-VAT (gated in InvoiceController).
+            'vat_number' => 'nullable|string|max:50',
             'tax_computation' => 'required|in:single,married,parent',
             'primary_salary' => 'required|numeric|min:0',
             'estimated_expenses' => 'required|numeric|min:0',
@@ -92,7 +93,9 @@ class ProfileController extends Controller
             'employment_type' => $request->employment_type,
             'date_of_birth' => $request->employment_type === 'full_time' ? $request->date_of_birth : null,
             'vat_status' => $isMedical ? 'exempt' : $request->vat_status,
-            'vat_number' => in_array($request->vat_status, ['article_10', 'article_11']) ? $request->vat_number : null,
+            'vat_number' => in_array($isMedical ? 'exempt' : $request->vat_status, ['article_10', 'article_11'], true)
+                ? ($request->vat_number ?: null)
+                : null,
             'payment_methods' => $paymentMethods,
             'tax_computation' => $request->tax_computation,
             'primary_salary' => $request->primary_salary,

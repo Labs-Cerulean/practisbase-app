@@ -125,6 +125,20 @@ class User extends Authenticatable
         return $this->terms_accepted_at !== null;
     }
 
+    public function hasVatNumber(): bool
+    {
+        return filled($this->vat_number);
+    }
+
+    /**
+     * Article 10 invoices (and any document charging 18% VAT) must show the supplier VAT ID.
+     * Onboarding leaves the number optional so starters are not blocked.
+     */
+    public function missingVatNumberForArticle10Documents(): bool
+    {
+        return $this->vat_status === 'article_10' && ! $this->hasVatNumber();
+    }
+
     public function isOnboardingComplete(): bool
     {
         return filled($this->profession) && filled($this->employment_type) && filled($this->tier);

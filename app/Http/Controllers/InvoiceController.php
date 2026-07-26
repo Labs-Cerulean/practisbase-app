@@ -125,6 +125,16 @@ class InvoiceController extends Controller
             return back()->withErrors(['fiscal_error' => $lockError])->withInput();
         }
 
+        // Article 10 official invoices / charging VAT require a supplier VAT number on the document.
+        $applyingVat = $user->vat_status === 'article_10' && $request->has('apply_vat');
+        if ($user->missingVatNumberForArticle10Documents() && ($request->type === 'invoice' || $applyingVat)) {
+            return back()
+                ->withErrors([
+                    'vat_number' => 'Add your VAT number in Settings before issuing an Article 10 invoice or charging 18% VAT. You can skip this for RFPs until you have your MT number.',
+                ])
+                ->withInput();
+        }
+
         // 1. Build the JSON items array & calculate Subtotal
         $items = [];
         $subtotal = 0;

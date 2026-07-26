@@ -135,10 +135,17 @@
                     </div>
                     
                     <div id="vatSettingsGroup" style="display: {{ in_array($user->vat_status, ['article_10', 'article_11']) ? 'block' : 'none' }};">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">VAT Number</label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">VAT Number <span style="font-weight: 500; color: var(--text-muted);">(optional until needed)</span></label>
                         <input type="text" name="vat_number" id="vatSettingsInput" value="{{ $user->vat_number }}" placeholder="MT..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.4rem 0 0; line-height: 1.4;">Required only when issuing an Article 10 invoice or charging 18% VAT.</p>
                     </div>
                 </div>
+
+                @if($user->missingVatNumberForArticle10Documents())
+                    <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.45;">
+                        You are on Article 10 without a VAT number. Add it here before creating an official invoice or applying 18% VAT.
+                    </div>
+                @endif
 
                 <div id="medicalVatAlert" style="display: {{ $user->profession === 'Medical Professional' ? 'block' : 'none' }}; margin-top: 1rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.5;">
                     <strong>⚠️ Note on Medical Exemptions (Fifth Schedule):</strong><br>
@@ -314,7 +321,7 @@
 
             if (vatStatus.value === 'article_10' || vatStatus.value === 'article_11') {
                 vatGroup.style.display = 'block';
-                vatInput.required = true;
+                vatInput.required = false;
             } else {
                 vatGroup.style.display = 'none';
                 vatInput.required = false;

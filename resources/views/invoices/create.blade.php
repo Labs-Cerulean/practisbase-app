@@ -15,6 +15,21 @@
             <a href="/ledger" style="color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Cancel</a>
         </div>
 
+        @if($user->missingVatNumberForArticle10Documents())
+            <div style="margin-bottom: 1.5rem; padding: 0.85rem 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.9rem; line-height: 1.45;">
+                You are on Article 10 without a VAT number.
+                <a href="/settings" style="color: #92400e; font-weight: 700;">Add it in Settings</a>
+                before creating a tax invoice or charging 18% VAT. RFPs can still be saved without it.
+            </div>
+        @endif
+
+        @if($errors->has('vat_number'))
+            <div style="margin-bottom: 1.5rem; padding: 0.85rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: var(--radius-md); color: #991b1b; font-size: 0.9rem; line-height: 1.45;">
+                {{ $errors->first('vat_number') }}
+                <a href="/settings" style="color: #991b1b; font-weight: 700;">Open Settings</a>
+            </div>
+        @endif
+
         <form action="/ledger" method="POST" id="invoiceForm">
             @csrf
 

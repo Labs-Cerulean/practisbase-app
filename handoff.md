@@ -176,9 +176,11 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 10. **C3 — Arch/Eng files:** Normal account auth only in v1 (no practitioner-held encryption).
 11. **C4 — Accountant pack (Standard + all Pro):** No accountant login seat in v1. Instead, Standard+ users get an **Accountant Download** — a purpose-built export that presents the **full ledger for their accountant** (full details: clients/counterparties as needed for books, invoices, RFPs distinction, credit notes, payments, expenses when built, VAT breakdown, tax payments / PT where relevant). Doctor downloads and sends the file themselves. Free tier: not included.
 12. **C5 — Client delete:** **Soft-archive** (hide; keep rows for invoice history). Lifetime `clients_created_count` still never decrements.
+13. **VAT number at signup/onboarding:** **Optional.** Collect VAT **status** (Art 10 / 11 / exempt) during fiscal onboarding so ledger math works; do **not** require an MT VAT number to finish signup. Many starters are not VAT-registered yet. Ask for the number in Settings anytime; **hard-require only when it is legally needed to issue** — i.e. Article 10 users creating an invoice or applying 18% VAT (document must show the supplier VAT ID). Article 11 / exempt / medical: number remains optional (show on PDFs if present).
+14. **Forgot password:** Login must offer a forgot-password flow (email reset link). Password reset **never** unlocks the medical vault (already locked in List A). Build in Phase 2 with core auth UX.
 
-### ROADMAP STATUS: LOCKED — Phase 0 implementation started
-Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order starting at Phase 0.
+### ROADMAP STATUS: LOCKED — Phase 0–1 shipped; revisions #13–14 applied
+Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order (Phase 2 next).
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
@@ -208,7 +210,7 @@ The core fiscal engine is functioning:
 * **Live Fiscal UI:** `reports/index.blade.php` — CSS variables, warnings, clickable modal breakdowns, Article 11 progress.
 * **Government Ledger:** Provisional Tax / VAT payments with Vanilla JS smart guides updating Final June Settlement.
 * **Strict constraints already in places:** Future-dating blocked in key UIs, tax-rate year fallback, fiscal year lock checks in reports mutations.
-* **Auth & onboarding:** Custom session auth (not Breeze); register with T&Cs scroll/checkbox/IP/duration; profession → financial → plan selection (Stripe currently bypassed).
+* **Auth & onboarding:** Custom session auth (not Breeze); register with T&Cs scroll/checkbox/IP/duration; profession → financial → plan selection (Stripe currently bypassed). VAT **status** required on financial step; VAT **number** optional until Art 10 invoice / apply-VAT. Forgot password: Phase 2.
 * **Settings (partial):** Fiscal profile + password at `/settings`; **no subscription management panel yet**.
 * **Clients / Ledger / Dashboard:** Functional CRUD surfaces exist; Convert-to-Invoice and credit/refund flows exist in `InvoiceController`.
 * **Soft tier UI:** Sidebar shows Standard/Pro nav stubs based on `tier`; routes are not middleware-gated.
@@ -353,13 +355,15 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * [ ] Paid-only routes blocked for Free with upgrade path.
 * [ ] CSRF + `user_id` scoping preserved; no Tailwind/React.
 
-### Phase 2: Main Dashboard & Core Ledger UI
-*Outcome: Daily operating surface is polished and feeds the math engine correctly.*
+### Phase 2: Main Dashboard, Core Ledger UI & Auth Completeness
+*Outcome: Daily operating surface is polished and feeds the math engine correctly; login/auth gaps closed.*
 
 * Enrich `/dashboard` KPIs (current-year focus, unpaid/overdue, quick actions) without turning Free into a full fiscal cockpit.
 * Finalize ledger UX: create/edit/list Clients, RFPs, Invoices; keep Convert-to-Invoice / credit / payment flows solid.
 * Ensure RFP cash never enters official tax liability paths (already in math; guard UI copy and filters).
 * Client archive/delete UX that respects lifetime quota messaging (slot not restored).
+* **Forgot password on login:** “Forgot password?” link on `/login` → email reset form → signed token reset page → new password. Use Laravel notification/mail (Railway SMTP or equivalent). Rate-limit requests. Success copy must not reveal whether the email exists. **Never** treat password reset as medical vault unlock.
+* **VAT number deferred capture (revision #13):** Keep optional on onboarding; nudge in Settings; block Art 10 invoice / apply-VAT without a number (redirect/flash to Settings).
 * *(Year-lock and future-dating already enforced in Phase 0 — do not regress.)*
 
 ### Phase 3: Standard Tier Features
@@ -459,6 +463,7 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Transitions:** Phase 0 encodes matrix — keep all clients visible on Free downgrade; Pro switch retain locked; Pro selection profession-gated; medical access = tier AND profession; no data wipe on plan change.
 * **GDPR:** Clinical-on-Client unsafe today — Phase 0 scrub mandatory. Phase 4: delinked stores + practitioner-held recovery code (encrypt at rest; backup needs code; lost code = unrecoverable; Labs cannot reset). Phase 6: legal go-live gate before real patient data.
 * **Pre-start decisions locked:** A yes (Railway EU = verify at go-live); B deferred; C1 new vault + restore-from-weekly-backup guide + keep old ciphertext; C2 per-session unlock; C3 Arch/Eng normal auth; **C4 Accountant Download for Standard+ (full ledger pack, doctor sends)**; C5 soft-archive.
-* **Password reset never unlocks medical vault.**
-* **Ready for Phase 0 implementation** — in progress on `cursor/phase-0-integrity-a8e3`.
-* **Manual SQL required:** run `database/manual/phase0_postgresql.sql` (clients_created_count, deleted_at prep, clinical key scrub).
+* **Password reset never unlocks medical vault.** Forgot-password UI is Phase 2 (decision #14).
+* **VAT number optional at onboarding** (decision #13); required only for Art 10 invoice / apply-VAT.
+* **Phase 0–1 merged to `13.x`.** Next: Phase 2 (dashboard/ledger + forgot password + soft-archive clients).
+* **Manual SQL:** `database/manual/phase0_postgresql.sql` (already applied on Railway if Phase 0 shipped).
