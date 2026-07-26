@@ -134,16 +134,29 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 1. Remove dead sidebar branch `tier === 'pro'` (canonical values are `pro-med` / `pro-arch` / `pro-eng`).
 2. Manual ANSI SQL notes for `tax_payments` / `fiscal_years` if incomplete — **no migrations unless requested**.
 
-#### 0G. Phase 0 acceptance criteria
+#### 0G. Companion UI only (no redesign)
+*UI that must change for Phase 0 backend fixes to be honest — not dashboard polish or Settings subscription.*
+
+1. **Medical:** Remove Clinical Profile blocks from Client create/edit; Client show whitelists billing keys only (no `@foreach` dump of `profile_data`).
+2. **Profession:** Settings profession field `disabled` (not merely `readonly` — readonly still POSTs) + helper text; server ignores profession (0D).
+3. **Dates:** Confirm `max="{{ date('Y-m-d') }}"` on every issue/payment/refund date input that 0C validates (create + actions partial already mostly correct).
+4. **Nav integrity:**
+   * Put **Live Fiscal Report** in the core nav for **all** authenticated tiers (Free included) — proper `<li><a class="nav-link">`, not a bare `<a>` stuffed inside the Standard Tools block.
+   * Delete the dead `tier === 'pro'` duplicate Pro Tools block.
+   * Leave Document Storage / Expense / Pro `#` stubs as-is or hide them — do **not** build those screens in Phase 0. Prefer **hide** stub `#` links until the feature exists (avoids dead-end clicks); full tier-aware nav copy is Phase 1.
+5. **Closed fiscal year (0C):** Where ledger actions would mutate a locked year, disable buttons / show a short lock banner (mirror reports closed-year UX) — no silent server 400s only.
+
+#### 0H. Phase 0 acceptance criteria
 * [ ] Cross-tenant `client_id` rejected on invoice create.
-* [ ] No clinical UI or persistence on Clients; JSON scrubbed.
-* [ ] Closed-year ledger mutation blocked the same way as tax payments.
-* [ ] Future `issue_date` / `payment_date` / `refund_date` rejected server-side.
-* [ ] Profession cannot be changed via Settings POST.
+* [ ] No clinical UI or persistence on Clients; JSON scrubbed; show page billing-only.
+* [ ] Closed-year ledger mutation blocked; UI disables/explains when locked.
+* [ ] Future `issue_date` / `payment_date` / `refund_date` rejected server-side; matching `max=today` on inputs.
+* [ ] Profession cannot be changed via Settings (UI + server).
 * [ ] `TaxPayment` not unguarded.
 * [ ] Document numbers stable under delete/recreate.
+* [ ] Free users see Live Fiscal Report in sidebar; dead `tier === 'pro'` branch gone.
 
-**Explicitly NOT Phase 0** (stay in later phases): Stripe, lifetime 5-client counter UI, tier middleware product gates, Settings subscription card, dashboard polish, Expenses, Pro schemas, PDF branding. Those need the above invariants first, but are product work.
+**Explicitly NOT Phase 0 UI:** Settings subscription card, `N / 5` quota banners, dashboard redesign, pricing/landing, building Expense/Pro screens, visual redesign / new CSS frameworks.
 
 ### Phase 1: Subscriptions, T&Cs & Multi-Tenant Security
 *Outcome: Free lifetime 5-client cap; tier middleware for paid extras; Settings plan card; onboarding/T&Cs cannot be skipped. Tenant IDOR already closed in Phase 0.*
@@ -156,7 +169,7 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 #### 1B. Tier feature middleware
 * `EnsureUserTier` aliased as `tier` in `bootstrap/app.php`.
 * **Do not gate `/reports` for Free** — Free keeps the fiscal summary. Gate Expenses / Document Storage / VAT Export / TA22 / Pro when those land.
-* Unhide Live Fiscal Report in sidebar for Free; keep unpaid tool stubs soft-hidden until built.
+* Unhide is done in Phase 0 nav companion UI; Phase 1 only adds middleware around **paid** extras.
 * Free hitting a paid route → upgrade redirect/flash.
 
 #### 1C. Settings — subscription & profile
@@ -225,15 +238,14 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 
 ```
 Phase 0A IDOR + TaxPayment fillable
-    → Phase 0B medical containment + SQL scrub
-    → Phase 0C year-lock helper + before_or_equal:today on ledger dates
-    → Phase 0D profession immutable in Settings
+    → Phase 0B medical containment + SQL scrub + Client show whitelist
+    → Phase 0C year-lock helper + before_or_equal:today + lock UI on ledger
+    → Phase 0D/0G profession disabled in Settings
     → Phase 0E document numbering fix
-    → Phase 0F dead tier===pro cleanup
+    → Phase 0F/0G nav: Free sees /reports; remove tier===pro; hide dead # stubs optional
 Phase 1 lifetime client counter + helpers
     → tier + onboarding middleware
-    → unhide /reports for Free
-    → Settings Subscription card
+    → Settings Subscription card + N/5 usage UI
     → route group wiring
 ```
 
@@ -260,7 +272,7 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Branch base:** `13.x`
 * **Stack in repo:** Laravel 13 / PHP 8.3+ (handoff historically said 11.x — follow the repo)
 * **Pre-launch:** No real users — infra/schema fixes are in scope; still prefer correct tenancy patterns.
-* **Start implementing Phase 0+1** from "Suggested Build Order" above unless the developer revises priorities.
+* **Start implementing Phase 0 first** (integrity/containment), then Phase 1 (SaaS gates), per "Suggested Build Order".
 * **Free:** fiscal summary allowed; **5 lifetime clients** (counter, never decremented on delete).
 * **Medical:** Phase 0 containment is mandatory before/with Phase 1; full delinked Pro Medical schema is Phase 4 — never put clinical fields back on `Client`.
 * **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6.
