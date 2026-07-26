@@ -25,6 +25,8 @@ Whenever writing math, controllers, or logic for the ledger/reporting, you must 
 - **No Future Dating:** Never allow users to date documents or payments in the future. Always apply `max="{{ date('Y-m-d') }}"` to date pickers, and validate `before_or_equal:today` in Form Requests.
 - **JSON Columns:** Tax rates are stored as PostgreSQL `JSON`. Use exact bracket matching. If income exceeds the highest bracket max, always fallback to `end($brackets)`.
 
+Always issue a revision to a new pull request. 
+
 ## 4. Controller Architecture
 - Use `max(0, $value)` when calculating tax deductions or subtractions to prevent negative liabilities.
 - Never blindly assume a user has completed onboarding. Always coalesce missing profile data to safe defaults (e.g., `$user->tax_computation ?: 'single'`).
