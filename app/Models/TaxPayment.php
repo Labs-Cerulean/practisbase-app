@@ -6,5 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class TaxPayment extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'user_id',
+        'year',
+        'payment_type',
+        'amount',
+        'payment_date',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'payment_date' => 'date',
+            'amount' => 'decimal:2',
+            'year' => 'integer',
+        ];
+    }
 }

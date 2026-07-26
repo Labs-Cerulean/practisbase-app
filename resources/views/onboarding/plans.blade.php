@@ -84,7 +84,7 @@
                 </form>
             </div>
 
-            <div class="pricing-card" style="border-top: 4px solid #059669;">
+            <div class="pricing-card" style="border-top: 4px solid #059669; {{ in_array('pro-med', $allowedTiers ?? []) ? '' : 'opacity: 0.45;' }}">
                 <div class="tier-name" style="color: #059669;">Pro Medical ⚕️</div>
                 <div class="tier-price">€49.99<span>/mo</span></div>
                 <ul class="feature-list">
@@ -94,14 +94,18 @@
                     <li>Digital Prescriptions</li>
                     <li>Referral Letters</li>
                 </ul>
+                @if(in_array('pro-med', $allowedTiers ?? []))
                 <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
                     @csrf
                     <input type="hidden" name="tier" value="pro-med">
                     <button type="submit" class="btn-tier btn-outline" style="border-color: #059669; color: #059669;">Select Pro Med</button>
                 </form>
+                @else
+                    <div style="margin-top: auto; font-size: 0.8rem; color: var(--text-muted); text-align: center; font-weight: 600;">Only available for Medical Professionals</div>
+                @endif
             </div>
 
-            <div class="pricing-card" style="border-top: 4px solid var(--primary-navy);">
+            <div class="pricing-card" style="border-top: 4px solid var(--primary-navy); {{ in_array('pro-arch', $allowedTiers ?? []) ? '' : 'opacity: 0.45;' }}">
                 <div class="tier-name" style="color: var(--primary-navy);">Pro Architect 📐</div>
                 <div class="tier-price">€49.99<span>/mo</span></div>
                 <ul class="feature-list">
@@ -111,14 +115,18 @@
                     <li>Document Stamper</li>
                     <li>Project Phase Tracking</li>
                 </ul>
+                @if(in_array('pro-arch', $allowedTiers ?? []))
                 <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
                     @csrf
                     <input type="hidden" name="tier" value="pro-arch">
                     <button type="submit" class="btn-tier btn-outline" style="border-color: var(--primary-navy); color: var(--primary-navy);">Select Pro Arch</button>
                 </form>
+                @else
+                    <div style="margin-top: auto; font-size: 0.8rem; color: var(--text-muted); text-align: center; font-weight: 600;">Only available for Architects / Periti</div>
+                @endif
             </div>
 
-            <div class="pricing-card" style="border-top: 4px solid #d97706;">
+            <div class="pricing-card" style="border-top: 4px solid #d97706; {{ in_array('pro-eng', $allowedTiers ?? []) ? '' : 'opacity: 0.45;' }}">
                 <div class="tier-name" style="color: #d97706;">Pro Engineer ⚙️</div>
                 <div class="tier-price">€49.99<span>/mo</span></div>
                 <ul class="feature-list">
@@ -128,11 +136,15 @@
                     <li>Certification Generator</li>
                     <li>Technical Specs Export</li>
                 </ul>
+                @if(in_array('pro-eng', $allowedTiers ?? []))
                 <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
                     @csrf
                     <input type="hidden" name="tier" value="pro-eng">
                     <button type="submit" class="btn-tier btn-outline" style="border-color: #d97706; color: #d97706;">Select Pro Eng</button>
                 </form>
+                @else
+                    <div style="margin-top: auto; font-size: 0.8rem; color: var(--text-muted); text-align: center; font-weight: 600;">Only available for Engineers</div>
+                @endif
             </div>
 
         </div>

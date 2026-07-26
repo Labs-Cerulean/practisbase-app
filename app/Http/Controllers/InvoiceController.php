@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
+use App\Support\DocumentNumber;
+use App\Support\FiscalYearGuard;
 
 class InvoiceController extends Controller
 {
@@ -107,8 +109,8 @@ class InvoiceController extends Controller
 
         $request->validate([
             'type' => 'required|in:invoice,rfp',
-            'client_id' => 'required|exists:clients,id',
-            'issue_date' => 'required|date',
+            'client_id' => 'required|exists:clients,id,user_id,' . $user->id,
+            'issue_date' => 'required|date|before_or_equal:today',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'item_desc' => 'required|array|min:1',
             'item_desc.*' => 'required|string',
@@ -117,6 +119,11 @@ class InvoiceController extends Controller
             'item_price' => 'required|array|min:1',
             'item_price.*' => 'required|numeric|min:0',
         ]);
+
+        $issueYear = FiscalYearGuard::yearFromDate($request->issue_date);
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, $issueYear)) {
+            return back()->withErrors(['fiscal_error' => $lockError])->withInput();
+        }
 
         // 1. Build the JSON items array & calculate Subtotal
         $items = [];
@@ -158,11 +165,12 @@ class InvoiceController extends Controller
             }
         }
 
-        // 4. Generate the Document Number
-        $prefix = $request->type === 'rfp' ? 'RFP-' : 'INV-';
-        $latestDoc = Invoice::where('user_id', $user->id)->where('type', $request->type)->latest('id')->first();
-        $nextId = $latestDoc ? $latestDoc->id + 1 : 1;
-        $documentNumber = $prefix . date('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        // 4. Generate the Document Number (per-user, per-type, per-year sequence)
+        $documentNumber = DocumentNumber::next(
+            $user->id,
+            $request->type,
+            FiscalYearGuard::yearFromDate($request->issue_date)
+        );
 
         // 5. Save to Database
         Invoice::create([
@@ -304,8 +312,15 @@ class InvoiceController extends Controller
 
         $request->validate([
             'payment_amount' => 'required|numeric|min:0.01',
-            'payment_date' => 'required|date'
+            'payment_date' => 'required|date|before_or_equal:today'
         ]);
+
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($request->payment_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
 
         $paymentAmount = (float) $request->payment_amount;
         
@@ -390,6 +405,13 @@ class InvoiceController extends Controller
         if ($document->type !== 'invoice') abort(400, 'Credit notes can only be issued against official Tax Invoices.');
         if ($document->status === 'cancelled') abort(400, 'This invoice is already fully cancelled.');
 
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, (int) date('Y'))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+
         $request->validate([
             'credit_amount' => 'required|numeric|min:0.01'
         ]);
@@ -465,6 +487,13 @@ class InvoiceController extends Controller
         if ($document->user_id !== $user->id) abort(403);
         if ($document->type !== 'rfp') abort(400, 'Only RFPs can be converted to Invoices.');
 
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, (int) date('Y'))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+
         $request->validate([
             'conversion_amount' => 'required|numeric|min:0.01'
         ]);
@@ -489,9 +518,8 @@ class InvoiceController extends Controller
             $vat = 0;
         }
 
-        // 3. Generate Sequential Invoice Number (e.g., INV-20260523-0004)
-        $invCount = Invoice::where('user_id', $user->id)->where('type', 'invoice')->count() + 1;
-        $invNumber = 'INV-' . date('Ymd') . '-' . str_pad($invCount, 4, '0', STR_PAD_LEFT);
+        // 3. Generate Sequential Invoice Number (per-user per-year)
+        $invNumber = DocumentNumber::next($user->id, 'invoice');
 
         DB::transaction(function () use ($user, $document, $conversionAmount, $subtotal, $vat, $maxAllowable, $invNumber) {
             
@@ -565,6 +593,13 @@ class InvoiceController extends Controller
         // Security Check
         if ($payment->user_id !== $user->id) abort(403);
 
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($payment->payment_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+        if ($invoice && ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($invoice->issue_date)))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+
         DB::transaction(function () use ($payment, $invoice) {
             // 1. Deduct the amount from the parent invoice
             $newPaid = max(0, $invoice->amount_paid - $payment->amount);
@@ -590,10 +625,16 @@ class InvoiceController extends Controller
         $user = Auth::user();
         if ($payment->user_id !== $user->id) abort(403);
 
-        $request->validate(['target_invoice_id' => 'required|exists:invoices,id']);
+        $request->validate([
+            'target_invoice_id' => 'required|exists:invoices,id,user_id,' . $user->id,
+        ]);
         
         $targetInvoice = Invoice::where('id', $request->target_invoice_id)->where('user_id', $user->id)->firstOrFail();
         $oldInvoice = $payment->invoice;
+
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($payment->payment_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
 
         DB::transaction(function () use ($payment, $oldInvoice, $targetInvoice) {
             // 1. Deduct from Parent RFP
@@ -622,8 +663,15 @@ class InvoiceController extends Controller
 
         $request->validate([
             'refund_amount' => 'required|numeric|min:0.01',
-            'refund_date' => 'required|date'
+            'refund_date' => 'required|date|before_or_equal:today'
         ]);
+
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($request->refund_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
 
         $refundAmount = (float) $request->refund_amount;
 

@@ -13,6 +13,20 @@
         </a>
     </div>
 
+    @if($errors->any())
+        <div style="background: #fef2f2; border: 1px solid #f87171; color: #b91c1c; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-size: 0.9rem;">
+            @foreach($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+        </div>
+    @endif
+
+    @if(session('success'))
+        <div style="background: #d1fae5; border: 1px solid #10b981; color: #047857; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-weight: 500;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <form method="GET" action="/clients" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow-sm);">
         <input type="text" name="search" placeholder="Search name or email..." value="{{ request('search') }}" style="flex: 1; min-width: 150px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
         

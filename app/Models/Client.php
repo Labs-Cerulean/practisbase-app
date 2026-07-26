@@ -19,15 +19,33 @@ class Client extends Model
 {
     use HasFactory;
 
+    public const BILLING_PROFILE_KEYS = [
+        'vat_number',
+        'registration_number',
+        'contact_person',
+        'id_card_number',
+    ];
+
     /**
      * Get the attributes that should be cast.
      */
     protected function casts(): array
     {
         return [
-            // This magically converts the JSON string in the database to a PHP Array in code
-            'profile_data' => 'array', 
+            'profile_data' => 'array',
         ];
+    }
+
+    public static function billingProfileOnly(array $profileData): array
+    {
+        $clean = [];
+        foreach (self::BILLING_PROFILE_KEYS as $key) {
+            if (array_key_exists($key, $profileData) && $profileData[$key] !== null && $profileData[$key] !== '') {
+                $clean[$key] = $profileData[$key];
+            }
+        }
+
+        return $clean;
     }
 
     /**

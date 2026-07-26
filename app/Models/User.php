@@ -39,6 +39,7 @@ use Illuminate\Notifications\Notifiable;
     'primary_salary',
     'max_ssc_paid',
     'estimated_expenses',
+    'clients_created_count',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -59,9 +60,10 @@ class User extends Authenticatable
             'terms_accepted_at' => 'datetime',
             'date_of_birth' => 'date',
             'payment_methods' => 'array',
-            'max_ssc_paid' => 'boolean', // Ensures 1/0 from DB becomes true/false in PHP
+            'max_ssc_paid' => 'boolean',
             'primary_salary' => 'decimal:2',
             'estimated_expenses' => 'decimal:2',
+            'clients_created_count' => 'integer',
         ];
     }
 
@@ -76,5 +78,45 @@ class User extends Authenticatable
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function lifetimeClientCount(): int
+    {
+        return \App\Support\TierPolicy::lifetimeClientCount($this);
+    }
+
+    public function canAddClient(): bool
+    {
+        return \App\Support\TierPolicy::canAddClient($this);
+    }
+
+    public function canAccessReports(): bool
+    {
+        return \App\Support\TierPolicy::canAccessReports($this);
+    }
+
+    public function canAccessStandardTools(): bool
+    {
+        return \App\Support\TierPolicy::canAccessStandardTools($this);
+    }
+
+    public function isPaid(): bool
+    {
+        return \App\Support\TierPolicy::isPaid($this);
+    }
+
+    public function isPro(): bool
+    {
+        return \App\Support\TierPolicy::isPro($this);
+    }
+
+    public function canAccessProPackage(string $package): bool
+    {
+        return \App\Support\TierPolicy::canAccessProPackage($this, $package);
+    }
+
+    public function proPackage(): ?string
+    {
+        return \App\Support\TierPolicy::proPackage($this);
     }
 }

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Support\TierPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ClientController extends Controller
 {
@@ -77,14 +79,29 @@ class ClientController extends Controller
     // 2. Show the "Add New Client" Form
     public function create()
     {
+        $user = Auth::user();
+
+        if (! $user->canAddClient()) {
+            return redirect('/clients')->withErrors([
+                'client_limit' => 'Free plan allows ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Deleting a client does not free a slot. Upgrade to Standard or Pro for unlimited clients.',
+            ]);
+        }
+
         return view('clients.create');
     }
 
     // 3. Securely Save the Client
     public function store(Request $request)
     {
-        // Validate the universal core fields
-        $validated = $request->validate([
+        $user = Auth::user();
+
+        if (! $user->canAddClient()) {
+            return redirect('/clients')->withErrors([
+                'client_limit' => 'Free plan allows ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Deleting a client does not free a slot. Upgrade to Standard or Pro for unlimited clients.',
+            ]);
+        }
+
+        $request->validate([
             'type' => 'required|in:individual,company',
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -92,7 +109,6 @@ class ClientController extends Controller
             'billing_address' => 'nullable|string',
         ]);
 
-        // Dynamically pack the extra fields into a JSON array based on the type
         $profileData = [];
         
         if ($request->type === 'company') {
@@ -100,28 +116,24 @@ class ClientController extends Controller
             $profileData['registration_number'] = $request->registration_number;
             $profileData['contact_person'] = $request->contact_person;
         } else {
-            // It's an individual
             $profileData['id_card_number'] = $request->id_card_number;
-            
-            // If the user is a medical professional, grab the clinical fields too
-            if (Auth::user()->profession === 'Medical Professional') {
-                $profileData['dob'] = $request->dob;
-                $profileData['gender'] = $request->gender;
-                $profileData['blood_type'] = $request->blood_type;
-                $profileData['allergies'] = $request->allergies;
-            }
         }
 
-        // Save it to the database
-        Client::create([
-            'user_id' => Auth::id(),
-            'type' => $request->type,
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'billing_address' => $request->billing_address,
-            'profile_data' => $profileData, // Laravel automatically converts this array to JSON!
-        ]);
+        $profileData = Client::billingProfileOnly($profileData);
+
+        DB::transaction(function () use ($user, $request, $profileData) {
+            Client::create([
+                'user_id' => $user->id,
+                'type' => $request->type,
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'billing_address' => $request->billing_address,
+                'profile_data' => $profileData,
+            ]);
+
+            $user->increment('clients_created_count');
+        });
 
         return redirect('/clients')->with('success', 'Client added successfully!');
     }
@@ -129,7 +141,6 @@ class ClientController extends Controller
     // 4. View a Specific Client Profile
     public function show(Client $client)
     {
-        // Security Check: Does this client belong to the logged-in user?
         if ($client->user_id !== Auth::id()) {
             abort(403, 'Unauthorized access.');
         }
@@ -140,7 +151,6 @@ class ClientController extends Controller
     // 5. Show the Edit Form
     public function edit(Client $client)
     {
-        // Security Check
         if ($client->user_id !== Auth::id()) {
             abort(403, 'Unauthorized access.');
         }
@@ -151,7 +161,6 @@ class ClientController extends Controller
     // 6. Securely Update the Client
     public function update(Request $request, Client $client)
     {
-        // Security Check
         if ($client->user_id !== Auth::id()) {
             abort(403, 'Unauthorized access.');
         }
@@ -172,13 +181,6 @@ class ClientController extends Controller
             $profileData['contact_person'] = $request->contact_person;
         } else {
             $profileData['id_card_number'] = $request->id_card_number;
-            
-            if (Auth::user()->profession === 'Medical Professional') {
-                $profileData['dob'] = $request->dob;
-                $profileData['gender'] = $request->gender;
-                $profileData['blood_type'] = $request->blood_type;
-                $profileData['allergies'] = $request->allergies;
-            }
         }
 
         $client->update([
@@ -187,7 +189,7 @@ class ClientController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'billing_address' => $request->billing_address,
-            'profile_data' => $profileData,
+            'profile_data' => Client::billingProfileOnly($profileData),
         ]);
 
         return redirect("/clients/{$client->id}")->with('success', 'Client updated successfully!');

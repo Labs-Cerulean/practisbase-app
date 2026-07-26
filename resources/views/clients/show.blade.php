@@ -38,22 +38,32 @@
         </div>
 
         <div style="background: white; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm);">
-            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.25rem; font-size: 1.1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Profile Specifics</h3>
+            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.25rem; font-size: 1.1rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Billing Profile</h3>
             
-            @if($client->profile_data)
-                @foreach($client->profile_data as $key => $value)
-                    @if($value)
-                        <div style="margin-bottom: 1rem;">
-                            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.25rem;">
-                                {{ str_replace('_', ' ', $key) }}
-                            </div>
-                            <div style="font-weight: 500; color: var(--text-main);">{{ $value }}</div>
+            @php
+                $billingLabels = [
+                    'vat_number' => 'VAT Number',
+                    'registration_number' => 'Registration Number',
+                    'contact_person' => 'Contact Person',
+                    'id_card_number' => 'ID Card Number',
+                ];
+                $profile = is_array($client->profile_data) ? $client->profile_data : [];
+                $hasBilling = false;
+            @endphp
+            @foreach($billingLabels as $key => $label)
+                @if(!empty($profile[$key]))
+                    @php $hasBilling = true; @endphp
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.25rem;">
+                            {{ $label }}
                         </div>
-                    @endif
-                @endforeach
-            @else
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">No additional data on file.</p>
-            @endif
+                        <div style="font-weight: 500; color: var(--text-main);">{{ $profile[$key] }}</div>
+                    </div>
+                @endif
+            @endforeach
+            @unless($hasBilling)
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">No additional billing data on file.</p>
+            @endunless
         </div>
     </div>
 @endsection

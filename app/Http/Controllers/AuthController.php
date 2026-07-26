@@ -102,12 +102,13 @@ class AuthController extends Controller
 
     public function savePlan(Request $request)
     {
-        // Validate the new expanded tiers
         $request->validate([
             'tier' => 'required|in:free,standard,pro-med,pro-arch,pro-eng'
         ]);
 
         $user = Auth::user();
+        \App\Support\TierPolicy::assertTierAllowedForProfession($user, $request->tier);
+
         $user->update([
             'tier' => $request->tier
         ]);

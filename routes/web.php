@@ -69,7 +69,10 @@ Route::post('/onboarding/financial', [AuthController::class, 'saveFinancial'])
 
 // Step 4: Plan Selection
 Route::get('/onboarding/plans', function () {
-    return view('onboarding.plans');
+    $user = auth()->user();
+    $allowedTiers = \App\Support\TierPolicy::allowedTiersForProfession($user->profession);
+
+    return view('onboarding.plans', compact('user', 'allowedTiers'));
 })->middleware('auth');
 
 Route::post('/onboarding/plans-submit', [AuthController::class, 'savePlan'])
@@ -139,10 +142,10 @@ Route::delete('/ledger/payments/{payment}', [\App\Http\Controllers\InvoiceContro
 Route::patch('/ledger/payments/{payment}/transfer', [\App\Http\Controllers\InvoiceController::class, 'transferPayment'])->middleware('auth');
 Route::post('/ledger/{document}/refund', [\App\Http\Controllers\InvoiceController::class, 'processRefund'])->middleware('auth');
 
-Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('auth');
-Route::post('/reports/close-year', [\App\Http\Controllers\ReportController::class, 'closeYear'])->middleware('auth');
-Route::post('/reports/tax-payments', [\App\Http\Controllers\ReportController::class, 'storeTaxPayment'])->middleware('auth');
-Route::delete('/reports/tax-payments/{id}', [\App\Http\Controllers\ReportController::class, 'destroyTaxPayment'])->middleware('auth');
+Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware(['auth', 'tier:standard']);
+Route::post('/reports/close-year', [\App\Http\Controllers\ReportController::class, 'closeYear'])->middleware(['auth', 'tier:standard']);
+Route::post('/reports/tax-payments', [\App\Http\Controllers\ReportController::class, 'storeTaxPayment'])->middleware(['auth', 'tier:standard']);
+Route::delete('/reports/tax-payments/{id}', [\App\Http\Controllers\ReportController::class, 'destroyTaxPayment'])->middleware(['auth', 'tier:standard']);
 
 /*
 Route::get('/load-tax-data', function () {
