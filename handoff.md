@@ -31,6 +31,47 @@ Everything below is sequenced **backwards from that end state**: foundations fir
 * **Free fiscal access:** Free tier does **not** get Live Fiscal Report. Gate `/reports` behind Standard+ (incomplete 5-client books can produce misleading liability pictures).
 * **Free client quota:** Cap is **5 lifetime clients**. Soft-deleting or hard-deleting a client **does not** restore a slot. Upgrade to Standard+ unlocks unlimited + fiscal report.
 * **Tier transitions:** All upgrade / downgrade / Pro-package switches are first-class Phase 0 policy (see **Tier Transition Matrix** below). Encode in shared helpers before Settings plan-switching UI. **Never delete tenant data on downgrade** — gate features; retain rows.
+* **Downgrade with excess clients:** Keep **all** existing clients visible and usable in directory/ledger; only block **new** creates when Free and `clients_created_count >= 5`.
+* **Pro package switch:** Prior package data is **retained locked** (no wipe, no casual access); new package unlocks empty/fresh tools.
+* **Pro selection is profession-gated:**
+  * `pro-med` ↔ profession `Medical Professional` only
+  * `pro-arch` ↔ profession `Architect / Perit` only
+  * `pro-eng` ↔ profession `Engineer` only
+  * Other professions: Free or Standard only. Onboarding + Settings DEV switch must enforce this (reject mismatched tier).
+
+### Medical / GDPR data across tier changes (priority)
+
+**Honest status today:** Not adequately catered. Clinical fields (DOB, gender; controller also accepts blood type/allergies) sit on billing `clients.profile_data`. Tier changes currently only flip `users.tier` — they do **nothing** special for sensitive data. That is unacceptable for launch and is why Phase 0 containment + locked retention rules exist.
+
+**Target model (Phase 0 containment + Phase 4 schema):**
+
+| Data class | Where it lives | Sensitivity | Tier change behaviour |
+|---|---|---|---|
+| Billing Client (name, email, phone, address, VAT, ID card) | `clients` + billing-only `profile_data` | PII (commercial) | Always available on every tier; subject to Free create cap rules |
+| Clinical / health data (allergies, blood type, journals, Rx, diagnoses) | **Never** on `clients` after Phase 0. Phase 4: separate clinical store | Special category (GDPR Art. 9) | Accessible **only** while `tier === pro-med` **and** profession is Medical Professional |
+| Patient identity store (Phase 4) | Separate from clinical payload; opaque link to billing client optional | PII | Same lock as clinical when not on `pro-med`; delinked so a journal row is not one JOIN away from email/ID card |
+
+**Rules to encode (Phase 0 policy now; Phase 4 storage later):**
+
+1. **Phase 0 stop-the-bleed:** Remove clinical UI/writes from Clients; scrub any clinical keys from `profile_data` via manual SQL. After this, **tier changes cannot “leak” health data via Client** because it is not stored there.
+2. **No auto-migration of Clients → Patients** on upgrade to `pro-med`. Upgrading does not turn a billing client into a clinical patient. User explicitly creates patient/journal records in Pro Medical (Phase 4).
+3. **Downgrade `pro-med` → standard/free (or switch to `pro-arch`/`pro-eng`):**
+   * Clinical + patient stores become **retained locked**: no list/read/write/export via normal app routes; middleware 403/upgrade gate.
+   * Billing clients/invoices remain fully usable.
+   * Data is **not** deleted (GDPR erasure is a separate user/support right, not a side effect of billing downgrade).
+4. **Re-upgrade to `pro-med`:** Same owner regains access to their locked medical records (tier + profession checks both pass).
+5. **Profession gate + tier gate are AND conditions** for medical routes: wrong profession or wrong tier → deny. Prevents “Tutor on pro-med” and “Doctor on Free” from opening journals.
+6. **Audit expectation (Phase 4+):** Access to special-category data should be logged (who/when); lock/unlock on tier change is an entitlement event, not a delete event.
+7. **Support export (Phase 4/6):** Provide a deliberate, authenticated export path for locked medical data if the user leaves Pro Medical — still owner-scoped, never a silent ZIP in a downgrade email without controls.
+
+**Phase 0 vs Phase 4 split:**
+
+| Phase | GDPR deliverable |
+|---|---|
+| **0** | Eliminate clinical-on-Client; encode TierPolicy locks for future medical routes; profession-gated Pro selection; document retain-locked behaviour |
+| **4** | Build delinked patient PII vs clinical tables; route all medical UI through those stores + `canAccessProPackage('med')`; implement lock (no delete) on downgrade/switch; scrub any leftover anti-patterns |
+
+If clinical keys still exist in DB before Phase 0 scrub ships, treat them as **incident inventory**: scrub SQL is mandatory in Phase 0, not optional.
 
 ### Tier Transition Matrix (Phase 0 — design + encode)
 
@@ -82,22 +123,26 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 | User on `pro-med` with journals (Phase 4) switches to `pro-arch` | Journals inaccessible via app routes; data retained for return to `pro-med` or support export. Arch tools empty/fresh. |
 | User on `pro-med` downgrades to Free | Journals locked; billing clients untouched; `/reports` locked. |
 | Medical profession on Free | VAT exempt via profession; still no `/reports`; still 5-client lifetime cap. |
-| Non-medical profession selects `pro-med` at onboarding | **Allowed in DEV/onboarding for now** (tier is product package, not licence). Do not auto-change profession. Soft warning in UI optional Phase 1. |
+| Non-medical profession selects `pro-med` at onboarding | **Rejected** — Pro packages are profession-gated. Show error / disable mismatched plan cards. |
+| Medical profession selects `pro-arch` | **Rejected** — same gate. |
+| Downgrade `pro-med` while journals exist (Phase 4) | Journals **retained locked**; billing clients unaffected; `/reports` follows Standard+ vs Free rules. |
 | Downgrade while fiscal year closed | Year-lock still wins for mutations; tier gate is separate. |
-| Stripe grace / failed payment (Phase 6) | Treat as entitlement tier = `free` (or last paid) per webhook policy; same downgrade rules — **still no data wipe**. |
+| Stripe grace / failed payment (Phase 6) | Entitlement drops per webhook policy using same downgrade rules — **still no data wipe**; medical stores lock if leaving `pro-med`. |
 
 #### Phase 0 deliverable for transitions (code, not just docs)
 * Centralise entitlements in one place, e.g. `App\Support\TierPolicy` or `User` methods:
-  * `isPaid()`, `isPro()`, `proPackage()`, `canAccessReports()`, `canAddClient()`, `lifetimeClientCount()`, `canAccessStandardTools()`, `canAccessProPackage('med'|'arch'|'eng')`
+  * `isPaid()`, `isPro()`, `proPackage()`, `canAccessReports()`, `canAddClient()`, `lifetimeClientCount()`, `canAccessStandardTools()`, `canAccessProPackage('med'|'arch'|'eng')`, `allowedTiersForProfession()`, `assertTierAllowedForProfession($tier)`
   * `assertCanAddClient()` used by `ClientController@store`
-* Any future Settings DEV plan switch / Stripe webhook **only changes `users.tier`** and relies on these helpers — no per-controller special cases.
-* Middleware `tier:standard` means “Standard+” (includes all `pro-*`). Middleware `tier:pro-med` means exact package (or explicit list).
-* Do **not** implement full Settings subscription UX in Phase 0 if deferred — but **do** implement the policy object + use it anywhere tier is already checked (sidebar can call same helpers).
+* Onboarding `savePlan` + future Settings plan switch: reject Pro tier that does not match profession.
+* Any future Settings DEV plan switch / Stripe webhook **only changes `users.tier`** (after profession gate) and relies on these helpers — no per-controller special cases.
+* Middleware `tier:standard` means “Standard+” (includes all `pro-*`). Middleware `tier:pro-med` means exact package.
+* Sidebar Soft gates call the same helpers.
+* Do **not** implement full Settings subscription UX in Phase 0 if deferred — but **do** implement the policy object + profession gate on plan submit.
 
-#### Open for developer confirmation (defaults above if silent)
-1. Downgrade to Free with &gt;5 existing clients → **keep all visible** (recommended) vs hide/archive excess.
-2. Pro package switch → locked retention (recommended) vs force export-then-delete.
-3. Whether Pro tier selection should be **profession-gated** (e.g. only Medical Professional → `pro-med`) — default **no** for testing flexibility.
+#### Locked decisions (confirmed)
+1. Downgrade to Free with &gt;5 existing clients → **keep all visible**.
+2. Pro package switch → **retain locked** (no export-then-delete by default).
+3. Pro tier selection → **profession-gated**.
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
@@ -204,14 +249,16 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 2. Manual ANSI SQL notes for `tax_payments` / `fiscal_years` if incomplete — **no migrations unless requested**.
 
 #### 0G. Tier transition policy (encode now)
-1. Implement `TierPolicy` / `User` entitlement helpers per **Tier Transition Matrix** above (`canAddClient`, `canAccessReports`, Pro package checks, etc.).
-2. Add manual SQL for `users.clients_created_count` (integer not null default 0) even if Free cap enforcement UI is Phase 1 — counter + `canAddClient()` must exist in Phase 0 so upgrades/downgrades have a single rule.
-3. Wire sidebar Soft gates to the same helpers (no duplicated `in_array(tier, …)` sprawl).
-4. Document DEV plan-change as “set `users.tier` only; policy reacts” — Settings card can land in Phase 1 but must not invent new rules.
-5. Acceptance scenarios (manual or feature tests when feasible):
+1. Implement `TierPolicy` / `User` entitlement helpers per **Tier Transition Matrix** + **Medical / GDPR** section (`canAddClient`, `canAccessReports`, `canAccessProPackage`, `assertTierAllowedForProfession`, etc.).
+2. Add manual SQL for `users.clients_created_count` (integer not null default 0).
+3. Enforce profession-gated Pro selection on `AuthController@savePlan` (and any DEV tier switch).
+4. Wire sidebar Soft gates to the same helpers (no duplicated `in_array(tier, …)` sprawl).
+5. Medical containment (0B) is a GDPR prerequisite so tier changes cannot expose health fields on Clients.
+6. Acceptance scenarios:
    * free(5 creates) → pro-med → +N clients → free: create blocked; all clients visible; `/reports` denied.
    * free(3) → standard → free: 2 creates remain.
-   * pro-med → pro-arch: med routes denied; arch allowed (stubs OK); no data delete.
+   * Tutor cannot select `pro-med`; Medical Professional cannot select `pro-arch`.
+   * pro-med → pro-arch: med routes denied; arch allowed (stubs OK); no data delete (retain locked).
    * standard → free: `/reports` denied; ledger OK.
 
 #### 0H. Companion UI only (no redesign)
@@ -294,8 +341,12 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Global Document Stamper (signatures/warrants on PDFs) — shared by Arch (primary) and reusable.
 * **Pro Medical GDPR schema (manual SQL) — the real fix, not the containment:**
   * Billing `clients` remain commercial counterparties only (Phase 0 invariant).
-  * Introduce a separate patient/PII store and a separate clinical/journal store linked by opaque IDs so a journal row cannot be joined to name/email/ID card in one careless query.
-  * Digital Prescriptions / Referral Letters read clinical store + minimal display identity via controlled join, never by stuffing health fields back onto `clients.profile_data`.
+  * Separate patient/PII store and clinical/journal store linked by opaque IDs (Art. 9 data not co-located with billing email/ID card).
+  * All medical routes require `canAccessProPackage('med')` (tier **and** profession).
+  * On leave `pro-med` (downgrade or package switch): **retain locked** — no app access, no auto-delete; optional controlled owner export later.
+  * On return to `pro-med`: unlock same owner’s records.
+  * Never stuff health fields back onto `clients.profile_data`.
+  * Digital Prescriptions / Referral Letters use clinical store + controlled identity join only.
 * Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer Certification Generator.
 * Domain rules: BCA Method Statements (Arch); certification photo + expiry (Eng). Clarify EMS/BMS template content with domain expert before locking schemas.
 
@@ -357,6 +408,6 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Pre-launch:** No real users — infra/schema fixes are in scope; still prefer correct tenancy patterns.
 * **Start implementing Phase 0 first** (integrity/containment), then Phase 1 (SaaS gates), per "Suggested Build Order".
 * **Free:** **no** Live Fiscal Report; **5 lifetime clients** (counter, never decremented on delete). Upgrade to Standard+ for `/reports` + unlimited clients.
-* **Transitions:** Phase 0 encodes Tier Transition Matrix (keep data on downgrade; block Free creates when lifetime ≥ 5 even if upgraded-then-downgraded with many clients).
-* **Medical:** Phase 0 containment is mandatory; full delinked Pro Medical schema is Phase 4 — never put clinical fields back on `Client`.
+* **Transitions:** Phase 0 encodes matrix — keep all clients visible on Free downgrade; Pro switch retain locked; Pro selection profession-gated; medical access = tier AND profession; no data wipe on plan change.
+* **GDPR:** Clinical-on-Client is NOT safe today — Phase 0 scrub/containment is mandatory; full delinked stores + lock-on-downgrade in Phase 4.
 * **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6 — policy must still hold.
