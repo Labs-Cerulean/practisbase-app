@@ -62,14 +62,37 @@ Everything below is sequenced **backwards from that end state**: foundations fir
 4. **Re-upgrade to `pro-med`:** Same owner regains access to their locked medical records (tier + profession checks both pass).
 5. **Profession gate + tier gate are AND conditions** for medical routes: wrong profession or wrong tier → deny. Prevents “Tutor on pro-med” and “Doctor on Free” from opening journals.
 6. **Audit expectation (Phase 4+):** Access to special-category data should be logged (who/when); lock/unlock on tier change is an entitlement event, not a delete event.
-7. **Support export (Phase 4/6):** Provide a deliberate, authenticated export path for locked medical data if the user leaves Pro Medical — still owner-scoped, never a silent ZIP in a downgrade email without controls.
+7. **Backup / export of medical data:** Never deliver plaintext patient/clinical data without the practitioner’s recovery code (see **Practitioner-held encryption key** below). Downgrade does not email a silent ZIP.
+8. **Cerulean Labs must not be able to read patient clinical payloads at rest** once live encryption ships — support cannot “reset” or recover medical content without the practitioner’s code.
+
+### Practitioner-held encryption key (go-live medical requirement)
+
+**Intent (product language may say “hash code”):** Patient/clinical data at rest is **encrypted** with a key derived from a **recovery code** shown once to the doctor. This is **not** one-way hashing of the records (hashing would make normal app use impossible). Cerulean Labs / PractisBase **does not store the plaintext recovery code** and cannot decrypt patient payloads without it.
+
+**Lifecycle:**
+
+1. **First activation of Pro Medical (or first patient record):** System generates a high-entropy recovery code; display once with copy/download-safe presentation; require explicit confirmation that the doctor has saved it offline.
+2. **Legal acknowledgment (blocking):** Doctor must sign/accept: *“I understand that if I lose this recovery code, my patient data will be permanently unrecoverable by me or by Cerulean Labs. PractisBase cannot reset this key.”* Persist acceptance timestamp, IP, and code challenge (same pattern as T&Cs: `accepted_at`, `accepted_ip`, optionally read-duration). Store only a **verifier** (e.g. salted hash of the recovery code) if needed to validate future entry — never the code itself in recoverable form.
+3. **At rest:** Clinical/patient special-category fields encrypted. App session unlock: doctor enters recovery code (or unlocks via session key derived after code entry) to use journals in-product.
+4. **Backup / data download:** Export flow **must** prompt for the recovery code. Only after successful verification does the download contain **decrypted** patient data. Wrong/missing code → no plaintext export (encrypted blob only is unacceptable as a “backup” UX — fail closed).
+5. **Lost key:** No server-side recovery path. UI/support copy states data is unrecoverable. Optional: allow starting a **new empty** encrypted vault (old ciphertext remains undecryptable) — product decision at implement time; default document as “new vault only, old data forever locked.”
+6. **Tier downgrade / retain locked:** Ciphertext remains; without recovery code + `pro-med` entitlement, no decrypt in app. Re-upgrade still requires the **same** recovery code to unlock historical data.
+7. **Billing Clients / invoices / fiscal data:** Not covered by this vault (commercial ledger remains usable with normal auth). Only patient/clinical stores use the practitioner key.
+
+**Phase placement:**
+
+| Phase | Work |
+|---|---|
+| **0** | Document requirement; do not invent Client-side clinical storage that fights this model |
+| **4** | Implement vault schema, encryption, one-time code reveal, signed acknowledgment, session unlock, export-with-code |
+| **6** | Launch legal review of acknowledgment wording; ensure T&Cs + medical addendum align; no go-live of Pro Medical without this |
 
 **Phase 0 vs Phase 4 split:**
 
 | Phase | GDPR deliverable |
 |---|---|
-| **0** | Eliminate clinical-on-Client; encode TierPolicy locks for future medical routes; profession-gated Pro selection; document retain-locked behaviour |
-| **4** | Build delinked patient PII vs clinical tables; route all medical UI through those stores + `canAccessProPackage('med')`; implement lock (no delete) on downgrade/switch; scrub any leftover anti-patterns |
+| **0** | Eliminate clinical-on-Client; encode TierPolicy locks for future medical routes; profession-gated Pro selection; document retain-locked + practitioner-key encryption requirements |
+| **4** | Delinked patient PII vs clinical tables; encrypt clinical vault with practitioner-held recovery code; lock on leave `pro-med`; export only with code; signed unrecoverability acknowledgment |
 
 If clinical keys still exist in DB before Phase 0 scrub ships, treat them as **incident inventory**: scrub SQL is mandatory in Phase 0, not optional.
 
@@ -102,7 +125,7 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 | From → To | Clients | Fiscal report | Pro modules | Notes |
 |---|---|---|---|---|
 | free → standard | Unlock unlimited creates; lifetime counter kept | Unlock `/reports` | — | Existing ≤5 clients remain; can add more |
-| free → pro-med (or any Pro) | Same as → standard | Unlock | Unlock that Pro package only | Clients stay billing-only; journals start empty (Phase 4) |
+| free → pro-med (only if profession Medical Professional) | Same as → standard | Unlock | Unlock Medical package only | Clients stay billing-only; journals start empty (Phase 4). Mismatched profession → reject. |
 | standard → pro-* | Still unlimited | Still on | Unlock that package | |
 | pro-X → pro-Y (switch) | Still unlimited | Still on | **Lose X UI/API; gain Y.** X data retained but locked (read-only export later; no delete) | Switching Medical→Arch must not wipe journals |
 
@@ -120,8 +143,9 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 |---|---|
 | Free user creates 5 clients, upgrades to `pro-med`, creates 10 more, downgrades to Free | Lifetime count = 15 → **cannot create** any new client. All 15 clients + their invoices remain accessible in directory/ledger. No `/reports`. No journals UI. |
 | Free user at 3/5 upgrades to standard then back to Free without new creates | Lifetime still 3 → can create 2 more. |
-| User on `pro-med` with journals (Phase 4) switches to `pro-arch` | Journals inaccessible via app routes; data retained for return to `pro-med` or support export. Arch tools empty/fresh. |
-| User on `pro-med` downgrades to Free | Journals locked; billing clients untouched; `/reports` locked. |
+| User on `pro-med` with journals (Phase 4) switches to `pro-arch` | Journals inaccessible; **ciphertext retained**; unlock later only with same recovery code + return to `pro-med`. Arch tools empty/fresh. |
+| User on `pro-med` downgrades to Free | Journals locked (encrypted at rest); billing clients untouched; `/reports` locked. |
+| Medical backup download without recovery code | **Denied** — no decrypted export. |
 | Medical profession on Free | VAT exempt via profession; still no `/reports`; still 5-client lifetime cap. |
 | Non-medical profession selects `pro-med` at onboarding | **Rejected** — Pro packages are profession-gated. Show error / disable mismatched plan cards. |
 | Medical profession selects `pro-arch` | **Rejected** — same gate. |
@@ -143,6 +167,7 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 1. Downgrade to Free with &gt;5 existing clients → **keep all visible**.
 2. Pro package switch → **retain locked** (no export-then-delete by default).
 3. Pro tier selection → **profession-gated**.
+4. **Go-live patient/clinical data:** Encrypted at rest; **practitioner holds the only recovery code**; backup/download decrypt requires that code; doctor must sign that **lost code = permanently unrecoverable** (Cerulean Labs cannot reset).
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
@@ -343,10 +368,17 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
   * Billing `clients` remain commercial counterparties only (Phase 0 invariant).
   * Separate patient/PII store and clinical/journal store linked by opaque IDs (Art. 9 data not co-located with billing email/ID card).
   * All medical routes require `canAccessProPackage('med')` (tier **and** profession).
-  * On leave `pro-med` (downgrade or package switch): **retain locked** — no app access, no auto-delete; optional controlled owner export later.
-  * On return to `pro-med`: unlock same owner’s records.
+  * On leave `pro-med` (downgrade or package switch): **retain locked** — no app access, no auto-delete.
+  * On return to `pro-med`: unlock same owner’s records **only with their recovery code**.
   * Never stuff health fields back onto `clients.profile_data`.
   * Digital Prescriptions / Referral Letters use clinical store + controlled identity join only.
+* **Practitioner-held recovery code (mandatory before any real patient data in prod):**
+  * Generate one-time recovery code at Pro Medical vault setup; doctor confirms save.
+  * Persist signed acknowledgment: lost key ⇒ unrecoverable by doctor or Cerulean Labs (`accepted_at`, `accepted_ip`, etc.).
+  * Encrypt patient/clinical payloads at rest; store code verifier only, never recoverable plaintext code on server.
+  * In-app use requires unlock with code (session-scoped key after unlock).
+  * **Backup/download:** always prompt for recovery code; release **decrypted** export only on success; fail closed otherwise.
+  * No support “reset key” path.
 * Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer Certification Generator.
 * Domain rules: BCA Method Statements (Arch); certification photo + expiry (Eng). Clarify EMS/BMS template content with domain expert before locking schemas.
 
@@ -355,13 +387,16 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 
 * PDF engine already partially present (DomPDF in ledger) — harden templates for Official Invoice, RFP, Credit Note, Payment Receipt.
 * Standard+ injects logo/branding; Free uses PractisBase-safe defaults + disclaimer footer.
+* Medical PDFs that include clinical content (Rx, referrals) only generate after vault unlock; never cache plaintext clinical PDFs in world-readable storage.
 
 ### Phase 6: Billing & Launch Polish (end-game ops)
 *Outcome: Real money, real legal posture, production confidence.*
 
 * Replace onboarding/Settings DEV bypass with Stripe Checkout / Customer Portal (Cashier or thin custom).
-* Webhooks update `users.tier`; failed payment → grace → downgrade path that re-applies 5-client rule without deleting data.
+* Webhooks update `users.tier`; failed payment → grace → downgrade path that re-applies 5-client rule without deleting data; medical vault stays encrypted/locked.
 * Terms versioning + re-acceptance modal when legal text changes.
+* **Medical addendum:** Launch-ready wording for recovery-code unrecoverability acknowledgment; align master T&Cs with practitioner-held key model.
+* **Go-live gate:** Pro Medical must not accept real patient data in production until encryption + code reveal + signed acknowledgment + export-with-code are shipped and legally reviewed.
 * Disclaimers on Fiscal Report and PDFs: tool ≠ certified accountant advice.
 * Referral codes (`referral_code` / `referred_by_id` already on User) wired if part of launch.
 
@@ -409,5 +444,5 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Start implementing Phase 0 first** (integrity/containment), then Phase 1 (SaaS gates), per "Suggested Build Order".
 * **Free:** **no** Live Fiscal Report; **5 lifetime clients** (counter, never decremented on delete). Upgrade to Standard+ for `/reports` + unlimited clients.
 * **Transitions:** Phase 0 encodes matrix — keep all clients visible on Free downgrade; Pro switch retain locked; Pro selection profession-gated; medical access = tier AND profession; no data wipe on plan change.
-* **GDPR:** Clinical-on-Client is NOT safe today — Phase 0 scrub/containment is mandatory; full delinked stores + lock-on-downgrade in Phase 4.
+* **GDPR:** Clinical-on-Client unsafe today — Phase 0 scrub mandatory. Phase 4: delinked stores + practitioner-held recovery code (encrypt at rest; backup needs code; lost code = unrecoverable; Labs cannot reset). Phase 6: legal go-live gate before real patient data.
 * **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6 — policy must still hold.
