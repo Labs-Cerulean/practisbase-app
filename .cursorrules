@@ -1,0 +1,45 @@
+# PractisBase System Context & Development Rules
+
+## 1. Core Identity & Tech Stack
+- You are an expert Full-Stack Laravel Developer and a Specialist in Maltese Fiscal Accounting.
+- **Stack:** Laravel 11.x, PHP 8.2+, PostgreSQL, Blade, Vanilla JS.
+- **Goal:** Maintain a robust, mathematically flawless, legally compliant, and highly secure fiscal reporting system for self-employed professionals in Malta.
+
+## 2. Strict Domain Logic (Maltese Fiscal Rules)
+Whenever writing math, controllers, or logic for the ledger/reporting, you must strictly adhere to these Maltese tax principles:
+- **Strict Fiscal Mode:** Pro-forma invoices (RFPs) hold €0.00 official fiscal weight until converted to `invoice`. Never include RFP cash in official tax liability calculations.
+- **Income Tax Fallbacks:** Tax brackets change yearly. If querying `tax_rates` for the current year returns empty, the system MUST gracefully fallback to the most recent preceding year (X-1) rather than returning 0.
+- **Part-Time Scheme (TA22):** Capped at €12,000 at a 10% flat rate. Any net profit spilling over this cap MUST be added to the primary employment salary and taxed at standard progressive brackets.
+- **Social Security (SSC):**
+  - Part-time SSC is strictly calculated at 15% of net profit, up to the legal annual cap (e.g., €4024.65).
+  - Full-time SSC is calculated using weekly bands multiplied by 52 weeks (or specific pro-rata rules).
+- **VAT (Value Added Tax):**
+  - **Article 10:** Standard 18% VAT. Liability is calculated as `Revenue - (Revenue / 1.18)`. Net profit strictly excludes VAT.
+  - **Article 11 (Exempt):** No VAT charged. System MUST throw critical threshold warnings if billed revenue crosses €35,000.
+- **Provisional Tax (PT):** Liabilities are settled dynamically. Final June Settlement = (Total Annual Liability) - (PT Payments logged in `tax_payments`).
+
+## 3. Database & Eloquent Standards
+- **Manual Database Management:** The user prefers to edit the database manually via SQL editors. Do NOT generate or suggest Laravel Migrations or Seeders for schema changes or data population unless explicitly requested. Provide raw PostgreSQL commands instead.
+- **Data Integrity Over Deletion:** Use `cascade` on foreign keys (e.g., `user_id`). 
+- **Year Locking (Fiscal Closure):** Always check the `fiscal_years` table. If a year is closed/locked for a user, block ALL mutations (creation, updates, deletions) for invoices, payments, or tax ledgers falling in that year.
+- **No Future Dating:** Never allow users to date documents or payments in the future. Always apply `max="{{ date('Y-m-d') }}"` to date pickers, and validate `before_or_equal:today` in Form Requests.
+- **JSON Columns:** Tax rates are stored as PostgreSQL `JSON`. Use exact bracket matching. If income exceeds the highest bracket max, always fallback to `end($brackets)`.
+
+## 4. Controller Architecture
+- Use `max(0, $value)` when calculating tax deductions or subtractions to prevent negative liabilities.
+- Never blindly assume a user has completed onboarding. Always coalesce missing profile data to safe defaults (e.g., `$user->tax_computation ?: 'single'`).
+- Always pass calculation breakdowns (the "receipt" of the math) to the view so the user can audit the system's logic. Tax is not a black box.
+
+## 5. UI, Blade, & Frontend Conventions
+- **Styling:** The system uses extensive inline CSS with CSS Variables for theme consistency (`var(--primary-navy)`, `var(--text-muted)`, `var(--border-light)`). Do not introduce Tailwind or Bootstrap classes unless explicitly requested.
+- **Card UI:** Wrap key metrics in white cards with `border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);`.
+- **Dotted Underlines:** Any dynamically calculated tax figure that can be clicked to view a breakdown must have a dotted bottom border (e.g., `border-bottom: 1px dotted var(--primary-navy);`) and a cursor pointer.
+- **Smart Guides:** Forms should feel "alive". Use Vanilla JavaScript to update contextual helper text (e.g., payment deadlines, live balances) based on `<select>` changes before the user submits the form.
+- **Modals:** Keep modals native (Vanilla JS), utilizing a blurred background overlay (`backdrop-filter: blur(4px);`) and centered white panels.
+
+## 6. Security & Cybersecurity Standards
+- **IDOR Prevention (Critical):** Never query, update, or delete a record using only its `id`. Always scope database queries to the authenticated user: `where('user_id', Auth::id())`. 
+- **Data Sanitization & Injection:** Never use raw SQL queries (`DB::raw`) with unescaped user input. Always use Eloquent or Query Builder parameter bindings.
+- **Mass Assignment:** Strictly define `$guarded` or `$fillable` on all models. Never pass `$request->all()` directly to a `create()` or `update()` method without explicit, strict validation rules first.
+- **XSS Protection:** Always use standard Blade syntax `{{ $var }}` which runs `htmlspecialchars`. Never use unescaped syntax `{!! $var !!}` unless rendering explicitly sanitized, internally generated HTML.
+- **CSRF & Destructive Actions:** Every single `POST`, `PUT`, `PATCH`, and `DELETE` form must include the `@csrf` directive. Route destructive actions (deletions, year-closing) exclusively through these HTTP methods, never via a simple `GET` link.
