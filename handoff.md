@@ -64,18 +64,24 @@ The core fiscal engine is functioning:
 * **Clients / Ledger / Dashboard:** Functional CRUD surfaces exist; Convert-to-Invoice and credit/refund flows exist in `InvoiceController`.
 * **Soft tier UI:** Sidebar shows Standard/Pro nav stubs based on `tier`; routes are not middleware-gated.
 
-### Known gaps discovered in codebase audit (feed Phase 1)
-| Gap | Severity | Notes |
+### Known gaps discovered in codebase audit
+| Gap | Severity | Phase |
 |-----|----------|-------|
-| No `app/Http/Middleware` / empty `bootstrap/app.php` aliases | High | No tier, onboarding, or T&Cs gate |
-| Free 5-client lifetime quota not enforced | High | `ClientController@store` has no count check; no lifetime counter / soft-delete policy yet |
-| `InvoiceController@store` `client_id` => `exists:clients,id` without `user_id` | Critical | Cross-tenant client attach IDOR |
-| `TaxPayment` model `$guarded = []` | Medium | Mass-assignment risk |
-| Settings has no subscription panel | Medium | Tier only set at onboarding |
-| Sidebar hides Live Fiscal Report from Free | Product bug | Free should see `/reports`; currently Standard+ only in nav |
-| Onboarding incomplete users can hit `/dashboard` | Medium | Login skips onboarding check |
-| Clinical/medical fields on billing `clients.profile_data` | Critical (contain now) | DOB/gender collected as "Clinical Profile" on the invoice Client; controller also accepts `blood_type`/`allergies`. Must stop in Phase 0 — full Pro Medical schema remains Phase 4 |
-| Stripe / Cashier absent | Future (billing) | DEV bypass banner on plans page |
+| Clinical fields on billing `clients.profile_data` | Critical | **0** containment |
+| `client_id` exists without `user_id` on invoice create | Critical | **0** |
+| `target_invoice_id` exists without `user_id` (transfer) | High | **0** (validation consistency; query already scopes) |
+| Ledger/payment mutations ignore closed `fiscal_years` | High | **0** (reports only today) |
+| Document/payment dates: UI `max=today` but server often omits `before_or_equal:today` | High | **0** |
+| Settings: profession shown readonly but POST can change it | High | **0** |
+| `TaxPayment` `$guarded = []` | Medium | **0** |
+| Document numbers derived from `latest id + 1` | Medium | **0** (pre-launch renumber strategy) |
+| Dead layout branch `tier === 'pro'` | Low | **0** cleanup |
+| Free 5-client lifetime quota not enforced | High | **1** |
+| No tier / onboarding middleware | High | **1** |
+| Settings has no subscription panel | Medium | **1** |
+| Sidebar hides `/reports` from Free | Product | **1** |
+| Full Pro Medical delinked schema | Critical later | **4** |
+| Stripe / Cashier absent | Launch | **6** |
 
 ---
 
@@ -94,57 +100,80 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 | **Phase 0 (now)** | Stop the bleed — remove clinical UI/controller writes; scrub JSON; billing-only `profile_data` | No new mixed data |
 | **Phase 4** | Build proper Pro Medical tables (opaque patient ref ≠ clinical journal payload) | Real GDPR architecture |
 
-### Phase 0 — Baseline Hardening (do first inside / with Phase 1)
-*Close security holes and stop medical data collecting on the wrong entity.*
+### Phase 0 — Integrity & Containment (FIRST)
+*Outcome: Wrong data shapes and fiscal/security holes are fixed while there are no real users. No SaaS monetization UI yet — that is Phase 1.*
 
-1. Fix `client_id` validation to require ownership: `exists:clients,id,user_id,{Auth::id()}`.
-2. Audit every `find`/`Route::bind` path for `user_id` scoping (Clients, Invoices, Payments, TaxPayments).
-3. Tighten `TaxPayment` fillable/guarded; never `$request->all()` into creates.
-4. **Medical containment (mandatory):**
-   * Remove the Clinical Profile block from `clients/create` and `clients/edit`.
-   * Stop writing `dob`, `gender`, `blood_type`, `allergies` (and any clinical keys) in `ClientController@store` / `@update`.
-   * Restrict `profile_data` to **billing/identity only**: e.g. `vat_number`, `registration_number`, `contact_person`, `id_card_number`.
-   * Stop dumping raw clinical keys on `clients/show` (whitelist billing keys).
-   * Manual PostgreSQL to strip clinical keys from any existing `clients.profile_data` (safe pre-launch).
-   * Do **not** invent Patient Journal tables yet — that is Phase 4. Goal here: Client = commercial counterparty only.
-5. Provide clean ANSI PostgreSQL for any missing `tax_payments` / `fiscal_years` columns if prod is incomplete — **no Laravel migrations unless explicitly requested**.
+**Rule of thumb for Phase 0:** If leaving it broken means later features inherit a bad invariant (IDOR, clinical-on-client, open fiscal years, future-dated books), it belongs here.
 
-### Phase 1: Subscriptions, T&Cs & Multi-Tenant Security  ← **CURRENT FOCUS**
-*Outcome: A Free user cannot exceed 5 clients; a user cannot touch another tenant's rows; paid features are server-gated; Settings shows plan + legal stance; incomplete onboarding cannot skip into the app.*
+#### 0A. Tenant IDOR & mass assignment
+1. `InvoiceController@store`: `client_id` => `exists:clients,id,user_id,{Auth::id()}`.
+2. Same ownership pattern on every `exists:…,id` foreign key (e.g. `target_invoice_id` on payment transfer).
+3. Pass audit of Client / Invoice / Payment / TaxPayment paths for `user_id` scoping.
+4. `TaxPayment`: replace `$guarded = []` with explicit `$fillable`.
 
-#### 1A. Tenant isolation & lifetime Free client quota
+#### 0B. Medical containment (mandatory)
+1. Remove Clinical Profile from `clients/create` and `clients/edit`.
+2. Stop writing `dob`, `gender`, `blood_type`, `allergies` (any clinical keys) in `ClientController`.
+3. `profile_data` = billing/identity only (`vat_number`, `registration_number`, `contact_person`, `id_card_number`).
+4. Whitelist those keys on `clients/show` (no raw dump).
+5. Manual PostgreSQL scrub of clinical keys from existing `profile_data`.
+6. Do **not** build Patient Journals here — Phase 4.
+
+#### 0C. Fiscal closure & no future dating (`.cursorrules`)
+1. Shared helper e.g. `assertFiscalYearOpen($userId, $year)` used by Reports **and** ledger mutations (create/convert/credit/pay/refund/delete payment).
+2. Server validation `before_or_equal:today` on `issue_date`, `payment_date`, `refund_date` (UI `max` is not enough).
+3. `due_date` may remain in the future (payment terms); do not future-date issue/payment/refund.
+
+#### 0D. Profile integrity
+1. Settings: do **not** accept `profession` changes from POST (match the “contact support” UI). Base VAT medical rules on the stored profession, not a tampered request field.
+
+#### 0E. Document numbering (pre-launch cheap fix)
+1. Replace `latestDoc->id + 1` with a per-user, per-type, per-year sequence (count/max of existing numbers or a counter column) so deletes/concurrency cannot collide or skip oddly.
+
+#### 0F. Small cleanups
+1. Remove dead sidebar branch `tier === 'pro'` (canonical values are `pro-med` / `pro-arch` / `pro-eng`).
+2. Manual ANSI SQL notes for `tax_payments` / `fiscal_years` if incomplete — **no migrations unless requested**.
+
+#### 0G. Phase 0 acceptance criteria
+* [ ] Cross-tenant `client_id` rejected on invoice create.
+* [ ] No clinical UI or persistence on Clients; JSON scrubbed.
+* [ ] Closed-year ledger mutation blocked the same way as tax payments.
+* [ ] Future `issue_date` / `payment_date` / `refund_date` rejected server-side.
+* [ ] Profession cannot be changed via Settings POST.
+* [ ] `TaxPayment` not unguarded.
+* [ ] Document numbers stable under delete/recreate.
+
+**Explicitly NOT Phase 0** (stay in later phases): Stripe, lifetime 5-client counter UI, tier middleware product gates, Settings subscription card, dashboard polish, Expenses, Pro schemas, PDF branding. Those need the above invariants first, but are product work.
+
+### Phase 1: Subscriptions, T&Cs & Multi-Tenant Security
+*Outcome: Free lifetime 5-client cap; tier middleware for paid extras; Settings plan card; onboarding/T&Cs cannot be skipped. Tenant IDOR already closed in Phase 0.*
+
+#### 1A. Lifetime Free client quota
 * Enforce **5 lifetime clients** for Free in `ClientController@store` (and block create UI when at cap).
-* **Deletes do not free a slot.** Preferred infra (pre-launch, schema malleable):
-  1. Add `users.clients_created_count` (integer, default 0), increment only on successful create; **never** decrement on delete; OR
-  2. Soft-delete clients (`deleted_at`) and count `withTrashed()` toward the Free cap.
-  *Recommendation: (1) monotonic counter — simple, survives hard deletes, easy to show `used / 5` in Settings. Provide manual PostgreSQL for the column.*
-* Prefer shared `User` helpers: `lifetimeClientCount()`, `canAddClient()`, `isPaid()`, `hasMinTier('standard')`, `proPackage()`.
-* Keep per-query `where('user_id', Auth::id())` as the law (no relying on UI alone).
+* **Deletes do not free a slot.** Prefer `users.clients_created_count` (increment-only; manual SQL). Never decrement on delete.
+* `User` helpers: `lifetimeClientCount()`, `canAddClient()`, `isPaid()`, `hasMinTier('standard')`, `proPackage()`.
 
 #### 1B. Tier feature middleware
-* Add middleware e.g. `EnsureUserTier` aliased in `bootstrap/app.php` as `tier`.
-* Usage: `->middleware(['auth', 'tier:standard'])` or `tier:pro-med,pro-arch,pro-eng`.
-* **Do not gate `/reports` for Free** — Free keeps the fiscal summary. Gate Expenses / Document Storage / VAT Export / TA22 / Pro routes when those land.
-* Fix sidebar so Free users see Live Fiscal Report; keep Standard/Pro tool stubs soft-hidden until built.
-* Free hitting a paid route gets upgrade redirect/flash, not a silent 403 only.
+* `EnsureUserTier` aliased as `tier` in `bootstrap/app.php`.
+* **Do not gate `/reports` for Free** — Free keeps the fiscal summary. Gate Expenses / Document Storage / VAT Export / TA22 / Pro when those land.
+* Unhide Live Fiscal Report in sidebar for Free; keep unpaid tool stubs soft-hidden until built.
+* Free hitting a paid route → upgrade redirect/flash.
 
 #### 1C. Settings — subscription & profile
-* Extend `/settings` with a **Subscription** card: current tier badge, lifetime usage (e.g. `3 / 5 clients used` — clarify deletes do not restore), upgrade CTAs (Stripe later; DEV plan switch OK for now).
-* Keep existing fiscal/password sections intact (no UI regression).
+* Subscription card: tier badge, `N / 5` lifetime usage copy (deletes do not restore), DEV plan switch OK until Stripe.
+* Keep fiscal/password sections intact (no UI regression). Profession remains immutable here (Phase 0).
 
-#### 1D. Legal T&Cs acceptance flow
-* Registration flow already records `terms_accepted_at`, `accepted_ip`, `read_duration_seconds`.
-* Add middleware `EnsureTermsAccepted` (and optional `EnsureOnboardingComplete`) so users without terms / incomplete profession→financial→plan cannot reach app routes.
-* Leave room for future `terms_version` column (manual SQL when needed) without blocking Phase 1.
+#### 1D. Legal T&Cs & onboarding gates
+* `EnsureTermsAccepted` + `EnsureOnboardingComplete` so incomplete users cannot hit app routes.
+* Leave room for future `terms_version` (manual SQL later).
 
 #### 1E. Phase 1 acceptance criteria
-* [ ] Free user after 5 creates: POST `/clients` rejected even if some clients were deleted; create page disabled/warned.
-* [ ] Settings shows lifetime usage `N / 5` for Free (not merely active row count).
-* [ ] Free can open `/reports` (nav link visible).
-* [ ] Cross-user `client_id` on invoice create fails validation.
+* [ ] Free after 5 creates: further creates rejected even if clients were deleted.
+* [ ] Settings shows lifetime `N / 5` for Free.
+* [ ] Free can open `/reports` (nav visible).
 * [ ] Incomplete onboarding cannot use `/dashboard` / `/ledger` / `/clients`.
 * [ ] Paid-only routes (when present) blocked for Free with upgrade path.
-* [ ] All mutations remain CSRF + `user_id` scoped; no new Tailwind/React.
+* [ ] CSRF + `user_id` scoping preserved; no Tailwind/React.
 
 ### Phase 2: Main Dashboard & Core Ledger UI
 *Outcome: Daily operating surface is polished and feeds the math engine correctly.*
@@ -152,7 +181,8 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * Enrich `/dashboard` KPIs (current-year focus, unpaid/overdue, quick actions) without turning Free into a full fiscal cockpit.
 * Finalize ledger UX: create/edit/list Clients, RFPs, Invoices; keep Convert-to-Invoice / credit / payment flows solid.
 * Ensure RFP cash never enters official tax liability paths (already in math; guard UI copy and filters).
-* Year-lock: block ledger mutations for closed `fiscal_years` consistently (not only on reports).
+* Client archive/delete UX that respects lifetime quota messaging (slot not restored).
+* *(Year-lock and future-dating already enforced in Phase 0 — do not regress.)*
 
 ### Phase 3: Standard Tier Features
 *Outcome: €15.99 value prop is real and gated.*
@@ -177,8 +207,7 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 ### Phase 5: Document Generation & PDF Export
 *Outcome: Every official document is downloadable and brandable.*
 
-* PDF engine (DomPDF or Browsershot — choose when implementing; prefer server-simple DomPDF unless pixel-perfect print needs Browsershot).
-* Controllers for Official Invoice, RFP, Credit Note, Payment Receipt (receipt view already exists).
+* PDF engine already partially present (DomPDF in ledger) — harden templates for Official Invoice, RFP, Credit Note, Payment Receipt.
 * Standard+ injects logo/branding; Free uses PractisBase-safe defaults + disclaimer footer.
 
 ### Phase 6: Billing & Launch Polish (end-game ops)
@@ -192,24 +221,21 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 
 ---
 
-## Suggested Build Order Within Phase 1
+## Suggested Build Order
 
 ```
-Phase 0 IDOR fixes
-    → Phase 0 medical containment (strip clinical from Clients; billing-only profile_data)
-    → users.clients_created_count (manual SQL) + User helpers
-    → EnsureUserTier + EnsureOnboardingComplete middleware
-    → Free lifetime 5-client cap (controller + create UI; no decrement on delete)
-    → Unhide /reports for Free in sidebar; prepare tier aliases for future paid routes
-    → Settings Subscription card (lifetime usage copy)
-    → T&Cs / onboarding route groups in web.php
+Phase 0A IDOR + TaxPayment fillable
+    → Phase 0B medical containment + SQL scrub
+    → Phase 0C year-lock helper + before_or_equal:today on ledger dates
+    → Phase 0D profession immutable in Settings
+    → Phase 0E document numbering fix
+    → Phase 0F dead tier===pro cleanup
+Phase 1 lifetime client counter + helpers
+    → tier + onboarding middleware
+    → unhide /reports for Free
+    → Settings Subscription card
+    → route group wiring
 ```
-
-Phase 0 medical acceptance:
-* [ ] No Clinical Profile UI on Client create/edit.
-* [ ] Controller never persists clinical keys on `clients.profile_data`.
-* [ ] Existing JSON scrubbed via manual SQL if any clinical keys exist.
-* [ ] Client show only displays billing/identity extras.
 
 Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear testing affordance in Settings so Pro UI can be exercised.
 
