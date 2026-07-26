@@ -176,6 +176,11 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 10. **C3 — Arch/Eng files:** Normal account auth only in v1 (no practitioner-held encryption).
 11. **C4 — Accountant pack (Standard + all Pro):** No accountant login seat in v1. Instead, Standard+ users get an **Accountant Download** — a purpose-built export that presents the **full ledger for their accountant** (full details: clients/counterparties as needed for books, invoices, RFPs distinction, credit notes, payments, expenses when built, VAT breakdown, tax payments / PT where relevant). Doctor downloads and sends the file themselves. Free tier: not included.
 12. **C5 — Client delete:** **Soft-archive** (hide; keep rows for invoice history). Lifetime `clients_created_count` still never decrements.
+
+### ROADMAP STATUS: LOCKED — Phase 0 implementation started
+Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order starting at Phase 0.
+
+### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
 * **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, Standard Support.
 * **Out of scope for Free:** Live Fiscal Report, Expenses, Document Storage, custom branding, Accountant Download, Automated TA22 generation, Pro modules. *(Nav soft-hides; Phase 1 hardens with middleware.)*
