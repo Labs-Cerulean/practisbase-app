@@ -15,7 +15,7 @@ When PractisBase is "complete", a Maltese self-employed professional can:
 2. **Operate a compliant ledger** — Clients, RFPs, Invoices, Credit Notes, Payments — with IDOR-proof tenant isolation, no future-dating, and locked fiscal years.
 3. **See trustworthy tax math** — Live Fiscal Report with auditable breakdowns (TA22, SSC, VAT, PT settlement) on **Standard+**. Free stays on Dashboard + ledger only (5 lifetime clients is too incomplete a book for official tax math).
 4. **Self-serve their plan** — Upgrade/downgrade Free → Standard → Pro (Medical / Architect / Engineer) from Settings; Free hard-capped at **5 lifetime clients** (deletes do not free a slot).
-5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Live Fiscal Report, Expenses, Document Storage, VAT Export, TA22 generation, Pro industry modules.
+5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Live Fiscal Report, Expenses, Document Storage, Accountant Download, TA22 generation, Pro industry modules.
 6. **Export professional PDFs** — Branded invoices/RFPs/credit notes/receipts (Standard+ custom logo).
 7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals, **practitioner-held recovery code** encryption (Labs cannot decrypt; lost key = unrecoverable; backup requires code + signed acknowledgment); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
 8. **Pay Cerulean Labs** — Real Stripe billing replaces the current DEV bypass.
@@ -178,7 +178,7 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 12. **C5 — Client delete:** **Soft-archive** (hide; keep rows for invoice history). Lifetime `clients_created_count` still never decrements.
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
 * **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, Standard Support.
-* **Out of scope for Free:** Live Fiscal Report, Expenses, Document Storage, custom branding, VAT Export, Automated TA22 generation, Pro modules. *(Nav soft-hides; Phase 1 hardens with middleware.)*
+* **Out of scope for Free:** Live Fiscal Report, Expenses, Document Storage, custom branding, Accountant Download, Automated TA22 generation, Pro modules. *(Nav soft-hides; Phase 1 hardens with middleware.)*
 
 ### 2. Standard Tier (€15.99/mo)
 * **Limits:** Unlimited Clients.
@@ -328,7 +328,7 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 #### 1B. Tier feature middleware
 * `EnsureUserTier` aliased as `tier` in `bootstrap/app.php`, backed by the same Phase 0 `TierPolicy`.
 * **Gate `/reports` behind Standard+.** Free → upgrade redirect/flash.
-* Prepare gates for Expenses / Document Storage / VAT Export / TA22 / Pro packages.
+* Prepare gates for Expenses / Document Storage / Accountant Download / TA22 / Pro packages.
 * Settings DEV plan switch only updates `users.tier`; run through transition acceptance scenarios.
 
 #### 1C. Settings — subscription & profile
