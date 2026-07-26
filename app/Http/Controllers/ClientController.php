@@ -14,28 +14,33 @@ class ClientController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
-        
+        $showArchived = $request->boolean('archived');
+
         // Eager load invoices and their payments to prevent N+1 issues
         $query = Client::where('user_id', $userId)->with('invoices.payments');
-        
+
+        if ($showArchived) {
+            $query->onlyTrashed();
+        }
+
         // --- 1. FILTERING ---
         if ($request->filled('search')) {
             $search = strtolower($request->search);
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->whereRaw('LOWER(name) like ?', ["%{$search}%"])
                   ->orWhereRaw('LOWER(email) like ?', ["%{$search}%"]);
             });
         }
-        
+
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
 
         // --- 2. INTELLIGENT MATH PER CLIENT ---
-        $clients = $query->get()->map(function($client) {
-            
+        $clients = $query->get()->map(function ($client) {
+
             $allInvoices = $client->invoices;
-            
+
             $totalInvoices = $allInvoices->where('type', 'invoice')->sum('total');
             $totalCredits = $allInvoices->where('type', 'credit_note')->sum('total');
             $netInvoiced = $totalInvoices - $totalCredits;
@@ -73,7 +78,9 @@ class ClientController extends Controller
             $clients = $clients->sortByDesc('created_at')->values();
         }
 
-        return view('clients.index', compact('clients'));
+        $archivedCount = Client::onlyTrashed()->where('user_id', $userId)->count();
+
+        return view('clients.index', compact('clients', 'showArchived', 'archivedCount'));
     }
 
     // 2. Show the "Add New Client" Form
@@ -141,9 +148,7 @@ class ClientController extends Controller
     // 4. View a Specific Client Profile
     public function show(Client $client)
     {
-        if ($client->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized access.');
-        }
+        $this->authorizeClient($client);
 
         return view('clients.show', compact('client'));
     }
@@ -151,8 +156,12 @@ class ClientController extends Controller
     // 5. Show the Edit Form
     public function edit(Client $client)
     {
-        if ($client->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized access.');
+        $this->authorizeClient($client);
+
+        if ($client->trashed()) {
+            return redirect("/clients/{$client->id}")->withErrors([
+                'archive' => 'Restore this client before editing.',
+            ]);
         }
 
         return view('clients.edit', compact('client'));
@@ -161,8 +170,12 @@ class ClientController extends Controller
     // 6. Securely Update the Client
     public function update(Request $request, Client $client)
     {
-        if ($client->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized access.');
+        $this->authorizeClient($client);
+
+        if ($client->trashed()) {
+            return redirect("/clients/{$client->id}")->withErrors([
+                'archive' => 'Restore this client before editing.',
+            ]);
         }
 
         $request->validate([
@@ -174,7 +187,7 @@ class ClientController extends Controller
         ]);
 
         $profileData = [];
-        
+
         if ($request->type === 'company') {
             $profileData['vat_number'] = $request->vat_number;
             $profileData['registration_number'] = $request->registration_number;
@@ -193,5 +206,45 @@ class ClientController extends Controller
         ]);
 
         return redirect("/clients/{$client->id}")->with('success', 'Client updated successfully!');
+    }
+
+    // Soft-archive: hide from directory; invoice history retained. Does NOT free Free quota.
+    public function archive(Client $client)
+    {
+        $this->authorizeClient($client);
+
+        if ($client->trashed()) {
+            return redirect('/clients?archived=1')->with('success', 'Client is already archived.');
+        }
+
+        $client->delete();
+
+        return redirect('/clients')->with(
+            'success',
+            'Client archived. Invoice history is kept. Archiving does not free a Free-plan client slot.'
+        );
+    }
+
+    public function restore(Client $client)
+    {
+        $this->authorizeClient($client);
+
+        if (! $client->trashed()) {
+            return redirect("/clients/{$client->id}")->with('success', 'Client is already active.');
+        }
+
+        $client->restore();
+
+        return redirect("/clients/{$client->id}")->with(
+            'success',
+            'Client restored to your active directory.'
+        );
+    }
+
+    private function authorizeClient(Client $client): void
+    {
+        if ($client->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized access.');
+        }
     }
 }

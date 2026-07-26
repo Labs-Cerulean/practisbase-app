@@ -463,7 +463,7 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Transitions:** Phase 0 encodes matrix — keep all clients visible on Free downgrade; Pro switch retain locked; Pro selection profession-gated; medical access = tier AND profession; no data wipe on plan change.
 * **GDPR:** Clinical-on-Client unsafe today — Phase 0 scrub mandatory. Phase 4: delinked stores + practitioner-held recovery code (encrypt at rest; backup needs code; lost code = unrecoverable; Labs cannot reset). Phase 6: legal go-live gate before real patient data.
 * **Pre-start decisions locked:** A yes (Railway EU = verify at go-live); B deferred; C1 new vault + restore-from-weekly-backup guide + keep old ciphertext; C2 per-session unlock; C3 Arch/Eng normal auth; **C4 Accountant Download for Standard+ (full ledger pack, doctor sends)**; C5 soft-archive.
-* **Password reset never unlocks medical vault.** Forgot-password UI is Phase 2 (decision #14).
+* **Password reset never unlocks medical vault.** Forgot-password shipped in Phase 2 (decision #14).
 * **VAT number optional at onboarding** (decision #13); required only for Art 10 invoice / apply-VAT.
-* **Phase 0–1 merged to `13.x`.** Next: Phase 2 (dashboard/ledger + forgot password + soft-archive clients).
-* **Manual SQL:** `database/manual/phase0_postgresql.sql` (already applied on Railway if Phase 0 shipped).
+* **Phase 0–1 merged to `13.x`.** Phase 2 in progress: dashboard KPIs, soft-archive clients, forgot password, ledger RFP fiscal copy.
+* **Manual SQL:** `database/manual/phase0_postgresql.sql` (already applied on Railway if Phase 0 shipped). Soft-archive uses existing `clients.deleted_at`.

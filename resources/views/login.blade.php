@@ -49,12 +49,21 @@
                 <input type="email" name="email" value="{{ old('email') }}" required placeholder="john@example.com" autofocus>
             </div>
             <div class="form-group">
-                <label>Password</label>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+                    <label style="margin-bottom: 0;">Password</label>
+                    <a href="/forgot-password" style="font-size: 0.8rem; color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Forgot password?</a>
+                </div>
                 <input type="password" name="password" required>
             </div>
 
             <button type="submit" class="btn-submit">Sign In</button>
         </form>
+
+        @if (session('status'))
+            <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-top: 1.5rem; font-size: 0.85rem; line-height: 1.45;">
+                {{ session('status') }}
+            </div>
+        @endif
         
         <div style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem;">
             <span style="color: var(--text-muted);">Don't have an account?</span> 
