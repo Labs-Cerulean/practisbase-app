@@ -13,9 +13,9 @@ When PractisBase is "complete", a Maltese self-employed professional can:
 
 1. **Register** with enforceable T&Cs (liability disclaimer), complete fiscal onboarding, and land on a tier-aware dashboard.
 2. **Operate a compliant ledger** — Clients, RFPs, Invoices, Credit Notes, Payments — with IDOR-proof tenant isolation, no future-dating, and locked fiscal years.
-3. **See trustworthy tax math** — Live Fiscal Report with auditable breakdowns (TA22, SSC, VAT, PT settlement). **Free includes the fiscal summary**; paid tiers unlock Expenses, branding, exports, Pro modules.
+3. **See trustworthy tax math** — Live Fiscal Report with auditable breakdowns (TA22, SSC, VAT, PT settlement) on **Standard+**. Free stays on Dashboard + ledger only (5 lifetime clients is too incomplete a book for official tax math).
 4. **Self-serve their plan** — Upgrade/downgrade Free → Standard → Pro (Medical / Architect / Engineer) from Settings; Free hard-capped at **5 lifetime clients** (deletes do not free a slot).
-5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Expenses, Document Storage, VAT Export, TA22 generation, Pro industry modules (not the core fiscal summary).
+5. **Use tier features without leaking entitlements** — Middleware + controller checks gate Live Fiscal Report, Expenses, Document Storage, VAT Export, TA22 generation, Pro industry modules.
 6. **Export professional PDFs** — Branded invoices/RFPs/credit notes/receipts (Standard+ custom logo).
 7. **Run industry workflows safely** — Pro Medical with PII delinked from clinical journals (GDPR); Pro Architect DMS + BCA-aligned docs + stamper; Pro Engineer certifications with photo/expiry logs.
 8. **Pay Cerulean Labs** — Real Stripe billing replaces the current DEV bypass.
@@ -28,17 +28,17 @@ Everything below is sequenced **backwards from that end state**: foundations fir
 
 ### Product decisions (locked)
 * **Pre-launch:** No real users in production yet. Schema and infra may be corrected freely; still build correctly so we do not re-learn tenancy later.
-* **Free fiscal access:** Free tier **may use the Live Fiscal Report / summary**. Do not middleware-gate `/reports` behind Standard.
-* **Free client quota:** Cap is **5 lifetime clients**. Soft-deleting or hard-deleting a client **does not** restore a slot. Upgrade to Standard+ unlocks unlimited.
+* **Free fiscal access:** Free tier does **not** get Live Fiscal Report. Gate `/reports` behind Standard+ (incomplete 5-client books can produce misleading liability pictures).
+* **Free client quota:** Cap is **5 lifetime clients**. Soft-deleting or hard-deleting a client **does not** restore a slot. Upgrade to Standard+ unlocks unlimited + fiscal report.
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
-* **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, **Live Fiscal Report / summary**, Standard Support.
-* **Out of scope for Free:** Expenses, Document Storage, custom branding, VAT Export, Automated TA22 generation, Pro modules. *(Nav may soft-hide these; Phase 1 hardens with middleware.)*
+* **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, Standard Support.
+* **Out of scope for Free:** Live Fiscal Report, Expenses, Document Storage, custom branding, VAT Export, Automated TA22 generation, Pro modules. *(Nav soft-hides; Phase 1 hardens with middleware.)*
 
 ### 2. Standard Tier (€15.99/mo)
 * **Limits:** Unlimited Clients.
-* **Capabilities:** Everything in Free, plus Custom Branding & Logo on documents, Expense Tracking & Receipts, Document & File Uploads, Automated TA22 Form generation, Accountant VAT Export.
+* **Capabilities:** Everything in Free, plus **Live Fiscal Report**, Custom Branding & Logo on documents, Expense Tracking & Receipts, Document & File Uploads, Automated TA22 Form generation, Accountant VAT Export.
 
 ### 3. Pro Tiers (€49.99/mo)
 All Pro tiers include everything in Standard, plus one industry package:
@@ -77,9 +77,9 @@ The core fiscal engine is functioning:
 | Document numbers derived from `latest id + 1` | Medium | **0** (pre-launch renumber strategy) |
 | Dead layout branch `tier === 'pro'` | Low | **0** cleanup |
 | Free 5-client lifetime quota not enforced | High | **1** |
+| `/reports` open to Free (should be Standard+) | High | **1** middleware + nav |
 | No tier / onboarding middleware | High | **1** |
 | Settings has no subscription panel | Medium | **1** |
-| Sidebar hides `/reports` from Free | Product | **1** |
 | Full Pro Medical delinked schema | Critical later | **4** |
 | Stripe / Cashier absent | Launch | **6** |
 
@@ -141,9 +141,9 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 2. **Profession:** Settings profession field `disabled` (not merely `readonly` — readonly still POSTs) + helper text; server ignores profession (0D).
 3. **Dates:** Confirm `max="{{ date('Y-m-d') }}"` on every issue/payment/refund date input that 0C validates (create + actions partial already mostly correct).
 4. **Nav integrity:**
-   * Put **Live Fiscal Report** in the core nav for **all** authenticated tiers (Free included) — proper `<li><a class="nav-link">`, not a bare `<a>` stuffed inside the Standard Tools block.
+   * Keep Live Fiscal Report under Standard+ nav (not Free). Fix the malformed bare `<a>` into a proper `<li><a class="nav-link">` inside Standard Tools.
    * Delete the dead `tier === 'pro'` duplicate Pro Tools block.
-   * Leave Document Storage / Expense / Pro `#` stubs as-is or hide them — do **not** build those screens in Phase 0. Prefer **hide** stub `#` links until the feature exists (avoids dead-end clicks); full tier-aware nav copy is Phase 1.
+   * Prefer **hide** stub `#` links for unbuilt features until they exist (optional in Phase 0; full tier wiring in Phase 1).
 5. **Closed fiscal year (0C):** Where ledger actions would mutate a locked year, disable buttons / show a short lock banner (mirror reports closed-year UX) — no silent server 400s only.
 
 #### 0H. Phase 0 acceptance criteria
@@ -154,9 +154,9 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * [ ] Profession cannot be changed via Settings (UI + server).
 * [ ] `TaxPayment` not unguarded.
 * [ ] Document numbers stable under delete/recreate.
-* [ ] Free users see Live Fiscal Report in sidebar; dead `tier === 'pro'` branch gone.
+* [ ] Dead `tier === 'pro'` branch gone; reports nav link structurally fixed (still Standard+-gated).
 
-**Explicitly NOT Phase 0 UI:** Settings subscription card, `N / 5` quota banners, dashboard redesign, pricing/landing, building Expense/Pro screens, visual redesign / new CSS frameworks.
+**Explicitly NOT Phase 0 UI:** Giving Free `/reports`, Settings subscription card, `N / 5` quota banners, dashboard redesign, building Expense/Pro screens, visual redesign / new CSS frameworks.
 
 ### Phase 1: Subscriptions, T&Cs & Multi-Tenant Security
 *Outcome: Free lifetime 5-client cap; tier middleware for paid extras; Settings plan card; onboarding/T&Cs cannot be skipped. Tenant IDOR already closed in Phase 0.*
@@ -168,12 +168,13 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 
 #### 1B. Tier feature middleware
 * `EnsureUserTier` aliased as `tier` in `bootstrap/app.php`.
-* **Do not gate `/reports` for Free** — Free keeps the fiscal summary. Gate Expenses / Document Storage / VAT Export / TA22 / Pro when those land.
-* Unhide is done in Phase 0 nav companion UI; Phase 1 only adds middleware around **paid** extras.
-* Free hitting a paid route → upgrade redirect/flash.
+* **Gate `/reports` behind Standard+** (middleware must treat `standard`, `pro-med`, `pro-arch`, `pro-eng` as allowed). Free users who hit `/reports` get an upgrade redirect/flash — not a silent 403 only.
+* Rationale: a 5-lifetime-client Free book is an incomplete practice ledger; full liability math can mislead.
+* Also prepare gates for Expenses / Document Storage / VAT Export / TA22 / Pro when those land.
+* Nav already hides report from Free (Standard Tools block); Phase 1 enforces it server-side.
 
 #### 1C. Settings — subscription & profile
-* Subscription card: tier badge, `N / 5` lifetime usage copy (deletes do not restore), DEV plan switch OK until Stripe.
+* Subscription card: tier badge, `N / 5` lifetime usage copy (deletes do not restore), upgrade CTAs that call out unlimited clients **and** Live Fiscal Report (DEV plan switch OK until Stripe).
 * Keep fiscal/password sections intact (no UI regression). Profession remains immutable here (Phase 0).
 
 #### 1D. Legal T&Cs & onboarding gates
@@ -183,9 +184,10 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 #### 1E. Phase 1 acceptance criteria
 * [ ] Free after 5 creates: further creates rejected even if clients were deleted.
 * [ ] Settings shows lifetime `N / 5` for Free.
-* [ ] Free can open `/reports` (nav visible).
+* [ ] Free cannot open `/reports` (nav hidden + middleware upgrade path).
+* [ ] Standard+ can open `/reports`.
 * [ ] Incomplete onboarding cannot use `/dashboard` / `/ledger` / `/clients`.
-* [ ] Paid-only routes (when present) blocked for Free with upgrade path.
+* [ ] Paid-only routes blocked for Free with upgrade path.
 * [ ] CSRF + `user_id` scoping preserved; no Tailwind/React.
 
 ### Phase 2: Main Dashboard & Core Ledger UI
@@ -242,9 +244,9 @@ Phase 0A IDOR + TaxPayment fillable
     → Phase 0C year-lock helper + before_or_equal:today + lock UI on ledger
     → Phase 0D/0G profession disabled in Settings
     → Phase 0E document numbering fix
-    → Phase 0F/0G nav: Free sees /reports; remove tier===pro; hide dead # stubs optional
+    → Phase 0F/0G nav: fix reports link markup; keep Standard+-only; remove tier===pro
 Phase 1 lifetime client counter + helpers
-    → tier + onboarding middleware
+    → tier + onboarding middleware (including /reports Standard+)
     → Settings Subscription card + N/5 usage UI
     → route group wiring
 ```
@@ -273,6 +275,6 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Stack in repo:** Laravel 13 / PHP 8.3+ (handoff historically said 11.x — follow the repo)
 * **Pre-launch:** No real users — infra/schema fixes are in scope; still prefer correct tenancy patterns.
 * **Start implementing Phase 0 first** (integrity/containment), then Phase 1 (SaaS gates), per "Suggested Build Order".
-* **Free:** fiscal summary allowed; **5 lifetime clients** (counter, never decremented on delete).
+* **Free:** **no** Live Fiscal Report; **5 lifetime clients** (counter, never decremented on delete). Upgrade to Standard+ for `/reports` + unlimited clients.
 * **Medical:** Phase 0 containment is mandatory before/with Phase 1; full delinked Pro Medical schema is Phase 4 — never put clinical fields back on `Client`.
 * **Do not** assume Stripe exists; plan UI may continue to set `users.tier` directly until Phase 6.
