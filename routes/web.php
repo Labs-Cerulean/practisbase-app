@@ -13,6 +13,8 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Pro\Medical\VaultController as MedicalVaultController;
 use App\Http\Controllers\Pro\Medical\PatientController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
+use App\Http\Controllers\Pro\Medical\ClinicalAttachmentController;
+use App\Http\Controllers\Pro\Medical\ClinicalEntryPdfController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
 use App\Http\Controllers\Pro\CertificateController;
@@ -162,6 +164,9 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
             Route::get('/patients/{patient}', [PatientController::class, 'show']);
             Route::get('/patients/{patient}/entries/create', [ClinicalEntryController::class, 'create']);
             Route::post('/patients/{patient}/entries', [ClinicalEntryController::class, 'store']);
+            Route::get('/patients/{patient}/entries/{entry}/pdf', [ClinicalEntryPdfController::class, 'download']);
+            Route::post('/patients/{patient}/entries/{entry}/attachments', [ClinicalAttachmentController::class, 'store']);
+            Route::get('/patients/{patient}/attachments/{attachment}/download', [ClinicalAttachmentController::class, 'download']);
         });
     });
 

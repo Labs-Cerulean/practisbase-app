@@ -219,8 +219,8 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 
 **Dependencies:** Phase 4 vault + stamper foundations; Phase 5 Rx/PDF generation; Phase 6 real Stripe + webhooks; legal review (telemedicine / Rx issuance rules in Malta — product is a tool, not a substitute for professional duty).
 
-### ROADMAP STATUS: LOCKED — Phase 0–3 shipped; Phase 4 foundations merged/in flight; revisions #13–17 applied
-Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order (Phase 5 attachments/PDFs next after Phase 4; Phase 7 last).
+### ROADMAP STATUS: LOCKED — Phase 0–4 shipped; Phase 5 in progress; revisions #13–17 applied
+Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order (Phase 5 attachments/PDFs next; Phase 7 last).
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
@@ -521,9 +521,9 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Password reset never unlocks medical vault.** Forgot-password shipped in Phase 2 (decision #14).
 * **VAT number optional at onboarding** (decision #13); required only for Art 10 invoice / apply-VAT.
 * **Certificates & declarations shared across all Pro** (decision #15).
-* **Encrypted journal attachments (decision #16):** Phase 5 — ciphertext on private R2 under vault DEK; not the same as Standard document storage.
+* **Encrypted journal attachments (decision #16):** Phase 5 — ciphertext on private R2 under vault DEK; not the same as Standard document storage. Manual SQL: `database/manual/phase5_postgresql.sql`.
 * **Signed Document Commerce (decision #17 / Phase 7):** Last phase — create/sign/stamp → one-time pay link → single download → ledger income. Rx first; Arch/Eng later.
-* **Phase 0–3 + accountant ZIP fix merged to `13.x`.** Phase 4: Pro shells + medical vault crypto scaffolding + stamper. Phase 7 is explicitly last.
-* **Manual SQL:** run `database/manual/phase4_postgresql.sql` on Railway before Pro Medical/Arch/Eng use.
-* **Blob storage:** Receipts/logos/cert photos use `TenantStorage` → `TENANT_DISK=r2` in production. Medical attachments will use the same disk with **extra vault encryption**.
+* **Phase 0–4 merged to `13.x`.** Phase 5: encrypted attachments + Rx/referral PDF authoring + ledger PDF harden.
+* **Manual SQL:** run `database/manual/phase4_postgresql.sql` (and incremental phase4_* files if needed) then `database/manual/phase5_postgresql.sql` for clinical attachments.
+* **Blob storage:** Receipts/logos/cert photos use `TenantStorage` → `TENANT_DISK=r2` in production. Medical attachments use `medical/{user}/vault_{id}/attachments/*.bin` with **extra vault encryption**.
 * **Medical vault:** Recovery code shown once; verifier only in DB; session key required each login; pre-production banner until Phase 6 legal go-live.
