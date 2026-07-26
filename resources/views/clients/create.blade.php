@@ -90,6 +90,7 @@
             </div>
         </form>
     </div>
+    </div>
 
     <style>
         .active-toggle { background: white; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light); color: var(--primary-cerulean); }

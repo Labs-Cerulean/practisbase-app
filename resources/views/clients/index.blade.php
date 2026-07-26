@@ -13,6 +13,13 @@
         </a>
     </div>
 
+    <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); font-size: 0.85rem; color: var(--text-main); font-weight: 600;">
+        {{ auth()->user()->clientUsageLabel() }}
+        @unless(auth()->user()->isPaid())
+            <span style="font-weight: 500; color: var(--text-muted);"> — deleting a client does not free a Free-plan slot.</span>
+        @endunless
+    </div>
+
     @if($errors->any())
         <div style="background: #fef2f2; border: 1px solid #f87171; color: #b91c1c; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-size: 0.9rem;">
             @foreach($errors->all() as $error)
