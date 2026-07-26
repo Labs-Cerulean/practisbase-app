@@ -75,7 +75,7 @@ Everything below is sequenced **backwards from that end state**: foundations fir
 2. **Legal acknowledgment (blocking):** Doctor must sign/accept: *“I understand that if I lose this recovery code, my patient data will be permanently unrecoverable by me or by Cerulean Labs. PractisBase cannot reset this key.”* Persist acceptance timestamp, IP, and code challenge (same pattern as T&Cs: `accepted_at`, `accepted_ip`, optionally read-duration). Store only a **verifier** (e.g. salted hash of the recovery code) if needed to validate future entry — never the code itself in recoverable form.
 3. **At rest:** Clinical/patient special-category fields encrypted. App session unlock: doctor enters recovery code (or unlocks via session key derived after code entry) to use journals in-product.
 4. **Backup / data download:** Export flow **must** prompt for the recovery code. Only after successful verification does the download contain **decrypted** patient data. Wrong/missing code → no plaintext export (encrypted blob only is unacceptable as a “backup” UX — fail closed).
-5. **Lost key:** No server-side recovery of the old code. Doctor may open a **new empty vault** with a **new** recovery code; the **previous vault ciphertext stays on file** (still encrypted) so if the old code is later found, that vault can be unlocked again. Labs cannot unlock either vault. **Weekly medical backup is mandatory in product** (acknowledgment + overdue reminders) because key-loss risk is massive.
+5. **Lost key:** No server-side recovery of the old code. Doctor may open a **new vault** with a **new** recovery code; the **previous vault ciphertext stays on file** (still encrypted) so if the old code is later found, that vault can be unlocked again. Labs cannot unlock either vault. **Weekly medical backup is mandatory** (acknowledgment + overdue reminders). **New-vault setup must guide upload/restore of the latest backup** into the new vault (re-encrypted under the new key) so the worst-case loss window is **about one week** (time since last successful backup).
 6. **Tier downgrade / retain locked:** Ciphertext remains; without recovery code + `pro-med` entitlement, no decrypt in app. Re-upgrade still requires the **same** recovery code for that vault to unlock historical data.
 7. **Billing Clients / invoices / fiscal data:** Not covered by this vault (commercial ledger remains usable with normal auth). Only patient/clinical stores use the practitioner key.
 
@@ -115,7 +115,7 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 | Dashboard + Clients + Ledger | yes | yes | yes | yes | yes |
 | Create client | if lifetime &lt; 5 | unlimited | unlimited | unlimited | unlimited |
 | Live Fiscal Report `/reports` | no | yes | yes | yes | yes |
-| Expenses / docs / branding / TA22 / VAT export | no | yes | yes | yes | yes |
+| Expenses / docs / branding / TA22 / Accountant Download | no | yes | yes | yes | yes |
 | Patient Journals / Rx / referrals | no | no | yes | no | no |
 | Architect DMS / stamper / phases | no | no | no | yes | no |
 | EMS/BMS / certifications | no | no | no | no | yes |
@@ -169,12 +169,12 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 3. Pro tier selection → **profession-gated**.
 4. **Go-live patient/clinical data:** Encrypted at rest; **practitioner holds the only recovery code**; backup/download decrypt requires that code; doctor must sign that **lost code = permanently unrecoverable** (Cerulean Labs cannot reset).
 5. **Pre-start List A — accepted:** Doctor = controller / Labs = processor (support never reads/resets recovery code); password reset ≠ vault unlock; single-user v1; vault = clinical only; not sole clinical EPR; no clinical emails.
-6. **Hosting:** Prefer EU/EEA for production. Current target host: **Railway (basic paid tier)** — confirm whether a European region is available before Pro Medical go-live. If only non-EU regions are available on that plan, escalate as a **launch blocker for patient data** (ledger-only launch may still be possible). Not a Phase 0 coding blocker.
+6. **Hosting:** Prefer EU/EEA for production. Current host plan: **Railway (basic/Hobby paid tier)**. EU is achievable: Railway documents **EU West Metal (Amsterdam)**; Hobby users may need the **Metal Volumes** feature flag (`railway.com/account/feature-flags`) then set Postgres/app region under Settings → Regions. **Verify region before Pro Medical go-live** (patient data). Ledger-only development can proceed on whatever region is live today. Not a Phase 0 coding blocker.
 7. **Pre-start List B — deferred:** Tax retention vs account deletion, GDPR erasure vs lost-key, DPA wording — **not decided**; resolve with legal before Pro Medical / account-deletion go-live (Phase 6). Do not block Phase 0.
-8. **C1 — Lost recovery code:** Doctor may create a **new empty vault with a new key**. The **old vault ciphertext remains stored** (still encrypted) so if the old key is later found, historical data can still be unlocked. Labs still cannot recover either vault without the relevant code. **Mandate weekly medical backup** in product UX + acknowledgment (risk of key loss is massive); nag/reminder when backup is overdue.
+8. **C1 — Lost recovery code:** Doctor may create a **new vault with a new key**. The **old vault ciphertext remains stored** (still encrypted) in case the old key is later found. **New-vault wizard guides restore from latest weekly backup** (upload backup → import into new vault under new key). Target: **max clinical data loss ≈ one week** if backups were kept. Mandate weekly backup + overdue nag; acknowledgment covers key-loss risk and backup duty. Labs cannot recover without a code/backup the doctor holds.
 9. **C2 — Vault unlock:** Re-enter recovery code **every new login/session** (safer).
 10. **C3 — Arch/Eng files:** Normal account auth only in v1 (no practitioner-held encryption).
-11. **C4 — Accountant:** Doctor downloads and sends files themselves (no accountant seat in v1).
+11. **C4 — Accountant pack (Standard + all Pro):** No accountant login seat in v1. Instead, Standard+ users get an **Accountant Download** — a purpose-built export that presents the **full ledger for their accountant** (full details: clients/counterparties as needed for books, invoices, RFPs distinction, credit notes, payments, expenses when built, VAT breakdown, tax payments / PT where relevant). Doctor downloads and sends the file themselves. Free tier: not included.
 12. **C5 — Client delete:** **Soft-archive** (hide; keep rows for invoice history). Lifetime `clients_created_count` still never decrements.
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
 * **Capabilities:** Basic Invoices & Ledger (RFPs, official invoices, payments received), Summary Dashboard, Standard Support.
@@ -182,7 +182,7 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 
 ### 2. Standard Tier (€15.99/mo)
 * **Limits:** Unlimited Clients.
-* **Capabilities:** Everything in Free, plus **Live Fiscal Report**, Custom Branding & Logo on documents, Expense Tracking & Receipts, Document & File Uploads, Automated TA22 Form generation, Accountant VAT Export.
+* **Capabilities:** Everything in Free, plus **Live Fiscal Report**, Custom Branding & Logo on documents, Expense Tracking & Receipts, Document & File Uploads, Automated TA22 Form generation, **Accountant Download** (full ledger pack for the user’s accountant).
 
 ### 3. Pro Tiers (€49.99/mo)
 All Pro tiers include everything in Standard, plus one industry package:
@@ -358,11 +358,11 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * *(Year-lock and future-dating already enforced in Phase 0 — do not regress.)*
 
 ### Phase 3: Standard Tier Features
-*Outcome: €15.99 value prop is real and gated.*
+*Outcome: €15.99 value prop is real and gated (also included in all Pro tiers).*
 
 * Expense Ledger replacing static `estimated_expenses` for paid users (column remains fallback for Free / incomplete data).
 * Receipt/file uploads (tenant-scoped storage paths).
-* Accountant VAT Export (CSV/Excel).
+* **Accountant Download (Standard + all Pro):** Purpose-built export the practitioner downloads and sends to their accountant — **full ledger detail**, not a thin summary. Include at minimum: document register (invoices / RFPs / credit notes with clear fiscal vs non-fiscal distinction), line/payment history, client/counterparty billing identity needed for books, VAT analysis (Art 10/11 as applicable), expenses/receipts when live, and logged tax/PT/SSC/VAT payments where stored. Formats: CSV and/or Excel (PDF pack optional later). Gate with `canAccessStandardTools()` / tier middleware. Free: upgrade CTA only.
 * Automated TA22 form generation logic + download.
 * Custom branding/logo fields on user profile → consumed by PDF phase.
 
@@ -384,7 +384,7 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
   * Encrypt patient/clinical payloads at rest; store code verifier only, never recoverable plaintext code on server.
   * In-app use requires unlock with code **every login/session**.
   * **Backup/download:** always prompt for recovery code; release **decrypted** export only on success; fail closed otherwise. Surface **weekly backup mandate** + overdue nag.
-  * **Lost code:** offer **new empty vault + new key**; **retain old vault ciphertext** in case old key is found later; no Labs reset.
+  * **Lost code → new vault:** wizard creates new key/vault, **guides upload of latest backup**, restores into new vault (re-encrypt under new key). Aim for **≤ ~1 week** clinical loss if weekly backups were kept. Retain old vault ciphertext if old key resurfaces.
   * No support “reset key” path.
 * Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer Certification Generator.
 * Domain rules: BCA Method Statements (Arch); certification photo + expiry (Eng). Clarify EMS/BMS template content with domain expert before locking schemas.
@@ -453,6 +453,6 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Free:** **no** Live Fiscal Report; **5 lifetime clients** (counter, never decremented on delete). Upgrade to Standard+ for `/reports` + unlimited clients.
 * **Transitions:** Phase 0 encodes matrix — keep all clients visible on Free downgrade; Pro switch retain locked; Pro selection profession-gated; medical access = tier AND profession; no data wipe on plan change.
 * **GDPR:** Clinical-on-Client unsafe today — Phase 0 scrub mandatory. Phase 4: delinked stores + practitioner-held recovery code (encrypt at rest; backup needs code; lost code = unrecoverable; Labs cannot reset). Phase 6: legal go-live gate before real patient data.
-* **Pre-start decisions locked:** A yes (Railway EU region = verify at go-live); B deferred to legal; C1 new vault + keep old ciphertext + weekly backup mandate; C2 per-session unlock; C3/C4/C5 = a.
+* **Pre-start decisions locked:** A yes (Railway EU = verify at go-live); B deferred; C1 new vault + restore-from-weekly-backup guide + keep old ciphertext; C2 per-session unlock; C3 Arch/Eng normal auth; **C4 Accountant Download for Standard+ (full ledger pack, doctor sends)**; C5 soft-archive.
 * **Password reset never unlocks medical vault.**
 * **Ready for Phase 0 implementation** when asked.
