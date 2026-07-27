@@ -25,7 +25,35 @@
         <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Date of birth</div>
         <div style="margin-bottom: 0.75rem;">{{ !empty($payload['date_of_birth']) ? \Illuminate\Support\Carbon::parse($payload['date_of_birth'])->format('d M Y') : '—' }}</div>
         <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Notes</div>
-        <div style="white-space: pre-wrap;">{{ $payload['notes'] ?: '—' }}</div>
+        <div style="white-space: pre-wrap; margin-bottom: 1rem;">{{ $payload['notes'] ?: '—' }}</div>
+
+        <div style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">Billing Client link</div>
+            @if($patient->billingClient)
+                <div style="margin-bottom: 0.65rem; font-size: 0.9rem;">
+                    Linked to <a href="/clients/{{ $patient->billingClient->id }}" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">{{ $patient->billingClient->name }}</a>
+                    — use that Client for invoices; keep clinical work here.
+                </div>
+            @else
+                <div style="margin-bottom: 0.65rem; font-size: 0.85rem; color: var(--text-muted);">Not linked to a billing Client yet.</div>
+            @endif
+            <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                @csrf
+                @method('PUT')
+                <select name="billing_client_id" style="flex: 1; min-width: 180px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                    <option value="">No billing link</option>
+                    @foreach($clients as $client)
+                        @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
+                        <option value="{{ $client->id }}"
+                            {{ (int) $patient->billing_client_id === (int) $client->id ? 'selected' : '' }}
+                            {{ $taken ? 'disabled' : '' }}>
+                            {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
+                        </option>
+                    @endforeach
+                </select>
+                <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update link</button>
+            </form>
+        </div>
     </div>
 
     <h3 style="color: var(--primary-navy);">Clinical entries</h3>

@@ -186,6 +186,7 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 17. **Signed Document Commerce (Phase 7 — last roadmap phase):** Practitioners create, sign, and stamp professional documents on PractisBase, issue a **one-time-use patient/client payment link**, collect payment, then release a **single download**. First vertical: **medical prescriptions**. Same rails later for architects (stamped drawings / declarations) and engineers (certificates). Depends on Phase 5 PDFs + Phase 6 Stripe. Do **not** start before launch billing is real.
 18. **Closed beta before Stripe:** Invite beta testers **without** live card billing. Keep the Settings DEV / admin plan switch (or grant tiers manually) so testers exercise Free / Standard / Pro. **Do not** implement Stripe + coupons/vouchers just to give free beta access — that adds payment, webhook, and support surface area before product feedback lands. Stripe (Phase 6) ships when beta feedback has stabilized and you are ready to charge. Promo codes / complimentary periods are fine **inside** Phase 6 once Checkout exists, not as a reason to pull billing forward.
 19. **Arch / Eng Pro depth is expert-guided:** Scaffolding (projects, stamper shell, shared certificates) may exist, but **niche Architect and Engineer workflows must not be invented by the agent**. Nicholas (domain expert) will specify exact document types, phases, BCA/EMS/BMS behaviours, and field schemas before those modules are deepened. Prefer thin shells + placeholders over guessed industry logic.
+20. **Patient ↔ Client optional link (create once):** Doctors must not retype the same person for journals and invoices. `patients.billing_client_id` is an **opaque optional FK** to a billing Client owned by the same user. Prefill patient display name from the Client when linking. Clinical fields (DOB, notes, journals, Rx) stay encrypted in the vault only — never copied onto `clients.profile_data`. Invoices/RFPs stay on the Client. One Client may link to at most one Patient (and vice versa for the active link). Unlinked patients (clinical-only) and unlinked clients (billing-only) remain valid. Search/filter on the patient directory runs **after vault unlock** on decrypted session data (names are not plaintext in Postgres).
 
 ### Encrypted journal attachments — how we tackle it (decision #16)
 
@@ -221,7 +222,7 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 
 **Dependencies:** Phase 4 vault + stamper foundations; Phase 5 Rx/PDF generation; Phase 6 real Stripe + webhooks; legal review (telemedicine / Rx issuance rules in Malta — product is a tool, not a substitute for professional duty).
 
-### ROADMAP STATUS: LOCKED — Phase 0–5 shipped; closed beta before Stripe (#18); revisions #13–19 applied
+### ROADMAP STATUS: LOCKED — Phase 0–5 shipped; closed beta before Stripe (#18); revisions #13–20 applied
 Product decisions above are frozen for build. Further changes require an explicit revision. Next: beta hardening / Arch–Eng only with expert briefs; **Phase 6 Stripe last among monetization steps** (before Phase 7 document commerce).
 
 ### 1. Free Tier (€0/mo)
@@ -529,6 +530,7 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Signed Document Commerce (decision #17 / Phase 7):** Last phase — create/sign/stamp → one-time pay link → single download → ledger income. Rx first; Arch/Eng later.
 * **Closed beta before Stripe (decision #18):** Grant tiers via Settings plan switch; no Checkout/vouchers until post-beta Phase 6.
 * **Arch/Eng depth (decision #19):** Expert-guided only — do not invent niche workflows.
+* **Patient ↔ Client optional link (decision #20):** Opaque `billing_client_id`; prefill name; clinical stays vault-only; directory search after unlock.
 * **Phase 0–5 merged to `13.x`.** Closed-beta hardening: weekly medical backup export + overdue nag + beta chrome. New-vault restore wizard still follow-up.
 * **Manual SQL:** run `database/manual/phase4_postgresql.sql` (and incremental phase4_* files if needed) then `database/manual/phase5_postgresql.sql` for clinical attachments.
 * **Blob storage:** Receipts/logos/cert photos use `TenantStorage` → `TENANT_DISK=r2` in production. Medical attachments use `medical/{user}/vault_{id}/attachments/*.bin` with **extra vault encryption**.
