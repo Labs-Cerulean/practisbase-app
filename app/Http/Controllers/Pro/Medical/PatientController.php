@@ -9,8 +9,10 @@ use App\Models\Client;
 use App\Models\MedicalVault;
 use App\Models\Patient;
 use App\Support\MedicalVaultCrypto;
+use App\Support\TierPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -185,6 +187,72 @@ class PatientController extends Controller
             : 'Billing client link removed.');
     }
 
+    public function createBillingClient(Request $request, Patient $patient)
+    {
+        $user = Auth::user();
+        if ($patient->user_id !== $user->id) {
+            abort(403);
+        }
+
+        if ($patient->billing_client_id) {
+            return back()->withErrors([
+                'billing_client' => 'This patient is already linked to a billing Client.',
+            ]);
+        }
+
+        if (! $user->canAddClient()) {
+            return back()->withErrors([
+                'billing_client' => 'Free plan allows ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Upgrade to Standard or Pro, or unlink/archive is not enough — deletes do not free a slot.',
+            ]);
+        }
+
+        $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
+        if (! $key) {
+            return redirect('/pro/medical/vault/unlock');
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|in:individual,company',
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'billing_address' => 'nullable|string|max:2000',
+            'id_card_number' => 'nullable|string|max:100',
+            'vat_number' => 'nullable|string|max:100',
+            'registration_number' => 'nullable|string|max:100',
+            'contact_person' => 'nullable|string|max:255',
+        ]);
+
+        $profileData = [];
+        if ($validated['type'] === 'company') {
+            $profileData['vat_number'] = $validated['vat_number'] ?? null;
+            $profileData['registration_number'] = $validated['registration_number'] ?? null;
+            $profileData['contact_person'] = $validated['contact_person'] ?? null;
+        } else {
+            $profileData['id_card_number'] = $validated['id_card_number'] ?? null;
+        }
+        $profileData = Client::billingProfileOnly($profileData);
+
+        DB::transaction(function () use ($user, $patient, $validated, $profileData) {
+            $client = Client::create([
+                'user_id' => $user->id,
+                'type' => $validated['type'],
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+                'billing_address' => $validated['billing_address'] ?? null,
+                'profile_data' => $profileData,
+            ]);
+
+            $user->increment('clients_created_count');
+
+            $patient->billing_client_id = $client->id;
+            $patient->save();
+        });
+
+        return back()->with('success', 'Billing Client created and linked. Clinical data stays in the vault; use the Client for invoices.');
+    }
+
     public function show(Patient $patient)
     {
         $user = Auth::user();
@@ -252,6 +320,7 @@ class PatientController extends Controller
             'entries' => $entries,
             'clients' => $clients,
             'linkedClientIds' => $linkedClientIds,
+            'canAddClient' => $user->canAddClient(),
         ]);
     }
 }

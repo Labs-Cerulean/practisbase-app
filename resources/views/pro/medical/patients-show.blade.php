@@ -36,19 +36,113 @@
                 </div>
             @else
                 <div style="margin-bottom: 0.65rem; font-size: 0.85rem; color: var(--text-muted);">Not linked to a billing Client yet.</div>
+
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                    <div style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.35rem;">Create Client from this patient</div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.75rem; line-height: 1.4;">
+                        Patient was created first? Add invoice details here. We prefill the name; clinical DOB/notes stay in the vault only.
+                    </p>
+                    @if(!($canAddClient ?? false))
+                        <div style="background: #fffbeb; color: #92400e; padding: 0.65rem 0.85rem; border-radius: var(--radius-md); font-size: 0.85rem;">
+                            Free lifetime client cap reached. Upgrade to Standard/Pro to create another Client.
+                        </div>
+                    @else
+                        <form action="/pro/medical/patients/{{ $patient->id }}/billing-client" method="POST" id="create-client-from-patient">
+                            @csrf
+                            <div style="display: grid; gap: 0.65rem;">
+                                <div>
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Type</label>
+                                    <select name="type" id="client_type_from_patient" required style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                        <option value="individual" {{ old('type', 'individual') === 'individual' ? 'selected' : '' }}>Individual</option>
+                                        <option value="company" {{ old('type') === 'company' ? 'selected' : '' }}>Company</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Billing name</label>
+                                    <input type="text" name="name" value="{{ old('name', $payload['display_name'] ?? '') }}" required style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+                                    <div>
+                                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Email</label>
+                                        <input type="email" name="email" value="{{ old('email') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Phone</label>
+                                        <input type="text" name="phone" value="{{ old('phone') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Billing address</label>
+                                    <textarea name="billing_address" rows="2" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('billing_address') }}</textarea>
+                                </div>
+                                <div id="individual-extra" style="{{ old('type', 'individual') === 'company' ? 'display:none;' : '' }}">
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">ID card (optional)</label>
+                                    <input type="text" name="id_card_number" value="{{ old('id_card_number') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                </div>
+                                <div id="company-extra" style="display: none; gap: 0.65rem;">
+                                    <div>
+                                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">VAT number</label>
+                                        <input type="text" name="vat_number" value="{{ old('vat_number') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Registration number</label>
+                                        <input type="text" name="registration_number" value="{{ old('registration_number') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Contact person</label>
+                                        <input type="text" name="contact_person" value="{{ old('contact_person') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    </div>
+                                </div>
+                                <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.65rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                                    Create Client &amp; link
+                                </button>
+                            </div>
+                        </form>
+                        <script>
+                            (function () {
+                                var type = document.getElementById('client_type_from_patient');
+                                var ind = document.getElementById('individual-extra');
+                                var co = document.getElementById('company-extra');
+                                if (!type || !ind || !co) return;
+                                function sync() {
+                                    var isCo = type.value === 'company';
+                                    ind.style.display = isCo ? 'none' : 'block';
+                                    co.style.display = isCo ? 'grid' : 'none';
+                                }
+                                type.addEventListener('change', sync);
+                                sync();
+                            })();
+                        </script>
+                    @endif
+                </div>
             @endif
 
-            @if($clients->isEmpty())
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 0.85rem 1rem; color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
-                    <strong>How to create a link:</strong> first add this person under
-                    <a href="/clients/create" style="color: #1e3a8a; font-weight: 700;">Clients Directory → + Client</a>
-                    (name, email, address for invoices). Then return here, choose them in the dropdown, and press <strong>Update link</strong>.
-                </div>
+            @if(! $patient->billingClient)
+                @if($clients->isEmpty())
+                    <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                        Or create a Client under <a href="/clients/create" style="color: var(--primary-cerulean); font-weight: 600;">Clients Directory</a> and link it below later.
+                    </div>
+                @else
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.75rem 0 0.5rem; line-height: 1.4;">
+                        Or link an <strong>existing</strong> Client:
+                    </p>
+                    <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        @csrf
+                        @method('PUT')
+                        <select name="billing_client_id" style="flex: 1; min-width: 180px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                            <option value="">No billing link</option>
+                            @foreach($clients as $client)
+                                @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
+                                <option value="{{ $client->id }}" {{ $taken ? 'disabled' : '' }}>
+                                    {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update link</button>
+                    </form>
+                @endif
             @else
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.5rem; line-height: 1.4;">
-                    Choose a Client from the list, then press <strong>Update link</strong>. “No billing link” means clinical-only (no invoices tied).
-                </p>
-                <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.75rem;">
                     @csrf
                     @method('PUT')
                     <select name="billing_client_id" style="flex: 1; min-width: 180px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
@@ -64,9 +158,6 @@
                     </select>
                     <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update link</button>
                 </form>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.45rem;">
-                    Missing someone? <a href="/clients/create" style="color: var(--primary-cerulean); font-weight: 600;">Create a new Client</a>, then refresh this page to link them.
-                </div>
             @endif
         </div>
     </div>
