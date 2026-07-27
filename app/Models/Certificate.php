@@ -19,6 +19,7 @@ class Certificate extends Model
         'photo_path',
         'notes',
         'stamped_at',
+        'issue_code',
     ];
 
     protected function casts(): array

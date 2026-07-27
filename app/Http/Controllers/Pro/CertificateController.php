@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Pro;
 
 use App\Http\Controllers\Controller;
 use App\Models\Certificate;
+use App\Support\IssueCode;
 use App\Support\TenantStorage;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -61,6 +63,7 @@ class CertificateController extends Controller
             'photo_path' => $photoPath,
             'notes' => $validated['notes'] ?? null,
             'stamped_at' => null,
+            'issue_code' => null,
         ]);
 
         return redirect('/pro/certificates')->with('success', 'Draft certificate saved. Edit until you Stamp & issue.');
@@ -134,10 +137,56 @@ class CertificateController extends Controller
         }
 
         $certificate->stamped_at = now();
+        $certificate->issue_code = IssueCode::allocateForCertificate();
         $certificate->save();
 
         return redirect('/pro/certificates')
-            ->with('success', 'Certificate stamped and issued. It is now locked against further edits.');
+            ->with('success', 'Certificate stamped and issued as ' . $certificate->issue_code . '. It is now locked.');
+    }
+
+    public function downloadPdf(Certificate $certificate)
+    {
+        if ($certificate->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if (! $certificate->isStamped()) {
+            return redirect('/pro/certificates')
+                ->withErrors(['certificate' => 'Stamp & issue the certificate before downloading the official PDF.']);
+        }
+
+        $user = Auth::user();
+        $pdf = Pdf::loadView('pro.certificates.pdf', [
+            'user' => $user,
+            'certificate' => $certificate,
+            'kinds' => Certificate::KINDS,
+        ]);
+        $pdf->setPaper('a4', 'portrait');
+
+        $safeCode = preg_replace('/[^A-Za-z0-9\-]/', '', $certificate->issue_code) ?: ('cert-' . $certificate->id);
+        $filename = 'certificate_' . $safeCode . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function lookup(Request $request)
+    {
+        $validated = $request->validate([
+            'issue_code' => 'required|string|max:32',
+        ]);
+
+        $code = IssueCode::normalize($validated['issue_code']);
+        $cert = Certificate::where('user_id', Auth::id())
+            ->where('issue_code', $code)
+            ->first();
+
+        if (! $cert) {
+            return redirect('/pro/certificates')
+                ->withErrors(['issue_code' => 'No stamped certificate in your register matches ' . ($code ?: 'that code') . '.']);
+        }
+
+        return redirect('/pro/certificates')
+            ->with('success', 'Match: ' . $cert->title . ' · ' . $cert->issue_code . ' · stamped ' . $cert->stamped_at->format('d M Y H:i') . ($cert->subject_name ? ' · ' . $cert->subject_name : '') . '.');
     }
 
     public function downloadPhoto(Certificate $certificate)

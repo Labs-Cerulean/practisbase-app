@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClinicalEntry;
 use App\Models\MedicalVault;
 use App\Models\Patient;
+use App\Support\IssueCode;
 use App\Support\MedicalVaultCrypto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -61,6 +62,7 @@ class ClinicalEntryController extends Controller
             'payload_nonce' => $encrypted['nonce'],
             'issued_at' => null,
             'issued_by_user_id' => null,
+            'issue_code' => null,
         ]);
 
         $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
@@ -145,10 +147,11 @@ class ClinicalEntryController extends Controller
 
         $entry->issued_at = now();
         $entry->issued_by_user_id = $user->id;
+        $entry->issue_code = IssueCode::allocateForClinicalEntry($entry->entry_type);
         $entry->save();
 
         return redirect('/pro/medical/patients/' . $patient->id)
-            ->with('success', 'Document stamped and issued. It is now locked against further edits.');
+            ->with('success', 'Document stamped and issued as ' . $entry->issue_code . '. Code and issue date are printed on the PDF. It is now locked.');
     }
 
     private function assertOwned(int $userId, Patient $patient, ClinicalEntry $entry): void

@@ -42,7 +42,14 @@ class ClinicalEntryPdfController extends Controller
             default => $entry->typeLabel(),
         };
 
-        $pdf = Pdf::loadView('pro.medical.clinical-pdf', [
+        $view = match ($entry->entry_type) {
+            'prescription' => 'pro.medical.pdf.prescription',
+            'referral' => 'pro.medical.pdf.referral',
+            'certificate' => 'pro.medical.pdf.certificate',
+            default => 'pro.medical.pdf.prescription',
+        };
+
+        $pdf = Pdf::loadView($view, [
             'user' => $user,
             'patient' => $patient,
             'patientPayload' => $patientPayload,
@@ -52,8 +59,12 @@ class ClinicalEntryPdfController extends Controller
         ]);
         $pdf->setPaper('a4', 'portrait');
 
+        $safeCode = preg_replace('/[^A-Za-z0-9\-]/', '', (string) $entry->issue_code);
         $safeRef = preg_replace('/[^A-Za-z0-9\-]/', '', $patient->public_ref) ?: 'patient';
-        $filename = strtolower($entry->entry_type) . '_' . $safeRef . '_' . $entry->entry_date->format('Y-m-d') . '.pdf';
+        $filename = strtolower($entry->entry_type)
+            . '_' . ($safeCode ?: $safeRef)
+            . '_' . $entry->issued_at->format('Y-m-d')
+            . '.pdf';
 
         return $pdf->download($filename);
     }
