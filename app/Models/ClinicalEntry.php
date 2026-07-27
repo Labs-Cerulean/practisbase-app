@@ -91,4 +91,70 @@ class ClinicalEntry extends Model
 
         return self::CERTIFICATE_KINDS[$kind] ?? $kind;
     }
+
+    /**
+     * Normalise prescription medicines from encrypted payload.
+     * Legacy single title/body prescriptions become one medicine line.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return list<array{name: string, strength: string, dose: string, quantity: string, instructions: string}>
+     */
+    public static function medicinesFromPayload(array $payload): array
+    {
+        $raw = $payload['medicines'] ?? null;
+        if (is_array($raw) && count($raw) > 0) {
+            $out = [];
+            foreach ($raw as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $name = trim((string) ($row['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $out[] = [
+                    'name' => $name,
+                    'strength' => trim((string) ($row['strength'] ?? '')),
+                    'dose' => trim((string) ($row['dose'] ?? '')),
+                    'quantity' => trim((string) ($row['quantity'] ?? '')),
+                    'instructions' => trim((string) ($row['instructions'] ?? '')),
+                ];
+            }
+            if ($out !== []) {
+                return $out;
+            }
+        }
+
+        $title = trim((string) ($payload['title'] ?? ''));
+        $body = trim((string) ($payload['body'] ?? ''));
+        if ($title === '' && $body === '') {
+            return [];
+        }
+
+        return [[
+            'name' => $title !== '' ? $title : 'Medicine',
+            'strength' => '',
+            'dose' => '',
+            'quantity' => '',
+            'instructions' => $body,
+        ]];
+    }
+
+    public static function prescriptionSummaryTitle(array $medicines, ?string $explicitTitle = null): string
+    {
+        $explicit = trim((string) $explicitTitle);
+        if ($explicit !== '') {
+            return $explicit;
+        }
+
+        $count = count($medicines);
+        if ($count === 0) {
+            return 'Prescription';
+        }
+        if ($count === 1) {
+            return $medicines[0]['name'];
+        }
+
+        return 'Prescription (' . $count . ' medicines)';
+    }
 }

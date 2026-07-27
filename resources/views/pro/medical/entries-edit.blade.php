@@ -3,7 +3,19 @@
 @section('page_title', 'Edit Clinical Entry')
 
 @section('content')
-    <div style="max-width: 720px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+    @php
+        $isRx = $entry->entry_type === 'prescription';
+        $hasStructuredMeds = $isRx && ! empty($payload['medicines']) && is_array($payload['medicines']);
+        $medicines = $isRx
+            ? \App\Models\ClinicalEntry::medicinesFromPayload($payload)
+            : [];
+        if ($isRx && $medicines === []) {
+            $medicines = [['name' => '', 'strength' => '', 'dose' => '', 'quantity' => '', 'instructions' => '']];
+        }
+        $rxTitle = $hasStructuredMeds ? ($payload['title'] ?? '') : '';
+        $rxNotes = $hasStructuredMeds ? ($payload['body'] ?? '') : '';
+    @endphp
+    <div style="max-width: {{ $isRx ? '820px' : '720px' }}; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
             <h2 style="margin: 0; color: var(--primary-navy);">Edit {{ $types[$entry->entry_type] ?? 'entry' }}</h2>
             <a href="/pro/medical/patients/{{ $patient->id }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none;">Cancel</a>
@@ -30,7 +42,10 @@
 
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
-                    {{ $entry->entry_type === 'certificate' ? 'Document / issued date' : 'Date' }}
+                    @if($entry->entry_type === 'certificate') Document / issued date
+                    @elseif($isRx) Prescription date
+                    @else Date
+                    @endif
                 </label>
                 <input type="date" name="entry_date" value="{{ old('entry_date', $entry->entry_date->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
@@ -67,30 +82,36 @@
                 </div>
             @endif
 
-            @if($entry->entry_type === 'prescription')
-                <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #f8fafc; border-left: 4px solid #0f172a; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
-                    Title = medication / item. Body = dose, quantity, directions, repeats.
-                </div>
+            @if($isRx)
+                @include('pro.medical._prescription-medicines', [
+                    'medicines' => old('medicines', $medicines),
+                    'visible' => true,
+                ])
             @endif
 
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Certificate title
-                    @elseif($entry->entry_type === 'prescription') Medication / item
+                    @elseif($isRx) Prescription label (optional)
                     @elseif($entry->entry_type === 'referral') Referral title
                     @else Title
                     @endif
                 </label>
-                <input type="text" name="title" value="{{ old('title', $payload['title'] ?? '') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <input type="text" name="title" value="{{ old('title', $isRx ? $rxTitle : ($payload['title'] ?? '')) }}" {{ $isRx ? '' : 'required' }}
+                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                @if($isRx)
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Defaults to the first medicine or “Prescription (N medicines)”.</div>
+                @endif
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Details / clinical statement (encrypted)
-                    @elseif($entry->entry_type === 'prescription') Dose, quantity, directions (encrypted)
+                    @elseif($isRx) General notes for pharmacist / patient (optional, encrypted)
                     @else Body (encrypted at rest)
                     @endif
                 </label>
-                <textarea name="body" rows="8" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $payload['body'] ?? '') }}</textarea>
+                <textarea name="body" rows="{{ $isRx ? 3 : 8 }}" {{ $isRx ? '' : 'required' }}
+                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($payload['body'] ?? '')) }}</textarea>
             </div>
 
             <div style="margin-bottom: 1.25rem;">

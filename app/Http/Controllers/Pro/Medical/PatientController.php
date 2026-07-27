@@ -310,6 +310,12 @@ class PatientController extends Controller
                     'model' => $entry,
                     'title' => $data['title'] ?? 'Entry',
                     'body' => $data['body'] ?? '',
+                    'medicines' => $entry->entry_type === 'prescription'
+                        ? ClinicalEntry::medicinesFromPayload($data)
+                        : [],
+                    'has_structured_medicines' => $entry->entry_type === 'prescription'
+                        && ! empty($data['medicines'])
+                        && is_array($data['medicines']),
                     'type_label' => ClinicalEntry::TYPES[$entry->entry_type] ?? $entry->entry_type,
                     'certificate_kind' => $data['certificate_kind'] ?? null,
                     'certificate_kind_label' => $entry->entry_type === 'certificate'

@@ -176,19 +176,20 @@ class ClinicalEntryController extends Controller
 
     private function validateEntryPayload(Request $request, bool $updating = false): array
     {
-        $typeRule = $updating
-            ? 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES))
-            : 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES));
+        $type = $request->input('entry_type');
 
         $rules = [
-            'entry_type' => $typeRule,
+            'entry_type' => 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES)),
             'entry_date' => 'required|date|before_or_equal:today',
-            'title' => 'required|string|max:255',
-            'body' => 'required|string|max:20000',
+            'title' => 'nullable|string|max:255',
+            'body' => 'nullable|string|max:20000',
             'attachment' => 'nullable|file|max:' . ClinicalAttachment::MAX_KILOBYTES . '|mimetypes:' . implode(',', ClinicalAttachment::ALLOWED_MIMES),
         ];
 
-        $type = $request->input('entry_type');
+        if ($type !== 'prescription') {
+            $rules['title'] = 'required|string|max:255';
+            $rules['body'] = 'required|string|max:20000';
+        }
 
         if ($type === 'certificate') {
             $rules['certificate_kind'] = ['required', Rule::in(array_keys(ClinicalEntry::CERTIFICATE_KINDS))];
@@ -197,21 +198,60 @@ class ClinicalEntryController extends Controller
         }
 
         if ($type === 'prescription') {
-            $rules['body'] = 'required|string|max:20000';
+            $rules['medicines'] = 'required|array|min:1|max:40';
+            $rules['medicines.*.name'] = 'nullable|string|max:255';
+            $rules['medicines.*.strength'] = 'nullable|string|max:120';
+            $rules['medicines.*.dose'] = 'nullable|string|max:255';
+            $rules['medicines.*.quantity'] = 'nullable|string|max:120';
+            $rules['medicines.*.instructions'] = 'nullable|string|max:2000';
+            $rules['body'] = 'nullable|string|max:20000';
+            $rules['title'] = 'nullable|string|max:255';
         }
 
         if ($type === 'referral') {
             $rules['referred_to'] = 'nullable|string|max:255';
         }
 
-        return $request->validate($rules);
+        $validated = $request->validate($rules);
+
+        if ($type === 'prescription') {
+            $medicines = [];
+            foreach ($validated['medicines'] ?? [] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $name = trim((string) ($row['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $medicines[] = [
+                    'name' => $name,
+                    'strength' => trim((string) ($row['strength'] ?? '')),
+                    'dose' => trim((string) ($row['dose'] ?? '')),
+                    'quantity' => trim((string) ($row['quantity'] ?? '')),
+                    'instructions' => trim((string) ($row['instructions'] ?? '')),
+                ];
+            }
+
+            if ($medicines === []) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'medicines' => 'Add at least one medicine with a name.',
+                ]);
+            }
+
+            $validated['medicines'] = $medicines;
+            $validated['title'] = ClinicalEntry::prescriptionSummaryTitle($medicines, $validated['title'] ?? null);
+            $validated['body'] = trim((string) ($validated['body'] ?? ''));
+        }
+
+        return $validated;
     }
 
     private function buildEncryptedPayload(array $validated): array
     {
         $payload = [
             'title' => $validated['title'],
-            'body' => $validated['body'],
+            'body' => $validated['body'] ?? '',
         ];
 
         if ($validated['entry_type'] === 'certificate') {
@@ -222,6 +262,10 @@ class ClinicalEntryController extends Controller
 
         if ($validated['entry_type'] === 'referral') {
             $payload['referred_to'] = $validated['referred_to'] ?? null;
+        }
+
+        if ($validated['entry_type'] === 'prescription') {
+            $payload['medicines'] = $validated['medicines'];
         }
 
         return $payload;
