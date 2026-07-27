@@ -87,6 +87,7 @@ class ProfileController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'postnominals' => 'nullable|string|max:255',
             'warrant_type' => 'nullable|string|max:255',
             'warrant_number' => 'nullable|string|max:255',
             'employment_type' => 'required|in:full_time,part_time',
@@ -126,6 +127,7 @@ class ProfileController extends Controller
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
+            'postnominals' => filled($request->postnominals) ? trim($request->postnominals) : null,
             'warrant_type' => $request->warrant_type,
             'warrant_number' => $request->warrant_number,
             'employment_type' => $request->employment_type,

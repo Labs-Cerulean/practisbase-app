@@ -9,6 +9,7 @@ use App\Support\MedicalVaultCrypto;
 use App\Support\VaultWebAuthn;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use lbuchs\WebAuthn\WebAuthnException;
 
 class VaultDeviceController extends Controller
@@ -42,7 +43,8 @@ class VaultDeviceController extends Controller
             $exclude
         );
 
-        $request->session()->put('webauthn_register_challenge', $webAuthn->getChallenge()->getBinaryString());
+        $request->session()->put('webauthn_register_challenge', $challengeBinary = $webAuthn->getChallenge()->getBinaryString());
+        Cache::put($this->registerChallengeKey($user->id), $challengeBinary, now()->addMinutes(10));
 
         return response()->json([
             'publicKey' => $createArgs->publicKey,
@@ -68,6 +70,11 @@ class VaultDeviceController extends Controller
         ]);
 
         $challenge = $request->session()->pull('webauthn_register_challenge');
+        if (! is_string($challenge) || $challenge === '') {
+            $challenge = Cache::pull($this->registerChallengeKey($user->id));
+        } else {
+            Cache::forget($this->registerChallengeKey($user->id));
+        }
         if (! is_string($challenge) || $challenge === '') {
             return response()->json(['message' => 'Registration challenge expired. Try again.'], 422);
         }
@@ -151,7 +158,8 @@ class VaultDeviceController extends Controller
             'required'
         );
 
-        $request->session()->put('webauthn_unlock_challenge', $webAuthn->getChallenge()->getBinaryString());
+        $request->session()->put('webauthn_unlock_challenge', $challengeBinary = $webAuthn->getChallenge()->getBinaryString());
+        Cache::put($this->unlockChallengeKey($user->id), $challengeBinary, now()->addMinutes(10));
 
         return response()->json([
             'publicKey' => $getArgs->publicKey,
@@ -178,6 +186,11 @@ class VaultDeviceController extends Controller
         ]);
 
         $challenge = $request->session()->pull('webauthn_unlock_challenge');
+        if (! is_string($challenge) || $challenge === '') {
+            $challenge = Cache::pull($this->unlockChallengeKey($user->id));
+        } else {
+            Cache::forget($this->unlockChallengeKey($user->id));
+        }
         if (! is_string($challenge) || $challenge === '') {
             return response()->json(['message' => 'Unlock challenge expired. Try again.'], 422);
         }
@@ -273,6 +286,16 @@ class VaultDeviceController extends Controller
             ]);
 
         return response()->json(['devices' => $devices]);
+    }
+
+    private function registerChallengeKey(int $userId): string
+    {
+        return 'webauthn_register_challenge:'.$userId;
+    }
+
+    private function unlockChallengeKey(int $userId): string
+    {
+        return 'webauthn_unlock_challenge:'.$userId;
     }
 
     private function guessDeviceLabel(Request $request): string

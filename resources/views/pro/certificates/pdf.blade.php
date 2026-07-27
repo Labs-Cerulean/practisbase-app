@@ -31,6 +31,9 @@
         <img src="{{ $user->logoDataUri() }}" style="max-height: 56px; max-width: 170px; margin-bottom: 12px;">
     @endif
     <div class="practice">{{ $user->name }}</div>
+    @if($user->postnominalsLine())
+        <div class="practice-sub">{{ $user->postnominalsLine() }}</div>
+    @endif
     @if($user->profession)
         <div class="practice-sub">{{ $user->profession }}</div>
     @endif
@@ -88,6 +91,9 @@
     <div class="sign">
         <div class="label">Issued by</div>
         <div style="font-size: 13px; font-weight: bold; color: #0f172a;">{{ $user->name }}</div>
+        @if($user->postnominalsLine())
+            <div style="font-size: 11px; color: #64748b;">{{ $user->postnominalsLine() }}</div>
+        @endif
         <div class="sign-line">Signature / stamp</div>
     </div>
 

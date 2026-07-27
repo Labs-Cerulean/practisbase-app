@@ -19,7 +19,8 @@ class VaultWebAuthn
         return new WebAuthn(
             'PractisBase Medical Vault',
             self::relyingPartyId($request),
-            ['none', 'packed', 'apple', 'android-key', 'tpm'],
+            // Attestation "none" avoids extra Android/Play Services hops that can drop the browser session.
+            ['none'],
             true
         );
     }
