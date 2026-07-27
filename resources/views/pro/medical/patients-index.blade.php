@@ -32,6 +32,34 @@
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>
     @endif
 
+    <div id="device-trust-banner" style="display: none; margin-bottom: 1rem; padding: 0.9rem 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: var(--radius-md); color: #1e3a8a;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <div style="font-weight: 700; margin-bottom: 0.25rem;">Trust this device for quicker unlock?</div>
+                <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; color: var(--text-muted);">
+                    Next time use Face ID, fingerprint, Touch ID, or Windows Hello instead of pasting the recovery code.
+                    Your recovery code stays required for new devices and full recovery — login password stays separate.
+                </p>
+                <div id="device-trust-status" style="display: none; margin-top: 0.5rem; font-size: 0.85rem;"></div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" id="device-trust-enable" style="padding: 0.55rem 1rem; background: #1d4ed8; color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Enable quick unlock</button>
+                <button type="button" id="device-trust-dismiss" style="padding: 0.55rem 1rem; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Not now</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="trusted-devices-card" style="display: none; margin-bottom: 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.65rem;">
+            <div>
+                <div style="font-weight: 700; color: var(--primary-navy);">Trusted devices</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Revoke a device if you lose it. You will need the recovery code on that browser again.</div>
+            </div>
+            <button type="button" id="device-trust-enable-secondary" style="display: none; padding: 0.45rem 0.85rem; background: white; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Trust this browser</button>
+        </div>
+        <div id="trusted-devices-list" style="font-size: 0.9rem; color: var(--text-muted);">Loading…</div>
+    </div>
+
     @if($backupOverdue ?? false)
         <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: var(--radius-md); color: #991b1b; font-size: 0.9rem;">
             <strong>Weekly backup overdue.</strong>
@@ -221,4 +249,113 @@
         })();
     </script>
     @endunless
+
+    @include('pro.medical._vault-device-js')
+    <script>
+        (function () {
+            if (!window.PractisVaultDevice) return;
+
+            var offerTrust = @json((bool) (session('offer_device_trust') || request()->boolean('offer_trust')));
+            var banner = document.getElementById('device-trust-banner');
+            var enableBtn = document.getElementById('device-trust-enable');
+            var enableSecondary = document.getElementById('device-trust-enable-secondary');
+            var dismissBtn = document.getElementById('device-trust-dismiss');
+            var statusEl = document.getElementById('device-trust-status');
+            var devicesCard = document.getElementById('trusted-devices-card');
+            var devicesList = document.getElementById('trusted-devices-list');
+
+            if (offerTrust && banner) {
+                banner.style.borderLeftColor = '#1d4ed8';
+            }
+
+            function setStatus(msg, ok) {
+                if (!statusEl) return;
+                statusEl.style.display = 'block';
+                statusEl.style.color = ok ? '#065f46' : '#991b1b';
+                statusEl.textContent = msg;
+            }
+
+            function formatWhen(iso) {
+                if (!iso) return 'never';
+                try {
+                    var d = new Date(iso);
+                    if (isNaN(d.getTime())) return 'unknown';
+                    return d.toLocaleString();
+                } catch (e) {
+                    return 'unknown';
+                }
+            }
+
+            function renderDevices(devices) {
+                if (!devicesCard || !devicesList) return;
+                devicesCard.style.display = 'block';
+                if (!devices.length) {
+                    devicesList.innerHTML = '<span style="color: var(--text-muted);">No trusted devices yet. Enable quick unlock on this phone or laptop after unlocking with your recovery code.</span>';
+                    return;
+                }
+                var html = '<div style="display: grid; gap: 0.55rem;">';
+                devices.forEach(function (d) {
+                    html += '<div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.65rem 0.75rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">';
+                    html += '<div><div style="font-weight: 700; color: var(--primary-navy);">' + (d.device_label || 'Trusted device') + '</div>';
+                    html += '<div style="font-size: 0.75rem; color: var(--text-muted);">Last used: ' + formatWhen(d.last_used_at) + '</div></div>';
+                    html += '<button type="button" data-revoke-id="' + d.id + '" data-credential-id="' + (d.credential_id || '') + '" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">Revoke</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                devicesList.innerHTML = html;
+                devicesList.querySelectorAll('[data-revoke-id]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        if (!confirm('Revoke quick unlock for this device?')) return;
+                        btn.disabled = true;
+                        PractisVaultDevice.revokeDevice(btn.getAttribute('data-revoke-id'), btn.getAttribute('data-credential-id')).then(function () {
+                            return PractisVaultDevice.listDevices().then(renderDevices);
+                        }).catch(function (e) {
+                            alert(e.message || 'Could not revoke device.');
+                            btn.disabled = false;
+                        });
+                    });
+                });
+            }
+
+            function runRegister(btn) {
+                if (statusEl) statusEl.style.display = 'none';
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'Waiting for device…';
+                }
+                PractisVaultDevice.registerDevice().then(function (result) {
+                    setStatus((result && result.message) ? result.message : 'Quick unlock enabled on this device.', true);
+                    if (banner) banner.style.display = 'none';
+                    if (enableSecondary) enableSecondary.style.display = 'none';
+                    return PractisVaultDevice.listDevices().then(renderDevices);
+                }).catch(function (e) {
+                    setStatus(e.message || 'Could not enable quick unlock.', false);
+                    if (banner) banner.style.display = 'block';
+                }).finally(function () {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = btn === enableSecondary ? 'Trust this browser' : 'Enable quick unlock';
+                    }
+                });
+            }
+
+            PractisVaultDevice.listDevices().then(renderDevices).catch(function () {
+                if (devicesCard) devicesCard.style.display = 'none';
+            });
+
+            PractisVaultDevice.platformAvailable().then(function (ok) {
+                if (!ok) return;
+                return PractisVaultDevice.hasLocalWrapKey().then(function (hasKey) {
+                    if (enableSecondary) enableSecondary.style.display = hasKey ? 'none' : 'inline-block';
+                    if (!hasKey && banner) banner.style.display = 'block';
+                });
+            });
+
+            if (enableBtn) enableBtn.addEventListener('click', function () { runRegister(enableBtn); });
+            if (enableSecondary) enableSecondary.addEventListener('click', function () { runRegister(enableSecondary); });
+            if (dismissBtn) dismissBtn.addEventListener('click', function () {
+                if (banner) banner.style.display = 'none';
+            });
+        })();
+    </script>
 @endsection

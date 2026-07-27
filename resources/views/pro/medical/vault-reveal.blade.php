@@ -29,7 +29,7 @@
             The code is long on purpose (encryption strength). Paste it from your note when unlocking — you should not memorise it.
         </p>
 
-        <a href="/pro/medical/patients" style="display: inline-block; margin-top: 1rem; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); font-weight: 700;">
+        <a href="/pro/medical/patients?offer_trust=1" style="display: inline-block; margin-top: 1rem; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); font-weight: 700;">
             I have saved the code — continue
         </a>
     </div>

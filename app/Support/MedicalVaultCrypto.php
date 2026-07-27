@@ -100,6 +100,46 @@ class MedicalVaultCrypto
         return $key !== false && strlen($key) === 32 ? $key : null;
     }
 
+    /**
+     * Wrap the vault DEK for a trusted device. Wrap key stays on the device (IndexedDB).
+     */
+    public static function wrapDek(string $dekBinary, string $wrapKeyBinary): array
+    {
+        if (strlen($dekBinary) !== 32 || strlen($wrapKeyBinary) !== 32) {
+            throw new RuntimeException('DEK and wrap key must be 32 bytes.');
+        }
+
+        $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $cipher = sodium_crypto_secretbox($dekBinary, $nonce, $wrapKeyBinary);
+
+        return [
+            'wrapped_dek' => base64_encode($cipher),
+            'wrap_nonce' => base64_encode($nonce),
+        ];
+    }
+
+    public static function unwrapDek(string $wrappedDekB64, string $wrapNonceB64, string $wrapKeyBinary): string
+    {
+        if (strlen($wrapKeyBinary) !== 32) {
+            throw new RuntimeException('Wrap key must be 32 bytes.');
+        }
+
+        $cipher = base64_decode($wrappedDekB64, true);
+        $nonce = base64_decode($wrapNonceB64, true);
+
+        if ($cipher === false || $nonce === false) {
+            throw new RuntimeException('Invalid wrapped DEK encoding.');
+        }
+
+        $dek = sodium_crypto_secretbox_open($cipher, $nonce, $wrapKeyBinary);
+
+        if ($dek === false || strlen($dek) !== 32) {
+            throw new RuntimeException('Unable to unwrap vault key for this device.');
+        }
+
+        return $dek;
+    }
+
     private static function decryptRaw(string $ciphertextB64, string $nonceB64, string $binaryKey): string
     {
         $cipher = base64_decode($ciphertextB64, true);

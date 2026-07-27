@@ -102,7 +102,9 @@ class VaultController extends Controller
         $key = MedicalVaultCrypto::deriveKey($request->recovery_code);
         $request->session()->put('medical_vault_key', base64_encode($key));
 
-        return redirect('/pro/medical/patients')->with('success', 'Medical vault unlocked for this session.');
+        return redirect('/pro/medical/patients')
+            ->with('success', 'Medical vault unlocked for this session.')
+            ->with('offer_device_trust', true);
     }
 
     public function lock(Request $request)
