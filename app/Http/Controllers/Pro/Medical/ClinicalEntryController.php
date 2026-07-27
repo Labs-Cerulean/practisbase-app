@@ -152,6 +152,15 @@ class ClinicalEntryController extends Controller
             ->with('success', 'Entry updated.');
     }
 
+    public function issueGetFallback(Patient $patient, ClinicalEntry $entry)
+    {
+        $user = Auth::user();
+        $this->assertOwned($user->id, $patient, $entry);
+
+        return redirect('/pro/medical/patients/' . $patient->id)
+            ->withErrors(['entry' => 'Stamp & issue must be submitted with the button on this page (not by opening or refreshing the stamp URL). Use Stamp & issue below.']);
+    }
+
     public function issue(Patient $patient, ClinicalEntry $entry)
     {
         $user = Auth::user();

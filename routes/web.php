@@ -176,6 +176,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
             Route::post('/patients/{patient}/entries', [ClinicalEntryController::class, 'store']);
             Route::get('/patients/{patient}/entries/{entry}/edit', [ClinicalEntryController::class, 'edit']);
             Route::put('/patients/{patient}/entries/{entry}', [ClinicalEntryController::class, 'update']);
+            Route::get('/patients/{patient}/entries/{entry}/issue', [ClinicalEntryController::class, 'issueGetFallback']);
             Route::post('/patients/{patient}/entries/{entry}/issue', [ClinicalEntryController::class, 'issue']);
             Route::get('/patients/{patient}/entries/{entry}/pdf', [ClinicalEntryPdfController::class, 'download']);
             Route::post('/patients/{patient}/entries/{entry}/attachments', [ClinicalAttachmentController::class, 'store']);

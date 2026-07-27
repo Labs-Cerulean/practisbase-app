@@ -327,10 +327,15 @@
                         @endif
 
                         @if($entry['is_stampable'] && ! $entry['is_issued'])
-                            <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue" method="POST" style="margin: 0;"
-                                  onsubmit="return confirm('Stamp & issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');">
+                            <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue"
+                                  method="post"
+                                  style="margin: 0; display: inline;">
                                 @csrf
-                                <button type="submit" style="padding: 0.4rem 0.75rem; background: {{ $badgeBg }}; color: white; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
+                                <button type="submit"
+                                        formmethod="post"
+                                        formaction="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue"
+                                        onclick="return confirm('Stamp and issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');"
+                                        style="padding: 0.4rem 0.75rem; background: {{ $badgeBg }}; color: white; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
                                     Stamp &amp; issue
                                 </button>
                             </form>
