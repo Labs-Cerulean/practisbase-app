@@ -311,6 +311,13 @@ class PatientController extends Controller
                     'title' => $data['title'] ?? 'Entry',
                     'body' => $data['body'] ?? '',
                     'type_label' => ClinicalEntry::TYPES[$entry->entry_type] ?? $entry->entry_type,
+                    'certificate_kind' => $data['certificate_kind'] ?? null,
+                    'certificate_kind_label' => $entry->entry_type === 'certificate'
+                        ? ClinicalEntry::certificateKindLabel($data['certificate_kind'] ?? null)
+                        : null,
+                    'subject_name' => $data['subject_name'] ?? null,
+                    'expires_on' => $data['expires_on'] ?? null,
+                    'referred_to' => $data['referred_to'] ?? null,
                     'attachments' => $attachments,
                     'is_stampable' => $entry->isStampable(),
                     'is_issued' => $entry->isIssued(),

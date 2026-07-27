@@ -38,7 +38,7 @@ class ClinicalEntryPdfController extends Controller
         $documentTitle = match ($entry->entry_type) {
             'prescription' => 'Digital Prescription',
             'referral' => 'Referral Letter',
-            'certificate' => 'Medical Certificate',
+            'certificate' => ClinicalEntry::certificateKindLabel($entryPayload['certificate_kind'] ?? null),
             default => $entry->typeLabel(),
         };
 

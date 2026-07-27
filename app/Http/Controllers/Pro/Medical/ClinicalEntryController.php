@@ -3,26 +3,44 @@
 namespace App\Http\Controllers\Pro\Medical;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClinicalAttachment;
 use App\Models\ClinicalEntry;
 use App\Models\MedicalVault;
 use App\Models\Patient;
 use App\Support\IssueCode;
 use App\Support\MedicalVaultCrypto;
+use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ClinicalEntryController extends Controller
 {
-    public function create(Patient $patient)
+    public function create(Patient $patient, Request $request)
     {
         $user = Auth::user();
         if ($patient->user_id !== $user->id) {
             abort(403);
         }
 
+        $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
+        if (! $key) {
+            return redirect('/pro/medical/vault/unlock');
+        }
+
+        $patientPayload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+        $defaultType = $request->query('type');
+        if (! is_string($defaultType) || ! array_key_exists($defaultType, ClinicalEntry::TYPES)) {
+            $defaultType = 'journal';
+        }
+
         return view('pro.medical.entries-create', [
             'patient' => $patient,
+            'patientPayload' => $patientPayload,
             'types' => ClinicalEntry::TYPES,
+            'certificateKinds' => ClinicalEntry::CERTIFICATE_KINDS,
+            'defaultType' => old('entry_type', $defaultType),
         ]);
     }
 
@@ -40,19 +58,12 @@ class ClinicalEntryController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
-        $validated = $request->validate([
-            'entry_type' => 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES)),
-            'entry_date' => 'required|date|before_or_equal:today',
-            'title' => 'required|string|max:255',
-            'body' => 'required|string|max:20000',
-        ]);
+        $validated = $this->validateEntryPayload($request);
+        $payload = $this->buildEncryptedPayload($validated);
 
-        $encrypted = MedicalVaultCrypto::encrypt([
-            'title' => $validated['title'],
-            'body' => $validated['body'],
-        ], $key);
+        $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
 
-        ClinicalEntry::create([
+        $entry = ClinicalEntry::create([
             'user_id' => $user->id,
             'vault_id' => $vault->id,
             'patient_id' => $patient->id,
@@ -65,8 +76,12 @@ class ClinicalEntryController extends Controller
             'issue_code' => null,
         ]);
 
+        if ($request->hasFile('attachment')) {
+            $this->storeAttachmentFile($request, $user->id, $vault->id, $patient->id, $entry->id, $key);
+        }
+
         $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
-            ? 'Draft saved. Edit freely until you press Stamp & issue — then it locks.'
+            ? 'Draft ' . (ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document') . ' saved. Edit until Stamp & issue — then it locks and gets an issue code on the PDF.'
             : 'Journal note saved encrypted in your vault.';
 
         return redirect('/pro/medical/patients/' . $patient->id)->with('success', $msg);
@@ -88,12 +103,15 @@ class ClinicalEntryController extends Controller
         }
 
         $payload = MedicalVaultCrypto::decrypt($entry->payload_ciphertext, $entry->payload_nonce, $key);
+        $patientPayload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
 
         return view('pro.medical.entries-edit', [
             'patient' => $patient,
+            'patientPayload' => $patientPayload,
             'entry' => $entry,
             'payload' => $payload,
             'types' => ClinicalEntry::TYPES,
+            'certificateKinds' => ClinicalEntry::CERTIFICATE_KINDS,
         ]);
     }
 
@@ -112,21 +130,23 @@ class ClinicalEntryController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
-        $validated = $request->validate([
-            'entry_date' => 'required|date|before_or_equal:today',
-            'title' => 'required|string|max:255',
-            'body' => 'required|string|max:20000',
-        ]);
+        $request->merge(['entry_type' => $entry->entry_type]);
+        $validated = $this->validateEntryPayload($request, updating: true);
+        $payload = $this->buildEncryptedPayload($validated);
 
-        $encrypted = MedicalVaultCrypto::encrypt([
-            'title' => $validated['title'],
-            'body' => $validated['body'],
-        ], $key);
+        $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
 
         $entry->entry_date = $validated['entry_date'];
         $entry->payload_ciphertext = $encrypted['ciphertext'];
         $entry->payload_nonce = $encrypted['nonce'];
         $entry->save();
+
+        if ($request->hasFile('attachment')) {
+            $vault = MedicalVault::activeForUser($user->id);
+            if ($vault) {
+                $this->storeAttachmentFile($request, $user->id, $vault->id, $patient->id, $entry->id, $key);
+            }
+        }
 
         return redirect('/pro/medical/patients/' . $patient->id)
             ->with('success', 'Entry updated.');
@@ -152,6 +172,95 @@ class ClinicalEntryController extends Controller
 
         return redirect('/pro/medical/patients/' . $patient->id)
             ->with('success', 'Document stamped and issued as ' . $entry->issue_code . '. Code and issue date are printed on the PDF. It is now locked.');
+    }
+
+    private function validateEntryPayload(Request $request, bool $updating = false): array
+    {
+        $typeRule = $updating
+            ? 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES))
+            : 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES));
+
+        $rules = [
+            'entry_type' => $typeRule,
+            'entry_date' => 'required|date|before_or_equal:today',
+            'title' => 'required|string|max:255',
+            'body' => 'required|string|max:20000',
+            'attachment' => 'nullable|file|max:' . ClinicalAttachment::MAX_KILOBYTES . '|mimetypes:' . implode(',', ClinicalAttachment::ALLOWED_MIMES),
+        ];
+
+        $type = $request->input('entry_type');
+
+        if ($type === 'certificate') {
+            $rules['certificate_kind'] = ['required', Rule::in(array_keys(ClinicalEntry::CERTIFICATE_KINDS))];
+            $rules['subject_name'] = 'nullable|string|max:255';
+            $rules['expires_on'] = 'nullable|date|after_or_equal:entry_date';
+        }
+
+        if ($type === 'prescription') {
+            $rules['body'] = 'required|string|max:20000';
+        }
+
+        if ($type === 'referral') {
+            $rules['referred_to'] = 'nullable|string|max:255';
+        }
+
+        return $request->validate($rules);
+    }
+
+    private function buildEncryptedPayload(array $validated): array
+    {
+        $payload = [
+            'title' => $validated['title'],
+            'body' => $validated['body'],
+        ];
+
+        if ($validated['entry_type'] === 'certificate') {
+            $payload['certificate_kind'] = $validated['certificate_kind'];
+            $payload['subject_name'] = $validated['subject_name'] ?? null;
+            $payload['expires_on'] = $validated['expires_on'] ?? null;
+        }
+
+        if ($validated['entry_type'] === 'referral') {
+            $payload['referred_to'] = $validated['referred_to'] ?? null;
+        }
+
+        return $payload;
+    }
+
+    private function storeAttachmentFile(Request $request, int $userId, int $vaultId, int $patientId, int $entryId, string $key): void
+    {
+        $file = $request->file('attachment');
+        if (! $file) {
+            return;
+        }
+
+        $plain = file_get_contents($file->getRealPath());
+        if ($plain === false) {
+            return;
+        }
+
+        $encryptedFile = MedicalVaultCrypto::encryptBytes($plain, $key);
+        $meta = MedicalVaultCrypto::encrypt([
+            'original_name' => $file->getClientOriginalName(),
+            'mime' => $file->getMimeType() ?: 'application/octet-stream',
+        ], $key);
+
+        $storageDir = TenantStorage::medicalAttachmentsPath($userId, $vaultId);
+        $storagePath = $storageDir . '/' . Str::uuid()->toString() . '.bin';
+        TenantStorage::disk()->put($storagePath, $encryptedFile['ciphertext']);
+
+        ClinicalAttachment::create([
+            'user_id' => $userId,
+            'vault_id' => $vaultId,
+            'patient_id' => $patientId,
+            'clinical_entry_id' => $entryId,
+            'meta_ciphertext' => $meta['ciphertext'],
+            'meta_nonce' => $meta['nonce'],
+            'file_nonce' => $encryptedFile['nonce'],
+            'storage_path' => $storagePath,
+            'byte_size' => strlen($encryptedFile['ciphertext']),
+            'ciphertext_sha256' => hash('sha256', $encryptedFile['ciphertext']),
+        ]);
     }
 
     private function assertOwned(int $userId, Patient $patient, ClinicalEntry $entry): void

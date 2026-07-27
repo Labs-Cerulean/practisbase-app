@@ -13,32 +13,137 @@
                 @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
             </div>
         @endif
-        <form action="/pro/medical/patients/{{ $patient->id }}/entries" method="POST">
+        <form action="/pro/medical/patients/{{ $patient->id }}/entries" method="POST" enctype="multipart/form-data" id="entry-form">
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Type</label>
-                <select name="entry_type" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                <select name="entry_type" id="entry_type" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
                     @foreach($types as $key => $label)
-                        <option value="{{ $key }}" {{ old('entry_type') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                        <option value="{{ $key }}" {{ ($defaultType ?? 'journal') === $key ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-                    Prescriptions, referrals, and certificates can be stamped later — then they lock. Journals stay editable.
+                <div id="type-guide" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.45rem;"></div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;" id="date-label">Date</label>
+                <input type="date" name="entry_date" id="entry_date" value="{{ old('entry_date', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            </div>
+
+            <div id="certificate-fields" style="display: none;">
+                <div style="margin-bottom: 1rem; padding: 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md);">
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #14532d; margin-bottom: 0.75rem;">Certificate / declaration details</div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Kind</label>
+                        <select name="certificate_kind" id="certificate_kind" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                            @foreach($certificateKinds as $key => $label)
+                                <option value="{{ $key }}" {{ old('certificate_kind', 'medical_certificate') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Subject / recipient</label>
+                        <input type="text" name="subject_name" value="{{ old('subject_name', $patientPayload['display_name'] ?? '') }}"
+                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Defaults to this patient. Change if the certificate is for another named party.</div>
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Expires on <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                        <input type="date" name="expires_on" value="{{ old('expires_on') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
                 </div>
             </div>
+
+            <div id="referral-fields" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md);">
+                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #1e3a5f; margin-bottom: 0.75rem;">Referral details</div>
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Referred to <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                <input type="text" name="referred_to" value="{{ old('referred_to') }}" placeholder="Clinician, clinic, or specialty"
+                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            </div>
+
+            <div id="prescription-hint" style="display: none; margin-bottom: 1rem; padding: 0.85rem 1rem; background: #f8fafc; border-left: 4px solid #0f172a; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
+                Use the title for the main item (e.g. drug name) and the body for dose, quantity, directions, and repeats. After Stamp &amp; issue, the PDF prints a unique issue code and date.
+            </div>
+
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date</label>
-                <input type="date" name="entry_date" value="{{ old('entry_date', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;" id="title-label">Title</label>
+                <input type="text" name="title" id="title" value="{{ old('title') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Title</label>
-                <input type="text" name="title" value="{{ old('title') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;" id="body-label">Body (encrypted at rest)</label>
+                <textarea name="body" id="body" rows="8" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body') }}</textarea>
             </div>
-            <div style="margin-bottom: 1.25rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Body (encrypted at rest)</label>
-                <textarea name="body" rows="8" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body') }}</textarea>
+
+            <div id="attachment-fields" style="display: none; margin-bottom: 1.25rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Photo / scan <span style="font-weight: 500; color: var(--text-muted);">(optional, encrypted)</span></label>
+                <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Stored encrypted in your medical vault (JPEG, PNG, WebP, PDF · max 10 MB).</div>
             </div>
-            <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save encrypted entry</button>
+
+            <button type="submit" id="submit-btn" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save encrypted entry</button>
+            <div id="stamp-note" style="display: none; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: center;">
+                Editable until you Stamp &amp; issue on the patient record. Official PDF uses the type-specific template with authenticity code.
+            </div>
         </form>
     </div>
+
+    <script>
+        (function () {
+            var typeEl = document.getElementById('entry_type');
+            var cert = document.getElementById('certificate-fields');
+            var referral = document.getElementById('referral-fields');
+            var rxHint = document.getElementById('prescription-hint');
+            var attach = document.getElementById('attachment-fields');
+            var guide = document.getElementById('type-guide');
+            var dateLabel = document.getElementById('date-label');
+            var titleLabel = document.getElementById('title-label');
+            var bodyLabel = document.getElementById('body-label');
+            var submitBtn = document.getElementById('submit-btn');
+            var stampNote = document.getElementById('stamp-note');
+            var kindEl = document.getElementById('certificate_kind');
+
+            var guides = {
+                journal: 'Private clinical note. Stays editable. Not stamped and not exported as an official PDF.',
+                prescription: 'Pharmacy / patient prescription. Stamp & issue locks it and prints a unique RX code + date on the PDF.',
+                referral: 'Referral letter for a receiving clinician. Stamp & issue locks it and prints a unique RF code + date.',
+                certificate: 'Certificate, declaration, attestation, or fitness clearance. Stamp & issue locks it and prints a unique MC code + date.'
+            };
+
+            function sync() {
+                var t = typeEl.value;
+                cert.style.display = t === 'certificate' ? 'block' : 'none';
+                referral.style.display = t === 'referral' ? 'block' : 'none';
+                rxHint.style.display = t === 'prescription' ? 'block' : 'none';
+                attach.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription' || t === 'journal') ? 'block' : 'none';
+                stampNote.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription') ? 'block' : 'none';
+                guide.textContent = guides[t] || '';
+                kindEl.required = t === 'certificate';
+
+                if (t === 'certificate') {
+                    dateLabel.textContent = 'Document / issued date';
+                    titleLabel.textContent = 'Certificate title';
+                    bodyLabel.textContent = 'Details / clinical statement (encrypted)';
+                    submitBtn.textContent = 'Save certificate draft';
+                } else if (t === 'prescription') {
+                    dateLabel.textContent = 'Prescription date';
+                    titleLabel.textContent = 'Medication / item';
+                    bodyLabel.textContent = 'Dose, quantity, directions (encrypted)';
+                    submitBtn.textContent = 'Save prescription draft';
+                } else if (t === 'referral') {
+                    dateLabel.textContent = 'Referral date';
+                    titleLabel.textContent = 'Referral title';
+                    bodyLabel.textContent = 'Clinical details for receiving clinician (encrypted)';
+                    submitBtn.textContent = 'Save referral draft';
+                } else {
+                    dateLabel.textContent = 'Date';
+                    titleLabel.textContent = 'Title';
+                    bodyLabel.textContent = 'Body (encrypted at rest)';
+                    submitBtn.textContent = 'Save encrypted journal note';
+                }
+            }
+
+            typeEl.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
 @endsection
