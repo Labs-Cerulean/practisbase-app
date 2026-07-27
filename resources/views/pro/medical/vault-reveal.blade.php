@@ -11,12 +11,26 @@
             {{ $recoveryCode }}
         </div>
 
-        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-            Store it offline (password manager / printed sealed note). You must enter it every new login session to unlock journals.
-            Password reset never unlocks this vault.
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45; margin-bottom: 1rem;">
+            It is long on purpose (high entropy encryption key). You should not type it from memory — save it in your password manager as a <strong>separate item</strong> from your PractisBase login.
+            You will need it every new login session to unlock journals. Password reset never unlocks this vault.
         </p>
 
-        <a href="/pro/medical/patients" style="display: inline-block; margin-top: 1rem; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); font-weight: 700;">
+        {{-- Helps password managers offer “save password” under a distinct vault identity --}}
+        <form autocomplete="on" onsubmit="return false;" style="margin-bottom: 1.25rem; padding: 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">Save in password manager</div>
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">Account name</label>
+            <input type="text" value="PractisBase Medical Vault" autocomplete="username" readonly
+                   style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.65rem; background: white;">
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">Recovery code</label>
+            <input type="password" value="{{ $recoveryCode }}" autocomplete="new-password" readonly
+                   style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: ui-monospace, monospace; background: white;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                When your browser offers to save, accept it as <em>PractisBase Medical Vault</em> — do not overwrite your login password.
+            </div>
+        </form>
+
+        <a href="/pro/medical/patients" style="display: inline-block; margin-top: 0.25rem; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); font-weight: 700;">
             I have saved the code — continue
         </a>
     </div>

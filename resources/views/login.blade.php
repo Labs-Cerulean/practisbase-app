@@ -46,14 +46,14 @@
             @csrf
             <div class="form-group">
                 <label>Email Address</label>
-                <input type="email" name="email" value="{{ old('email') }}" required placeholder="john@example.com" autofocus>
+                <input type="email" name="email" value="{{ old('email') }}" required placeholder="john@example.com" autofocus autocomplete="username">
             </div>
             <div class="form-group">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
                     <label style="margin-bottom: 0;">Password</label>
                     <a href="/forgot-password" style="font-size: 0.8rem; color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Forgot password?</a>
                 </div>
-                <input type="password" name="password" required>
+                <input type="password" name="password" required autocomplete="current-password">
             </div>
 
             <button type="submit" class="btn-submit">Sign In</button>

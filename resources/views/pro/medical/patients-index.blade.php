@@ -118,7 +118,7 @@
                     <div>
                         <div style="font-weight: 700; color: var(--primary-navy);">{{ $row['display_name'] }}</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
-                            {{ $row['public_ref'] }}
+                            Patient ref {{ $row['public_ref'] }}
                             @if($row['date_of_birth'])
                                 · DOB {{ \Illuminate\Support\Carbon::parse($row['date_of_birth'])->format('d M Y') }}
                             @endif
