@@ -31,4 +31,9 @@ class Patient extends Model
     {
         return $this->hasMany(ClinicalEntry::class);
     }
+
+    public function billingClient(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'billing_client_id');
+    }
 }

@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Pro\Medical;
 use App\Http\Controllers\Controller;
 use App\Models\ClinicalAttachment;
 use App\Models\ClinicalEntry;
+use App\Models\Client;
 use App\Models\MedicalVault;
 use App\Models\Patient;
 use App\Support\MedicalVaultCrypto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
@@ -22,21 +24,45 @@ class PatientController extends Controller
 
         $patients = Patient::where('user_id', $user->id)
             ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->with('billingClient')
             ->orderByDesc('id')
             ->get();
 
-        $rows = $patients->map(function (Patient $patient) use ($key) {
-            $payload = [];
+        $entryStats = ClinicalEntry::where('user_id', $user->id)
+            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->selectRaw('patient_id, entry_type, COUNT(*) as total')
+            ->groupBy('patient_id', 'entry_type')
+            ->get()
+            ->groupBy('patient_id');
+
+        $attachmentCounts = ClinicalAttachment::where('user_id', $user->id)
+            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->selectRaw('patient_id, COUNT(*) as total')
+            ->groupBy('patient_id')
+            ->pluck('total', 'patient_id');
+
+        $rows = $patients->map(function (Patient $patient) use ($key, $entryStats, $attachmentCounts) {
             try {
                 $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
             } catch (\Throwable) {
-                $payload = ['display_name' => '[Unable to decrypt]'];
+                $payload = ['display_name' => '[Unable to decrypt]', 'date_of_birth' => null, 'notes' => null];
             }
+
+            $byType = ($entryStats->get($patient->id) ?? collect())->pluck('total', 'entry_type');
 
             return [
                 'model' => $patient,
                 'display_name' => $payload['display_name'] ?? 'Patient',
+                'date_of_birth' => $payload['date_of_birth'] ?? null,
+                'notes' => $payload['notes'] ?? '',
                 'public_ref' => $patient->public_ref,
+                'linked' => (bool) $patient->billing_client_id,
+                'client_name' => $patient->billingClient?->name,
+                'journal_count' => (int) ($byType['journal'] ?? 0),
+                'prescription_count' => (int) ($byType['prescription'] ?? 0),
+                'referral_count' => (int) ($byType['referral'] ?? 0),
+                'attachment_count' => (int) ($attachmentCounts[$patient->id] ?? 0),
+                'created_ts' => optional($patient->created_at)->timestamp ?? $patient->id,
             ];
         });
 
@@ -50,7 +76,21 @@ class PatientController extends Controller
 
     public function create()
     {
-        return view('pro.medical.patients-create');
+        $user = Auth::user();
+
+        $clients = Client::where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'phone']);
+
+        $linkedClientIds = Patient::where('user_id', $user->id)
+            ->whereNotNull('billing_client_id')
+            ->pluck('billing_client_id')
+            ->all();
+
+        return view('pro.medical.patients-create', [
+            'clients' => $clients,
+            'linkedClientIds' => $linkedClientIds,
+        ]);
     }
 
     public function store(Request $request)
@@ -67,7 +107,26 @@ class PatientController extends Controller
             'display_name' => 'required|string|max:255',
             'date_of_birth' => 'nullable|date|before_or_equal:today',
             'notes' => 'nullable|string|max:2000',
+            'billing_client_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('clients', 'id')->where(fn ($q) => $q->where('user_id', $user->id)->whereNull('deleted_at')),
+            ],
         ]);
+
+        $billingClientId = $validated['billing_client_id'] ?? null;
+
+        if ($billingClientId) {
+            $alreadyLinked = Patient::where('user_id', $user->id)
+                ->where('billing_client_id', $billingClientId)
+                ->exists();
+
+            if ($alreadyLinked) {
+                return back()->withErrors([
+                    'billing_client_id' => 'That billing client is already linked to another patient in your vault.',
+                ])->withInput();
+            }
+        }
 
         $encrypted = MedicalVaultCrypto::encrypt([
             'display_name' => $validated['display_name'],
@@ -79,13 +138,51 @@ class PatientController extends Controller
             'user_id' => $user->id,
             'vault_id' => $vault->id,
             'public_ref' => 'PAT-' . strtoupper(Str::random(8)),
-            'billing_client_id' => null,
+            'billing_client_id' => $billingClientId,
             'payload_ciphertext' => $encrypted['ciphertext'],
             'payload_nonce' => $encrypted['nonce'],
         ]);
 
         return redirect('/pro/medical/patients/' . $patient->id)
             ->with('success', 'Patient record created in the encrypted vault.');
+    }
+
+    public function updateBillingLink(Request $request, Patient $patient)
+    {
+        $user = Auth::user();
+        if ($patient->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'billing_client_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('clients', 'id')->where(fn ($q) => $q->where('user_id', $user->id)->whereNull('deleted_at')),
+            ],
+        ]);
+
+        $billingClientId = $validated['billing_client_id'] ?? null;
+
+        if ($billingClientId) {
+            $alreadyLinked = Patient::where('user_id', $user->id)
+                ->where('billing_client_id', $billingClientId)
+                ->where('id', '!=', $patient->id)
+                ->exists();
+
+            if ($alreadyLinked) {
+                return back()->withErrors([
+                    'billing_client_id' => 'That billing client is already linked to another patient.',
+                ]);
+            }
+        }
+
+        $patient->billing_client_id = $billingClientId;
+        $patient->save();
+
+        return back()->with('success', $billingClientId
+            ? 'Patient linked to billing client. Clinical data stays in the vault; invoices stay on the client.'
+            : 'Billing client link removed.');
     }
 
     public function show(Patient $patient)
@@ -97,6 +194,15 @@ class PatientController extends Controller
 
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
         $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+
+        $patient->load('billingClient');
+
+        $clients = Client::where('user_id', $user->id)->orderBy('name')->get(['id', 'name']);
+        $linkedClientIds = Patient::where('user_id', $user->id)
+            ->whereNotNull('billing_client_id')
+            ->where('id', '!=', $patient->id)
+            ->pluck('billing_client_id')
+            ->all();
 
         $attachmentsByEntry = ClinicalAttachment::where('user_id', $user->id)
             ->where('patient_id', $patient->id)
@@ -140,6 +246,12 @@ class PatientController extends Controller
                 ];
             });
 
-        return view('pro.medical.patients-show', compact('patient', 'payload', 'entries'));
+        return view('pro.medical.patients-show', [
+            'patient' => $patient,
+            'payload' => $payload,
+            'entries' => $entries,
+            'clients' => $clients,
+            'linkedClientIds' => $linkedClientIds,
+        ]);
     }
 }
