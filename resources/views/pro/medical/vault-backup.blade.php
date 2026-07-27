@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Medical Vault Backup')
+@section('page_title', 'Vault backup')
 
 @section('content')
     <div style="max-width: 640px; margin: 0 auto;">

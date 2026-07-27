@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('page_title', 'Certificates & Stampables')
+@section('page_title', 'Stampables')
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
         <div style="min-width: 200px; flex: 1;">
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Certificates &amp; stampables</h1>
+            <h1 style="font-size: 1.35rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Stampables</h1>
             <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">
-                Quick-find register of prescriptions, referrals, and medical certificates. Create and stamp them from the patient record — this page is for search and audit.
+                Search prescriptions, referrals, and certificates. Create and stamp them from the patient record.
             </p>
             @if($hasLegacy ?? false)
                 <p style="color: #92400e; margin: 0.5rem 0 0; font-size: 0.85rem;">

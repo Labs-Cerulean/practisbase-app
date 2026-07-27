@@ -16,8 +16,12 @@ class VaultController extends Controller
         $user = Auth::user();
         $existing = MedicalVault::activeForUser($user->id);
 
-        if ($existing && session()->has('medical_vault_key')) {
+        if ($existing && $existing->hasConfirmedCodeSaved() && session()->has('medical_vault_key')) {
             return redirect('/pro/medical/patients');
+        }
+
+        if ($existing && ! $existing->hasConfirmedCodeSaved()) {
+            return redirect('/pro/medical/vault/reveal');
         }
 
         if ($existing) {
@@ -38,6 +42,7 @@ class VaultController extends Controller
         $request->validate([
             'acknowledge' => 'accepted',
             'confirm_saved' => 'accepted',
+            'read_duration_seconds' => 'nullable|integer|min:0|max:86400',
         ]);
 
         $recoveryCode = MedicalVaultCrypto::generateRecoveryCode();
@@ -48,17 +53,80 @@ class VaultController extends Controller
                 'recovery_verifier' => MedicalVaultCrypto::verifier($recoveryCode),
                 'acknowledged_at' => now(),
                 'acknowledged_ip' => $request->ip(),
+                'acknowledge_read_duration_seconds' => (int) $request->input('read_duration_seconds', 0),
                 'status' => 'active',
             ]);
         });
 
         $key = MedicalVaultCrypto::deriveKey($recoveryCode);
         $request->session()->put('medical_vault_key', base64_encode($key));
+        $request->session()->put('medical_vault_pending_reveal', $recoveryCode);
+
+        return redirect('/pro/medical/vault/reveal');
+    }
+
+    public function revealForm(Request $request)
+    {
+        $user = Auth::user();
+        $vault = MedicalVault::activeForUser($user->id);
+
+        if (! $vault) {
+            return redirect('/pro/medical/vault/setup');
+        }
+
+        if ($vault->hasConfirmedCodeSaved()) {
+            return redirect(session()->has('medical_vault_key') ? '/pro/medical/patients' : '/pro/medical/vault/unlock');
+        }
+
+        if (! session()->has('medical_vault_key')) {
+            return redirect('/pro/medical/vault/unlock')->withErrors([
+                'recovery_code' => 'Confirm you saved the recovery code after unlocking. If you never saved it, Cerulean Labs cannot recover it.',
+            ]);
+        }
+
+        $recoveryCode = $request->session()->get('medical_vault_pending_reveal');
 
         return view('pro.medical.vault-reveal', [
-            'recoveryCode' => $recoveryCode,
+            'recoveryCode' => is_string($recoveryCode) && $recoveryCode !== '' ? $recoveryCode : null,
             'user' => $user,
+            'vault' => $vault,
         ]);
+    }
+
+    public function confirmCodeSaved(Request $request)
+    {
+        $user = Auth::user();
+        $vault = MedicalVault::activeForUser($user->id);
+
+        if (! $vault) {
+            return redirect('/pro/medical/vault/setup');
+        }
+
+        if ($vault->hasConfirmedCodeSaved()) {
+            return redirect('/pro/medical/patients');
+        }
+
+        if (! session()->has('medical_vault_key')) {
+            return redirect('/pro/medical/vault/unlock');
+        }
+
+        $request->validate([
+            'confirm_code_saved' => 'accepted',
+            'read_duration_seconds' => 'nullable|integer|min:0|max:86400',
+        ], [
+            'confirm_code_saved.accepted' => 'Confirm that you have saved the recovery code offline before continuing.',
+        ]);
+
+        $vault->update([
+            'code_saved_at' => now(),
+            'code_saved_ip' => $request->ip(),
+            'code_saved_read_duration_seconds' => (int) $request->input('read_duration_seconds', 0),
+        ]);
+
+        $request->session()->forget('medical_vault_pending_reveal');
+
+        return redirect('/pro/medical/patients?offer_trust=1')
+            ->with('success', 'Recovery code save confirmed. Keep weekly backups — Labs cannot reset a lost code.');
     }
 
     public function unlockForm()
@@ -71,6 +139,10 @@ class VaultController extends Controller
         }
 
         if (session()->has('medical_vault_key')) {
+            if (! $vault->hasConfirmedCodeSaved()) {
+                return redirect('/pro/medical/vault/reveal');
+            }
+
             return redirect('/pro/medical/patients');
         }
 
@@ -102,6 +174,12 @@ class VaultController extends Controller
         $key = MedicalVaultCrypto::deriveKey($request->recovery_code);
         $request->session()->put('medical_vault_key', base64_encode($key));
 
+        if (! $vault->hasConfirmedCodeSaved()) {
+            $request->session()->put('medical_vault_pending_reveal', $request->recovery_code);
+
+            return redirect('/pro/medical/vault/reveal');
+        }
+
         return redirect('/pro/medical/patients')
             ->with('success', 'Medical vault unlocked for this session.')
             ->with('offer_device_trust', true);
@@ -110,6 +188,7 @@ class VaultController extends Controller
     public function lock(Request $request)
     {
         $request->session()->forget('medical_vault_key');
+        $request->session()->forget('medical_vault_pending_reveal');
 
         return redirect('/pro/medical/vault/unlock')->with('success', 'Medical vault locked.');
     }

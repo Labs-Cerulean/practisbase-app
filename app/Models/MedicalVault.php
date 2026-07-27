@@ -13,6 +13,10 @@ class MedicalVault extends Model
         'recovery_verifier',
         'acknowledged_at',
         'acknowledged_ip',
+        'acknowledge_read_duration_seconds',
+        'code_saved_at',
+        'code_saved_ip',
+        'code_saved_read_duration_seconds',
         'last_backup_at',
         'status',
     ];
@@ -21,8 +25,16 @@ class MedicalVault extends Model
     {
         return [
             'acknowledged_at' => 'datetime',
+            'code_saved_at' => 'datetime',
             'last_backup_at' => 'datetime',
+            'acknowledge_read_duration_seconds' => 'integer',
+            'code_saved_read_duration_seconds' => 'integer',
         ];
+    }
+
+    public function hasConfirmedCodeSaved(): bool
+    {
+        return $this->code_saved_at !== null;
     }
 
     public static function activeForUser(int $userId): ?self

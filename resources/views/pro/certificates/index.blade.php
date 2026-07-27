@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('page_title', 'Certificates & Declarations')
+@section('page_title', 'Certificates')
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; gap: 1rem;">
         <div>
-            <h1 style="margin: 0 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">Certificates &amp; declarations</h1>
+            <h1 style="margin: 0 0 0.25rem; color: var(--primary-navy); font-size: 1.35rem;">Certificates</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Shared across Pro packages. Drafts stay editable until Stamp &amp; issue. Issued copies get a unique code + date on the PDF.</p>
         </div>
         <a href="/pro/certificates/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Add</a>

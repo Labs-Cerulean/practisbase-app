@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Unlock Medical Vault')
+@section('page_title', 'Unlock vault')
 
 @section('content')
     <div style="max-width: 520px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
@@ -12,7 +12,7 @@
 
         @if($backupOverdue ?? false)
             <div style="background: #fef2f2; color: #991b1b; padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem; border-left: 4px solid #ef4444; font-size: 0.85rem;">
-                Weekly backup is overdue (or never done). After unlock, download a backup from Patient Journals.
+                Weekly backup is overdue (or never done). After unlock, download a backup from Patients.
             </div>
         @endif
 

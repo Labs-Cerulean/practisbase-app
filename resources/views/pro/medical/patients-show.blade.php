@@ -132,7 +132,7 @@
             @if(! $patient->billingClient)
                 @if($clients->isEmpty())
                     <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-                        Or create a Client under <a href="/clients/create" style="color: var(--primary-cerulean); font-weight: 600;">Clients Directory</a> and link it below later.
+                        Or create a Client under <a href="/clients/create" style="color: var(--primary-cerulean); font-weight: 600;">Clients</a> and link it below later.
                     </div>
                 @else
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.75rem 0 0.5rem; line-height: 1.4;">
@@ -178,7 +178,7 @@
     <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0;">
         Prescriptions, referrals, and certificates stay editable until you press <strong>Stamp &amp; issue</strong> — then they lock. Journal notes stay editable.
         Find all stampables across patients in
-        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Certificates &amp; Declarations</a>.
+        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Stampables</a>.
     </p>
     @include('pro.medical._type-colour-key', ['includeJournal' => true, 'margin' => '0 0 1rem'])
     @if($entries->isEmpty())

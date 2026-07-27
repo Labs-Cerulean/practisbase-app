@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'New Certificate / Declaration')
+@section('page_title', 'New certificate')
 
 @section('content')
     <div style="max-width: 640px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">

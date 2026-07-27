@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Add New Client')
+@section('page_title', 'New client')
 
 @section('content')
     <div style="max-width: 600px; margin: 0 auto;">
