@@ -17,6 +17,7 @@ use App\Http\Controllers\Pro\Medical\ClinicalAttachmentController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryPdfController;
 use App\Http\Controllers\Pro\Medical\MedicalBackupController;
 use App\Http\Controllers\Pro\Medical\StampableLedgerController;
+use App\Http\Controllers\Pro\Medical\VaultDeviceController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
 use App\Http\Controllers\Pro\CertificateController;
@@ -160,6 +161,13 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::post('/vault/lock', [MedicalVaultController::class, 'lock']);
         Route::get('/vault/backup', [MedicalBackupController::class, 'form'])->middleware('vault');
         Route::post('/vault/backup', [MedicalBackupController::class, 'download'])->middleware(['vault', 'throttle:5,1']);
+
+        Route::get('/vault/devices', [VaultDeviceController::class, 'index']);
+        Route::post('/vault/devices/unlock-options', [VaultDeviceController::class, 'unlockOptions'])->middleware('throttle:20,1');
+        Route::post('/vault/devices/unlock', [VaultDeviceController::class, 'unlock'])->middleware('throttle:20,1');
+        Route::post('/vault/devices/register-options', [VaultDeviceController::class, 'registerOptions'])->middleware('vault');
+        Route::post('/vault/devices/register', [VaultDeviceController::class, 'register'])->middleware('vault');
+        Route::delete('/vault/devices/{device}', [VaultDeviceController::class, 'destroy'])->middleware('vault');
 
         Route::middleware('vault')->group(function () {
             Route::get('/stampables', [StampableLedgerController::class, 'index']);
