@@ -184,6 +184,8 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 15. **Certificates & declarations are shared Pro tools** — not Engineer-only. Doctors (medical certificates / fitness / attestations), Architects (declarations), and Engineers (certs with photo/expiry) all use `/pro/certificates`. Document Stamper remains Arch-primary for PDF stamp sheets; the certificate register is the shared log.
 16. **Encrypted journal attachments (photos / files):** Doctors may attach images and documents to clinical journal entries. Attachments are **special-category data** and follow the same vault rules as journal text — never plaintext at rest, never Labs-decryptable, never served without vault unlock. Architecture locked below; ship in **Phase 5** (after Phase 4 vault foundations).
 17. **Signed Document Commerce (Phase 7 — last roadmap phase):** Practitioners create, sign, and stamp professional documents on PractisBase, issue a **one-time-use patient/client payment link**, collect payment, then release a **single download**. First vertical: **medical prescriptions**. Same rails later for architects (stamped drawings / declarations) and engineers (certificates). Depends on Phase 5 PDFs + Phase 6 Stripe. Do **not** start before launch billing is real.
+18. **Closed beta before Stripe:** Invite beta testers **without** live card billing. Keep the Settings DEV / admin plan switch (or grant tiers manually) so testers exercise Free / Standard / Pro. **Do not** implement Stripe + coupons/vouchers just to give free beta access — that adds payment, webhook, and support surface area before product feedback lands. Stripe (Phase 6) ships when beta feedback has stabilized and you are ready to charge. Promo codes / complimentary periods are fine **inside** Phase 6 once Checkout exists, not as a reason to pull billing forward.
+19. **Arch / Eng Pro depth is expert-guided:** Scaffolding (projects, stamper shell, shared certificates) may exist, but **niche Architect and Engineer workflows must not be invented by the agent**. Nicholas (domain expert) will specify exact document types, phases, BCA/EMS/BMS behaviours, and field schemas before those modules are deepened. Prefer thin shells + placeholders over guessed industry logic.
 
 ### Encrypted journal attachments — how we tackle it (decision #16)
 
@@ -219,8 +221,8 @@ Canonical tiers: `free` | `standard` | `pro-med` | `pro-arch` | `pro-eng`.
 
 **Dependencies:** Phase 4 vault + stamper foundations; Phase 5 Rx/PDF generation; Phase 6 real Stripe + webhooks; legal review (telemedicine / Rx issuance rules in Malta — product is a tool, not a substitute for professional duty).
 
-### ROADMAP STATUS: LOCKED — Phase 0–4 shipped; Phase 5 in progress; revisions #13–17 applied
-Product decisions above are frozen for build. Further changes require an explicit revision. Implementation follows Suggested Build Order (Phase 5 attachments/PDFs next; Phase 7 last).
+### ROADMAP STATUS: LOCKED — Phase 0–5 shipped; closed beta before Stripe (#18); revisions #13–19 applied
+Product decisions above are frozen for build. Further changes require an explicit revision. Next: beta hardening / Arch–Eng only with expert briefs; **Phase 6 Stripe last among monetization steps** (before Phase 7 document commerce).
 
 ### 1. Free Tier (€0/mo)
 * **Limits:** **5 lifetime Clients** (enforced in controller + surfaced in UI as e.g. `3 / 5 used`). Deletion does not decrement usage.
@@ -438,6 +440,7 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
   * No support “reset key” path.
 * Scaffold routes/UI shells: Patient Journals, Architect DMS + phases, Engineer projects, **shared Certificates & Declarations** (all Pro packages — doctors, architects, and engineers all issue these).
 * Domain rules: BCA Method Statements (Arch); certification photo + expiry on shared certificate register; EMS/BMS template content with domain expert before locking schemas.
+* **Do not invent deep Arch/Eng behaviour** (decision #19) — wait for Nicholas’s niche briefs before expanding beyond shells.
 
 ### Phase 5: Document Generation, PDF Export & Vault Attachments
 *Outcome: Every official document is downloadable and brandable; medical journals can hold encrypted photos/files.*
@@ -448,10 +451,11 @@ Phases are ordered so later work never fights earlier architecture. Each phase e
 * **Encrypted journal attachments (decision #16):** upload/encrypt/store/download per architecture above; include in weekly medical backup; MIME allowlist + size caps; IDOR via `user_id` + vault session.
 * Prescription **authoring + signed PDF** (doctor-side) lives here; **paid one-time patient links** wait for Phase 7.
 
-### Phase 6: Billing & Launch Polish (end-game ops)
-*Outcome: Real money, real legal posture, production confidence.*
+### Phase 6: Billing & Launch Polish (after closed beta — end-game ops)
+*Outcome: Real money, real legal posture, production confidence. Runs **after** beta testers have used the product on granted tiers (decision #18).*
 
 * Replace onboarding/Settings DEV bypass with Stripe Checkout / Customer Portal (Cashier or thin custom).
+* Optional: Stripe promo codes / complimentary months for ex-beta users — only once Checkout is live.
 * Webhooks update `users.tier`; failed payment → grace → downgrade path that re-applies 5-client rule without deleting data; medical vault stays encrypted/locked.
 * Terms versioning + re-acceptance modal when legal text changes.
 * **Medical addendum:** Launch-ready wording for recovery-code unrecoverability acknowledgment; align master T&Cs with practitioner-held key model.
@@ -523,7 +527,9 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Certificates & declarations shared across all Pro** (decision #15).
 * **Encrypted journal attachments (decision #16):** Phase 5 — ciphertext on private R2 under vault DEK; not the same as Standard document storage. Manual SQL: `database/manual/phase5_postgresql.sql`.
 * **Signed Document Commerce (decision #17 / Phase 7):** Last phase — create/sign/stamp → one-time pay link → single download → ledger income. Rx first; Arch/Eng later.
-* **Phase 0–4 merged to `13.x`.** Phase 5: encrypted attachments + Rx/referral PDF authoring + ledger PDF harden.
+* **Closed beta before Stripe (decision #18):** Grant tiers via DEV/admin switch; no Checkout/vouchers until post-beta Phase 6.
+* **Arch/Eng depth (decision #19):** Expert-guided only — do not invent niche workflows.
+* **Phase 0–5 merged to `13.x`.** Next: beta hardening; Stripe is Phase 6 after beta.
 * **Manual SQL:** run `database/manual/phase4_postgresql.sql` (and incremental phase4_* files if needed) then `database/manual/phase5_postgresql.sql` for clinical attachments.
 * **Blob storage:** Receipts/logos/cert photos use `TenantStorage` → `TENANT_DISK=r2` in production. Medical attachments use `medical/{user}/vault_{id}/attachments/*.bin` with **extra vault encryption**.
 * **Medical vault:** Recovery code shown once; verifier only in DB; session key required each login; pre-production banner until Phase 6 legal go-live.
