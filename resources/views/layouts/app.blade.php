@@ -115,6 +115,12 @@
         </header>
 
         <main class="app-main" style="display: flex; flex-direction: column;">
+
+            @auth
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 0.75rem 1rem; margin-bottom: 1.25rem; color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
+                    <strong>Closed beta</strong> — billing is not live yet. Plans are granted for testing (Settings). Feedback welcome; do not rely on this build as your sole clinical or accounting system of record.
+                </div>
+            @endauth
             
             <div style="flex-grow: 1;">
                 @yield('content')

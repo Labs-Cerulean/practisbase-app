@@ -8,7 +8,8 @@
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Patient directory</h1>
             <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Encrypted clinical identity store — separate from billing Clients.</p>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="/pro/medical/vault/backup" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Weekly backup</a>
             <form action="/pro/medical/vault/lock" method="POST">
                 @csrf
                 <button type="submit" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Lock vault</button>
@@ -21,8 +22,20 @@
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>
     @endif
 
+    @if($backupOverdue ?? false)
+        <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: var(--radius-md); color: #991b1b; font-size: 0.9rem;">
+            <strong>Weekly backup overdue.</strong>
+            Last backup: {{ ($vault && $vault->last_backup_at) ? $vault->last_backup_at->format('d M Y') : 'never' }}.
+            <a href="/pro/medical/vault/backup" style="color: #991b1b; font-weight: 700; border-bottom: 1px dotted #991b1b; text-decoration: none; margin-left: 0.35rem;">Download encrypted vault backup now</a>
+        </div>
+    @else
+        <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #ecfdf5; border-left: 4px solid #10b981; border-radius: var(--radius-md); color: #065f46; font-size: 0.85rem;">
+            Last medical backup: {{ $vault->last_backup_at->format('d M Y H:i') }}. Keep a weekly offline copy — Labs cannot restore your vault without your code and backup.
+        </div>
+    @endif
+
     <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem;">
-        Not for real patient production data until Phase 6 legal go-live gate. Weekly backup export with code prompt ships next.
+        Closed beta: treat this as a test vault unless Cerulean Labs has confirmed legal go-live for real patient data on your account.
     </div>
 
     @if($rows->isEmpty())

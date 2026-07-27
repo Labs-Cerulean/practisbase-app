@@ -74,7 +74,10 @@ class VaultController extends Controller
             return redirect('/pro/medical/patients');
         }
 
-        return view('pro.medical.vault-unlock', compact('vault'));
+        return view('pro.medical.vault-unlock', [
+            'vault' => $vault,
+            'backupOverdue' => $vault->isBackupOverdue(),
+        ]);
     }
 
     public function unlock(Request $request)

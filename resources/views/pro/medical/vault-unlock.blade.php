@@ -7,6 +7,12 @@
         <h1 style="color: var(--primary-navy); margin-top: 0;">Unlock medical vault</h1>
         <p style="color: var(--text-muted); line-height: 1.45;">Enter your recovery code to decrypt patient records for this session.</p>
 
+        @if($backupOverdue ?? false)
+            <div style="background: #fef2f2; color: #991b1b; padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem; border-left: 4px solid #ef4444; font-size: 0.85rem;">
+                Weekly backup is overdue (or never done). After unlock, download a backup from Patient Journals.
+            </div>
+        @endif
+
         @if(session('success'))
             <div style="background: #ecfdf5; color: #065f46; padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>
         @endif

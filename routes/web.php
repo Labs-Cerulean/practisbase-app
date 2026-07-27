@@ -15,6 +15,7 @@ use App\Http\Controllers\Pro\Medical\PatientController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
 use App\Http\Controllers\Pro\Medical\ClinicalAttachmentController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryPdfController;
+use App\Http\Controllers\Pro\Medical\MedicalBackupController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
 use App\Http\Controllers\Pro\CertificateController;
@@ -156,6 +157,8 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::get('/vault/unlock', [MedicalVaultController::class, 'unlockForm']);
         Route::post('/vault/unlock', [MedicalVaultController::class, 'unlock'])->middleware('throttle:10,1');
         Route::post('/vault/lock', [MedicalVaultController::class, 'lock']);
+        Route::get('/vault/backup', [MedicalBackupController::class, 'form'])->middleware('vault');
+        Route::post('/vault/backup', [MedicalBackupController::class, 'download'])->middleware(['vault', 'throttle:5,1']);
 
         Route::middleware('vault')->group(function () {
             Route::get('/patients', [PatientController::class, 'index']);

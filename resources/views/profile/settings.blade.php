@@ -50,8 +50,8 @@
                 </div>
             @endunless
 
-            <div style="background: #fef3c7; color: #b45309; text-align: left; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; border: 1px solid #fde68a;">
-                DEV MODE: Plan changes below update your account instantly. Stripe billing is not connected yet.
+            <div style="background: #eff6ff; color: #1e3a8a; text-align: left; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
+                Closed beta: change your plan below for testing. Stripe billing is deferred until after beta — no card required.
             </div>
 
             <form action="/settings/plan" method="POST">
