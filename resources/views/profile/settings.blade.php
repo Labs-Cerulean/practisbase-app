@@ -112,6 +112,12 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Postnominals <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <input type="text" name="postnominals" value="{{ $user->postnominals }}" placeholder="e.g. MD, MRCS, B.Sc." maxlength="255" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Shown under your name on Pro PDFs and stamps.</div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Email Address</label>
                     <input type="email" name="email" value="{{ $user->email }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>

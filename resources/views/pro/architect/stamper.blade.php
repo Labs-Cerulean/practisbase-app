@@ -34,6 +34,7 @@
                 </div>
                 <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
                     Signing as <strong>{{ $user->name }}</strong>
+                    @if($user->postnominalsLine()) <span style="color: var(--text-muted);">{{ $user->postnominalsLine() }}</span> @endif
                     @if($user->warrant_number) · Warrant {{ $user->warrant_number }} @endif
                 </div>
                 <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Download stamp PDF</button>

@@ -55,7 +55,7 @@
                 <div style="font-weight: 700; color: var(--primary-navy);">Trusted devices</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">Revoke a device if you lose it. You will need the recovery code on that browser again.</div>
             </div>
-            <button type="button" id="device-trust-enable-secondary" style="display: none; padding: 0.45rem 0.85rem; background: white; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Trust this browser</button>
+            <button type="button" id="device-trust-enable-secondary" style="display: none; padding: 0.45rem 0.85rem; background: white; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Enable quick unlock</button>
         </div>
         <div id="trusted-devices-list" style="font-size: 0.9rem; color: var(--text-muted);">Loading…</div>
     </div>
@@ -263,6 +263,7 @@
             var statusEl = document.getElementById('device-trust-status');
             var devicesCard = document.getElementById('trusted-devices-card');
             var devicesList = document.getElementById('trusted-devices-list');
+            var trustDismissed = false;
 
             if (offerTrust && banner) {
                 banner.style.borderLeftColor = '#1d4ed8';
@@ -270,9 +271,26 @@
 
             function setStatus(msg, ok) {
                 if (!statusEl) return;
+                if (banner) banner.style.display = 'block';
                 statusEl.style.display = 'block';
                 statusEl.style.color = ok ? '#065f46' : '#991b1b';
                 statusEl.textContent = msg;
+            }
+
+            function showTrustControls(hasKey) {
+                if (hasKey) {
+                    if (banner) banner.style.display = 'none';
+                    if (enableSecondary) enableSecondary.style.display = 'none';
+                    return;
+                }
+                // One CTA only: banner by default; secondary only after "Not now".
+                if (trustDismissed) {
+                    if (banner) banner.style.display = 'none';
+                    if (enableSecondary) enableSecondary.style.display = 'inline-block';
+                } else {
+                    if (banner) banner.style.display = 'block';
+                    if (enableSecondary) enableSecondary.style.display = 'none';
+                }
             }
 
             function formatWhen(iso) {
@@ -290,7 +308,7 @@
                 if (!devicesCard || !devicesList) return;
                 devicesCard.style.display = 'block';
                 if (!devices.length) {
-                    devicesList.innerHTML = '<span style="color: var(--text-muted);">No trusted devices yet. Enable quick unlock on this phone or laptop after unlocking with your recovery code.</span>';
+                    devicesList.innerHTML = '<span style="color: var(--text-muted);">No trusted devices yet. Use Enable quick unlock above after unlocking with your recovery code.</span>';
                     return;
                 }
                 var html = '<div style="display: grid; gap: 0.55rem;">';
@@ -325,16 +343,15 @@
                 }
                 PractisVaultDevice.registerDevice().then(function (result) {
                     setStatus((result && result.message) ? result.message : 'Quick unlock enabled on this device.', true);
-                    if (banner) banner.style.display = 'none';
-                    if (enableSecondary) enableSecondary.style.display = 'none';
+                    trustDismissed = false;
+                    showTrustControls(true);
                     return PractisVaultDevice.listDevices().then(renderDevices);
                 }).catch(function (e) {
                     setStatus(e.message || 'Could not enable quick unlock.', false);
-                    if (banner) banner.style.display = 'block';
                 }).finally(function () {
                     if (btn) {
                         btn.disabled = false;
-                        btn.textContent = btn === enableSecondary ? 'Trust this browser' : 'Enable quick unlock';
+                        btn.textContent = 'Enable quick unlock';
                     }
                 });
             }
@@ -346,15 +363,15 @@
             PractisVaultDevice.platformAvailable().then(function (ok) {
                 if (!ok) return;
                 return PractisVaultDevice.hasLocalWrapKey().then(function (hasKey) {
-                    if (enableSecondary) enableSecondary.style.display = hasKey ? 'none' : 'inline-block';
-                    if (!hasKey && banner) banner.style.display = 'block';
+                    showTrustControls(hasKey);
                 });
             });
 
             if (enableBtn) enableBtn.addEventListener('click', function () { runRegister(enableBtn); });
             if (enableSecondary) enableSecondary.addEventListener('click', function () { runRegister(enableSecondary); });
             if (dismissBtn) dismissBtn.addEventListener('click', function () {
-                if (banner) banner.style.display = 'none';
+                trustDismissed = true;
+                showTrustControls(false);
             });
         })();
     </script>

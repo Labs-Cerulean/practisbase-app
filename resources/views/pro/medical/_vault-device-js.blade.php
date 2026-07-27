@@ -4,9 +4,30 @@ window.PractisVaultDevice = (function () {
     var DB_NAME = 'practisbase_vault_v1';
     var STORE = 'wrap_keys';
 
-    function csrf() {
+    function csrfMeta() {
         var m = document.querySelector('meta[name="csrf-token"]');
         return m ? m.getAttribute('content') : '';
+    }
+
+    function xsrfCookie() {
+        var match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+        if (!match) return '';
+        try {
+            return decodeURIComponent(match[1]);
+        } catch (e) {
+            return match[1];
+        }
+    }
+
+    function authHeaders() {
+        var headers = {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrfMeta()
+        };
+        var xsrf = xsrfCookie();
+        if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+        return headers;
     }
 
     function bufferToBase64url(buffer) {
@@ -119,24 +140,45 @@ window.PractisVaultDevice = (function () {
         return pk;
     }
 
+    function authErrorMessage(status, data) {
+        if (status === 401 || (data && data.message === 'Unauthenticated.')) {
+            return 'Your PractisBase login session expired during the biometric prompt. Stay on this tab, refresh the page, unlock the vault if asked, then try Enable quick unlock once.';
+        }
+        if (status === 419) {
+            return 'Security token expired. Refresh the page and try again.';
+        }
+        return (data && data.message) ? data.message : 'Request failed';
+    }
+
     function requestJson(url, method, body) {
         var opts = {
             method: method || 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrf(),
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
+            headers: authHeaders(),
+            credentials: 'include',
+            redirect: 'manual'
         };
         if (body !== undefined) {
             opts.headers['Content-Type'] = 'application/json';
             opts.body = JSON.stringify(body || {});
         }
         return fetch(url, opts).then(function (res) {
+            if (res.type === 'opaqueredirect' || res.status === 0) {
+                var bounce = new Error(authErrorMessage(401, null));
+                bounce.status = 401;
+                throw bounce;
+            }
+            var ctype = res.headers.get('content-type') || '';
+            if (ctype.indexOf('application/json') === -1) {
+                if (res.status === 401 || res.status === 419 || res.status === 302) {
+                    var errNav = new Error(authErrorMessage(res.status, null));
+                    errNav.status = res.status;
+                    throw errNav;
+                }
+                throw new Error('Unexpected response from server (' + res.status + '). Refresh and try again.');
+            }
             return res.json().then(function (data) {
                 if (!res.ok) {
-                    var err = new Error((data && data.message) ? data.message : 'Request failed');
+                    var err = new Error(authErrorMessage(res.status, data));
                     err.status = res.status;
                     err.data = data;
                     throw err;
@@ -148,6 +190,13 @@ window.PractisVaultDevice = (function () {
 
     function postJson(url, body) {
         return requestJson(url, 'POST', body || {});
+    }
+
+    /** Keep the Laravel session warm after Android biometric UI steals focus. */
+    function warmSession() {
+        return requestJson('/pro/medical/vault/devices', 'GET').catch(function (e) {
+            throw e;
+        });
     }
 
     function listDevices() {
@@ -171,10 +220,12 @@ window.PractisVaultDevice = (function () {
             return navigator.credentials.create({ publicKey: preparePublicKey(opts.publicKey) }).then(function (cred) {
                 if (!cred) throw new Error('Device registration was cancelled.');
                 var response = cred.response;
-                return postJson('/pro/medical/vault/devices/register', {
-                    clientDataJSON: bufferToBase64url(response.clientDataJSON),
-                    attestationObject: bufferToBase64url(response.attestationObject),
-                    device_label: deviceLabel || null
+                return warmSession().then(function () {
+                    return postJson('/pro/medical/vault/devices/register', {
+                        clientDataJSON: bufferToBase64url(response.clientDataJSON),
+                        attestationObject: bufferToBase64url(response.attestationObject),
+                        device_label: deviceLabel || null
+                    });
                 }).then(function (result) {
                     return idbPut(result.credential_id, result.wrap_key).then(function () { return result; });
                 });
@@ -192,12 +243,14 @@ window.PractisVaultDevice = (function () {
                         throw new Error('This browser is missing the local unlock key. Unlock with your recovery code, then enable quick unlock again.');
                     }
                     var response = cred.response;
-                    return postJson('/pro/medical/vault/devices/unlock', {
-                        credential_id: credentialId,
-                        clientDataJSON: bufferToBase64url(response.clientDataJSON),
-                        authenticatorData: bufferToBase64url(response.authenticatorData),
-                        signature: bufferToBase64url(response.signature),
-                        wrap_key: wrapKey
+                    return warmSession().then(function () {
+                        return postJson('/pro/medical/vault/devices/unlock', {
+                            credential_id: credentialId,
+                            clientDataJSON: bufferToBase64url(response.clientDataJSON),
+                            authenticatorData: bufferToBase64url(response.authenticatorData),
+                            signature: bufferToBase64url(response.signature),
+                            wrap_key: wrapKey
+                        });
                     });
                 });
             });
@@ -216,7 +269,8 @@ window.PractisVaultDevice = (function () {
         hasLocalWrapKey: hasLocalWrapKey,
         listDevices: listDevices,
         revokeDevice: revokeDevice,
-        idbDelete: idbDelete
+        idbDelete: idbDelete,
+        warmSession: warmSession
     };
 })();
 </script>

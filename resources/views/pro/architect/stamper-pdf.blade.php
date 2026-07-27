@@ -22,6 +22,9 @@
     <div class="box">
         <div class="label">Practitioner</div>
         <div style="font-size: 16px; font-weight: bold; color: #0f172a; margin-bottom: 12px;">{{ $user->name }}</div>
+        @if($user->postnominalsLine())
+            <div style="margin-bottom: 12px; color: #64748b;">{{ $user->postnominalsLine() }}</div>
+        @endif
         <div class="label">Profession</div>
         <div style="margin-bottom: 12px;">{{ $user->profession }}</div>
         @if($user->warrant_type || $user->warrant_number)

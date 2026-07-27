@@ -22,6 +22,7 @@ use Illuminate\Notifications\Notifiable;
     'profession',
     'warrant_type',
     'warrant_number',
+    'postnominals',
     // SaaS Tier & Referrals
     'tier',
     'referral_code',
@@ -139,6 +140,14 @@ class User extends Authenticatable
         };
 
         return 'data:' . $mime . ';base64,' . base64_encode($binary);
+    }
+
+    /** Letters after the name on PDFs / stamps (e.g. MD, MRCS). */
+    public function postnominalsLine(): ?string
+    {
+        $value = trim((string) ($this->postnominals ?? ''));
+
+        return $value !== '' ? $value : null;
     }
 
     public function lifetimeClientCount(): int

@@ -64,6 +64,9 @@
     <div class="sign">
         <div class="label">Referring practitioner</div>
         <div style="font-size: 13px; font-weight: bold; color: #0f172a;">{{ $user->name }}</div>
+        @if($user->postnominalsLine())
+            <div style="font-size: 11px; color: #64748b;">{{ $user->postnominalsLine() }}</div>
+        @endif
         <div class="sign-line">Signature / stamp</div>
     </div>
 
