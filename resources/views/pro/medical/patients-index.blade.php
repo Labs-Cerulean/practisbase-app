@@ -77,6 +77,7 @@
                             <option value="journal">Journal</option>
                             <option value="prescription">Prescription</option>
                             <option value="referral">Referral</option>
+                            <option value="certificate">Certificate</option>
                             <option value="attachment">Attachment</option>
                             <option value="none">No entries yet</option>
                         </select>
@@ -111,6 +112,7 @@
                    data-journal="{{ $row['journal_count'] }}"
                    data-prescription="{{ $row['prescription_count'] }}"
                    data-referral="{{ $row['referral_count'] }}"
+                   data-certificate="{{ $row['certificate_count'] }}"
                    data-attachment="{{ $row['attachment_count'] }}"
                    data-created="{{ $row['created_ts'] }}"
                    data-dob="{{ $row['date_of_birth'] ?? '' }}"
@@ -127,7 +129,7 @@
                             @endif
                         </div>
                         <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;">
-                            J {{ $row['journal_count'] }} · Rx {{ $row['prescription_count'] }} · Ref {{ $row['referral_count'] }} · Files {{ $row['attachment_count'] }}
+                            J {{ $row['journal_count'] }} · Rx {{ $row['prescription_count'] }} · Ref {{ $row['referral_count'] }} · Cert {{ $row['certificate_count'] }} · Files {{ $row['attachment_count'] }}
                         </div>
                     </div>
                     <div style="color: var(--primary-cerulean); font-weight: 600; font-size: 0.85rem; align-self: center;">Open</div>
@@ -173,9 +175,10 @@
                     if (entryMode === 'journal') matchEntry = parseInt(el.dataset.journal, 10) > 0;
                     else if (entryMode === 'prescription') matchEntry = parseInt(el.dataset.prescription, 10) > 0;
                     else if (entryMode === 'referral') matchEntry = parseInt(el.dataset.referral, 10) > 0;
+                    else if (entryMode === 'certificate') matchEntry = parseInt(el.dataset.certificate, 10) > 0;
                     else if (entryMode === 'attachment') matchEntry = parseInt(el.dataset.attachment, 10) > 0;
                     else if (entryMode === 'none') {
-                        matchEntry = parseInt(el.dataset.journal, 10) + parseInt(el.dataset.prescription, 10) + parseInt(el.dataset.referral, 10) === 0;
+                        matchEntry = parseInt(el.dataset.journal, 10) + parseInt(el.dataset.prescription, 10) + parseInt(el.dataset.referral, 10) + parseInt(el.dataset.certificate, 10) === 0;
                     }
 
                     var show = matchQ && matchLink && matchEntry;
