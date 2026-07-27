@@ -83,6 +83,57 @@ class ClinicalEntry extends Model
         return self::TYPES[$this->entry_type] ?? $this->entry_type;
     }
 
+    /**
+     * Shared professional colour tokens for clinical entry / stampable cards.
+     *
+     * @return array{accent: string, badge_bg: string, badge_fg: string, card_bg: string, border: string, soft: string}
+     */
+    public static function typeChrome(string $entryType): array
+    {
+        return match ($entryType) {
+            'prescription' => [
+                'accent' => '#1d4ed8',
+                'badge_bg' => '#1d4ed8',
+                'badge_fg' => '#ffffff',
+                'card_bg' => '#eff6ff',
+                'border' => '#93c5fd',
+                'soft' => '#dbeafe',
+            ],
+            'referral' => [
+                'accent' => '#0e7490',
+                'badge_bg' => '#0e7490',
+                'badge_fg' => '#ffffff',
+                'card_bg' => '#ecfeff',
+                'border' => '#67e8f9',
+                'soft' => '#cffafe',
+            ],
+            'certificate' => [
+                'accent' => '#15803d',
+                'badge_bg' => '#15803d',
+                'badge_fg' => '#ffffff',
+                'card_bg' => '#f0fdf4',
+                'border' => '#86efac',
+                'soft' => '#dcfce7',
+            ],
+            'legacy_certificate' => [
+                'accent' => '#a16207',
+                'badge_bg' => '#a16207',
+                'badge_fg' => '#ffffff',
+                'card_bg' => '#fffbeb',
+                'border' => '#fcd34d',
+                'soft' => '#fef3c7',
+            ],
+            default => [
+                'accent' => '#64748b',
+                'badge_bg' => '#e2e8f0',
+                'badge_fg' => '#0f172a',
+                'card_bg' => '#f8fafc',
+                'border' => '#cbd5e1',
+                'soft' => '#f1f5f9',
+            ],
+        };
+    }
+
     public static function certificateKindLabel(?string $kind): string
     {
         if ($kind === null || $kind === '') {

@@ -11,10 +11,16 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/medical/patients/{{ $patient->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit patient</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Journal</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=prescription" style="background: #0f172a; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Prescription</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=referral" style="background: #1e3a5f; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Referral</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=certificate" style="background: #14532d; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Certificate</a>
+            @php
+                $journalChrome = \App\Models\ClinicalEntry::typeChrome('journal');
+                $rxChrome = \App\Models\ClinicalEntry::typeChrome('prescription');
+                $refChrome = \App\Models\ClinicalEntry::typeChrome('referral');
+                $certChrome = \App\Models\ClinicalEntry::typeChrome('certificate');
+            @endphp
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: {{ $journalChrome['soft'] }}; border: 1px solid {{ $journalChrome['border'] }}; color: {{ $journalChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Journal</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=prescription" style="background: {{ $rxChrome['badge_bg'] }}; color: {{ $rxChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Prescription</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=referral" style="background: {{ $refChrome['badge_bg'] }}; color: {{ $refChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Referral</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=certificate" style="background: {{ $certChrome['badge_bg'] }}; color: {{ $certChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Certificate</a>
         </div>
     </div>
 
@@ -174,6 +180,7 @@
         Find all stampables across patients in
         <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Certificates &amp; Declarations</a>.
     </p>
+    @include('pro.medical._type-colour-key', ['includeJournal' => true, 'margin' => '0 0 1rem'])
     @if($entries->isEmpty())
         <p style="color: var(--text-muted);">No journal / prescription / referral / certificate entries yet.</p>
     @else
@@ -215,19 +222,7 @@
             @foreach($entries as $entry)
                 @php
                     $type = $entry['model']->entry_type;
-                    $accent = match($type) {
-                        'prescription' => '#0f172a',
-                        'referral' => '#1e3a5f',
-                        'certificate' => '#14532d',
-                        default => 'var(--border-light)',
-                    };
-                    $badgeBg = match($type) {
-                        'prescription' => '#0f172a',
-                        'referral' => '#1e3a5f',
-                        'certificate' => '#14532d',
-                        default => '#e2e8f0',
-                    };
-                    $badgeFg = $type === 'journal' ? 'var(--primary-navy)' : '#fff';
+                    $chrome = \App\Models\ClinicalEntry::typeChrome($type);
                 @endphp
                 <div class="entry-row"
                      data-title="{{ strtolower($entry['title']) }}"
@@ -235,18 +230,18 @@
                      data-type="{{ $type }}"
                      data-code="{{ strtolower($entry['issue_code'] ?? '') }}"
                      data-status="{{ $entry['is_stampable'] ? ($entry['is_issued'] ? 'issued' : 'draft') : 'journal' }}"
-                     style="background: white; border: 1px solid var(--border-light); border-left: 4px solid {{ $accent }}; border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
+                     style="background: {{ $chrome['card_bg'] }}; border: 1px solid {{ $chrome['border'] }}; border-left: 6px solid {{ $chrome['accent'] }}; border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
                     <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
                         <div style="flex: 1; min-width: 180px;">
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.35rem;">
-                                <span style="display: inline-block; background: {{ $badgeBg }}; color: {{ $badgeFg }}; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.2rem 0.5rem; border-radius: 4px;">
+                                <span style="display: inline-block; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.28rem 0.65rem; border-radius: 4px;">
                                     {{ $entry['type_label'] }}
                                 </span>
                                 @if($entry['is_stampable'])
                                     @if($entry['is_issued'])
-                                        <span style="font-size: 0.7rem; font-weight: 700; color: #065f46; text-transform: uppercase;">Issued</span>
+                                        <span style="font-size: 0.7rem; font-weight: 800; color: #065f46; text-transform: uppercase; background: #d1fae5; padding: 0.2rem 0.5rem; border-radius: 4px;">Issued</span>
                                     @else
-                                        <span style="font-size: 0.7rem; font-weight: 700; color: #b45309; text-transform: uppercase;">Draft</span>
+                                        <span style="font-size: 0.7rem; font-weight: 800; color: #92400e; text-transform: uppercase; background: #fef3c7; padding: 0.2rem 0.5rem; border-radius: 4px;">Draft</span>
                                     @endif
                                 @endif
                             </div>
@@ -309,7 +304,7 @@
                     @endif
 
                     @if($entry['is_stampable'])
-                        <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: #f8fafc; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-muted);">
+                        <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: {{ $chrome['soft'] }}; border: 1px solid {{ $chrome['border'] }}; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-main);">
                             @if($entry['is_issued'])
                                 Official {{ strtolower($entry['type_label']) }} PDF template ready — authenticity mark includes issue code and date.
                             @else
@@ -335,7 +330,7 @@
                                         formmethod="post"
                                         formaction="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue"
                                         onclick="return confirm('Stamp and issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');"
-                                        style="padding: 0.4rem 0.75rem; background: {{ $badgeBg }}; color: white; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
+                                        style="padding: 0.4rem 0.75rem; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
                                     Stamp &amp; issue
                                 </button>
                             </form>
@@ -343,7 +338,7 @@
 
                         @if($entry['is_stampable'] && $entry['is_issued'])
                             <a href="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/pdf"
-                               style="display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid {{ $badgeBg }}; background: {{ $badgeBg }}; color: white; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; text-decoration: none;">
+                               style="display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid {{ $chrome['accent'] }}; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; text-decoration: none;">
                                 Download issued PDF
                             </a>
                         @endif
