@@ -34,7 +34,12 @@
             <div style="margin-bottom: 12px;">{{ \Illuminate\Support\Carbon::parse($patientPayload['date_of_birth'])->format('d M Y') }}</div>
         @endif
 
-        <div class="label">{{ $entry->entry_type === 'prescription' ? 'Prescription' : 'Referral' }} title</div>
+        <div class="label">{{ match($entry->entry_type) {
+            'prescription' => 'Prescription',
+            'referral' => 'Referral',
+            'certificate' => 'Certificate',
+            default => 'Document',
+        } }} title</div>
         <div style="font-weight: bold; margin-bottom: 12px;">{{ $entryPayload['title'] ?? '' }}</div>
 
         <div class="label">Details</div>

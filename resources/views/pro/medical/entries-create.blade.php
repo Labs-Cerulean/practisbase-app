@@ -22,6 +22,9 @@
                         <option value="{{ $key }}" {{ old('entry_type') === $key ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                    Prescriptions, referrals, and certificates can be stamped later — then they lock. Journals stay editable.
+                </div>
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date</label>

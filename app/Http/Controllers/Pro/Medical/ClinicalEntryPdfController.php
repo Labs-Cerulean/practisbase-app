@@ -18,8 +18,13 @@ class ClinicalEntryPdfController extends Controller
             abort(403);
         }
 
-        if (! in_array($entry->entry_type, ['prescription', 'referral'], true)) {
-            abort(400, 'Only prescriptions and referral letters can be exported as PDF.');
+        if (! $entry->isStampable()) {
+            abort(400, 'Only stampable clinical documents can be exported as PDF.');
+        }
+
+        if (! $entry->isIssued()) {
+            return redirect('/pro/medical/patients/' . $patient->id)
+                ->withErrors(['entry' => 'Stamp & issue the document before downloading the official PDF.']);
         }
 
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
@@ -30,9 +35,12 @@ class ClinicalEntryPdfController extends Controller
         $patientPayload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
         $entryPayload = MedicalVaultCrypto::decrypt($entry->payload_ciphertext, $entry->payload_nonce, $key);
 
-        $documentTitle = $entry->entry_type === 'prescription'
-            ? 'Digital Prescription'
-            : 'Referral Letter';
+        $documentTitle = match ($entry->entry_type) {
+            'prescription' => 'Digital Prescription',
+            'referral' => 'Referral Letter',
+            'certificate' => 'Medical Certificate',
+            default => $entry->typeLabel(),
+        };
 
         $pdf = Pdf::loadView('pro.medical.clinical-pdf', [
             'user' => $user,

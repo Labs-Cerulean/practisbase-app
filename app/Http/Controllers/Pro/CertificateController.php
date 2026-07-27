@@ -13,7 +13,7 @@ class CertificateController extends Controller
     public function index()
     {
         $certs = Certificate::where('user_id', Auth::id())
-            ->orderByDesc('issued_on')
+            ->orderByDesc('id')
             ->get();
 
         return view('pro.certificates.index', [
@@ -60,9 +60,84 @@ class CertificateController extends Controller
             'expires_on' => $validated['expires_on'] ?? null,
             'photo_path' => $photoPath,
             'notes' => $validated['notes'] ?? null,
+            'stamped_at' => null,
         ]);
 
-        return redirect('/pro/certificates')->with('success', 'Certificate / declaration logged.');
+        return redirect('/pro/certificates')->with('success', 'Draft certificate saved. Edit until you Stamp & issue.');
+    }
+
+    public function edit(Certificate $certificate)
+    {
+        if ($certificate->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if (! $certificate->isEditable()) {
+            return redirect('/pro/certificates')
+                ->withErrors(['certificate' => 'This certificate was stamped and issued. It can no longer be edited.']);
+        }
+
+        return view('pro.certificates.edit', [
+            'certificate' => $certificate,
+            'kinds' => Certificate::KINDS,
+        ]);
+    }
+
+    public function update(Request $request, Certificate $certificate)
+    {
+        if ($certificate->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if (! $certificate->isEditable()) {
+            return redirect('/pro/certificates')
+                ->withErrors(['certificate' => 'This certificate was stamped and issued. It can no longer be edited.']);
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'subject_name' => 'nullable|string|max:255',
+            'kind' => 'required|in:' . implode(',', array_keys(Certificate::KINDS)),
+            'issued_on' => 'required|date|before_or_equal:today',
+            'expires_on' => 'nullable|date|after_or_equal:issued_on',
+            'notes' => 'nullable|string|max:5000',
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+        ]);
+
+        if ($request->hasFile('photo')) {
+            $certificate->photo_path = $request->file('photo')->store(
+                'tenants/' . Auth::id() . '/certificates',
+                TenantStorage::diskName()
+            );
+        }
+
+        $certificate->fill([
+            'title' => $validated['title'],
+            'subject_name' => $validated['subject_name'] ?? null,
+            'kind' => $validated['kind'],
+            'issued_on' => $validated['issued_on'],
+            'expires_on' => $validated['expires_on'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ])->save();
+
+        return redirect('/pro/certificates')->with('success', 'Draft certificate updated.');
+    }
+
+    public function stamp(Certificate $certificate)
+    {
+        if ($certificate->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($certificate->isStamped()) {
+            return back()->withErrors(['certificate' => 'Already stamped and issued.']);
+        }
+
+        $certificate->stamped_at = now();
+        $certificate->save();
+
+        return redirect('/pro/certificates')
+            ->with('success', 'Certificate stamped and issued. It is now locked against further edits.');
     }
 
     public function downloadPhoto(Certificate $certificate)

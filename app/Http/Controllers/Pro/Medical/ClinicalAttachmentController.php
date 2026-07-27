@@ -30,6 +30,10 @@ class ClinicalAttachmentController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
+        if (! $entry->isEditable()) {
+            return back()->withErrors(['attachment' => 'This document is stamped and issued. Attachments cannot be added.']);
+        }
+
         $request->validate([
             'attachment' => 'required|file|max:' . ClinicalAttachment::MAX_KILOBYTES . '|mimetypes:' . implode(',', ClinicalAttachment::ALLOWED_MIMES),
         ]);

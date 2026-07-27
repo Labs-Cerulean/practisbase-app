@@ -18,6 +18,7 @@ class Certificate extends Model
         'expires_on',
         'photo_path',
         'notes',
+        'stamped_at',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class Certificate extends Model
         return [
             'issued_on' => 'date',
             'expires_on' => 'date',
+            'stamped_at' => 'datetime',
         ];
     }
 
@@ -45,5 +47,15 @@ class Certificate extends Model
     public function isExpired(): bool
     {
         return $this->expires_on !== null && $this->expires_on->lt(now()->startOfDay());
+    }
+
+    public function isStamped(): bool
+    {
+        return $this->stamped_at !== null;
+    }
+
+    public function isEditable(): bool
+    {
+        return ! $this->isStamped();
     }
 }

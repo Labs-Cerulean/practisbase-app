@@ -63,6 +63,7 @@ class PatientController extends Controller
                 'journal_count' => (int) ($byType['journal'] ?? 0),
                 'prescription_count' => (int) ($byType['prescription'] ?? 0),
                 'referral_count' => (int) ($byType['referral'] ?? 0),
+                'certificate_count' => (int) ($byType['certificate'] ?? 0),
                 'attachment_count' => (int) ($attachmentCounts[$patient->id] ?? 0),
                 'created_ts' => optional($patient->created_at)->timestamp ?? $patient->id,
             ];
@@ -311,6 +312,10 @@ class PatientController extends Controller
                     'body' => $data['body'] ?? '',
                     'type_label' => ClinicalEntry::TYPES[$entry->entry_type] ?? $entry->entry_type,
                     'attachments' => $attachments,
+                    'is_stampable' => $entry->isStampable(),
+                    'is_issued' => $entry->isIssued(),
+                    'is_editable' => $entry->isEditable(),
+                    'issued_at' => $entry->issued_at,
                 ];
             });
 
@@ -321,6 +326,61 @@ class PatientController extends Controller
             'clients' => $clients,
             'linkedClientIds' => $linkedClientIds,
             'canAddClient' => $user->canAddClient(),
+            'entryTypes' => ClinicalEntry::TYPES,
         ]);
+    }
+
+    public function edit(Patient $patient)
+    {
+        $user = Auth::user();
+        if ($patient->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
+        if (! $key) {
+            return redirect('/pro/medical/vault/unlock');
+        }
+
+        $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+
+        return view('pro.medical.patients-edit', [
+            'patient' => $patient,
+            'payload' => $payload,
+        ]);
+    }
+
+    public function update(Request $request, Patient $patient)
+    {
+        $user = Auth::user();
+        if ($patient->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $vault = MedicalVault::activeForUser($user->id);
+        $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
+
+        if (! $vault || ! $key) {
+            return redirect('/pro/medical/vault/unlock');
+        }
+
+        $validated = $request->validate([
+            'display_name' => 'required|string|max:255',
+            'date_of_birth' => 'nullable|date|before_or_equal:today',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $encrypted = MedicalVaultCrypto::encrypt([
+            'display_name' => $validated['display_name'],
+            'date_of_birth' => $validated['date_of_birth'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ], $key);
+
+        $patient->payload_ciphertext = $encrypted['ciphertext'];
+        $patient->payload_nonce = $encrypted['nonce'];
+        $patient->save();
+
+        return redirect('/pro/medical/patients/' . $patient->id)
+            ->with('success', 'Patient record updated.');
     }
 }
