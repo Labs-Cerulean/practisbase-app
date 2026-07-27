@@ -168,6 +168,8 @@
     <h3 style="color: var(--primary-navy);">Clinical entries</h3>
     <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0;">
         Prescriptions, referrals, and certificates stay editable until you press <strong>Stamp &amp; issue</strong> — then they lock. Journal notes stay editable.
+        Find all stampables across patients in
+        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Certificates &amp; Declarations</a>.
     </p>
     @if($entries->isEmpty())
         <p style="color: var(--text-muted);">No journal / prescription / referral / certificate entries yet.</p>
@@ -244,7 +246,7 @@
 
                         @if($entry['is_stampable'] && ! $entry['is_issued'])
                             <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue" method="POST" style="margin: 0;"
-                                  onsubmit="return confirm('Stamp & issue this document? It cannot be edited afterwards.');">
+                                  onsubmit="return confirm('Stamp & issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');">
                                 @csrf
                                 <button type="submit" style="padding: 0.4rem 0.75rem; background: #334155; color: white; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
                                     Stamp &amp; issue

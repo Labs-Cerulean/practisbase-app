@@ -9,9 +9,6 @@
 @if($user->warrant_type || $user->warrant_number)
     <div class="practice-sub">Warrant: {{ trim(($user->warrant_type ?? '') . ' ' . ($user->warrant_number ?? '')) }}</div>
 @endif
-@if(!empty($user->address))
-    <div class="practice-sub">{{ $user->address }}</div>
-@endif
 @if($user->vat_number)
     <div class="practice-sub">VAT: {{ $user->vat_number }}</div>
 @endif

@@ -32,12 +32,6 @@
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>
     @endif
 
-    @if($errors->any())
-        <div style="background: #fef2f2; color: #991b1b; padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
-            @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
-        </div>
-    @endif
-
     @if($backupOverdue ?? false)
         <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: var(--radius-md); color: #991b1b; font-size: 0.9rem;">
             <strong>Weekly backup overdue.</strong>
@@ -54,17 +48,10 @@
         Closed beta: treat this as a test vault unless Cerulean Labs has confirmed legal go-live for real patient data on your account.
     </div>
 
-    <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
-        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">Verify issue code</div>
-        <p style="margin: 0 0 0.65rem; color: var(--text-muted); font-size: 0.85rem;">
-            Enter a code from a printed prescription, referral, or medical certificate. A match confirms it was stamped in your vault; no match flags a possible reprint or reuse.
-        </p>
-        <form action="/pro/medical/issue-codes/lookup" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-            @csrf
-            <input type="text" name="issue_code" required placeholder="e.g. RX-7F3K-9M2P" maxlength="32"
-                   style="flex: 1; min-width: 180px; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: ui-monospace, monospace; letter-spacing: 0.04em; text-transform: uppercase;">
-            <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.65rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Look up</button>
-        </form>
+    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
+        Looking for a prescription, referral, or certificate?
+        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Open the stampables register</a>
+        to search and verify issue codes. Create new stampables from a patient record.
     </div>
 
     @if($rows->isEmpty())

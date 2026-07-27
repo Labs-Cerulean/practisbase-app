@@ -16,6 +16,7 @@ use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
 use App\Http\Controllers\Pro\Medical\ClinicalAttachmentController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryPdfController;
 use App\Http\Controllers\Pro\Medical\MedicalBackupController;
+use App\Http\Controllers\Pro\Medical\StampableLedgerController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
 use App\Http\Controllers\Pro\CertificateController;
@@ -161,8 +162,9 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::post('/vault/backup', [MedicalBackupController::class, 'download'])->middleware(['vault', 'throttle:5,1']);
 
         Route::middleware('vault')->group(function () {
+            Route::get('/stampables', [StampableLedgerController::class, 'index']);
+            Route::post('/issue-codes/lookup', [StampableLedgerController::class, 'lookupIssueCode']);
             Route::get('/patients', [PatientController::class, 'index']);
-            Route::post('/issue-codes/lookup', [PatientController::class, 'lookupIssueCode']);
             Route::get('/patients/create', [PatientController::class, 'create']);
             Route::post('/patients', [PatientController::class, 'store']);
             Route::get('/patients/{patient}', [PatientController::class, 'show']);
