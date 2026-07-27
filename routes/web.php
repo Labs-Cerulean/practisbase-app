@@ -165,10 +165,15 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
             Route::get('/patients/create', [PatientController::class, 'create']);
             Route::post('/patients', [PatientController::class, 'store']);
             Route::get('/patients/{patient}', [PatientController::class, 'show']);
+            Route::get('/patients/{patient}/edit', [PatientController::class, 'edit']);
+            Route::put('/patients/{patient}', [PatientController::class, 'update']);
             Route::put('/patients/{patient}/billing-link', [PatientController::class, 'updateBillingLink']);
             Route::post('/patients/{patient}/billing-client', [PatientController::class, 'createBillingClient']);
             Route::get('/patients/{patient}/entries/create', [ClinicalEntryController::class, 'create']);
             Route::post('/patients/{patient}/entries', [ClinicalEntryController::class, 'store']);
+            Route::get('/patients/{patient}/entries/{entry}/edit', [ClinicalEntryController::class, 'edit']);
+            Route::put('/patients/{patient}/entries/{entry}', [ClinicalEntryController::class, 'update']);
+            Route::post('/patients/{patient}/entries/{entry}/issue', [ClinicalEntryController::class, 'issue']);
             Route::get('/patients/{patient}/entries/{entry}/pdf', [ClinicalEntryPdfController::class, 'download']);
             Route::post('/patients/{patient}/entries/{entry}/attachments', [ClinicalAttachmentController::class, 'store']);
             Route::get('/patients/{patient}/attachments/{attachment}/download', [ClinicalAttachmentController::class, 'download']);
@@ -187,6 +192,9 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::get('/', [CertificateController::class, 'index']);
         Route::get('/create', [CertificateController::class, 'create']);
         Route::post('/', [CertificateController::class, 'store']);
+        Route::get('/{certificate}/edit', [CertificateController::class, 'edit']);
+        Route::put('/{certificate}', [CertificateController::class, 'update']);
+        Route::post('/{certificate}/stamp', [CertificateController::class, 'stamp']);
         Route::get('/{certificate}/photo', [CertificateController::class, 'downloadPhoto']);
     });
 
