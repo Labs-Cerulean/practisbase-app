@@ -8,6 +8,7 @@ use App\Models\MedicalVaultDevice;
 use App\Models\User;
 use App\Support\MedicalVaultCrypto;
 use App\Support\VaultWebAuthn;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,9 @@ use lbuchs\WebAuthn\WebAuthnException;
 
 class VaultDeviceController extends Controller
 {
+    /** Short-lived tickets; biometric UI must finish within this window. */
+    private const TICKET_TTL_MINUTES = 3;
+
     /** Registration options — vault must already be unlocked (session still valid). */
     public function registerOptions(Request $request)
     {
@@ -48,16 +52,18 @@ class VaultDeviceController extends Controller
 
         $challenge = $webAuthn->getChallenge()->getBinaryString();
         $ticket = Str::random(64);
+        $fp = $this->ticketClientFingerprint($request);
 
         // Android biometric UI often drops the browser session cookie mid-ceremony.
         // Cache everything needed to finish registration without the session.
-        Cache::put($this->ticketKey('register', $ticket), [
+        // DEK is Laravel-encrypted and ticket-bound to IP + UA for a few minutes only.
+        Cache::put($this->ticketKey('register', $ticket), array_merge($fp, [
             'user_id' => $user->id,
             'vault_id' => $vault->id,
             'challenge_b64' => base64_encode($challenge),
             'dek_enc' => Crypt::encryptString(base64_encode($dek)),
             'device_label_hint' => $this->guessDeviceLabel($request),
-        ], now()->addMinutes(10));
+        ]), now()->addMinutes(self::TICKET_TTL_MINUTES));
 
         return response()->json([
             'publicKey' => $createArgs->publicKey,
@@ -84,6 +90,10 @@ class VaultDeviceController extends Controller
             return response()->json(['message' => 'Registration ticket expired. Unlock the vault and try Enable quick unlock again.'], 422);
         }
 
+        if ($mismatch = $this->assertTicketClient($request, $payload, 'Registration')) {
+            return $mismatch;
+        }
+
         if (Auth::check() && (int) Auth::id() !== (int) $payload['user_id']) {
             return response()->json(['message' => 'Registration ticket does not match this account.'], 403);
         }
@@ -98,66 +108,79 @@ class VaultDeviceController extends Controller
             return response()->json(['message' => 'Vault not found for this registration.'], 404);
         }
 
+        $dek = null;
         try {
-            $dek = base64_decode(Crypt::decryptString($payload['dek_enc']), true);
-            $challenge = base64_decode($payload['challenge_b64'], true);
-        } catch (\Throwable) {
-            return response()->json(['message' => 'Registration ticket is invalid.'], 422);
-        }
+            try {
+                $dek = base64_decode(Crypt::decryptString($payload['dek_enc']), true);
+                $challenge = base64_decode($payload['challenge_b64'], true);
+            } catch (\Throwable) {
+                return response()->json(['message' => 'Registration ticket is invalid.'], 422);
+            } finally {
+                unset($payload['dek_enc'], $payload['challenge_b64']);
+            }
 
-        if ($dek === false || strlen($dek) !== 32 || $challenge === false || $challenge === '') {
-            return response()->json(['message' => 'Registration ticket is invalid.'], 422);
-        }
+            if ($dek === false || strlen($dek) !== 32 || $challenge === false || $challenge === '') {
+                return response()->json(['message' => 'Registration ticket is invalid.'], 422);
+            }
 
-        try {
-            $webAuthn = VaultWebAuthn::make($request);
-            $data = $webAuthn->processCreate(
-                VaultWebAuthn::decodeClientBinary($validated['clientDataJSON']),
-                VaultWebAuthn::decodeClientBinary($validated['attestationObject']),
-                $challenge,
-                true,
-                true,
-                false,
-                false
-            );
-        } catch (WebAuthnException $e) {
-            return response()->json(['message' => 'Device registration failed: '.$e->getMessage()], 422);
-        }
+            try {
+                $webAuthn = VaultWebAuthn::make($request);
+                $data = $webAuthn->processCreate(
+                    VaultWebAuthn::decodeClientBinary($validated['clientDataJSON']),
+                    VaultWebAuthn::decodeClientBinary($validated['attestationObject']),
+                    $challenge,
+                    true,
+                    true,
+                    false,
+                    false
+                );
+            } catch (WebAuthnException $e) {
+                return response()->json(['message' => 'Device registration failed: '.$e->getMessage()], 422);
+            }
 
-        $credentialIdB64 = VaultWebAuthn::base64UrlFromBinary($data->credentialId);
-        $existing = MedicalVaultDevice::where('credential_id', $credentialIdB64)->first();
-        if ($existing) {
+            $credentialIdB64 = VaultWebAuthn::base64UrlFromBinary($data->credentialId);
+            $existing = MedicalVaultDevice::where('credential_id', $credentialIdB64)->first();
+            if ($existing) {
+                $this->restoreSession($request, $user, $dek);
+
+                return response()->json(['message' => 'This authenticator is already trusted.'], 422);
+            }
+
+            $wrapKey = random_bytes(32);
+            $wrapped = MedicalVaultCrypto::wrapDek($dek, $wrapKey);
+
+            $device = MedicalVaultDevice::create([
+                'user_id' => $user->id,
+                'vault_id' => $vault->id,
+                'credential_id' => $credentialIdB64,
+                'public_key' => $data->credentialPublicKey,
+                'attestation_format' => $data->attestationFormat ?? null,
+                'wrap_nonce' => $wrapped['wrap_nonce'],
+                'wrapped_dek' => $wrapped['wrapped_dek'],
+                'device_label' => $validated['device_label'] ?: ($payload['device_label_hint'] ?? $this->guessDeviceLabel($request)),
+                'signature_counter' => (int) ($data->signatureCounter ?? 0),
+                'last_used_at' => now(),
+            ]);
+
             $this->restoreSession($request, $user, $dek);
 
-            return response()->json(['message' => 'This authenticator is already trusted.'], 422);
+            $wrapKeyB64 = base64_encode($wrapKey);
+            $this->forgetSensitiveString($wrapKey);
+
+            return response()->json([
+                'ok' => true,
+                'device_id' => $device->id,
+                'credential_id' => $credentialIdB64,
+                'wrap_key' => $wrapKeyB64,
+                'device_label' => $device->device_label,
+                'message' => 'This device can now unlock your vault with biometrics or your device unlock (Touch ID, Face ID, Windows Hello, etc.).',
+            ]);
+        } finally {
+            $this->forgetSensitiveString($dek);
+            if (isset($wrapKey)) {
+                $this->forgetSensitiveString($wrapKey);
+            }
         }
-
-        $wrapKey = random_bytes(32);
-        $wrapped = MedicalVaultCrypto::wrapDek($dek, $wrapKey);
-
-        $device = MedicalVaultDevice::create([
-            'user_id' => $user->id,
-            'vault_id' => $vault->id,
-            'credential_id' => $credentialIdB64,
-            'public_key' => $data->credentialPublicKey,
-            'attestation_format' => $data->attestationFormat ?? null,
-            'wrap_nonce' => $wrapped['wrap_nonce'],
-            'wrapped_dek' => $wrapped['wrapped_dek'],
-            'device_label' => $validated['device_label'] ?: ($payload['device_label_hint'] ?? $this->guessDeviceLabel($request)),
-            'signature_counter' => (int) ($data->signatureCounter ?? 0),
-            'last_used_at' => now(),
-        ]);
-
-        $this->restoreSession($request, $user, $dek);
-
-        return response()->json([
-            'ok' => true,
-            'device_id' => $device->id,
-            'credential_id' => $credentialIdB64,
-            'wrap_key' => base64_encode($wrapKey),
-            'device_label' => $device->device_label,
-            'message' => 'This device can now unlock your vault with biometrics or your device unlock (Touch ID, Face ID, Windows Hello, etc.).',
-        ]);
     }
 
     /** Assertion options for device unlock (vault may be locked; login session should still be valid). */
@@ -194,12 +217,13 @@ class VaultDeviceController extends Controller
 
         $challenge = $webAuthn->getChallenge()->getBinaryString();
         $ticket = Str::random(64);
+        $fp = $this->ticketClientFingerprint($request);
 
-        Cache::put($this->ticketKey('unlock', $ticket), [
+        Cache::put($this->ticketKey('unlock', $ticket), array_merge($fp, [
             'user_id' => $user->id,
             'vault_id' => $vault->id,
             'challenge_b64' => base64_encode($challenge),
-        ], now()->addMinutes(10));
+        ]), now()->addMinutes(self::TICKET_TTL_MINUTES));
 
         return response()->json([
             'publicKey' => $getArgs->publicKey,
@@ -225,6 +249,10 @@ class VaultDeviceController extends Controller
             return response()->json(['message' => 'Unlock ticket expired. Refresh and try again, or use your recovery code.'], 422);
         }
 
+        if ($mismatch = $this->assertTicketClient($request, $payload, 'Unlock')) {
+            return $mismatch;
+        }
+
         if (Auth::check() && (int) Auth::id() !== (int) $payload['user_id']) {
             return response()->json(['message' => 'Unlock ticket does not match this account.'], 403);
         }
@@ -240,6 +268,7 @@ class VaultDeviceController extends Controller
         }
 
         $challenge = base64_decode($payload['challenge_b64'], true);
+        unset($payload['challenge_b64']);
         if ($challenge === false || $challenge === '') {
             return response()->json(['message' => 'Unlock ticket is invalid.'], 422);
         }
@@ -275,23 +304,29 @@ class VaultDeviceController extends Controller
             return response()->json(['message' => 'Missing device unlock key on this browser. Unlock with your recovery code and re-enable quick unlock.'], 422);
         }
 
+        $dek = null;
         try {
-            $dek = MedicalVaultCrypto::unwrapDek($device->wrapped_dek, $device->wrap_nonce, $wrapKey);
-        } catch (\Throwable) {
-            return response()->json(['message' => 'Could not unwrap the vault key for this device. Unlock with your recovery code and re-enable quick unlock.'], 422);
+            try {
+                $dek = MedicalVaultCrypto::unwrapDek($device->wrapped_dek, $device->wrap_nonce, $wrapKey);
+            } catch (\Throwable) {
+                return response()->json(['message' => 'Could not unwrap the vault key for this device. Unlock with your recovery code and re-enable quick unlock.'], 422);
+            }
+
+            $device->signature_counter = is_int($counter) ? $counter : $device->signature_counter;
+            $device->last_used_at = now();
+            $device->save();
+
+            $this->restoreSession($request, $user, $dek);
+
+            return response()->json([
+                'ok' => true,
+                'redirect' => '/pro/medical/patients',
+                'message' => 'Medical vault unlocked on this device.',
+            ]);
+        } finally {
+            $this->forgetSensitiveString($dek);
+            $this->forgetSensitiveString($wrapKey);
         }
-
-        $device->signature_counter = is_int($counter) ? $counter : $device->signature_counter;
-        $device->last_used_at = now();
-        $device->save();
-
-        $this->restoreSession($request, $user, $dek);
-
-        return response()->json([
-            'ok' => true,
-            'redirect' => '/pro/medical/patients',
-            'message' => 'Medical vault unlocked on this device.',
-        ]);
     }
 
     public function destroy(Request $request, MedicalVaultDevice $device)
@@ -347,6 +382,49 @@ class VaultDeviceController extends Controller
     private function ticketKey(string $kind, string $ticket): string
     {
         return "webauthn_{$kind}_ticket:{$ticket}";
+    }
+
+    /** @return array{ip_hash: string, ua_hash: string} */
+    private function ticketClientFingerprint(Request $request): array
+    {
+        return [
+            'ip_hash' => hash('sha256', (string) $request->ip()),
+            'ua_hash' => hash('sha256', strtolower(trim((string) $request->userAgent()))),
+        ];
+    }
+
+    private function assertTicketClient(Request $request, array $payload, string $kind): ?JsonResponse
+    {
+        $fp = $this->ticketClientFingerprint($request);
+        $ipOk = hash_equals((string) ($payload['ip_hash'] ?? ''), $fp['ip_hash']);
+        $uaOk = hash_equals((string) ($payload['ua_hash'] ?? ''), $fp['ua_hash']);
+
+        if ($ipOk && $uaOk) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => $kind.' ticket is not valid for this network or browser. Refresh and try again.',
+        ], 422);
+    }
+
+    private function forgetSensitiveString(mixed &$value): void
+    {
+        if (! is_string($value) || $value === '') {
+            $value = null;
+
+            return;
+        }
+
+        if (function_exists('sodium_memzero')) {
+            try {
+                sodium_memzero($value);
+            } catch (\Throwable) {
+                // PHP may refuse memzero on interned/immutable strings; fall through.
+            }
+        }
+
+        $value = null;
     }
 
     private function guessDeviceLabel(Request $request): string

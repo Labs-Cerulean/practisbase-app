@@ -172,7 +172,7 @@ window.PractisVaultDevice = (function () {
     }
 
     function revokeDevice(deviceId, credentialId) {
-        return requestJson('/pro/medical/vault/devices/' + deviceId, 'DELETE', {}).then(function (result) {
+        return requestJson('/pro/medical/vault/devices/' + deviceId, 'DELETE').then(function (result) {
             var id = credentialId || (result && result.credential_id);
             if (id) {
                 return idbDelete(id).then(function () { return result; }).catch(function () { return result; });

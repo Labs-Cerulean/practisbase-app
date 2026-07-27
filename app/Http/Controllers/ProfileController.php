@@ -19,14 +19,37 @@ class ProfileController extends Controller
             $planConsequences[$tierOption] = \App\Support\TierPolicy::changeConsequences($user->tier, $tierOption);
         }
 
+        $showMedicalVaultDevices = $user->canAccessProPackage('med');
+        $medicalVaultDevices = [];
+        if ($showMedicalVaultDevices) {
+            $vault = \App\Models\MedicalVault::activeForUser($user->id);
+            if ($vault) {
+                $medicalVaultDevices = \App\Models\MedicalVaultDevice::where('user_id', $user->id)
+                    ->where('vault_id', $vault->id)
+                    ->orderByDesc('last_used_at')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->map(fn (\App\Models\MedicalVaultDevice $d) => [
+                        'id' => $d->id,
+                        'credential_id' => $d->credential_id,
+                        'device_label' => $d->device_label,
+                        'last_used_at' => optional($d->last_used_at)->toIso8601String(),
+                        'created_at' => optional($d->created_at)->toIso8601String(),
+                    ])
+                    ->values()
+                    ->all();
+            }
+        }
+
         return view('profile.settings', [
             'user' => $user,
             'allowedTiers' => $allowedTiers,
             'planConsequences' => $planConsequences,
             'currentTier' => \App\Support\TierPolicy::normalize($user->tier),
-            'showMedicalVaultDevices' => $user->canAccessProPackage('med'),
-            'medicalVaultUnlocked' => $user->canAccessProPackage('med')
+            'showMedicalVaultDevices' => $showMedicalVaultDevices,
+            'medicalVaultUnlocked' => $showMedicalVaultDevices
                 && \App\Support\MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null,
+            'medicalVaultDevices' => $medicalVaultDevices,
         ]);
     }
 
