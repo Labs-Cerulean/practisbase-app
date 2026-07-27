@@ -18,6 +18,8 @@
         <a href="/pro/medical/patients" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Open patients</a>
     </div>
 
+    @include('pro.medical._type-colour-key', ['includeLegacy' => ($hasLegacy ?? false), 'margin' => '0 0 1.25rem'])
+
     @if(session('success'))
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
             {{ session('success') }}
@@ -86,6 +88,7 @@
 
         <div id="stampable-list" style="display: grid; gap: 0.75rem;">
             @foreach($rows as $row)
+                @php $chrome = \App\Models\ClinicalEntry::typeChrome($row['entry_type']); @endphp
                 <div class="stampable-row"
                      id="stampable-{{ $row['id'] }}"
                      data-title="{{ strtolower($row['title']) }}"
@@ -94,13 +97,22 @@
                      data-code="{{ strtolower($row['issue_code'] ?? '') }}"
                      data-type="{{ $row['entry_type'] }}"
                      data-status="{{ $row['status'] }}"
-                     style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem 1.15rem; box-shadow: var(--shadow-sm); {{ session('highlight_entry_id') == $row['id'] ? 'outline: 2px solid var(--primary-cerulean);' : '' }}">
+                     style="background: {{ $chrome['card_bg'] }}; border: 1px solid {{ $chrome['border'] }}; border-left: 6px solid {{ $chrome['accent'] }}; border-radius: var(--radius-md); padding: 1rem 1.15rem; box-shadow: var(--shadow-sm); {{ session('highlight_entry_id') == $row['id'] ? 'outline: 2px solid ' . $chrome['accent'] . ';' : '' }}">
                     <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                         <div>
-                            <div style="font-weight: 700; color: var(--primary-navy);">{{ $row['title'] }}</div>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.4rem;">
+                                <span style="display: inline-block; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.28rem 0.65rem; border-radius: 4px;">
+                                    {{ $row['type_label'] }}
+                                </span>
+                                @if($row['is_issued'])
+                                    <span style="font-size: 0.7rem; font-weight: 800; color: #065f46; text-transform: uppercase; background: #d1fae5; padding: 0.2rem 0.5rem; border-radius: 4px;">Issued</span>
+                                @else
+                                    <span style="font-size: 0.7rem; font-weight: 800; color: #92400e; text-transform: uppercase; background: #fef3c7; padding: 0.2rem 0.5rem; border-radius: 4px;">Draft</span>
+                                @endif
+                            </div>
+                            <div style="font-weight: 700; color: var(--primary-navy); font-size: 1.05rem;">{{ $row['title'] }}</div>
                             <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-                                {{ $row['type_label'] }}
-                                · {{ $row['patient_name'] }}
+                                {{ $row['patient_name'] }}
                                 @if($row['patient_ref'])
                                     · <span style="font-family: ui-monospace, monospace;">{{ $row['patient_ref'] }}</span>
                                 @endif
@@ -108,33 +120,30 @@
                                     · {{ $row['meta_line'] }}
                                 @endif
                                 · dated {{ $row['entry_date']->format('d M Y') }}
-                                ·
                                 @if($row['is_issued'])
-                                    <span style="color: #065f46; font-weight: 700;">Issued {{ $row['issued_at']->format('d M Y H:i') }}</span>
+                                    · Issued {{ $row['issued_at']->format('d M Y H:i') }}
                                     @if($row['issue_code'])
-                                        · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: var(--primary-navy); font-weight: 700;">{{ $row['issue_code'] }}</span>
+                                        · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: {{ $chrome['accent'] }}; font-weight: 700;">{{ $row['issue_code'] }}</span>
                                     @endif
-                                @else
-                                    <span style="color: #b45309; font-weight: 700;">Draft</span>
                                 @endif
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap;">
                             @if($row['source'] === 'clinical' && $row['patient_id'])
                                 <a href="/pro/medical/patients/{{ $row['patient_id'] }}"
-                                   style="color: var(--primary-navy); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Open patient</a>
+                                   style="display: inline-block; padding: 0.35rem 0.7rem; border: 1px solid {{ $chrome['border'] }}; background: white; color: var(--primary-navy); border-radius: var(--radius-md); font-weight: 700; font-size: 0.8rem; text-decoration: none;">Open patient</a>
                                 @if($row['is_editable'])
                                     <a href="/pro/medical/patients/{{ $row['patient_id'] }}/entries/{{ $row['id'] }}/edit"
-                                       style="color: var(--primary-navy); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Edit draft</a>
+                                       style="display: inline-block; padding: 0.35rem 0.7rem; border: 1px solid {{ $chrome['border'] }}; background: white; color: var(--primary-navy); border-radius: var(--radius-md); font-weight: 700; font-size: 0.8rem; text-decoration: none;">Edit draft</a>
                                 @endif
                                 @if($row['is_issued'])
                                     <a href="/pro/medical/patients/{{ $row['patient_id'] }}/entries/{{ $row['id'] }}/pdf"
-                                       style="color: var(--primary-navy); font-weight: 700; font-size: 0.85rem; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">PDF</a>
+                                       style="display: inline-block; padding: 0.35rem 0.7rem; border: 1px solid {{ $chrome['accent'] }}; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; border-radius: var(--radius-md); font-weight: 700; font-size: 0.8rem; text-decoration: none;">PDF</a>
                                 @endif
                             @elseif($row['legacy_certificate_id'])
                                 @if($row['is_issued'])
                                     <a href="/pro/certificates/{{ $row['legacy_certificate_id'] }}/pdf"
-                                       style="color: var(--primary-navy); font-weight: 700; font-size: 0.85rem; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">PDF</a>
+                                       style="display: inline-block; padding: 0.35rem 0.7rem; border: 1px solid {{ $chrome['accent'] }}; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; border-radius: var(--radius-md); font-weight: 700; font-size: 0.8rem; text-decoration: none;">PDF</a>
                                 @else
                                     <span style="font-size: 0.8rem; color: var(--text-muted);">Legacy draft — recreate under a patient to stamp</span>
                                 @endif
