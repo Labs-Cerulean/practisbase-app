@@ -32,22 +32,25 @@
                 </div>
             @endif
 
-            <form action="/pro/medical/vault/backup" method="POST" autocomplete="on">
+            <form action="/pro/medical/vault/backup" method="POST" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
                 @csrf
+                <label for="backup_recovery_code" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Medical vault recovery code</label>
                 <input type="text"
-                       name="vault_credential_label"
-                       value="PractisBase Medical Vault"
-                       autocomplete="username"
-                       readonly
-                       tabindex="-1"
-                       aria-hidden="true"
-                       style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Medical vault recovery code</label>
-                <input type="password" name="recovery_code" required autofocus placeholder="XXXX-XXXX-XXXX-…"
-                       autocomplete="current-password"
-                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.5rem; font-family: ui-monospace, monospace;">
+                       name="recovery_code"
+                       id="backup_recovery_code"
+                       required
+                       autofocus
+                       spellcheck="false"
+                       autocomplete="off"
+                       inputmode="text"
+                       data-lpignore="true"
+                       data-1p-ignore="true"
+                       data-bwignore="true"
+                       data-form-type="other"
+                       placeholder="XXXX-XXXX-XXXX-…"
+                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.5rem; font-family: ui-monospace, monospace; -webkit-text-security: disc;">
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Use the saved <strong>PractisBase Medical Vault</strong> item — not your login password.
+                    Paste from your Secure Note. Decline any browser “Save password?” prompt here.
                 </div>
                 <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
                     Verify code &amp; download ZIP

@@ -7,31 +7,46 @@
         <h1 style="color: var(--primary-navy); margin-top: 0;">Save this recovery code now</h1>
         <p style="color: #b91c1c; font-weight: 600; line-height: 1.45;">This code is shown once. It will not be displayed again. Cerulean Labs cannot recover it.</p>
 
-        <div style="margin: 1.5rem 0; padding: 1.25rem; background: #0f172a; color: #f8fafc; border-radius: var(--radius-md); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.15rem; letter-spacing: 0.08em; text-align: center; word-break: break-all;">
+        <div style="margin: 1.5rem 0; padding: 1.25rem; background: #0f172a; color: #f8fafc; border-radius: var(--radius-md); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.05rem; letter-spacing: 0.06em; text-align: center; word-break: break-all;" id="recovery-code-display">
             {{ $recoveryCode }}
         </div>
 
-        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45; margin-bottom: 1rem;">
-            It is long on purpose (high entropy encryption key). You should not type it from memory — save it in your password manager as a <strong>separate item</strong> from your PractisBase login.
-            You will need it every new login session to unlock journals. Password reset never unlocks this vault.
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <button type="button" id="copy-recovery-code" style="padding: 0.65rem 1rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                Copy code
+            </button>
+            <span id="copy-recovery-status" style="align-self: center; font-size: 0.85rem; color: #065f46; display: none;">Copied</span>
+        </div>
+
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.85rem 1rem; color: #92400e; font-size: 0.85rem; line-height: 1.45; margin-bottom: 1rem;">
+            <strong>Do not save this as your PractisBase website password.</strong>
+            If Google / Chrome asks “Save password?”, tap away / decline.
+            Store it as a <strong>Secure Note</strong> (or equivalent note) titled “PractisBase Medical Vault”.
+            Login password and vault code must stay separate — password reset never unlocks this vault.
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
+            The code is long on purpose (encryption strength). Paste it from your note when unlocking — you should not memorise it.
         </p>
 
-        {{-- Helps password managers offer “save password” under a distinct vault identity --}}
-        <form autocomplete="on" onsubmit="return false;" style="margin-bottom: 1.25rem; padding: 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">Save in password manager</div>
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">Account name</label>
-            <input type="text" value="PractisBase Medical Vault" autocomplete="username" readonly
-                   style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.65rem; background: white;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem;">Recovery code</label>
-            <input type="password" value="{{ $recoveryCode }}" autocomplete="new-password" readonly
-                   style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: ui-monospace, monospace; background: white;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-                When your browser offers to save, accept it as <em>PractisBase Medical Vault</em> — do not overwrite your login password.
-            </div>
-        </form>
-
-        <a href="/pro/medical/patients" style="display: inline-block; margin-top: 0.25rem; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); font-weight: 700;">
+        <a href="/pro/medical/patients" style="display: inline-block; margin-top: 1rem; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); font-weight: 700;">
             I have saved the code — continue
         </a>
     </div>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('copy-recovery-code');
+            var status = document.getElementById('copy-recovery-status');
+            var code = @json($recoveryCode);
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(function () {
+                        status.style.display = 'inline';
+                    });
+                }
+            });
+        })();
+    </script>
 @endsection

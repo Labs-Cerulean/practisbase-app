@@ -22,21 +22,31 @@
             @csrf
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Link billing Client <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
-                <select name="billing_client_id" id="billing_client_id" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                    <option value="">No link — clinical patient only</option>
-                    @foreach($clients as $client)
-                        @php $already = in_array($client->id, $linkedClientIds, true); @endphp
-                        <option value="{{ $client->id }}"
-                                data-name="{{ $client->name }}"
-                                {{ (string) old('billing_client_id') === (string) $client->id ? 'selected' : '' }}
-                                {{ $already ? 'disabled' : '' }}>
-                            {{ $client->name }}{{ $already ? ' (already linked)' : '' }}
-                        </option>
-                    @endforeach
-                </select>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-                    Need someone new for invoices too? Create them under Clients first, then link here — or create the patient now and link later.
-                </div>
+                @if($clients->isEmpty())
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 0.85rem 1rem; color: #1e3a8a; font-size: 0.85rem; line-height: 1.45; margin-bottom: 0.5rem;">
+                        You have no Clients yet. To invoice this person later:
+                        <a href="/clients/create" style="color: #1e3a8a; font-weight: 700;">create a Client first</a>,
+                        then create/link the patient. You can also save this patient clinical-only now and link later.
+                    </div>
+                    <input type="hidden" name="billing_client_id" value="">
+                @else
+                    <select name="billing_client_id" id="billing_client_id" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                        <option value="">No link — clinical patient only</option>
+                        @foreach($clients as $client)
+                            @php $already = in_array($client->id, $linkedClientIds, true); @endphp
+                            <option value="{{ $client->id }}"
+                                    data-name="{{ $client->name }}"
+                                    {{ (string) old('billing_client_id') === (string) $client->id ? 'selected' : '' }}
+                                    {{ $already ? 'disabled' : '' }}>
+                                {{ $client->name }}{{ $already ? ' (already linked)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                        Pick a Client to link (name prefills). Missing someone?
+                        <a href="/clients/create" style="color: var(--primary-cerulean); font-weight: 600;">Create Client</a> first.
+                    </div>
+                @endif
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Display name</label>
