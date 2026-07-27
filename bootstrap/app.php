@@ -18,6 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'pro' => \App\Http\Middleware\EnsureProPackage::class,
             'vault' => \App\Http\Middleware\EnsureMedicalVaultUnlocked::class,
         ]);
+
+        // Mobile WebAuthn often drops session/CSRF cookies during the biometric UI.
+        // These finish endpoints authenticate via a one-time server ticket instead.
+        $middleware->validateCsrfTokens(except: [
+            'pro/medical/vault/devices/register',
+            'pro/medical/vault/devices/unlock',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
