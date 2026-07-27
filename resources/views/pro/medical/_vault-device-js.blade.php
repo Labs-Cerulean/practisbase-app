@@ -12,21 +12,19 @@ window.PractisVaultDevice = (function () {
     function xsrfCookie() {
         var match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
         if (!match) return '';
-        try {
-            return decodeURIComponent(match[1]);
-        } catch (e) {
-            return match[1];
-        }
+        try { return decodeURIComponent(match[1]); } catch (e) { return match[1]; }
     }
 
-    function authHeaders() {
+    function authHeaders(includeCsrf) {
         var headers = {
             'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': csrfMeta()
+            'X-Requested-With': 'XMLHttpRequest'
         };
-        var xsrf = xsrfCookie();
-        if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+        if (includeCsrf !== false) {
+            headers['X-CSRF-TOKEN'] = csrfMeta();
+            var xsrf = xsrfCookie();
+            if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+        }
         return headers;
     }
 
@@ -51,9 +49,7 @@ window.PractisVaultDevice = (function () {
             var req = indexedDB.open(DB_NAME, 1);
             req.onupgradeneeded = function () {
                 var db = req.result;
-                if (!db.objectStoreNames.contains(STORE)) {
-                    db.createObjectStore(STORE);
-                }
+                if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
             };
             req.onsuccess = function () { resolve(req.result); };
             req.onerror = function () { reject(req.error); };
@@ -140,63 +136,33 @@ window.PractisVaultDevice = (function () {
         return pk;
     }
 
-    function authErrorMessage(status, data) {
-        if (status === 401 || (data && data.message === 'Unauthenticated.')) {
-            return 'Your PractisBase login session expired during the biometric prompt. Stay on this tab, refresh the page, unlock the vault if asked, then try Enable quick unlock once.';
-        }
-        if (status === 419) {
-            return 'Security token expired. Refresh the page and try again.';
-        }
-        return (data && data.message) ? data.message : 'Request failed';
-    }
-
-    function requestJson(url, method, body) {
-        var opts = {
+    function requestJson(url, method, body, opts) {
+        opts = opts || {};
+        var headers = authHeaders(opts.csrf !== false);
+        if (body !== undefined) headers['Content-Type'] = 'application/json';
+        return fetch(url, {
             method: method || 'GET',
-            headers: authHeaders(),
+            headers: headers,
             credentials: 'include',
-            redirect: 'manual'
-        };
-        if (body !== undefined) {
-            opts.headers['Content-Type'] = 'application/json';
-            opts.body = JSON.stringify(body || {});
-        }
-        return fetch(url, opts).then(function (res) {
-            if (res.type === 'opaqueredirect' || res.status === 0) {
-                var bounce = new Error(authErrorMessage(401, null));
-                bounce.status = 401;
-                throw bounce;
-            }
-            var ctype = res.headers.get('content-type') || '';
-            if (ctype.indexOf('application/json') === -1) {
-                if (res.status === 401 || res.status === 419 || res.status === 302) {
-                    var errNav = new Error(authErrorMessage(res.status, null));
-                    errNav.status = res.status;
-                    throw errNav;
-                }
-                throw new Error('Unexpected response from server (' + res.status + '). Refresh and try again.');
-            }
+            body: body !== undefined ? JSON.stringify(body || {}) : undefined
+        }).then(function (res) {
             return res.json().then(function (data) {
                 if (!res.ok) {
-                    var err = new Error(authErrorMessage(res.status, data));
+                    var err = new Error((data && data.message) ? data.message : 'Request failed');
                     err.status = res.status;
                     err.data = data;
                     throw err;
                 }
                 return data;
+            }).catch(function (e) {
+                if (e.status) throw e;
+                throw new Error('Unexpected server response (' + res.status + '). Refresh and try again.');
             });
         });
     }
 
-    function postJson(url, body) {
-        return requestJson(url, 'POST', body || {});
-    }
-
-    /** Keep the Laravel session warm after Android biometric UI steals focus. */
-    function warmSession() {
-        return requestJson('/pro/medical/vault/devices', 'GET').catch(function (e) {
-            throw e;
-        });
+    function postJson(url, body, opts) {
+        return requestJson(url, 'POST', body || {}, opts);
     }
 
     function listDevices() {
@@ -217,16 +183,18 @@ window.PractisVaultDevice = (function () {
 
     function registerDevice(deviceLabel) {
         return postJson('/pro/medical/vault/devices/register-options', {}).then(function (opts) {
+            var ticket = opts.registration_ticket;
+            if (!ticket) throw new Error('Missing registration ticket from server. Refresh and try again.');
             return navigator.credentials.create({ publicKey: preparePublicKey(opts.publicKey) }).then(function (cred) {
                 if (!cred) throw new Error('Device registration was cancelled.');
                 var response = cred.response;
-                return warmSession().then(function () {
-                    return postJson('/pro/medical/vault/devices/register', {
-                        clientDataJSON: bufferToBase64url(response.clientDataJSON),
-                        attestationObject: bufferToBase64url(response.attestationObject),
-                        device_label: deviceLabel || null
-                    });
-                }).then(function (result) {
+                // Ticket-authenticated finish — does not need the login session cookie.
+                return postJson('/pro/medical/vault/devices/register', {
+                    registration_ticket: ticket,
+                    clientDataJSON: bufferToBase64url(response.clientDataJSON),
+                    attestationObject: bufferToBase64url(response.attestationObject),
+                    device_label: deviceLabel || null
+                }, { csrf: false }).then(function (result) {
                     return idbPut(result.credential_id, result.wrap_key).then(function () { return result; });
                 });
             });
@@ -235,6 +203,8 @@ window.PractisVaultDevice = (function () {
 
     function unlockWithDevice() {
         return postJson('/pro/medical/vault/devices/unlock-options', {}).then(function (opts) {
+            var ticket = opts.unlock_ticket;
+            if (!ticket) throw new Error('Missing unlock ticket from server. Refresh and try again.');
             return navigator.credentials.get({ publicKey: preparePublicKey(opts.publicKey) }).then(function (cred) {
                 if (!cred) throw new Error('Device unlock was cancelled.');
                 var credentialId = bufferToBase64url(cred.rawId);
@@ -243,15 +213,14 @@ window.PractisVaultDevice = (function () {
                         throw new Error('This browser is missing the local unlock key. Unlock with your recovery code, then enable quick unlock again.');
                     }
                     var response = cred.response;
-                    return warmSession().then(function () {
-                        return postJson('/pro/medical/vault/devices/unlock', {
-                            credential_id: credentialId,
-                            clientDataJSON: bufferToBase64url(response.clientDataJSON),
-                            authenticatorData: bufferToBase64url(response.authenticatorData),
-                            signature: bufferToBase64url(response.signature),
-                            wrap_key: wrapKey
-                        });
-                    });
+                    return postJson('/pro/medical/vault/devices/unlock', {
+                        unlock_ticket: ticket,
+                        credential_id: credentialId,
+                        clientDataJSON: bufferToBase64url(response.clientDataJSON),
+                        authenticatorData: bufferToBase64url(response.authenticatorData),
+                        signature: bufferToBase64url(response.signature),
+                        wrap_key: wrapKey
+                    }, { csrf: false });
                 });
             });
         });
@@ -269,8 +238,7 @@ window.PractisVaultDevice = (function () {
         hasLocalWrapKey: hasLocalWrapKey,
         listDevices: listDevices,
         revokeDevice: revokeDevice,
-        idbDelete: idbDelete,
-        warmSession: warmSession
+        idbDelete: idbDelete
     };
 })();
 </script>

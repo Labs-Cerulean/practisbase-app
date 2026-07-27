@@ -100,6 +100,17 @@ Route::middleware(['auth', 'terms'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| WebAuthn finish (ticket-auth; session may be gone after mobile biometrics)
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/pro/medical/vault/devices/register', [VaultDeviceController::class, 'register'])
+    ->middleware('throttle:20,1');
+Route::post('/pro/medical/vault/devices/unlock', [VaultDeviceController::class, 'unlock'])
+    ->middleware('throttle:20,1');
+
+/*
+|--------------------------------------------------------------------------
 | App routes (auth + terms + completed onboarding)
 |--------------------------------------------------------------------------
 */
@@ -166,9 +177,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
 
         Route::get('/vault/devices', [VaultDeviceController::class, 'index']);
         Route::post('/vault/devices/unlock-options', [VaultDeviceController::class, 'unlockOptions'])->middleware('throttle:20,1');
-        Route::post('/vault/devices/unlock', [VaultDeviceController::class, 'unlock'])->middleware('throttle:20,1');
         Route::post('/vault/devices/register-options', [VaultDeviceController::class, 'registerOptions'])->middleware('vault');
-        Route::post('/vault/devices/register', [VaultDeviceController::class, 'register'])->middleware('vault');
         Route::delete('/vault/devices/{device}', [VaultDeviceController::class, 'destroy'])->middleware('vault');
 
         Route::middleware('vault')->group(function () {
