@@ -527,15 +527,9 @@ Do **not** introduce Stripe in Phase 1; keep DEV plan switching behind a clear t
 * **Certificates & declarations shared across all Pro** (decision #15).
 * **Encrypted journal attachments (decision #16):** Phase 5 — ciphertext on private R2 under vault DEK; not the same as Standard document storage. Manual SQL: `database/manual/phase5_postgresql.sql`.
 * **Signed Document Commerce (decision #17 / Phase 7):** Last phase — create/sign/stamp → one-time pay link → single download → ledger income. Rx first; Arch/Eng later.
-<<<<<<< HEAD
 * **Closed beta before Stripe (decision #18):** Grant tiers via Settings plan switch; no Checkout/vouchers until post-beta Phase 6.
 * **Arch/Eng depth (decision #19):** Expert-guided only — do not invent niche workflows.
 * **Phase 0–5 merged to `13.x`.** Closed-beta hardening: weekly medical backup export + overdue nag + beta chrome. New-vault restore wizard still follow-up.
-=======
-* **Closed beta before Stripe (decision #18):** Grant tiers via DEV/admin switch; no Checkout/vouchers until post-beta Phase 6.
-* **Arch/Eng depth (decision #19):** Expert-guided only — do not invent niche workflows.
-* **Phase 0–5 merged to `13.x`.** Next: beta hardening; Stripe is Phase 6 after beta.
->>>>>>> origin/13.x
 * **Manual SQL:** run `database/manual/phase4_postgresql.sql` (and incremental phase4_* files if needed) then `database/manual/phase5_postgresql.sql` for clinical attachments.
 * **Blob storage:** Receipts/logos/cert photos use `TenantStorage` → `TENANT_DISK=r2` in production. Medical attachments use `medical/{user}/vault_{id}/attachments/*.bin` with **extra vault encryption**.
 * **Medical vault:** Recovery code shown once; verifier only in DB; session key required each login; **weekly backup ZIP** at `/pro/medical/vault/backup` (re-prompts recovery code; sets `last_backup_at`). Pre-production / closed-beta banners until Phase 6 legal go-live.
