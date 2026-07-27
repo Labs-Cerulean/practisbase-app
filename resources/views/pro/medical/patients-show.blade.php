@@ -176,7 +176,7 @@
             <div style="display: grid; gap: 0.65rem;">
                 <div>
                     <label for="entry-search" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Search entries</label>
-                    <input id="entry-search" type="search" placeholder="Title, body, type…"
+                    <input id="entry-search" type="search" placeholder="Title, body, type, issue code…"
                            style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.65rem;">
@@ -212,6 +212,7 @@
                      data-title="{{ strtolower($entry['title']) }}"
                      data-body="{{ strtolower($entry['body']) }}"
                      data-type="{{ $entry['model']->entry_type }}"
+                     data-code="{{ strtolower($entry['issue_code'] ?? '') }}"
                      data-status="{{ $entry['is_stampable'] ? ($entry['is_issued'] ? 'issued' : 'draft') : 'journal' }}"
                      style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
                     <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
@@ -222,6 +223,9 @@
                                 ·
                                 @if($entry['is_issued'])
                                     <span style="color: #065f46;">Issued {{ $entry['issued_at']->format('d M Y H:i') }}</span>
+                                    @if(!empty($entry['issue_code']))
+                                        · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: var(--primary-navy);">{{ $entry['issue_code'] }}</span>
+                                    @endif
                                 @else
                                     <span style="color: #b45309;">Draft</span>
                                 @endif
@@ -314,7 +318,7 @@
                     var items = Array.prototype.slice.call(list.querySelectorAll('.entry-row'));
                     var visible = 0;
                     items.forEach(function (el) {
-                        var hay = [el.dataset.title, el.dataset.body, el.dataset.type].join(' ');
+                        var hay = [el.dataset.title, el.dataset.body, el.dataset.type, el.dataset.code || ''].join(' ');
                         var matchQ = !q || hay.indexOf(q) !== -1;
                         var matchType = typeMode === 'all' || el.dataset.type === typeMode;
                         var matchStatus = statusMode === 'all' || el.dataset.status === statusMode;

@@ -162,6 +162,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
 
         Route::middleware('vault')->group(function () {
             Route::get('/patients', [PatientController::class, 'index']);
+            Route::post('/issue-codes/lookup', [PatientController::class, 'lookupIssueCode']);
             Route::get('/patients/create', [PatientController::class, 'create']);
             Route::post('/patients', [PatientController::class, 'store']);
             Route::get('/patients/{patient}', [PatientController::class, 'show']);
@@ -190,11 +191,13 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
 
     Route::middleware('pro:med,arch,eng')->prefix('pro/certificates')->group(function () {
         Route::get('/', [CertificateController::class, 'index']);
+        Route::post('/lookup', [CertificateController::class, 'lookup']);
         Route::get('/create', [CertificateController::class, 'create']);
         Route::post('/', [CertificateController::class, 'store']);
         Route::get('/{certificate}/edit', [CertificateController::class, 'edit']);
         Route::put('/{certificate}', [CertificateController::class, 'update']);
         Route::post('/{certificate}/stamp', [CertificateController::class, 'stamp']);
+        Route::get('/{certificate}/pdf', [CertificateController::class, 'downloadPdf']);
         Route::get('/{certificate}/photo', [CertificateController::class, 'downloadPhoto']);
     });
 

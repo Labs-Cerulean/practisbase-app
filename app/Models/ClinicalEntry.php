@@ -18,6 +18,7 @@ class ClinicalEntry extends Model
         'payload_nonce',
         'issued_at',
         'issued_by_user_id',
+        'issue_code',
     ];
 
     protected function casts(): array

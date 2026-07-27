@@ -8,6 +8,7 @@ use App\Models\ClinicalEntry;
 use App\Models\Client;
 use App\Models\MedicalVault;
 use App\Models\Patient;
+use App\Support\IssueCode;
 use App\Support\MedicalVaultCrypto;
 use App\Support\TierPolicy;
 use Illuminate\Http\Request;
@@ -75,6 +76,30 @@ class PatientController extends Controller
             'vault' => $vault,
             'backupOverdue' => $vault ? $vault->isBackupOverdue() : false,
         ]);
+    }
+
+    /**
+     * Practitioner-side authenticity check: match an issue code to a stamped clinical document.
+     */
+    public function lookupIssueCode(Request $request)
+    {
+        $user = Auth::user();
+        $validated = $request->validate([
+            'issue_code' => 'required|string|max:32',
+        ]);
+
+        $code = IssueCode::normalize($validated['issue_code']);
+        $entry = ClinicalEntry::where('user_id', $user->id)
+            ->where('issue_code', $code)
+            ->first();
+
+        if (! $entry) {
+            return redirect('/pro/medical/patients')
+                ->withErrors(['issue_code' => 'No stamped clinical document in your vault matches ' . ($code ?: 'that code') . '. If this code was presented as a reprint, treat it as unverified.']);
+        }
+
+        return redirect('/pro/medical/patients/' . $entry->patient_id)
+            ->with('success', 'Authenticity match: ' . $entry->issue_code . ' · ' . $entry->typeLabel() . ' · issued ' . optional($entry->issued_at)->format('d M Y H:i') . '. Open the entry below to compare with the presented copy.');
     }
 
     public function create()
@@ -316,6 +341,7 @@ class PatientController extends Controller
                     'is_issued' => $entry->isIssued(),
                     'is_editable' => $entry->isEditable(),
                     'issued_at' => $entry->issued_at,
+                    'issue_code' => $entry->issue_code,
                 ];
             });
 
