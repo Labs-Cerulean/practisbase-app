@@ -328,14 +328,38 @@
             <div id="trusted-devices" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
                 <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Trusted devices</h3>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.75rem 0 1rem; line-height: 1.45;">
-                    Devices that can unlock your medical vault with Face ID / fingerprint. Revoke a lost phone or laptop here — you will need the recovery code on that browser again.
+                    Each browser or phone must be enabled separately after the vault is unlocked. On this phone: unlock from Patients, then tap Enable (banner or button below). To add another device later: open PractisBase there, unlock with your recovery code once, then Enable on that browser.
                 </p>
                 @unless($medicalVaultUnlocked ?? false)
                     <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem;">
-                        Unlock the vault from <a href="/pro/medical/patients" style="color: #92400e; font-weight: 700;">Patients</a> to enable quick unlock on this browser. You can still revoke devices below.
+                        Unlock the vault from <a href="/pro/medical/patients" style="color: #92400e; font-weight: 700;">Patients</a> to enable quick unlock on <em>this</em> browser. You can still revoke devices below.
                     </div>
                 @endunless
-                <div id="settings-trusted-devices-list" style="font-size: 0.9rem; color: var(--text-muted);">Loading…</div>
+                <div id="settings-trusted-devices-list" style="font-size: 0.9rem; color: var(--text-muted);">
+                    @php $initialDevices = $medicalVaultDevices ?? []; @endphp
+                    @if(count($initialDevices) === 0)
+                        <span style="color: var(--text-muted);">No trusted devices yet.@if($medicalVaultUnlocked ?? false) Use the button below on this browser.@endif</span>
+                    @else
+                        <div style="display: grid; gap: 0.55rem;">
+                            @foreach($initialDevices as $d)
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.65rem 0.75rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--primary-navy);">{{ $d['device_label'] ?: 'Trusted device' }}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                            Last used:
+                                            @if(!empty($d['last_used_at']))
+                                                {{ \Illuminate\Support\Carbon::parse($d['last_used_at'])->timezone(config('app.timezone'))->format('d M Y, H:i') }}
+                                            @else
+                                                never
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <button type="button" data-revoke-id="{{ $d['id'] }}" data-credential-id="{{ $d['credential_id'] }}" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">Revoke</button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
                 @if($medicalVaultUnlocked ?? false)
                     <button type="button" id="settings-trust-enable" style="display: none; margin-top: 1rem; padding: 0.55rem 1rem; background: white; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">
                         Enable quick unlock on this browser
@@ -530,4 +554,113 @@
             container.insertAdjacentHTML('beforeend', rowHtml);
         }
     </script>
+
+    @if($showMedicalVaultDevices ?? false)
+        @include('pro.medical._vault-device-js')
+        <script>
+            (function () {
+                if (!window.PractisVaultDevice) return;
+                var listEl = document.getElementById('settings-trusted-devices-list');
+                var enableBtn = document.getElementById('settings-trust-enable');
+                var statusEl = document.getElementById('settings-trust-status');
+                var vaultUnlocked = @json((bool) ($medicalVaultUnlocked ?? false));
+
+                function formatWhen(iso) {
+                    if (!iso) return 'never';
+                    try {
+                        var d = new Date(iso);
+                        return isNaN(d.getTime()) ? 'unknown' : d.toLocaleString();
+                    } catch (e) { return 'unknown'; }
+                }
+
+                function escapeHtml(s) {
+                    return String(s == null ? '' : s)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                }
+
+                function bindRevokeButtons() {
+                    if (!listEl) return;
+                    listEl.querySelectorAll('[data-revoke-id]').forEach(function (btn) {
+                        if (btn.getAttribute('data-bound') === '1') return;
+                        btn.setAttribute('data-bound', '1');
+                        btn.addEventListener('click', function () {
+                            if (!confirm('Revoke quick unlock for this device?')) return;
+                            btn.disabled = true;
+                            PractisVaultDevice.revokeDevice(btn.getAttribute('data-revoke-id'), btn.getAttribute('data-credential-id')).then(function () {
+                                return PractisVaultDevice.listDevices().then(renderDevices);
+                            }).catch(function (e) {
+                                alert(e.message || 'Could not revoke device.');
+                                btn.disabled = false;
+                            });
+                        });
+                    });
+                }
+
+                function renderDevices(devices) {
+                    if (!listEl) return;
+                    if (!devices.length) {
+                        listEl.innerHTML = '<span style="color: var(--text-muted);">No trusted devices yet.' +
+                            (vaultUnlocked ? ' Use the button below on this browser after unlocking the vault.' : '') +
+                            '</span>';
+                        return;
+                    }
+                    var html = '<div style="display: grid; gap: 0.55rem;">';
+                    devices.forEach(function (d) {
+                        html += '<div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.65rem 0.75rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">';
+                        html += '<div><div style="font-weight: 700; color: var(--primary-navy);">' + escapeHtml(d.device_label || 'Trusted device') + '</div>';
+                        html += '<div style="font-size: 0.75rem; color: var(--text-muted);">Last used: ' + escapeHtml(formatWhen(d.last_used_at)) + '</div></div>';
+                        html += '<button type="button" data-revoke-id="' + escapeHtml(d.id) + '" data-credential-id="' + escapeHtml(d.credential_id || '') + '" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">Revoke</button>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    listEl.innerHTML = html;
+                    bindRevokeButtons();
+                }
+
+                bindRevokeButtons();
+                PractisVaultDevice.listDevices().then(renderDevices).catch(function () {
+                    // Keep server-rendered list; only replace if still empty placeholder.
+                });
+
+                if (enableBtn && vaultUnlocked) {
+                    PractisVaultDevice.platformAvailable().then(function (ok) {
+                        if (!ok) return;
+                        return PractisVaultDevice.hasLocalWrapKey().then(function (hasKey) {
+                            enableBtn.style.display = hasKey ? 'none' : 'inline-block';
+                        });
+                    });
+                    enableBtn.addEventListener('click', function () {
+                        if (statusEl) statusEl.style.display = 'none';
+                        enableBtn.disabled = true;
+                        enableBtn.textContent = 'Waiting…';
+                        PractisVaultDevice.registerDevice().then(function (result) {
+                            if (statusEl) {
+                                statusEl.style.display = 'block';
+                                statusEl.style.color = '#065f46';
+                                statusEl.textContent = (result && result.message) ? result.message : 'Quick unlock enabled.';
+                            }
+                            enableBtn.style.display = 'none';
+                            return PractisVaultDevice.listDevices().then(renderDevices);
+                        }).catch(function (e) {
+                            if (statusEl) {
+                                statusEl.style.display = 'block';
+                                statusEl.style.color = '#991b1b';
+                                statusEl.textContent = e.message || 'Could not enable quick unlock.';
+                            }
+                            enableBtn.disabled = false;
+                            enableBtn.textContent = 'Enable quick unlock on this browser';
+                        });
+                    });
+                }
+
+                if (window.location.hash === '#trusted-devices') {
+                    var el = document.getElementById('trusted-devices');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            })();
+        </script>
+    @endif
 @endsection

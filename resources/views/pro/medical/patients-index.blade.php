@@ -38,10 +38,10 @@
     <div id="device-trust-banner" style="display: none; margin-bottom: 1rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: var(--radius-md); color: #1e3a8a;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 180px;">
-                <div style="font-weight: 700; margin-bottom: 0.2rem;">Enable quick unlock on this device?</div>
+                <div style="font-weight: 700; margin-bottom: 0.2rem;">Enable quick unlock on this browser?</div>
                 <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; color: var(--text-muted);">
-                    Use Face ID / fingerprint next time instead of the recovery code.
-                    Manage devices in <a href="/settings#trusted-devices" style="color: #1d4ed8; font-weight: 600;">Settings</a>.
+                    Use Face ID / fingerprint next time instead of the recovery code. Each phone or laptop needs its own Enable after unlock.
+                    Manage or revoke in <a href="/settings#trusted-devices" style="color: #1d4ed8; font-weight: 600;">Settings</a>.
                 </p>
                 <div id="device-trust-status" style="display: none; margin-top: 0.5rem; font-size: 0.85rem;"></div>
             </div>
