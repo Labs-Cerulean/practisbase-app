@@ -231,7 +231,7 @@
                 @endphp
                 <div class="entry-row"
                      data-title="{{ strtolower($entry['title']) }}"
-                     data-body="{{ strtolower($entry['body']) }}"
+                     data-body="{{ strtolower($entry['body'] . ' ' . collect($entry['medicines'] ?? [])->pluck('name')->implode(' ')) }}"
                      data-type="{{ $type }}"
                      data-code="{{ strtolower($entry['issue_code'] ?? '') }}"
                      data-status="{{ $entry['is_stampable'] ? ($entry['is_issued'] ? 'issued' : 'draft') : 'journal' }}"
@@ -275,7 +275,38 @@
                         </div>
                     </div>
 
-                    <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
+                    @if($type === 'prescription' && ! empty($entry['medicines']))
+                        <div style="margin-top: 0.75rem; display: grid; gap: 0.55rem;">
+                            @foreach($entry['medicines'] as $mi => $med)
+                                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.7rem 0.85rem;">
+                                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ $mi + 1 }}. Medicine</div>
+                                    <div style="font-weight: 700; color: var(--primary-navy); margin-top: 0.15rem;">
+                                        {{ $med['name'] }}
+                                        @if(($med['strength'] ?? '') !== '')
+                                            <span style="font-weight: 600; color: var(--text-muted);"> · {{ $med['strength'] }}</span>
+                                        @endif
+                                    </div>
+                                    @if(($med['dose'] ?? '') !== '')
+                                        <div style="font-size: 0.85rem; margin-top: 0.2rem;"><span style="color: var(--text-muted);">Dose:</span> {{ $med['dose'] }}</div>
+                                    @endif
+                                    @if(($med['quantity'] ?? '') !== '')
+                                        <div style="font-size: 0.85rem;"><span style="color: var(--text-muted);">Qty:</span> {{ $med['quantity'] }}</div>
+                                    @endif
+                                    @if(($med['instructions'] ?? '') !== '')
+                                        <div style="font-size: 0.85rem; white-space: pre-wrap;"><span style="color: var(--text-muted);">Directions:</span> {{ $med['instructions'] }}</div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                        @if(! empty($entry['has_structured_medicines']) && trim((string) $entry['body']) !== '')
+                            <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">
+                                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Notes</span><br>
+                                {{ $entry['body'] }}
+                            </div>
+                        @endif
+                    @else
+                        <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
+                    @endif
 
                     @if($entry['is_stampable'])
                         <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: #f8fafc; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-muted);">

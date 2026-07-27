@@ -3,7 +3,7 @@
 @section('page_title', 'Clinical Entry')
 
 @section('content')
-    <div style="max-width: 720px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+    <div style="max-width: 820px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
             <h2 style="margin: 0; color: var(--primary-navy);">New clinical entry</h2>
             <a href="/pro/medical/patients/{{ $patient->id }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none;">Cancel</a>
@@ -61,17 +61,19 @@
                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
 
-            <div id="prescription-hint" style="display: none; margin-bottom: 1rem; padding: 0.85rem 1rem; background: #f8fafc; border-left: 4px solid #0f172a; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
-                Use the title for the main item (e.g. drug name) and the body for dose, quantity, directions, and repeats. After Stamp &amp; issue, the PDF prints a unique issue code and date.
-            </div>
+            @include('pro.medical._prescription-medicines', [
+                'medicines' => old('medicines', [['name' => '', 'strength' => '', 'dose' => '', 'quantity' => '', 'instructions' => '']]),
+                'visible' => false,
+            ])
 
-            <div style="margin-bottom: 1rem;">
+            <div id="title-wrap" style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;" id="title-label">Title</label>
-                <input type="text" name="title" id="title" value="{{ old('title') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <input type="text" name="title" id="title" value="{{ old('title') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <div id="title-hint" style="display: none; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Optional label for this prescription (defaults to the first medicine or “Prescription (N medicines)”).</div>
             </div>
-            <div style="margin-bottom: 1rem;">
+            <div id="body-wrap" style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;" id="body-label">Body (encrypted at rest)</label>
-                <textarea name="body" id="body" rows="8" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body') }}</textarea>
+                <textarea name="body" id="body" rows="8" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body') }}</textarea>
             </div>
 
             <div id="attachment-fields" style="display: none; margin-bottom: 1.25rem;">
@@ -92,19 +94,22 @@
             var typeEl = document.getElementById('entry_type');
             var cert = document.getElementById('certificate-fields');
             var referral = document.getElementById('referral-fields');
-            var rxHint = document.getElementById('prescription-hint');
+            var rxFields = document.getElementById('prescription-fields');
             var attach = document.getElementById('attachment-fields');
             var guide = document.getElementById('type-guide');
             var dateLabel = document.getElementById('date-label');
             var titleLabel = document.getElementById('title-label');
             var bodyLabel = document.getElementById('body-label');
+            var titleInput = document.getElementById('title');
+            var bodyInput = document.getElementById('body');
+            var titleHint = document.getElementById('title-hint');
             var submitBtn = document.getElementById('submit-btn');
             var stampNote = document.getElementById('stamp-note');
             var kindEl = document.getElementById('certificate_kind');
 
             var guides = {
                 journal: 'Private clinical note. Stays editable. Not stamped and not exported as an official PDF.',
-                prescription: 'Pharmacy / patient prescription. Stamp & issue locks it and prints a unique RX code + date on the PDF.',
+                prescription: 'Add one or more medicines below. Stamp & issue locks the prescription and prints a unique RX code + date on the PDF.',
                 referral: 'Referral letter for a receiving clinician. Stamp & issue locks it and prints a unique RF code + date.',
                 certificate: 'Certificate, declaration, attestation, or fitness clearance. Stamp & issue locks it and prints a unique MC code + date.'
             };
@@ -113,11 +118,15 @@
                 var t = typeEl.value;
                 cert.style.display = t === 'certificate' ? 'block' : 'none';
                 referral.style.display = t === 'referral' ? 'block' : 'none';
-                rxHint.style.display = t === 'prescription' ? 'block' : 'none';
+                rxFields.style.display = t === 'prescription' ? 'block' : 'none';
                 attach.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription' || t === 'journal') ? 'block' : 'none';
                 stampNote.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription') ? 'block' : 'none';
                 guide.textContent = guides[t] || '';
                 kindEl.required = t === 'certificate';
+                titleInput.required = t !== 'prescription';
+                bodyInput.required = t !== 'prescription';
+                titleHint.style.display = t === 'prescription' ? 'block' : 'none';
+                bodyInput.rows = t === 'prescription' ? 3 : 8;
 
                 if (t === 'certificate') {
                     dateLabel.textContent = 'Document / issued date';
@@ -126,8 +135,8 @@
                     submitBtn.textContent = 'Save certificate draft';
                 } else if (t === 'prescription') {
                     dateLabel.textContent = 'Prescription date';
-                    titleLabel.textContent = 'Medication / item';
-                    bodyLabel.textContent = 'Dose, quantity, directions (encrypted)';
+                    titleLabel.textContent = 'Prescription label (optional)';
+                    bodyLabel.textContent = 'General notes for pharmacist / patient (optional, encrypted)';
                     submitBtn.textContent = 'Save prescription draft';
                 } else if (t === 'referral') {
                     dateLabel.textContent = 'Referral date';
