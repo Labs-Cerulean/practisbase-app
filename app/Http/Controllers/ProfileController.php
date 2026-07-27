@@ -14,28 +14,65 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $allowedTiers = \App\Support\TierPolicy::allowedTiersForProfession($user->profession);
+        $planConsequences = [];
+        foreach ($allowedTiers as $tierOption) {
+            $planConsequences[$tierOption] = \App\Support\TierPolicy::changeConsequences($user->tier, $tierOption);
+        }
 
         return view('profile.settings', [
             'user' => $user,
             'allowedTiers' => $allowedTiers,
+            'planConsequences' => $planConsequences,
+            'currentTier' => \App\Support\TierPolicy::normalize($user->tier),
         ]);
     }
 
     public function updatePlan(Request $request)
     {
         $user = Auth::user();
+        $currentTier = \App\Support\TierPolicy::normalize($user->tier);
 
         $request->validate([
             'tier' => 'required|in:free,standard,pro-med,pro-arch,pro-eng',
+            'confirm_downgrade' => 'nullable|accepted',
+            'confirm_downgrade_typed' => 'nullable|string|max:32',
         ]);
 
-        \App\Support\TierPolicy::assertTierAllowedForProfession($user, $request->tier);
+        $newTier = \App\Support\TierPolicy::normalize($request->tier);
+        \App\Support\TierPolicy::assertTierAllowedForProfession($user, $newTier);
+
+        if ($newTier === $currentTier) {
+            return back()->with('success', 'You are already on '.\App\Support\TierPolicy::label($currentTier).'.');
+        }
+
+        if (\App\Support\TierPolicy::isDowngrade($currentTier, $newTier)) {
+            $request->validate([
+                'confirm_downgrade' => 'accepted',
+                'confirm_downgrade_typed' => ['required', 'string', function ($attribute, $value, $fail) {
+                    if (strtoupper(trim((string) $value)) !== 'DOWNGRADE') {
+                        $fail('Type DOWNGRADE to confirm you understand the loss of access.');
+                    }
+                }],
+            ], [
+                'confirm_downgrade.accepted' => 'Confirm that you understand what this downgrade means before continuing.',
+            ]);
+        }
 
         $user->update([
-            'tier' => $request->tier,
+            'tier' => $newTier,
         ]);
 
-        return back()->with('success', 'Plan updated (DEV mode — Stripe not connected yet). Your entitlements now follow: ' . $request->tier . '.');
+        if (\App\Support\TierPolicy::isDowngrade($currentTier, $newTier)) {
+            return back()->with(
+                'success',
+                'Plan downgraded from '.\App\Support\TierPolicy::label($currentTier).' to '.\App\Support\TierPolicy::label($newTier).'. Restricted tools are hidden; existing data was not deleted.'
+            );
+        }
+
+        return back()->with(
+            'success',
+            'Plan updated to '.\App\Support\TierPolicy::label($newTier).' (closed beta — Stripe not connected yet).'
+        );
     }
 
     public function updateProfile(Request $request)

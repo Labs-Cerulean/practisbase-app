@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Edit Client')
+@section('page_title', 'Edit client')
 
 @section('content')
     <div style="max-width: 600px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">

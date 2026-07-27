@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Create Document')
+@section('page_title', 'New document')
 
 @section('content')
     <style>

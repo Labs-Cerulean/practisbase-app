@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('page_title', 'Account Settings')
+@section('page_title', 'Settings')
 
 @section('content')
     <div style="max-width: 650px; margin: 0 auto;">
         
-        <h1 style="font-size: 1.75rem; color: var(--primary-navy); margin-bottom: 1.5rem;">Account Settings</h1>
+        <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 1.5rem;">Settings</h1>
 
         @if(session('success'))
             <div style="background: #d1fae5; border: 1px solid #10b981; color: #047857; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-weight: 500;">
@@ -32,7 +32,7 @@
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
             <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Subscription</h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 1.25rem;">
-                Current plan drives client limits and Live Fiscal Report access. Deletes do <strong>not</strong> free Free-tier client slots.
+                Current plan drives client limits and Fiscal Report access. Deletes do <strong>not</strong> free Free-tier client slots.
             </p>
 
             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;">
@@ -46,7 +46,7 @@
 
             @unless($user->isPaid())
                 <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #92400e; font-size: 0.85rem; line-height: 1.45;">
-                    Free includes Dashboard + ledger only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard or Pro for <strong>unlimited clients</strong> and the <strong>Live Fiscal Report</strong>.
+                    Free includes Dashboard + ledger only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard or Pro for <strong>unlimited clients</strong> and the <strong>Fiscal Report</strong>.
                 </div>
             @endunless
 
@@ -54,26 +54,49 @@
                 Closed beta: change your plan below for testing. Stripe billing is deferred until after beta — no card required.
             </div>
 
-            <form action="/settings/plan" method="POST">
+            <form action="/settings/plan" method="POST" id="plan-change-form">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="confirm_downgrade" id="confirm_downgrade_field" value="">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Change plan</label>
                 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-                    <select name="tier" required style="flex: 1; min-width: 180px; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                    <select name="tier" id="plan-tier-select" required style="flex: 1; min-width: 180px; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
                         @foreach(($allowedTiers ?? ['free', 'standard']) as $tierOption)
                             <option value="{{ $tierOption }}" {{ ($user->tier ?: 'free') === $tierOption ? 'selected' : '' }}>
-                                {{ ucwords(str_replace('-', ' ', $tierOption)) }}
+                                {{ \App\Support\TierPolicy::label($tierOption) }}
                             </option>
                         @endforeach
                     </select>
-                    <button type="submit" style="padding: 0.75rem 1.25rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
-                        Update Plan
+                    <button type="submit" id="plan-submit-btn" style="padding: 0.75rem 1.25rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                        Update plan
                     </button>
                 </div>
+                <div id="plan-change-preview" style="display: none; margin-top: 0.85rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; line-height: 1.45;"></div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
                     Pro packages are limited to your registered profession. Contact support to change profession.
                 </div>
             </form>
+        </div>
+
+        <div id="downgrade-modal" class="pb-modal" hidden>
+            <div class="pb-modal-backdrop" data-close-downgrade></div>
+            <div class="pb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="downgrade-modal-title">
+                <h2 id="downgrade-modal-title" style="margin: 0 0 0.75rem; color: var(--primary-navy); font-size: 1.15rem;">Confirm downgrade</h2>
+                <p style="margin: 0 0 0.85rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
+                    Are you sure? Access changes apply immediately. Existing data is kept, but locked or hidden tools will not be available on the lower plan.
+                </p>
+                <ul id="downgrade-modal-list" style="margin: 0 0 1rem; padding-left: 1.2rem; color: #991b1b; font-size: 0.85rem; line-height: 1.45;"></ul>
+                <label style="display: flex; gap: 0.55rem; align-items: flex-start; margin-bottom: 0.85rem; font-size: 0.85rem; line-height: 1.4; cursor: pointer;">
+                    <input type="checkbox" id="downgrade-understand" style="margin-top: 0.15rem;">
+                    <span>I understand I may lose access to Pro/Standard tools and that medical vault data stays locked without re-upgrade + recovery code.</span>
+                </label>
+                <label style="display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.85rem;">Type DOWNGRADE to confirm</label>
+                <input type="text" id="downgrade-typed" name="confirm_downgrade_typed" form="plan-change-form" autocomplete="off" placeholder="DOWNGRADE" style="width: 100%; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 1rem; font-family: ui-monospace, monospace;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                    <button type="button" data-close-downgrade style="padding: 0.65rem 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button type="button" id="downgrade-confirm-btn" style="padding: 0.65rem 1rem; background: #b91c1c; color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Downgrade plan</button>
+                </div>
+            </div>
         </div>
 
         <form action="/settings/profile" method="POST">
@@ -327,6 +350,95 @@
     </div>
 
     <script>
+        (function () {
+            var currentTier = @json($currentTier ?? \App\Support\TierPolicy::normalize($user->tier));
+            var ranks = { free: 0, standard: 1, 'pro-med': 2, 'pro-arch': 2, 'pro-eng': 2 };
+            var consequences = @json($planConsequences ?? []);
+            var form = document.getElementById('plan-change-form');
+            var select = document.getElementById('plan-tier-select');
+            var preview = document.getElementById('plan-change-preview');
+            var confirmField = document.getElementById('confirm_downgrade_field');
+            var modal = document.getElementById('downgrade-modal');
+            var modalList = document.getElementById('downgrade-modal-list');
+            var understand = document.getElementById('downgrade-understand');
+            var typed = document.getElementById('downgrade-typed');
+            var confirmBtn = document.getElementById('downgrade-confirm-btn');
+            if (!form || !select || !preview) return;
+
+            function isDowngrade(to) {
+                return (ranks[to] ?? 0) < (ranks[currentTier] ?? 0);
+            }
+
+            function renderPreview() {
+                var to = select.value;
+                var notes = consequences[to] || [];
+                if (!notes.length || to === currentTier) {
+                    preview.style.display = 'none';
+                    preview.innerHTML = '';
+                    return;
+                }
+                var downgrade = isDowngrade(to);
+                preview.style.display = 'block';
+                preview.style.background = downgrade ? '#fef2f2' : '#ecfdf5';
+                preview.style.border = downgrade ? '1px solid #fecaca' : '1px solid #a7f3d0';
+                preview.style.color = downgrade ? '#991b1b' : '#065f46';
+                preview.innerHTML = '<strong style="display:block;margin-bottom:0.35rem;">' + (downgrade ? 'Downgrade warning' : 'Plan change') + '</strong><ul style="margin:0;padding-left:1.1rem;">' +
+                    notes.map(function (n) { return '<li style="margin-bottom:0.25rem;">' + n + '</li>'; }).join('') + '</ul>';
+            }
+
+            function openModal(notes) {
+                modalList.innerHTML = notes.map(function (n) { return '<li style="margin-bottom:0.35rem;">' + n + '</li>'; }).join('');
+                understand.checked = false;
+                typed.value = '';
+                confirmField.value = '';
+                modal.hidden = false;
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeModal() {
+                modal.hidden = true;
+                document.body.style.overflow = '';
+                confirmField.value = '';
+            }
+
+            select.addEventListener('change', renderPreview);
+            renderPreview();
+
+            form.addEventListener('submit', function (e) {
+                var to = select.value;
+                if (to === currentTier) return;
+                if (!isDowngrade(to)) {
+                    confirmField.value = '';
+                    typed.value = '';
+                    return;
+                }
+                if (confirmField.value === '1' && understand.checked && typed.value.trim().toUpperCase() === 'DOWNGRADE') {
+                    return;
+                }
+                e.preventDefault();
+                openModal(consequences[to] || []);
+            });
+
+            confirmBtn.addEventListener('click', function () {
+                if (!understand.checked) {
+                    alert('Tick the confirmation checkbox first.');
+                    return;
+                }
+                if (typed.value.trim().toUpperCase() !== 'DOWNGRADE') {
+                    alert('Type DOWNGRADE to confirm.');
+                    return;
+                }
+                confirmField.value = '1';
+                modal.hidden = true;
+                document.body.style.overflow = '';
+                form.submit();
+            });
+
+            modal.querySelectorAll('[data-close-downgrade]').forEach(function (el) {
+                el.addEventListener('click', closeModal);
+            });
+        })();
+
         // Handle Employment toggle logic
         function handleEmpChange() {
             const empType = document.getElementById('empType').value;

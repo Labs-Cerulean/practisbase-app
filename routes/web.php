@@ -156,6 +156,8 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
     Route::middleware('pro:med')->prefix('pro/medical')->group(function () {
         Route::get('/vault/setup', [MedicalVaultController::class, 'setupForm']);
         Route::post('/vault/setup', [MedicalVaultController::class, 'setup']);
+        Route::get('/vault/reveal', [MedicalVaultController::class, 'revealForm']);
+        Route::post('/vault/reveal/confirm', [MedicalVaultController::class, 'confirmCodeSaved'])->middleware('throttle:10,1');
         Route::get('/vault/unlock', [MedicalVaultController::class, 'unlockForm']);
         Route::post('/vault/unlock', [MedicalVaultController::class, 'unlock'])->middleware('throttle:10,1');
         Route::post('/vault/lock', [MedicalVaultController::class, 'lock']);

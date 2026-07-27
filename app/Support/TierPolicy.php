@@ -127,4 +127,73 @@ class TierPolicy
 
         return in_array($tier, $allowedTiers, true);
     }
+
+    /** Free = 0, Standard = 1, any Pro = 2. */
+    public static function tierRank(string $tier): int
+    {
+        return match (self::normalize($tier)) {
+            self::TIER_FREE => 0,
+            self::TIER_STANDARD => 1,
+            self::TIER_PRO_MED, self::TIER_PRO_ARCH, self::TIER_PRO_ENG => 2,
+            default => 0,
+        };
+    }
+
+    public static function isDowngrade(string $from, string $to): bool
+    {
+        return self::tierRank($to) < self::tierRank($from);
+    }
+
+    public static function label(string $tier): string
+    {
+        return match (self::normalize($tier)) {
+            self::TIER_FREE => 'Free',
+            self::TIER_STANDARD => 'Standard',
+            self::TIER_PRO_MED => 'Pro Medical',
+            self::TIER_PRO_ARCH => 'Pro Architect',
+            self::TIER_PRO_ENG => 'Pro Engineer',
+            default => ucwords(str_replace('-', ' ', $tier)),
+        };
+    }
+
+    /**
+     * Human-readable consequences of moving from one tier to another.
+     *
+     * @return list<string>
+     */
+    public static function changeConsequences(string $from, string $to): array
+    {
+        $from = self::normalize($from);
+        $to = self::normalize($to);
+
+        if ($from === $to) {
+            return [];
+        }
+
+        $notes = [];
+        $fromRank = self::tierRank($from);
+        $toRank = self::tierRank($to);
+
+        if ($toRank < $fromRank) {
+            $notes[] = 'This is a downgrade from '.self::label($from).' to '.self::label($to).'. Your existing data is not deleted, but access to some tools will stop immediately.';
+        }
+
+        if (str_starts_with($from, 'pro-') && ! str_starts_with($to, 'pro-')) {
+            $notes[] = 'Pro tools become inaccessible (patients, stampables, DMS, stamper, certificates). Medical vault ciphertext stays retained and locked — re-upgrade later still needs your recovery code.';
+            $notes[] = 'Vault unlock and medical backup stay unavailable until you return to Pro Medical.';
+        }
+
+        if ($fromRank >= 1 && $toRank < 1) {
+            $notes[] = 'Standard tools become inaccessible: Fiscal Report, Expenses, Accountant download, and custom branding.';
+            $notes[] = 'Free keeps Dashboard + ledger only, with a lifetime cap of '.self::FREE_CLIENT_LIFETIME_CAP.' clients. Existing clients stay visible; deletes do not free slots.';
+        } elseif ($fromRank >= 2 && $toRank === 1) {
+            $notes[] = 'You keep Standard tools (Fiscal Report, Expenses, Accountant, branding) but lose Pro package features.';
+        }
+
+        if ($toRank > $fromRank) {
+            $notes[] = 'Upgrade to '.self::label($to).' unlocks that plan’s features. Closed beta: no card charge yet.';
+        }
+
+        return array_values(array_unique($notes));
+    }
 }

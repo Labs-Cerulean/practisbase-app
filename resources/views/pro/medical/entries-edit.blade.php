@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Edit Clinical Entry')
+@section('page_title', 'Edit entry')
 
 @section('content')
     @php

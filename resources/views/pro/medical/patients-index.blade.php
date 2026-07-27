@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('page_title', 'Patient Journals')
+@section('page_title', 'Patients')
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
         <div style="min-width: 200px; flex: 1;">
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Patient directory</h1>
+            <h1 style="font-size: 1.35rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Patients</h1>
             <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Encrypted clinical store. Optionally link a billing Client so you do not retype the same person for invoices.</p>
         </div>
         <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.55rem;">
@@ -78,8 +78,8 @@
 
     <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
         Looking for a prescription, referral, or certificate?
-        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Open the stampables register</a>
-        to search and verify issue codes. Create new stampables from a patient record.
+        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Open Stampables</a>
+        to search issue codes. Create new ones from a patient record.
     </div>
 
     @if($rows->isEmpty())

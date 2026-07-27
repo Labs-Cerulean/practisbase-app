@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Document Stamper')
+@section('page_title', 'Stamper')
 
 @section('content')
     <div style="max-width: 720px; margin: 0 auto;">

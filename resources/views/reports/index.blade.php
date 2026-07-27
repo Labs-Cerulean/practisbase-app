@@ -27,7 +27,7 @@
             </h1>
             <p style="color: var(--text-muted); font-size: 0.95rem;">Review your strict fiscal tax and VAT liabilities.</p>
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
-                <a href="/exports/accountant" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Accountant Download</a>
+                <a href="/exports/accountant" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Accountant</a>
                 <a href="/expenses?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Expense Ledger</a>
                 @if($user->employment_type === 'part_time')
                     <a href="/reports/ta22.pdf?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Download TA22 summary PDF</a>

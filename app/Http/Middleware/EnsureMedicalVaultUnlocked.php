@@ -30,6 +30,10 @@ class EnsureMedicalVaultUnlocked
             return redirect('/pro/medical/vault/unlock');
         }
 
+        if (! $vault->hasConfirmedCodeSaved()) {
+            return redirect('/pro/medical/vault/reveal');
+        }
+
         return $next($request);
     }
 }

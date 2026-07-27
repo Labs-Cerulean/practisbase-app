@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('page_title', 'Accountant Download')
+@section('page_title', 'Accountant')
 
 @section('content')
     <div style="max-width: 720px; margin: 0 auto;">
-        <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.35rem;">Accountant Download</h1>
+        <h1 style="font-size: 1.35rem; color: var(--primary-navy); margin: 0 0 0.35rem;">Accountant</h1>
         <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0 0 1.5rem; line-height: 1.45;">
             Download a full ledger pack for your accountant. You send the file yourself — there is no accountant login seat.
         </p>
