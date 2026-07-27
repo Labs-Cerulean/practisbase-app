@@ -36,6 +36,16 @@ class ClinicalEntry extends Model
         'certificate' => 'Medical certificate',
     ];
 
+    /** Certificate / declaration kinds stored in encrypted payload (Medical). */
+    public const CERTIFICATE_KINDS = [
+        'certificate' => 'Certificate',
+        'declaration' => 'Declaration',
+        'attestation' => 'Attestation',
+        'medical_certificate' => 'Medical certificate',
+        'fitness' => 'Fitness / clearance',
+        'other' => 'Other',
+    ];
+
     /** Types that become immutable after Stamp & issue. */
     public const STAMPABLE_TYPES = [
         'prescription',
@@ -71,5 +81,14 @@ class ClinicalEntry extends Model
     public function typeLabel(): string
     {
         return self::TYPES[$this->entry_type] ?? $this->entry_type;
+    }
+
+    public static function certificateKindLabel(?string $kind): string
+    {
+        if ($kind === null || $kind === '') {
+            return self::CERTIFICATE_KINDS['medical_certificate'];
+        }
+
+        return self::CERTIFICATE_KINDS[$kind] ?? $kind;
     }
 }

@@ -31,10 +31,16 @@
 <body>
     @include('pro.medical.pdf._letterhead')
 
-    <div class="banner">Medical certificate · patient / third-party copy</div>
+    <div class="banner">
+        {{ \App\Models\ClinicalEntry::certificateKindLabel($entryPayload['certificate_kind'] ?? null) }}
+        · patient / third-party copy
+    </div>
 
     <div class="meta">
         Document date {{ $entry->entry_date->format('d M Y') }}
+        @if(!empty($entryPayload['expires_on']))
+            · Expires {{ \Illuminate\Support\Carbon::parse($entryPayload['expires_on'])->format('d M Y') }}
+        @endif
         · Patient ref {{ $patient->public_ref }}
         · Issue code {{ $entry->issue_code }}
     </div>
@@ -45,9 +51,16 @@
         @if(!empty($patientPayload['date_of_birth']))
             <div style="margin-top: 4px;">Date of birth: {{ \Illuminate\Support\Carbon::parse($patientPayload['date_of_birth'])->format('d M Y') }}</div>
         @endif
+        @if(!empty($entryPayload['subject_name']) && ($entryPayload['subject_name'] !== ($patientPayload['display_name'] ?? null)))
+            <div style="margin-top: 10px;">
+                <div class="label">Subject / recipient</div>
+                <div style="font-weight: bold;">{{ $entryPayload['subject_name'] }}</div>
+            </div>
+        @endif
     </div>
 
     <div class="cert-box">
+        <div class="label" style="text-align: center;">{{ \App\Models\ClinicalEntry::certificateKindLabel($entryPayload['certificate_kind'] ?? null) }}</div>
         <div class="cert-title">{{ $entryPayload['title'] ?? 'Medical Certificate' }}</div>
         <div class="body-text">{{ $entryPayload['body'] ?? '' }}</div>
     </div>

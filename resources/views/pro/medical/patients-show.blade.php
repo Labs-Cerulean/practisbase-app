@@ -11,7 +11,10 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/medical/patients/{{ $patient->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit patient</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Clinical entry</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Journal</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=prescription" style="background: #0f172a; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Prescription</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=referral" style="background: #1e3a5f; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Referral</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=certificate" style="background: #14532d; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Certificate</a>
         </div>
     </div>
 
@@ -210,31 +213,79 @@
 
         <div id="entry-list" style="display: grid; gap: 0.75rem;">
             @foreach($entries as $entry)
+                @php
+                    $type = $entry['model']->entry_type;
+                    $accent = match($type) {
+                        'prescription' => '#0f172a',
+                        'referral' => '#1e3a5f',
+                        'certificate' => '#14532d',
+                        default => 'var(--border-light)',
+                    };
+                    $badgeBg = match($type) {
+                        'prescription' => '#0f172a',
+                        'referral' => '#1e3a5f',
+                        'certificate' => '#14532d',
+                        default => '#e2e8f0',
+                    };
+                    $badgeFg = $type === 'journal' ? 'var(--primary-navy)' : '#fff';
+                @endphp
                 <div class="entry-row"
                      data-title="{{ strtolower($entry['title']) }}"
                      data-body="{{ strtolower($entry['body']) }}"
-                     data-type="{{ $entry['model']->entry_type }}"
+                     data-type="{{ $type }}"
                      data-code="{{ strtolower($entry['issue_code'] ?? '') }}"
                      data-status="{{ $entry['is_stampable'] ? ($entry['is_issued'] ? 'issued' : 'draft') : 'journal' }}"
-                     style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-                        <strong style="color: var(--primary-navy);">{{ $entry['title'] }}</strong>
-                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">
-                            {{ $entry['type_label'] }} · {{ $entry['model']->entry_date->format('d M Y') }}
-                            @if($entry['is_stampable'])
-                                ·
-                                @if($entry['is_issued'])
-                                    <span style="color: #065f46;">Issued {{ $entry['issued_at']->format('d M Y H:i') }}</span>
-                                    @if(!empty($entry['issue_code']))
-                                        · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: var(--primary-navy);">{{ $entry['issue_code'] }}</span>
+                     style="background: white; border: 1px solid var(--border-light); border-left: 4px solid {{ $accent }}; border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
+                        <div style="flex: 1; min-width: 180px;">
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.35rem;">
+                                <span style="display: inline-block; background: {{ $badgeBg }}; color: {{ $badgeFg }}; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.2rem 0.5rem; border-radius: 4px;">
+                                    {{ $entry['type_label'] }}
+                                </span>
+                                @if($entry['is_stampable'])
+                                    @if($entry['is_issued'])
+                                        <span style="font-size: 0.7rem; font-weight: 700; color: #065f46; text-transform: uppercase;">Issued</span>
+                                    @else
+                                        <span style="font-size: 0.7rem; font-weight: 700; color: #b45309; text-transform: uppercase;">Draft</span>
                                     @endif
-                                @else
-                                    <span style="color: #b45309;">Draft</span>
                                 @endif
-                            @endif
-                        </span>
+                            </div>
+                            <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['title'] }}</strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                {{ $entry['model']->entry_date->format('d M Y') }}
+                                @if($type === 'certificate' && !empty($entry['certificate_kind_label']))
+                                    · {{ $entry['certificate_kind_label'] }}
+                                @endif
+                                @if($type === 'certificate' && !empty($entry['subject_name']))
+                                    · Subject: {{ $entry['subject_name'] }}
+                                @endif
+                                @if($type === 'referral' && !empty($entry['referred_to']))
+                                    · To: {{ $entry['referred_to'] }}
+                                @endif
+                                @if(!empty($entry['expires_on']))
+                                    · Expires {{ \Illuminate\Support\Carbon::parse($entry['expires_on'])->format('d M Y') }}
+                                @endif
+                                @if($entry['is_issued'])
+                                    · Issued {{ $entry['issued_at']->format('d M Y H:i') }}
+                                    @if(!empty($entry['issue_code']))
+                                        · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: var(--primary-navy); font-weight: 700;">{{ $entry['issue_code'] }}</span>
+                                    @endif
+                                @endif
+                            </div>
+                        </div>
                     </div>
-                    <div style="margin-top: 0.5rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
+
+                    <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
+
+                    @if($entry['is_stampable'])
+                        <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: #f8fafc; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-muted);">
+                            @if($entry['is_issued'])
+                                Official {{ strtolower($entry['type_label']) }} PDF template ready — authenticity mark includes issue code and date.
+                            @else
+                                Stampable document. After Stamp &amp; issue it locks and downloads via the type-specific PDF template.
+                            @endif
+                        </div>
+                    @endif
 
                     <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                         @if($entry['is_editable'])
@@ -248,7 +299,7 @@
                             <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue" method="POST" style="margin: 0;"
                                   onsubmit="return confirm('Stamp & issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');">
                                 @csrf
-                                <button type="submit" style="padding: 0.4rem 0.75rem; background: #334155; color: white; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
+                                <button type="submit" style="padding: 0.4rem 0.75rem; background: {{ $badgeBg }}; color: white; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
                                     Stamp &amp; issue
                                 </button>
                             </form>
@@ -256,7 +307,7 @@
 
                         @if($entry['is_stampable'] && $entry['is_issued'])
                             <a href="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/pdf"
-                               style="display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid var(--primary-navy); color: var(--primary-navy); border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; text-decoration: none;">
+                               style="display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid {{ $badgeBg }}; background: {{ $badgeBg }}; color: white; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; text-decoration: none;">
                                 Download issued PDF
                             </a>
                         @endif
@@ -285,7 +336,9 @@
                               enctype="multipart/form-data"
                               style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border-light);">
                             @csrf
-                            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Add encrypted file (JPEG, PNG, WebP, PDF · max 10 MB)</label>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">
+                                {{ $entry['is_stampable'] ? 'Add encrypted photo / scan (JPEG, PNG, WebP, PDF · max 10 MB)' : 'Add encrypted file (JPEG, PNG, WebP, PDF · max 10 MB)' }}
+                            </label>
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                                 <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" required
                                        style="font-size: 0.85rem;">

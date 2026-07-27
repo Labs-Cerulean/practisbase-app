@@ -45,6 +45,12 @@
         @if(!empty($patientPayload['date_of_birth']))
             <div style="margin-top: 4px;">Date of birth: {{ \Illuminate\Support\Carbon::parse($patientPayload['date_of_birth'])->format('d M Y') }}</div>
         @endif
+        @if(!empty($entryPayload['referred_to']))
+            <div style="margin-top: 10px;">
+                <div class="label">Referred to</div>
+                <div style="font-weight: bold;">{{ $entryPayload['referred_to'] }}</div>
+            </div>
+        @endif
     </div>
 
     <div class="letter">

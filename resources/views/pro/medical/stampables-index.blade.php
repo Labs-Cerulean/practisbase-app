@@ -104,6 +104,9 @@
                                 @if($row['patient_ref'])
                                     · <span style="font-family: ui-monospace, monospace;">{{ $row['patient_ref'] }}</span>
                                 @endif
+                                @if(!empty($row['meta_line']))
+                                    · {{ $row['meta_line'] }}
+                                @endif
                                 · dated {{ $row['entry_date']->format('d M Y') }}
                                 ·
                                 @if($row['is_issued'])

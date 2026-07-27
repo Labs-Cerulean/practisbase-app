@@ -64,7 +64,17 @@ class StampableLedgerController extends Controller
                     'title' => $data['title'] ?? 'Entry',
                     'body' => $data['body'] ?? '',
                     'entry_type' => $entry->entry_type,
-                    'type_label' => $entry->typeLabel(),
+                    'type_label' => $entry->entry_type === 'certificate'
+                        ? ClinicalEntry::certificateKindLabel($data['certificate_kind'] ?? null)
+                        : $entry->typeLabel(),
+                    'meta_line' => match ($entry->entry_type) {
+                        'certificate' => trim(implode(' · ', array_filter([
+                            $data['subject_name'] ?? null,
+                            ! empty($data['expires_on']) ? 'expires ' . $data['expires_on'] : null,
+                        ]))),
+                        'referral' => $data['referred_to'] ?? '',
+                        default => '',
+                    },
                     'entry_date' => $entry->entry_date,
                     'issued_at' => $entry->issued_at,
                     'issue_code' => $entry->issue_code,
@@ -92,6 +102,7 @@ class StampableLedgerController extends Controller
                     'body' => $cert->notes ?? '',
                     'entry_type' => 'legacy_certificate',
                     'type_label' => 'Legacy · ' . (Certificate::KINDS[$cert->kind] ?? $cert->kind),
+                    'meta_line' => $cert->subject_name ?: '',
                     'entry_date' => $cert->issued_on,
                     'issued_at' => $cert->stamped_at,
                     'issue_code' => $cert->issue_code,
