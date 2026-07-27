@@ -178,7 +178,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::get('/vault/devices', [VaultDeviceController::class, 'index']);
         Route::post('/vault/devices/unlock-options', [VaultDeviceController::class, 'unlockOptions'])->middleware('throttle:20,1');
         Route::post('/vault/devices/register-options', [VaultDeviceController::class, 'registerOptions'])->middleware('vault');
-        Route::delete('/vault/devices/{device}', [VaultDeviceController::class, 'destroy'])->middleware('vault');
+        Route::delete('/vault/devices/{device}', [VaultDeviceController::class, 'destroy']);
 
         Route::middleware('vault')->group(function () {
             Route::get('/stampables', [StampableLedgerController::class, 'index']);

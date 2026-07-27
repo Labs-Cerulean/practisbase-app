@@ -24,6 +24,9 @@ class ProfileController extends Controller
             'allowedTiers' => $allowedTiers,
             'planConsequences' => $planConsequences,
             'currentTier' => \App\Support\TierPolicy::normalize($user->tier),
+            'showMedicalVaultDevices' => $user->canAccessProPackage('med'),
+            'medicalVaultUnlocked' => $user->canAccessProPackage('med')
+                && \App\Support\MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null,
         ]);
     }
 

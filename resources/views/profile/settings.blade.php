@@ -324,6 +324,27 @@
             @endif
         </div>
 
+        @if($showMedicalVaultDevices ?? false)
+            <div id="trusted-devices" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Trusted devices</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.75rem 0 1rem; line-height: 1.45;">
+                    Devices that can unlock your medical vault with Face ID / fingerprint. Revoke a lost phone or laptop here — you will need the recovery code on that browser again.
+                </p>
+                @unless($medicalVaultUnlocked ?? false)
+                    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem;">
+                        Unlock the vault from <a href="/pro/medical/patients" style="color: #92400e; font-weight: 700;">Patients</a> to enable quick unlock on this browser. You can still revoke devices below.
+                    </div>
+                @endunless
+                <div id="settings-trusted-devices-list" style="font-size: 0.9rem; color: var(--text-muted);">Loading…</div>
+                @if($medicalVaultUnlocked ?? false)
+                    <button type="button" id="settings-trust-enable" style="display: none; margin-top: 1rem; padding: 0.55rem 1rem; background: white; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">
+                        Enable quick unlock on this browser
+                    </button>
+                    <div id="settings-trust-status" style="display: none; margin-top: 0.65rem; font-size: 0.85rem;"></div>
+                @endif
+            </div>
+        @endif
+
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
             <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Security</h3>
             
