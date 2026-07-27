@@ -32,11 +32,23 @@
                 </div>
             @endif
 
-            <form action="/pro/medical/vault/backup" method="POST">
+            <form action="/pro/medical/vault/backup" method="POST" autocomplete="on">
                 @csrf
-                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Recovery code</label>
-                <input type="password" name="recovery_code" required autofocus placeholder="XXXX-XXXX-..."
-                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 1rem; font-family: ui-monospace, monospace;">
+                <input type="text"
+                       name="vault_credential_label"
+                       value="PractisBase Medical Vault"
+                       autocomplete="username"
+                       readonly
+                       tabindex="-1"
+                       aria-hidden="true"
+                       style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Medical vault recovery code</label>
+                <input type="password" name="recovery_code" required autofocus placeholder="XXXX-XXXX-XXXX-…"
+                       autocomplete="current-password"
+                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.5rem; font-family: ui-monospace, monospace;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Use the saved <strong>PractisBase Medical Vault</strong> item — not your login password.
+                </div>
                 <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
                     Verify code &amp; download ZIP
                 </button>
