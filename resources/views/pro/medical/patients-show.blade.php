@@ -37,22 +37,37 @@
             @else
                 <div style="margin-bottom: 0.65rem; font-size: 0.85rem; color: var(--text-muted);">Not linked to a billing Client yet.</div>
             @endif
-            <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                @csrf
-                @method('PUT')
-                <select name="billing_client_id" style="flex: 1; min-width: 180px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                    <option value="">No billing link</option>
-                    @foreach($clients as $client)
-                        @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
-                        <option value="{{ $client->id }}"
-                            {{ (int) $patient->billing_client_id === (int) $client->id ? 'selected' : '' }}
-                            {{ $taken ? 'disabled' : '' }}>
-                            {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
-                        </option>
-                    @endforeach
-                </select>
-                <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update link</button>
-            </form>
+
+            @if($clients->isEmpty())
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 0.85rem 1rem; color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
+                    <strong>How to create a link:</strong> first add this person under
+                    <a href="/clients/create" style="color: #1e3a8a; font-weight: 700;">Clients Directory → + Client</a>
+                    (name, email, address for invoices). Then return here, choose them in the dropdown, and press <strong>Update link</strong>.
+                </div>
+            @else
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.5rem; line-height: 1.4;">
+                    Choose a Client from the list, then press <strong>Update link</strong>. “No billing link” means clinical-only (no invoices tied).
+                </p>
+                <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                    @csrf
+                    @method('PUT')
+                    <select name="billing_client_id" style="flex: 1; min-width: 180px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                        <option value="">No billing link</option>
+                        @foreach($clients as $client)
+                            @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
+                            <option value="{{ $client->id }}"
+                                {{ (int) $patient->billing_client_id === (int) $client->id ? 'selected' : '' }}
+                                {{ $taken ? 'disabled' : '' }}>
+                                {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update link</button>
+                </form>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.45rem;">
+                    Missing someone? <a href="/clients/create" style="color: var(--primary-cerulean); font-weight: 600;">Create a new Client</a>, then refresh this page to link them.
+                </div>
+            @endif
         </div>
     </div>
 
