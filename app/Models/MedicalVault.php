@@ -33,6 +33,15 @@ class MedicalVault extends Model
             ->first();
     }
 
+    public function isBackupOverdue(int $maxDays = 7): bool
+    {
+        if (! $this->last_backup_at) {
+            return true;
+        }
+
+        return $this->last_backup_at->lt(now()->subDays($maxDays));
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

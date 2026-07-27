@@ -18,7 +18,12 @@ class PatientController extends Controller
     {
         $user = Auth::user();
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
-        $patients = Patient::where('user_id', $user->id)->orderByDesc('id')->get();
+        $vault = MedicalVault::activeForUser($user->id);
+
+        $patients = Patient::where('user_id', $user->id)
+            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->orderByDesc('id')
+            ->get();
 
         $rows = $patients->map(function (Patient $patient) use ($key) {
             $payload = [];
@@ -38,6 +43,8 @@ class PatientController extends Controller
         return view('pro.medical.patients-index', [
             'rows' => $rows,
             'user' => $user,
+            'vault' => $vault,
+            'backupOverdue' => $vault ? $vault->isBackupOverdue() : false,
         ]);
     }
 
