@@ -12,8 +12,25 @@ use Illuminate\Support\Facades\Auth;
 
 class CertificateController extends Controller
 {
+    /**
+     * Medical authors stampables under the patient; this register is Arch/Eng (+ legacy PDF).
+     */
+    private function redirectMedicalToStampables()
+    {
+        $user = Auth::user();
+        if ($user && $user->proPackage() === 'med') {
+            return redirect('/pro/medical/stampables');
+        }
+
+        return null;
+    }
+
     public function index()
     {
+        if ($redirect = $this->redirectMedicalToStampables()) {
+            return $redirect;
+        }
+
         $certs = Certificate::where('user_id', Auth::id())
             ->orderByDesc('id')
             ->get();
@@ -26,6 +43,10 @@ class CertificateController extends Controller
 
     public function create()
     {
+        if ($redirect = $this->redirectMedicalToStampables()) {
+            return $redirect;
+        }
+
         return view('pro.certificates.create', [
             'kinds' => Certificate::KINDS,
         ]);
@@ -33,6 +54,10 @@ class CertificateController extends Controller
 
     public function store(Request $request)
     {
+        if ($redirect = $this->redirectMedicalToStampables()) {
+            return $redirect;
+        }
+
         $user = Auth::user();
 
         $validated = $request->validate([
@@ -71,6 +96,10 @@ class CertificateController extends Controller
 
     public function edit(Certificate $certificate)
     {
+        if ($redirect = $this->redirectMedicalToStampables()) {
+            return $redirect;
+        }
+
         if ($certificate->user_id !== Auth::id()) {
             abort(403);
         }
@@ -88,6 +117,10 @@ class CertificateController extends Controller
 
     public function update(Request $request, Certificate $certificate)
     {
+        if ($redirect = $this->redirectMedicalToStampables()) {
+            return $redirect;
+        }
+
         if ($certificate->user_id !== Auth::id()) {
             abort(403);
         }
@@ -128,6 +161,10 @@ class CertificateController extends Controller
 
     public function stamp(Certificate $certificate)
     {
+        if ($redirect = $this->redirectMedicalToStampables()) {
+            return $redirect;
+        }
+
         if ($certificate->user_id !== Auth::id()) {
             abort(403);
         }
@@ -151,6 +188,11 @@ class CertificateController extends Controller
         }
 
         if (! $certificate->isStamped()) {
+            if (Auth::user()?->proPackage() === 'med') {
+                return redirect('/pro/medical/stampables')
+                    ->withErrors(['certificate' => 'Stamp & issue the certificate before downloading the official PDF.']);
+            }
+
             return redirect('/pro/certificates')
                 ->withErrors(['certificate' => 'Stamp & issue the certificate before downloading the official PDF.']);
         }
@@ -171,6 +213,10 @@ class CertificateController extends Controller
 
     public function lookup(Request $request)
     {
+        if ($redirect = $this->redirectMedicalToStampables()) {
+            return $redirect;
+        }
+
         $validated = $request->validate([
             'issue_code' => 'required|string|max:32',
         ]);

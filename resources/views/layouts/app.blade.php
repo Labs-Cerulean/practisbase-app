@@ -66,8 +66,8 @@
                             <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
                                 Pro Tools
                             </li>
-                            <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical*') ? 'active' : '' }}">Patient Journals</a></li>
-                            <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates &amp; Declarations</a></li>
+                            <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patient Journals</a></li>
+                            <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Certificates &amp; Declarations</a></li>
                         @elseif(auth()->user()->canAccessProPackage('arch'))
                             <li style="margin-top: 2rem; padding-left: 1rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">
                                 Pro Tools
