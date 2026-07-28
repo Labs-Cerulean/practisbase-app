@@ -208,6 +208,9 @@
         $patientName = trim((string) ($patientPayload['display_name'] ?? 'Patient'));
         $regNo = trim((string) ($user->warrant_number ?? ''));
         $warrantType = trim((string) ($user->warrant_type ?? ''));
+        $clinicPhone = trim((string) ($user->clinic_phone ?? ''));
+        $clinicAddress = trim((string) ($user->clinic_address ?? ''));
+        $stampUri = $user->clinicalStampDataUri();
     @endphp
 
     <div class="pad-header">
@@ -233,6 +236,12 @@
         @endif
         @if($user->email)
             <div class="pad-muted">{{ $user->email }}</div>
+        @endif
+        @if($clinicPhone !== '')
+            <div class="pad-muted">Tel: {{ $clinicPhone }}</div>
+        @endif
+        @if($clinicAddress !== '')
+            <div class="pad-muted" style="white-space: pre-line;">{{ $clinicAddress }}</div>
         @endif
     </div>
 
@@ -310,7 +319,13 @@
         <tr>
             <td style="width: 45%;"></td>
             <td style="width: 55%;">
-                <div class="sign-space"></div>
+                @if($stampUri)
+                    <div style="text-align: right; margin-bottom: 4px;">
+                        <img src="{{ $stampUri }}" alt="Clinical stamp" style="max-height: 95px; max-width: 240px;">
+                    </div>
+                @else
+                    <div class="sign-space"></div>
+                @endif
                 <div class="sign-rule">Signature</div>
                 <div class="prescriber-hint">
                     {{ $user->name }}

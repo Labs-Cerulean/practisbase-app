@@ -57,6 +57,26 @@ class ReportController extends Controller
             
         $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
 
+        $invoiceSubtotal = (float) Invoice::where('user_id', $user->id)
+            ->where('type', 'invoice')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('subtotal');
+        $creditSubtotal = (float) Invoice::where('user_id', $user->id)
+            ->where('type', 'credit_note')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('subtotal');
+        $netInvoicedSubtotal = max(0, $invoiceSubtotal - $creditSubtotal);
+
+        $outputVat = (float) Invoice::where('user_id', $user->id)
+            ->where('type', 'invoice')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('vat_total');
+        $creditedVat = (float) Invoice::where('user_id', $user->id)
+            ->where('type', 'credit_note')
+            ->whereYear('issue_date', $selectedYear)
+            ->sum('vat_total');
+        $netOutputVat = max(0, $outputVat - $creditedVat);
+
         $collectedRevenue = Payment::where('user_id', $user->id)
             ->whereYear('payment_date', $selectedYear)
             ->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))
@@ -64,6 +84,7 @@ class ReportController extends Controller
 
         $expenseInfo = $user->deductibleExpensesForYear($selectedYear);
         $deductibleExpenses = $expenseInfo['amount'];
+        $inputVat = (float) ($expenseInfo['input_vat'] ?? 0);
             
         $netProfit = max(0, $invoicedRevenue - $deductibleExpenses);
 
@@ -72,7 +93,15 @@ class ReportController extends Controller
         $computationType = 'income_' . $compType;
         
         $exactRateExists = TaxRate::where('type', $computationType)->where('year', $selectedYear)->exists();
-        $appliedRatesYear = $exactRateExists ? $selectedYear : TaxRate::where('type', $computationType)->orderBy('year', 'desc')->value('year');
+        $appliedRatesYear = $exactRateExists
+            ? $selectedYear
+            : TaxRate::where('type', $computationType)
+                ->where('year', '<=', $selectedYear)
+                ->orderBy('year', 'desc')
+                ->value('year');
+        if (! $appliedRatesYear) {
+            $appliedRatesYear = TaxRate::where('type', $computationType)->orderBy('year', 'desc')->value('year');
+        }
 
         $taxBrackets = $this->getRatesSafely($computationType, $selectedYear);
         $ta22Rules   = $this->getRatesSafely('ta22', $selectedYear);
@@ -88,13 +117,22 @@ class ReportController extends Controller
         $breakdowns = [
             'ta22' => [],
             'income_tax' => [],
-            'ssc' => []
+            'ssc' => [],
+            'vat' => [],
         ];
 
         // --- MATH ENGINE: VAT ---
+        // Article 10: use document VAT totals − expense input VAT. Net profit excludes VAT.
         if ($user->vat_status === 'article_10') {
-            $vatLiability = $invoicedRevenue - ($invoicedRevenue / 1.18);
-            $netProfit = max(0, ($invoicedRevenue / 1.18) - $deductibleExpenses);
+            $vatLiability = max(0, $netOutputVat - $inputVat);
+            $netProfit = max(0, $netInvoicedSubtotal - $deductibleExpenses);
+            $breakdowns['vat'] = [
+                'Output VAT (invoices − credits)' => '€' . number_format($netOutputVat, 2),
+                'Less: Input VAT (expenses)' => '-€' . number_format($inputVat, 2),
+                'Net VAT Due' => '€' . number_format($vatLiability, 2),
+                'Net of VAT revenue (subtotals)' => '€' . number_format($netInvoicedSubtotal, 2),
+                'Deductible expenses (ex-VAT)' => '€' . number_format($deductibleExpenses, 2),
+            ];
         }
 
         // --- MATH ENGINE: INCOME TAX & TA22 ---
@@ -335,17 +373,81 @@ class ReportController extends Controller
     private function getRatesSafely($type, $year)
     {
         $rate = TaxRate::where('type', $type)->where('year', $year)->first();
-        
-        if (!$rate) {
+
+        if (! $rate) {
+            $rate = TaxRate::where('type', $type)
+                ->where('year', '<=', $year)
+                ->orderBy('year', 'desc')
+                ->first();
+        }
+
+        if (! $rate) {
             $rate = TaxRate::where('type', $type)->orderBy('year', 'desc')->first();
         }
-        
-        return $rate?->rates_json ?? [];
+
+        $json = $rate?->rates_json ?? [];
+        if (! empty($json)) {
+            return $json;
+        }
+
+        // Never zero out income tax when brackets are missing from the DB.
+        return $this->builtinFallbackRates((string) $type);
+    }
+
+    /**
+     * Hardcoded Maltese fallbacks matching TaxRateSeeder — used only when tax_rates has no rows.
+     */
+    private function builtinFallbackRates(string $type): array
+    {
+        return match ($type) {
+            'income_single' => [
+                ['min' => 0, 'max' => 9100, 'rate' => 0.00, 'subtract' => 0],
+                ['min' => 9101, 'max' => 14500, 'rate' => 0.15, 'subtract' => 1365],
+                ['min' => 14501, 'max' => 19500, 'rate' => 0.25, 'subtract' => 2815],
+                ['min' => 19501, 'max' => 60000, 'rate' => 0.25, 'subtract' => 2725],
+                ['min' => 60001, 'max' => 9999999, 'rate' => 0.35, 'subtract' => 8725],
+            ],
+            'income_married' => [
+                ['min' => 0, 'max' => 12700, 'rate' => 0.00, 'subtract' => 0],
+                ['min' => 12701, 'max' => 21200, 'rate' => 0.15, 'subtract' => 1905],
+                ['min' => 21201, 'max' => 28700, 'rate' => 0.25, 'subtract' => 4025],
+                ['min' => 28701, 'max' => 60000, 'rate' => 0.25, 'subtract' => 3905],
+                ['min' => 60001, 'max' => 9999999, 'rate' => 0.35, 'subtract' => 9905],
+            ],
+            'income_parent' => [
+                ['min' => 0, 'max' => 10500, 'rate' => 0.00, 'subtract' => 0],
+                ['min' => 10501, 'max' => 15800, 'rate' => 0.15, 'subtract' => 1575],
+                ['min' => 15801, 'max' => 21200, 'rate' => 0.25, 'subtract' => 3155],
+                ['min' => 21201, 'max' => 60000, 'rate' => 0.25, 'subtract' => 3050],
+                ['min' => 60001, 'max' => 9999999, 'rate' => 0.35, 'subtract' => 9050],
+            ],
+            'ta22' => [
+                'rate' => 0.10,
+                'max_limit' => 12000,
+            ],
+            'ssc_pt' => [
+                'rate' => 0.15,
+                'max_annual_profit_cap' => 26831,
+                'max_annual_contribution' => 4024.65,
+            ],
+            'ssc_ft' => [
+                ['category' => 'SA', 'min' => 0, 'max' => 11986, 'weekly_rate' => 34.58],
+                ['category' => 'SB', 'min' => 11987, 'max' => 13045, 'weekly_rate' => 37.63],
+                ['category' => 'SC', 'min' => 13046, 'max' => 14352, 'weekly_rate' => 41.40],
+                ['category' => 'SD', 'min' => 14353, 'max' => 15652, 'weekly_rate' => 45.15],
+                ['category' => 'SE', 'min' => 15653, 'max' => 16952, 'weekly_rate' => 48.90],
+                ['category' => 'SF', 'min' => 16953, 'max' => 26831, 'weekly_rate' => 0.15],
+                ['category' => 'SP', 'min' => 26832, 'max' => 9999999, 'weekly_rate' => 77.40],
+            ],
+            default => [],
+        };
     }
 
     private function calculateProgressiveTaxWithBracket($income, $brackets)
     {
-        if (empty($brackets)) return ['tax' => 0, 'bracket' => null];
+        if (empty($brackets)) {
+            return ['tax' => 0, 'bracket' => null];
+        }
 
         foreach ($brackets as $bracket) {
             if ($income >= $bracket['min'] && $income <= ($bracket['max'] + 0.99)) {

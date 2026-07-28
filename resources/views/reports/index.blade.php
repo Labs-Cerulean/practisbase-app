@@ -56,7 +56,7 @@
             <div>
                 <h3 style="color: #991b1b; font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem;">Disclaimer: Uninvoiced Cash Detected</h3>
                 <p style="color: #b91c1c; font-size: 0.85rem; margin: 0; margin-bottom: 0.75rem;">You have <strong>{{ $uninvoicedRfpCount }} Pro-Forma RFP(s)</strong> holding <strong>€{{ number_format($uninvoicedRfpCash, 2) }}</strong> in cash. Because these are not converted into Official Tax Invoices, this cash is completely excluded from this Fiscal Report. PractisBase strongly advises converting these prior to closing your year. If you proceed, you accept full liability for any tax reporting discrepancies.</p>
-                <a href="/ledger?type=rfp&status=open" style="display: inline-block; background: #ef4444; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">Review Uninvoiced RFPs &rarr;</a>
+                <a href="/ledger?doc_type=rfp" style="display: inline-block; background: #ef4444; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">Review Uninvoiced RFPs &rarr;</a>
             </div>
         </div>
     @else
@@ -188,8 +188,8 @@
             
             @if($user->vat_status === 'article_10')
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">VAT Collected</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($vatLiability, 2) }}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">Net VAT due</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">€{{ number_format($vatLiability, 2) }}</div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Less: VAT Paid</div>
@@ -202,7 +202,7 @@
                     </div>
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
-                    Based on 18% standard rate. Adjust manually if using 5% or 7% rates.
+                    Output VAT from invoices minus expense input VAT. Click “Net VAT due” for the breakdown.
                 </div>
             @elseif($user->vat_status === 'article_11')
                 @php
@@ -395,7 +395,7 @@
                 modalContent.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 2rem 0;">No calculation data available.</div>';
             } else {
                 for (const [key, value] of Object.entries(data)) {
-                    const isTotal = key.includes('Final');
+                    const isTotal = key.includes('Final') || key.includes('Net VAT Due');
                     const isDeduction = key.includes('Less');
                     const valueColor = isDeduction ? '#dc2626' : (isTotal ? 'var(--primary-navy)' : 'var(--text-main)');
                     

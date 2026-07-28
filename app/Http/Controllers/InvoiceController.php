@@ -169,14 +169,19 @@ class InvoiceController extends Controller
 
         // 3. €35k Threshold Monitor (Only check if they are Art 11 and issuing a real Invoice)
         if ($user->vat_status === 'article_11' && $request->type === 'invoice') {
-            $ytdRevenue = Invoice::where('user_id', $user->id)
+            $year = (int) date('Y', strtotime($request->issue_date));
+            $ytdInvoiced = (float) Invoice::where('user_id', $user->id)
                 ->where('type', 'invoice')
-                ->whereYear('issue_date', date('Y', strtotime($request->issue_date)))
+                ->whereYear('issue_date', $year)
                 ->sum('total');
+            $ytdCredits = (float) Invoice::where('user_id', $user->id)
+                ->where('type', 'credit_note')
+                ->whereYear('issue_date', $year)
+                ->sum('total');
+            $ytdNet = max(0, $ytdInvoiced - $ytdCredits);
 
-            if (($ytdRevenue + $total) > 35000) {
-                // Flash a persistent warning to the session
-                session()->flash('revenue_warning', '⚠️ Legal Alert: This invoice pushed your annual revenue over €35,000. You must apply for an Article 10 VAT Registration within 30 days.');
+            if (($ytdNet + $total) > 35000) {
+                session()->flash('revenue_warning', 'Legal alert: This invoice pushed your annual billed revenue over €35,000 (Article 11). You must apply for Article 10 VAT registration within 30 days.');
             }
         }
 
@@ -521,6 +526,23 @@ class InvoiceController extends Controller
 
         if ($conversionAmount > $maxAllowable) {
             return back()->withErrors(['payment_error' => 'Conversion cannot exceed the remaining RFP value of €' . number_format($maxAllowable, 2)]);
+        }
+
+        if ($user->vat_status === 'article_11') {
+            $year = (int) date('Y');
+            $ytdInvoiced = (float) Invoice::where('user_id', $user->id)
+                ->where('type', 'invoice')
+                ->whereYear('issue_date', $year)
+                ->sum('total');
+            $ytdCredits = (float) Invoice::where('user_id', $user->id)
+                ->where('type', 'credit_note')
+                ->whereYear('issue_date', $year)
+                ->sum('total');
+            $ytdNet = max(0, $ytdInvoiced - $ytdCredits);
+
+            if (($ytdNet + $conversionAmount) > 35000) {
+                session()->flash('revenue_warning', 'Legal alert: Converting this RFP pushed your annual billed revenue over €35,000 (Article 11). You must apply for Article 10 VAT registration within 30 days.');
+            }
         }
 
         // 2. Pro-Rata VAT Math
