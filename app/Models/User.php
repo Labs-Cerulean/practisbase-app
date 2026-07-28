@@ -40,6 +40,7 @@ use Illuminate\Notifications\Notifiable;
     'primary_salary',
     'max_ssc_paid',
     'estimated_expenses',
+    'estimated_expenses_by_year',
     'clients_created_count',
     'logo_path',
     'clinic_phone',
@@ -68,6 +69,7 @@ class User extends Authenticatable
             'max_ssc_paid' => 'boolean',
             'primary_salary' => 'decimal:2',
             'estimated_expenses' => 'decimal:2',
+            'estimated_expenses_by_year' => 'array',
             'clients_created_count' => 'integer',
         ];
     }
@@ -99,7 +101,12 @@ class User extends Authenticatable
      */
     public function deductibleExpensesForYear(int $year): array
     {
-        $estimate = (float) ($this->estimated_expenses ?? 0);
+        $byYear = $this->estimated_expenses_by_year ?? [];
+        $yearKey = (string) $year;
+        $estimate = array_key_exists($yearKey, $byYear)
+            ? (float) $byYear[$yearKey]
+            : (float) ($this->estimated_expenses ?? 0);
+
         $row = Expense::where('user_id', $this->id)
             ->whereYear('expense_date', $year)
             ->selectRaw('COALESCE(SUM(amount), 0) as ex_vat, COALESCE(SUM(vat_amount), 0) as input_vat')

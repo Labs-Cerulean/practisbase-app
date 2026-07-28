@@ -114,4 +114,35 @@ class ExpenseController extends Controller
             'receipt-' . $expense->id . '.' . pathinfo($expense->receipt_path, PATHINFO_EXTENSION)
         );
     }
+
+    public function attachReceipt(Request $request, Expense $expense)
+    {
+        $user = Auth::user();
+
+        if ($expense->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $year = FiscalYearGuard::yearFromDate($expense->expense_date);
+        if ($lockError = FiscalYearGuard::ensureOpen($user->id, $year)) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
+        }
+
+        if ($expense->receipt_path) {
+            return back()->withErrors(['receipt' => 'This expense already has a receipt. Remove the expense and re-add it to replace the file.']);
+        }
+
+        $request->validate([
+            'receipt' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        $path = $request->file('receipt')->store(
+            TenantStorage::receiptsPath($user->id),
+            TenantStorage::diskName()
+        );
+
+        $expense->update(['receipt_path' => $path]);
+
+        return back()->with('success', 'Receipt attached (private tenant storage / Cloudflare R2 when configured).');
+    }
 }

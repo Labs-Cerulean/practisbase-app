@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Support\FiscalReportEngine;
 use App\Support\TenantStorage;
 
 class ProfileController extends Controller
@@ -41,6 +42,9 @@ class ProfileController extends Controller
             }
         }
 
+        $hasClosedFiscalYears = FiscalReportEngine::hasClosedYears($user->id);
+        $dobLocked = $hasClosedFiscalYears && filled($user->date_of_birth);
+
         return view('profile.settings', [
             'user' => $user,
             'allowedTiers' => $allowedTiers,
@@ -50,6 +54,8 @@ class ProfileController extends Controller
             'medicalVaultUnlocked' => $showMedicalVaultDevices
                 && \App\Support\MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null,
             'medicalVaultDevices' => $medicalVaultDevices,
+            'hasClosedFiscalYears' => $hasClosedFiscalYears,
+            'dobLocked' => $dobLocked,
         ]);
     }
 
@@ -105,6 +111,8 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $isMedical = $user->profession === 'Medical Professional';
+        $hasClosedFiscalYears = FiscalReportEngine::hasClosedYears($user->id);
+        $dobLocked = $hasClosedFiscalYears && filled($user->date_of_birth);
 
         if (!$request->has('pm_cheque') && !$request->has('pm_bank') && !$request->has('pm_bov') && !$request->has('pm_revolut')) {
             return back()->withErrors(['payment_error' => 'You must enable at least one payment method for your invoices.'])->withInput();
@@ -119,9 +127,8 @@ class ProfileController extends Controller
             'clinic_phone' => 'nullable|string|max:64',
             'clinic_address' => 'nullable|string|max:500',
             'employment_type' => 'required|in:full_time,part_time',
-            'date_of_birth' => 'required_if:employment_type,full_time|nullable|date',
-            'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
-            // Optional until Article 10 invoice / apply-VAT (gated in InvoiceController).
+            'date_of_birth' => ($dobLocked ? 'nullable' : 'required_if:employment_type,full_time').'|nullable|date|before_or_equal:today',
+            'vat_status' => 'required|in:article_10,article_11,exempt',
             'vat_number' => 'nullable|string|max:50',
             'tax_computation' => 'required|in:single,married,parent',
             'primary_salary' => 'required|numeric|min:0',
@@ -152,6 +159,27 @@ class ProfileController extends Controller
             }
         }
 
+        $vatStatus = $request->vat_status;
+        // Medical default remains exempt, but Art 10/11 is allowed for non-therapeutic billing.
+        if ($isMedical && ! in_array($vatStatus, ['article_10', 'article_11', 'exempt'], true)) {
+            $vatStatus = 'exempt';
+        }
+
+        $dateOfBirth = $user->date_of_birth;
+        if ($request->employment_type === 'full_time') {
+            if ($dobLocked) {
+                $dateOfBirth = $user->date_of_birth;
+            } else {
+                $dateOfBirth = $request->date_of_birth;
+            }
+        } else {
+            // Part-time: keep DOB if locked (SSC history); otherwise clear.
+            $dateOfBirth = $dobLocked ? $user->date_of_birth : null;
+        }
+
+        $byYear = $user->estimated_expenses_by_year ?? [];
+        $byYear[(string) date('Y')] = (float) $request->estimated_expenses;
+
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
@@ -161,9 +189,9 @@ class ProfileController extends Controller
             'clinic_phone' => filled($request->clinic_phone) ? trim($request->clinic_phone) : null,
             'clinic_address' => filled($request->clinic_address) ? trim($request->clinic_address) : null,
             'employment_type' => $request->employment_type,
-            'date_of_birth' => $request->employment_type === 'full_time' ? $request->date_of_birth : null,
-            'vat_status' => $isMedical ? 'exempt' : $request->vat_status,
-            'vat_number' => in_array($isMedical ? 'exempt' : $request->vat_status, ['article_10', 'article_11'], true)
+            'date_of_birth' => $dateOfBirth,
+            'vat_status' => $vatStatus,
+            'vat_number' => in_array($vatStatus, ['article_10', 'article_11'], true)
                 ? ($request->vat_number ?: null)
                 : null,
             'payment_methods' => $paymentMethods,
@@ -171,9 +199,18 @@ class ProfileController extends Controller
             'primary_salary' => $request->primary_salary,
             'max_ssc_paid' => $request->has('max_ssc_paid'),
             'estimated_expenses' => $request->estimated_expenses,
+            'estimated_expenses_by_year' => $byYear,
         ]);
 
-        return back()->with('success', 'Profile updated successfully.');
+        $msg = 'Profile updated successfully.';
+        if ($hasClosedFiscalYears) {
+            $msg .= ' Closed fiscal years stay frozen — this change only affects open years.';
+        }
+        if ($dobLocked) {
+            $msg .= ' Date of birth was not changed (locked after a year-end close).';
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function updateBranding(Request $request)
