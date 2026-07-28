@@ -21,7 +21,10 @@
 
     <div class="card">
         <h2 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem;">Fiscal & Compliance Setup</h2>
-        <p style="color: var(--text-muted); margin-bottom: 2rem; line-height: 1.4;">To automate your Ledger and TA22 calculations correctly, we need to understand your current tax structure in Malta.</p>
+        <p style="color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">To automate your Ledger and TA22 calculations correctly, we need your <strong>sole-trader</strong> tax structure in Malta.</p>
+        <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 0.85rem 1rem; border-radius: var(--radius-md); color: #1e3a8a; font-size: 0.85rem; line-height: 1.45; margin-bottom: 1.75rem;">
+            PractisBase models <strong>self-employed sole traders</strong> (full-time or part-time). It does <strong>not</strong> produce limited company (Ltd) accounts, corporate tax, or company VAT-group filings.
+        </div>
 
         <form action="/onboarding/financial" method="POST">
             @csrf

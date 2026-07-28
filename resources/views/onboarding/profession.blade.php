@@ -43,7 +43,7 @@
         <div class="auth-header">
             <div class="step-indicator">Step 2 of 3</div>
             <h2 style="color: var(--primary-navy); margin-bottom: 0.25rem;">What is your profession?</h2>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">This customizes your dashboard and Pro features.</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">This customizes your dashboard and Pro features for your sole-trader practice.</p>
         </div>
 
         <form action="/onboarding/profession-submit" method="POST">
