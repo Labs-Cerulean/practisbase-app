@@ -343,7 +343,7 @@ class FiscalReportEngine
 
         $end = \Illuminate\Support\Carbon::create($year, 12, 31)->startOfDay();
 
-        return $user->date_of_birth->diffInYears($end);
+        return (int) $user->date_of_birth->diffInYears($end);
     }
 
     public static function hasClosedYears(int $userId): bool
