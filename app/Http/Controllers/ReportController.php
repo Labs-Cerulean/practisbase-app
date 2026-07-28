@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\TaxRate;
 use App\Models\TaxPayment;
+use App\Support\FiscalYearTotals;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -45,37 +46,14 @@ class ReportController extends Controller
         $uninvoicedRfpCash = $uninvoicedRfps->sum('amount_paid');
 
         // --- ACCRUAL FISCAL REVENUE ENGINE ---
-        $totalInvoiced = Invoice::where('user_id', $user->id)
-            ->where('type', 'invoice')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('total');
-            
-        $totalCredited = Invoice::where('user_id', $user->id)
-            ->where('type', 'credit_note')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('total');
-            
-        $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
+        // Credits reverse the parent invoice year (not the CN print date).
+        $totals = FiscalYearTotals::forUserYear($user->id, $selectedYear);
+        $invoicedRevenueGross = $totals['net_total'];
+        $netInvoicedSubtotal = $totals['net_subtotal'];
+        $netOutputVat = $totals['net_output_vat'];
 
-        $invoiceSubtotal = (float) Invoice::where('user_id', $user->id)
-            ->where('type', 'invoice')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('subtotal');
-        $creditSubtotal = (float) Invoice::where('user_id', $user->id)
-            ->where('type', 'credit_note')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('subtotal');
-        $netInvoicedSubtotal = max(0, $invoiceSubtotal - $creditSubtotal);
-
-        $outputVat = (float) Invoice::where('user_id', $user->id)
-            ->where('type', 'invoice')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('vat_total');
-        $creditedVat = (float) Invoice::where('user_id', $user->id)
-            ->where('type', 'credit_note')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('vat_total');
-        $netOutputVat = max(0, $outputVat - $creditedVat);
+        // Display / Art 11 threshold: VAT-inclusive net. Art 10 profit uses subtotals.
+        $invoicedRevenue = $invoicedRevenueGross;
 
         $collectedRevenue = Payment::where('user_id', $user->id)
             ->whereYear('payment_date', $selectedYear)
@@ -85,8 +63,10 @@ class ReportController extends Controller
         $expenseInfo = $user->deductibleExpensesForYear($selectedYear);
         $deductibleExpenses = $expenseInfo['amount'];
         $inputVat = (float) ($expenseInfo['input_vat'] ?? 0);
-            
-        $netProfit = max(0, $invoicedRevenue - $deductibleExpenses);
+
+        $isArticle10 = $user->vat_status === 'article_10';
+        $fiscalRevenue = $isArticle10 ? $netInvoicedSubtotal : $invoicedRevenue;
+        $netProfit = max(0, $fiscalRevenue - $deductibleExpenses);
 
         // --- FETCH GOVERNMENT BRACKETS ---
         $compType = $user->tax_computation ?: 'single'; 
@@ -101,6 +81,9 @@ class ReportController extends Controller
                 ->value('year');
         if (! $appliedRatesYear) {
             $appliedRatesYear = TaxRate::where('type', $computationType)->orderBy('year', 'desc')->value('year');
+        }
+        if (! $appliedRatesYear) {
+            $appliedRatesYear = $selectedYear;
         }
 
         $taxBrackets = $this->getRatesSafely($computationType, $selectedYear);
@@ -122,14 +105,13 @@ class ReportController extends Controller
         ];
 
         // --- MATH ENGINE: VAT ---
-        // Article 10: use document VAT totals − expense input VAT. Net profit excludes VAT.
-        if ($user->vat_status === 'article_10') {
-            $vatLiability = max(0, $netOutputVat - $inputVat);
-            $netProfit = max(0, $netInvoicedSubtotal - $deductibleExpenses);
+        // Article 10: document VAT − expense input VAT. Negative = reclaim due.
+        if ($isArticle10) {
+            $vatLiability = $netOutputVat - $inputVat;
             $breakdowns['vat'] = [
-                'Output VAT (invoices − credits)' => '€' . number_format($netOutputVat, 2),
+                'Output VAT (invoices − credits on those invoices)' => '€' . number_format($netOutputVat, 2),
                 'Less: Input VAT (expenses)' => '-€' . number_format($inputVat, 2),
-                'Net VAT Due' => '€' . number_format($vatLiability, 2),
+                'Net VAT Due' => '€' . number_format($vatLiability, 2) . ($vatLiability < 0 ? ' (reclaim)' : ''),
                 'Net of VAT revenue (subtotals)' => '€' . number_format($netInvoicedSubtotal, 2),
                 'Deductible expenses (ex-VAT)' => '€' . number_format($deductibleExpenses, 2),
             ];
@@ -192,15 +174,21 @@ class ReportController extends Controller
 
         // --- MATH ENGINE: SOCIAL SECURITY (SSC) ---
         if ($user->employment_type === 'part_time') {
-            if (!$user->max_ssc_paid) {
+            if (! $user->max_ssc_paid) {
                 $ptRate = $sscPtRules['rate'] ?? 0.15;
                 $maxCap = $sscPtRules['max_annual_contribution'] ?? 4024.65;
-                $sscLiability = min($netProfit * $ptRate, $maxCap);
+                $profitCap = $sscPtRules['max_annual_profit_cap'] ?? null;
+                $sscBase = $netProfit;
+                if (is_numeric($profitCap) && (float) $profitCap > 0) {
+                    $sscBase = min($netProfit, (float) $profitCap);
+                }
+                $sscLiability = min($sscBase * $ptRate, $maxCap);
                 
                 $breakdowns['ssc'] = [
                     'Business Net Profit' => '€' . number_format($netProfit, 2),
+                    'SSC Base (after profit cap)' => '€' . number_format($sscBase, 2),
                     'Pro-Rata SSC Rate' => ($ptRate * 100) . '%',
-                    'Calculated SSC' => '€' . number_format($netProfit * $ptRate, 2),
+                    'Calculated SSC' => '€' . number_format($sscBase * $ptRate, 2),
                     'Maximum Annual Cap' => '€' . number_format($maxCap, 2),
                     'Final SSC Due' => '€' . number_format($sscLiability, 2) . ($sscLiability == $maxCap ? ' (Capped)' : ''),
                 ];
@@ -208,7 +196,7 @@ class ReportController extends Controller
                 $breakdowns['ssc'] = ['Status' => 'Exempt. You have certified that your maximum legal SSC is already paid through your primary employment.'];
             }
         } else {
-            if (!empty($sscFtRules)) {
+            if (! empty($sscFtRules)) {
                 $matchedBracket = null;
                 foreach ($sscFtRules as $bracket) {
                     if ($netProfit >= $bracket['min'] && $netProfit <= ($bracket['max'] + 0.99)) {
@@ -216,8 +204,11 @@ class ReportController extends Controller
                         break;
                     }
                 }
-                if (!$matchedBracket) $matchedBracket = end($sscFtRules);
+                if (! $matchedBracket) {
+                    $matchedBracket = end($sscFtRules);
+                }
 
+                // weekly_rate < 1 encodes a percentage-of-profit band (e.g. SF at 15%).
                 if (isset($matchedBracket['weekly_rate']) && $matchedBracket['weekly_rate'] < 1) {
                     $sscLiability = $netProfit * $matchedBracket['weekly_rate'];
                     $calcStr = '€' . number_format($netProfit, 2) . ' × ' . ($matchedBracket['weekly_rate'] * 100) . '%';
@@ -228,11 +219,18 @@ class ReportController extends Controller
                     $rateStr = '€' . number_format($matchedBracket['weekly_rate'] ?? 0, 2) . ' / week';
                 }
 
+                $ageNote = 'Standard Class 2 self-employed table (age-specific SSC rate tables not applied yet).';
+                if ($user->date_of_birth) {
+                    $age = $user->date_of_birth->age;
+                    $ageNote = "DOB on file (age {$age}). Age-banded SSC tables are not applied yet — using standard Class 2 rates.";
+                }
+
                 $breakdowns['ssc'] = [
                     'Business Net Profit' => '€' . number_format($netProfit, 2),
                     'Bracket Applied' => '€' . number_format($matchedBracket['min'] ?? 0) . ' - ' . (($matchedBracket['max'] ?? 9999999) >= 999999 ? 'No Limit' : '€' . number_format($matchedBracket['max'] ?? 0)),
                     'Weekly Rate' => $rateStr,
                     'Calculation' => $calcStr,
+                    'Note' => $ageNote,
                     'Final SSC Due' => '€' . number_format($sscLiability, 2),
                 ];
             }
@@ -255,10 +253,10 @@ class ReportController extends Controller
 
         return view('reports.index', compact(
             'user', 'selectedYear', 'currentYear', 'earliestYear', 'isYearClosed', 'uninvoicedRfpCount', 'uninvoicedRfpCash',
-            'collectedRevenue', 'invoicedRevenue', 'netProfit', 'ta22Liability', 
+            'collectedRevenue', 'invoicedRevenue', 'fiscalRevenue', 'isArticle10', 'netProfit', 'ta22Liability', 
             'incomeTaxLiability', 'sscLiability', 'vatLiability', 'appliedRatesYear', 'breakdowns',
             'taxPayments', 'ptTaxPaid', 'ptSscPaid', 'vatPaid', 'totalTaxLiability', 'taxBalance', 'sscBalance', 'vatBalance',
-            'deductibleExpenses', 'expenseInfo'
+            'deductibleExpenses', 'expenseInfo', 'totals'
         ));
     }
 
@@ -276,26 +274,11 @@ class ReportController extends Controller
         $expenseInfo = $user->deductibleExpensesForYear($selectedYear);
         $deductibleExpenses = $expenseInfo['amount'];
 
-        $totalInvoiced = Invoice::where('user_id', $user->id)
-            ->where('type', 'invoice')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('total');
-        $totalCredited = Invoice::where('user_id', $user->id)
-            ->where('type', 'credit_note')
-            ->whereYear('issue_date', $selectedYear)
-            ->sum('total');
-        $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
+        $totals = FiscalYearTotals::forUserYear($user->id, $selectedYear);
+        $invoicedRevenue = $totals['net_total'];
 
         if ($user->vat_status === 'article_10') {
-            $invoiceSubtotal = (float) Invoice::where('user_id', $user->id)
-                ->where('type', 'invoice')
-                ->whereYear('issue_date', $selectedYear)
-                ->sum('subtotal');
-            $creditSubtotal = (float) Invoice::where('user_id', $user->id)
-                ->where('type', 'credit_note')
-                ->whereYear('issue_date', $selectedYear)
-                ->sum('subtotal');
-            $netProfit = max(0, max(0, $invoiceSubtotal - $creditSubtotal) - $deductibleExpenses);
+            $netProfit = max(0, $totals['net_subtotal'] - $deductibleExpenses);
         } else {
             $netProfit = max(0, $invoicedRevenue - $deductibleExpenses);
         }

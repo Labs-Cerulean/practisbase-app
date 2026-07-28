@@ -85,12 +85,22 @@
             <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Income Overview (Accrual)</div>
             
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Official Invoiced</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($invoicedRevenue, 2) }}</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">
+                    {{ ($isArticle10 ?? false) ? 'Official invoiced (ex-VAT)' : 'Official Invoiced' }}
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($fiscalRevenue ?? $invoicedRevenue, 2) }}</div>
             </div>
+            @if(($isArticle10 ?? false) && abs(($invoicedRevenue ?? 0) - ($fiscalRevenue ?? 0)) > 0.009)
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin: -0.5rem 0 0.75rem; text-align: right;">
+                    Gross incl. VAT: €{{ number_format($invoicedRevenue, 2) }}
+                </div>
+            @endif
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
                     {{ $expenseInfo['source'] === 'ledger' ? 'Expense ledger' : 'Estimated expenses' }}
+                    @if(($expenseInfo['ex_vat'] ?? false) && $expenseInfo['source'] === 'ledger')
+                        <span style="color: #64748b;">(ex-VAT)</span>
+                    @endif
                 </div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: #ef4444;">-€{{ number_format($deductibleExpenses, 2) }}</div>
             </div>
@@ -102,6 +112,11 @@
                 <strong>Actual Cash Collected:</strong> €{{ number_format($collectedRevenue, 2) }}
                 @if($expenseInfo['source'] === 'estimate' && auth()->user()->canAccessStandardTools())
                     <div style="margin-top: 0.35rem;">Using Settings estimate — <a href="/expenses?year={{ $selectedYear }}" style="color: var(--primary-cerulean); font-weight: 600;">log expenses</a> to replace it.</div>
+                @endif
+                @if($expenseInfo['source'] === 'ledger' && ($expenseInfo['estimate'] ?? 0) > ($expenseInfo['ledger_total'] ?? 0) + 0.01)
+                    <div style="margin-top: 0.35rem; color: #92400e;">
+                        Ledger replaced your Settings estimate (€{{ number_format($expenseInfo['estimate'], 2) }}). Log all expenses for this year or profit will look too high.
+                    </div>
                 @endif
             </div>
         </div>
@@ -189,7 +204,9 @@
             @if($user->vat_status === 'article_10')
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">Net VAT due</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">€{{ number_format($vatLiability, 2) }}</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $vatLiability < 0 ? '#059669' : 'var(--primary-navy)' }}; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">
+                        {{ $vatLiability < 0 ? 'Reclaim: ' : '' }}€{{ number_format(abs($vatLiability), 2) }}
+                    </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Less: VAT Paid</div>
