@@ -26,7 +26,10 @@ class AuthController extends Controller
                     ->uncompromised() // Checks HaveIBeenPwned API to ensure it wasn't in a data leak
             ],
             'accept_terms' => 'accepted',
+            'confirm_sole_trader' => 'accepted',
             'read_duration_seconds' => 'required|integer'
+        ], [
+            'confirm_sole_trader.accepted' => 'You must confirm you are registering as a self-employed sole trader, not a limited company.',
         ]);
 
         // 2. Generate a unique referral code

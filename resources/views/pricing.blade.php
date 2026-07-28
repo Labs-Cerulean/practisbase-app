@@ -109,7 +109,7 @@
     <main class="pricing-container">
         <div class="pricing-header">
             <h1>Simple, Professional Pricing</h1>
-            <p>Built exclusively for Maltese professionals. Upgrade as your practice grows.</p>
+            <p>Built exclusively for Maltese <strong>self-employed sole traders</strong> and professional practices — not Ltd companies. Upgrade as your practice grows.</p>
             <p style="margin-top: 0.75rem; font-size: 0.95rem; color: #1e3a8a; background: #eff6ff; display: inline-block; padding: 0.5rem 0.9rem; border-radius: 8px; border: 1px solid #bfdbfe;">
                 Closed beta — card billing is not live yet. Invited testers get plan access without Stripe.
             </p>

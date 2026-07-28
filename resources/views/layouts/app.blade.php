@@ -119,7 +119,7 @@
             </div>
 
             <footer class="app-footer">
-                <div>&copy; {{ date('Y') }} PractisBase. All rights reserved.</div>
+                <div>&copy; {{ date('Y') }} PractisBase. All rights reserved. For Maltese sole traders only — not for Ltd companies.</div>
                 <div class="app-footer-links">
                     <a href="#">Privacy Policy</a>
                     <a href="#">Master Service Agreement</a>
