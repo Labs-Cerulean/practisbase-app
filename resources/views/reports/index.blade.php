@@ -38,7 +38,7 @@
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
                 <a href="/exports/accountant" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Accountant</a>
                 <a href="/expenses?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Expense Ledger</a>
-                @if($user->employment_type === 'part_time')
+                @if(($hasPartTime ?? false) || ($profile['employment_display'] ?? $user->employment_type) === 'part_time' || ($ta22Liability ?? 0) > 0)
                     <a href="/reports/ta22.pdf?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Download TA22 summary PDF</a>
                 @endif
             </div>
@@ -78,13 +78,28 @@
         </div>
     @endif
 
-    @if($appliedRatesYear && $appliedRatesYear != $selectedYear)
+            @if($appliedRatesYear && $appliedRatesYear != $selectedYear)
         <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
             <div style="font-size: 1.5rem;">📊</div>
             <div>
                 <h3 style="color: #854d0e; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem;">Estimated Tax Rates Applied</h3>
                 <p style="color: #a16207; font-size: 0.85rem; margin: 0;">The official government tax and SSC brackets for <strong>{{ $selectedYear }}</strong> have not been published/loaded into the system yet. Your liabilities are currently being estimated using the <strong>{{ $appliedRatesYear }}</strong> rates.</p>
             </div>
+        </div>
+    @endif
+
+    @if(($mixedVat ?? false) || ($mixedEmployment ?? false) || !empty($breakdowns['regimes'] ?? []))
+        <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem;">
+            <h3 style="color: var(--primary-navy); font-size: 0.95rem; font-weight: 700; margin: 0 0 0.35rem;">Tax setup used this year</h3>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 0.65rem;">Open-year figures follow your dated tax setup (Settings → Apply from). Click any liability for the full receipt.</p>
+            @if(!empty($breakdowns['regimes']))
+                <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+                    @foreach($breakdowns['regimes'] as $label => $value)
+                        <li><strong style="color: var(--primary-navy);">{{ $label }}:</strong> {{ $value }}</li>
+                    @endforeach
+                </ul>
+            @endif
+            <button type="button" onclick="showBreakdown('regimes', 'Tax setup periods')" style="margin-top: 0.65rem; background: none; border: none; padding: 0; font: inherit; color: var(--primary-navy); font-weight: 600; font-size: 0.8rem; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">View period breakdown</button>
         </div>
     @endif
 
@@ -136,7 +151,7 @@
                 <span style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">USING {{ $appliedRatesYear }} RATES</span>
             </div>
             
-            @if($user->employment_type === 'part_time')
+            @if(($hasPartTime ?? false) || ($ta22Liability ?? 0) > 0)
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
                         TA22 (Part-Time)
@@ -148,10 +163,10 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
-                        Income Tax (Spillover)
-                        <button onclick="showBreakdown('income_tax', 'Spillover Income Tax')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
+                        {{ ($mixedEmployment ?? false) ? 'Income Tax' : 'Income Tax (Spillover)' }}
+                        <button onclick="showBreakdown('income_tax', 'Income Tax')" style="background: none; border: none; cursor: pointer; color: var(--primary-cerulean); padding: 0; font-size: 0.85rem;" title="View Calculation Breakdown">ℹ️</button>
                     </div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('income_tax', 'Spillover Income Tax')" title="View Breakdown">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('income_tax', 'Income Tax')" title="View Breakdown">
                         €{{ number_format($incomeTaxLiability, 2) }}
                     </div>
                 </div>
@@ -210,7 +225,7 @@
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
             <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">VAT Tracking</div>
             
-            @if($user->vat_status === 'article_10')
+            @if($hasArticle10 ?? ($isArticle10 ?? false))
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                     <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">Net VAT due</div>
                     <div style="font-size: 1.1rem; font-weight: 700; color: {{ $vatLiability < 0 ? '#059669' : 'var(--primary-navy)' }}; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">
@@ -229,8 +244,11 @@
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
                     Output VAT from invoices minus expense input VAT. Click “Net VAT due” for the breakdown.
+                    @if($mixedVat ?? false)
+                        <div style="margin-top: 0.35rem; color: #92400e;">VAT status changed mid-year — only Article 10 dated documents are included.</div>
+                    @endif
                 </div>
-            @elseif($user->vat_status === 'article_11')
+            @elseif(($hasArticle11 ?? false) || ($profile['vat_status'] ?? $user->vat_status) === 'article_11')
                 @php
                     $threshold = 35000;
                     $percent = min(100, ($invoicedRevenue / $threshold) * 100);
