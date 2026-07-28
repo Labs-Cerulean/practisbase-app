@@ -171,15 +171,7 @@ class InvoiceController extends Controller
         // 3. €35k Threshold Monitor (Only check if they are Art 11 and issuing a real Invoice)
         if ($user->vat_status === 'article_11' && $request->type === 'invoice') {
             $year = (int) date('Y', strtotime($request->issue_date));
-            $ytdInvoiced = (float) Invoice::where('user_id', $user->id)
-                ->where('type', 'invoice')
-                ->whereYear('issue_date', $year)
-                ->sum('total');
-            $ytdCredits = (float) Invoice::where('user_id', $user->id)
-                ->where('type', 'credit_note')
-                ->whereYear('issue_date', $year)
-                ->sum('total');
-            $ytdNet = max(0, $ytdInvoiced - $ytdCredits);
+            $ytdNet = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
 
             if (($ytdNet + $total) > 35000) {
                 session()->flash('revenue_warning', 'Legal alert: This invoice pushed your annual billed revenue over €35,000 (Article 11). You must apply for Article 10 VAT registration within 30 days.');
@@ -530,16 +522,8 @@ class InvoiceController extends Controller
         }
 
         if ($user->vat_status === 'article_11') {
-            $year = (int) date('Y');
-            $ytdInvoiced = (float) Invoice::where('user_id', $user->id)
-                ->where('type', 'invoice')
-                ->whereYear('issue_date', $year)
-                ->sum('total');
-            $ytdCredits = (float) Invoice::where('user_id', $user->id)
-                ->where('type', 'credit_note')
-                ->whereYear('issue_date', $year)
-                ->sum('total');
-            $ytdNet = max(0, $ytdInvoiced - $ytdCredits);
+            $year = (int) date('Y', strtotime((string) $document->issue_date));
+            $ytdNet = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
 
             if (($ytdNet + $conversionAmount) > 35000) {
                 session()->flash('revenue_warning', 'Legal alert: Converting this RFP pushed your annual billed revenue over €35,000 (Article 11). You must apply for Article 10 VAT registration within 30 days.');
