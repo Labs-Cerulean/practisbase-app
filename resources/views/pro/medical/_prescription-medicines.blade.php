@@ -5,8 +5,28 @@
         $medicines = old('medicines');
     }
 @endphp
+@php
+    $dispenseMode = old('dispense_mode', $dispenseMode ?? 'single');
+    if (! in_array($dispenseMode, ['single', 'repeat'], true)) {
+        $dispenseMode = 'single';
+    }
+@endphp
 <div id="prescription-fields" style="{{ ($visible ?? false) ? '' : 'display:none;' }} margin-bottom: 1rem;">
     <div style="padding: 1rem; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #0f172a; border-radius: var(--radius-md);">
+        <div style="margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0;">
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #0f172a; margin-bottom: 0.45rem;">Dispense</div>
+            <div style="display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.9rem;">
+                <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: 600; color: var(--primary-navy);">
+                    <input type="radio" name="dispense_mode" value="single" {{ $dispenseMode === 'single' ? 'checked' : '' }}>
+                    Single
+                </label>
+                <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: 600; color: var(--primary-navy);">
+                    <input type="radio" name="dispense_mode" value="repeat" {{ $dispenseMode === 'repeat' ? 'checked' : '' }}>
+                    Repeat
+                </label>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">Printed on the pad footer like a paper prescription.</div>
+        </div>
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
             <div>
                 <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #0f172a;">Medicines</div>

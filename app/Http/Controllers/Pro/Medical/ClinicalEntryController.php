@@ -213,6 +213,7 @@ class ClinicalEntryController extends Controller
             $rules['medicines.*.dose'] = 'nullable|string|max:255';
             $rules['medicines.*.quantity'] = 'nullable|string|max:120';
             $rules['medicines.*.instructions'] = 'nullable|string|max:2000';
+            $rules['dispense_mode'] = 'required|in:single,repeat';
             $rules['body'] = 'nullable|string|max:20000';
             $rules['title'] = 'nullable|string|max:255';
         }
@@ -275,6 +276,7 @@ class ClinicalEntryController extends Controller
 
         if ($validated['entry_type'] === 'prescription') {
             $payload['medicines'] = $validated['medicines'];
+            $payload['dispense_mode'] = $validated['dispense_mode'] ?? 'single';
         }
 
         return $payload;

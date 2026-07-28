@@ -85,6 +85,7 @@
             @if($isRx)
                 @include('pro.medical._prescription-medicines', [
                     'medicines' => old('medicines', $medicines),
+                    'dispenseMode' => $payload['dispense_mode'] ?? 'single',
                     'visible' => true,
                 ])
             @endif
