@@ -287,7 +287,15 @@ class ReportController extends Controller
         $invoicedRevenue = max(0, $totalInvoiced - $totalCredited);
 
         if ($user->vat_status === 'article_10') {
-            $netProfit = max(0, ($invoicedRevenue / 1.18) - $deductibleExpenses);
+            $invoiceSubtotal = (float) Invoice::where('user_id', $user->id)
+                ->where('type', 'invoice')
+                ->whereYear('issue_date', $selectedYear)
+                ->sum('subtotal');
+            $creditSubtotal = (float) Invoice::where('user_id', $user->id)
+                ->where('type', 'credit_note')
+                ->whereYear('issue_date', $selectedYear)
+                ->sum('subtotal');
+            $netProfit = max(0, max(0, $invoiceSubtotal - $creditSubtotal) - $deductibleExpenses);
         } else {
             $netProfit = max(0, $invoicedRevenue - $deductibleExpenses);
         }
