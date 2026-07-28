@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
 use App\Support\DocumentNumber;
+use App\Support\FiscalYearTotals;
 use App\Support\FiscalYearGuard;
 
 class InvoiceController extends Controller
