@@ -155,6 +155,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::get('/expenses', [ExpenseController::class, 'index']);
         Route::get('/expenses/create', [ExpenseController::class, 'create']);
         Route::post('/expenses', [ExpenseController::class, 'store']);
+        Route::put('/expenses/business-use', [ExpenseController::class, 'updateBusinessUse']);
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
         Route::get('/expenses/{expense}/receipt', [ExpenseController::class, 'downloadReceipt']);
         Route::post('/expenses/{expense}/receipt', [ExpenseController::class, 'attachReceipt']);

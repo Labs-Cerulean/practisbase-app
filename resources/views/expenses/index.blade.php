@@ -15,9 +15,18 @@
             </p>
         </div>
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+            <button type="button" data-open-car-helper style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: var(--shadow-sm);">Car / fuel %</button>
+            <button type="button" data-open-wfh-helper style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: var(--shadow-sm);">Home office %</button>
             <button type="button" data-open-expense-guide style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: var(--shadow-sm);">Claim guide</button>
             <a href="/expenses/create" style="background: var(--primary-cerulean); color: white; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">+ Log Expense</a>
         </div>
+    </div>
+
+    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.45;">
+        Saved defaults:
+        car/fuel <strong style="color: var(--primary-navy);">{{ $user->car_business_use_percent !== null ? number_format((float) $user->car_business_use_percent, 0).'%' : 'not set' }}</strong>
+        · home office <strong style="color: var(--primary-navy);">{{ $user->home_office_percent !== null ? number_format((float) $user->home_office_percent, 0).'%' : 'not set' }}</strong>
+        — use the helpers anytime things change.
     </div>
 
     <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; justify-content: space-between;">
@@ -75,7 +84,14 @@
                     @foreach($expenses as $expense)
                         <tr>
                             <td style="padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9;">{{ $expense->expense_date->format('d M Y') }}</td>
-                            <td style="padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9;">{{ $categories[$expense->category] ?? $expense->category }}</td>
+                            <td style="padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9;">
+                                {{ $categories[$expense->category] ?? $expense->category }}
+                                @if($expense->business_use_percent !== null)
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ number_format((float) $expense->business_use_percent, 0) }}% practice / home share</div>
+                                @elseif(in_array($expense->category, ['laptop', 'equipment', 'car'], true))
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Capital — wear &amp; tear</div>
+                                @endif
+                            </td>
                             <td style="padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9;">{{ $expense->description }}</td>
                             <td style="padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 600;">
                                 €{{ number_format($expense->totalWithVat(), 2) }}
@@ -108,5 +124,43 @@
         </div>
     @endif
 
+    @if(!empty($assets) && count($assets) > 0)
+        <div style="margin-top: 1.5rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 1.25rem;">
+            <h3 style="margin: 0 0 0.35rem; color: var(--primary-navy); font-size: 1rem;">Capital assets — wear &amp; tear {{ $year }}</h3>
+            <p style="margin: 0 0 1rem; font-size: 0.8rem; color: var(--text-muted);">Full purchase cost is not deducted in year one. These allowances feed your Live Fiscal Report.</p>
+            <div style="overflow: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="text-align: left; background: #f8fafc;">
+                            <th style="padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-light);">Asset</th>
+                            <th style="padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-light);">Bought</th>
+                            <th style="padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-light); text-align: right;">Cost basis</th>
+                            <th style="padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-light); text-align: right;">Rate</th>
+                            <th style="padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-light); text-align: right;">{{ $year }} allowance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($assets as $asset)
+                            <tr>
+                                <td style="padding: 0.65rem 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                                    {{ $asset['description'] }}
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ $asset['asset_class'] }}@if($asset['business_use_percent'] < 99.9) · {{ number_format($asset['business_use_percent'], 0) }}% practice use @endif</div>
+                                </td>
+                                <td style="padding: 0.65rem 0.75rem; border-bottom: 1px solid #f1f5f9;">{{ \Illuminate\Support\Carbon::parse($asset['purchase_date'])->format('d M Y') }}</td>
+                                <td style="padding: 0.65rem 0.75rem; border-bottom: 1px solid #f1f5f9; text-align: right;">€{{ number_format($asset['cost_basis'], 2) }}</td>
+                                <td style="padding: 0.65rem 0.75rem; border-bottom: 1px solid #f1f5f9; text-align: right;">{{ number_format($asset['annual_rate'] * 100, 0) }}%</td>
+                                <td style="padding: 0.65rem 0.75rem; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: var(--primary-navy);">€{{ number_format($asset['allowance_this_year'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     @include('expenses.partials.claim-guide-modal')
+    @include('expenses.partials.business-use-helpers', [
+        'user' => $user,
+        'redirectTo' => '/expenses?year='.$year,
+    ])
 @endsection

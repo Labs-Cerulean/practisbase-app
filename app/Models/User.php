@@ -41,6 +41,8 @@ use Illuminate\Notifications\Notifiable;
     'max_ssc_paid',
     'estimated_expenses',
     'estimated_expenses_by_year',
+    'car_business_use_percent',
+    'home_office_percent',
     'clients_created_count',
     'logo_path',
     'clinic_phone',
@@ -70,6 +72,8 @@ class User extends Authenticatable
             'primary_salary' => 'decimal:2',
             'estimated_expenses' => 'decimal:2',
             'estimated_expenses_by_year' => 'array',
+            'car_business_use_percent' => 'decimal:2',
+            'home_office_percent' => 'decimal:2',
             'clients_created_count' => 'integer',
         ];
     }

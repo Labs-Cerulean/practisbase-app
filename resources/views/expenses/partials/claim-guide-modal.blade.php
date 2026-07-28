@@ -43,7 +43,7 @@
         <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.15rem;">
             <p style="margin: 0 0 0.45rem; font-size: 0.85rem; font-weight: 600; color: var(--primary-navy);">Car, fuel &amp; working from home</p>
             <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
-                If a cost is mixed (car, fuel, home office bills), only log what fairly belongs to the practice — or note the business share. Logging 100% of a household or family car cost is a frequent audit risk. When in doubt, keep a simple diary of practice days/trips and ask your advisor before claiming the edge cases.
+                If a cost is mixed (car, fuel, home office bills), only log what fairly belongs to the practice — or use the practice-use / home-office helpers. Laptops, equipment, and cars are capital items: tax uses wear &amp; tear each year, not the full cost in year one. Logging 100% of a household or family car cost is a frequent audit risk.
             </p>
         </div>
 

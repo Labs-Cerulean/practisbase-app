@@ -291,6 +291,20 @@
                         </div>
                     </div>
 
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1rem;">
+                        <div style="font-weight: 700; color: #1e3a8a; margin-bottom: 0.35rem; font-size: 0.9rem;">Business-use helpers</div>
+                        <p style="margin: 0 0 0.75rem; font-size: 0.8rem; color: #1e40af; line-height: 1.45;">
+                            Used for car, fuel, and working-from-home bills on the Expense Ledger.
+                            Current: car/fuel <strong>{{ $user->car_business_use_percent !== null ? number_format((float) $user->car_business_use_percent, 0).'%' : 'not set' }}</strong>,
+                            home office <strong>{{ $user->home_office_percent !== null ? number_format((float) $user->home_office_percent, 0).'%' : 'not set' }}</strong>.
+                        </p>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" data-open-car-helper style="padding: 0.5rem 0.85rem; background: white; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer; color: #1d4ed8;">Car / fuel helper</button>
+                            <button type="button" data-open-wfh-helper style="padding: 0.5rem 0.85rem; background: white; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer; color: #1d4ed8;">Home office helper</button>
+                            <a href="/expenses" style="padding: 0.5rem 0.85rem; font-weight: 600; font-size: 0.8rem; color: #1d4ed8;">Open expenses →</a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -494,6 +508,11 @@
         </div>
 
     </div>
+
+    @include('expenses.partials.business-use-helpers', [
+        'user' => $user,
+        'redirectTo' => '/settings',
+    ])
 
     <script>
         (function () {
