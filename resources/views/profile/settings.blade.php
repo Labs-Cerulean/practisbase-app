@@ -175,11 +175,25 @@
                         </select>
                     </div>
                     
-                    <div id="dobSettingsGroup" style="display: {{ $user->employment_type === 'full_time' ? 'block' : 'none' }};">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Date of Birth (SSC Caps)</label>
-                        <input type="date" name="date_of_birth" id="dobSettingsInput" value="{{ $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div id="dobSettingsGroup" style="display: {{ $user->employment_type === 'full_time' || ($dobLocked ?? false) ? 'block' : 'none' }};">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Date of Birth (SSC)</label>
+                        <input type="date" name="date_of_birth" id="dobSettingsInput" value="{{ $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '' }}"
+                               {{ ($dobLocked ?? false) ? 'disabled' : '' }}
+                               max="{{ date('Y-m-d') }}"
+                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); {{ ($dobLocked ?? false) ? 'background:#f1f5f9;color:#64748b;' : '' }}">
+                        @if($dobLocked ?? false)
+                            <div style="font-size: 0.75rem; color: #92400e; margin-top: 0.35rem;">Locked after a fiscal year was closed — closed-year SSC used this DOB.</div>
+                        @else
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Used for under-18 SSC exemption and age notes. Becomes locked after your first year-end close.</div>
+                        @endif
                     </div>
                 </div>
+
+                @if($hasClosedFiscalYears ?? false)
+                    <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: var(--radius-md); color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
+                        You have closed fiscal year(s). Changing employment type, VAT status, salary, or tax computation only affects <strong>open</strong> years. Closed years keep their frozen report snapshot.
+                    </div>
+                @endif
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
@@ -205,8 +219,7 @@
                 @endif
 
                 <div id="medicalVatAlert" style="display: {{ $user->profession === 'Medical Professional' ? 'block' : 'none' }}; margin-top: 1rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.5;">
-                    <strong>⚠️ Note on Medical Exemptions (Fifth Schedule):</strong><br>
-                    Under Maltese VAT Law, the medical exemption applies <strong>strictly to therapeutic care</strong> provided by professionals warranted under the Health Care Professions Act. Non-therapeutic services (e.g., purely cosmetic procedures, corporate consultancy, medico-legal reports) may be subject to standard 18% VAT. If you provide taxable services, you must register under Article 10 or 11.
+                    <strong>Medical VAT:</strong> Therapeutic care is normally <strong>Fifth Schedule exempt</strong>. Non-therapeutic services (cosmetic, medico-legal, consultancy) may need Article 10/11 — choose the matching status above so you can charge VAT when required.
                 </div>
 
                 <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
@@ -244,10 +257,10 @@
 
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Estimated Annual Allowable Expenses</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">Fallback used when the Expense Ledger for a year is empty (or on Free). Standard+ ledger totals override this when &gt; €0.</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">Saved for <strong>{{ date('Y') }}</strong> (and as the default fallback). Empty expense ledgers use the estimate for that year; Standard+ ledger totals override when &gt; €0. Closed years keep their frozen estimate.</p>
                         <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
                             <span style="color: var(--text-muted); font-weight: 600;">€</span>
-                            <input type="number" name="estimated_expenses" step="0.01" min="0" value="{{ $user->estimated_expenses ?? '0.00' }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
+                            <input type="number" name="estimated_expenses" step="0.01" min="0" value="{{ ($user->estimated_expenses_by_year[(string) date('Y')] ?? null) !== null ? $user->estimated_expenses_by_year[(string) date('Y')] : ($user->estimated_expenses ?? '0.00') }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
                         </div>
                     </div>
 

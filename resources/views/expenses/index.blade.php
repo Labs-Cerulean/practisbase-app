@@ -73,7 +73,11 @@
                                 @if($expense->receipt_path)
                                     <a href="/expenses/{{ $expense->id }}/receipt" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Download</a>
                                 @else
-                                    <span style="color: var(--text-muted);">—</span>
+                                    <form action="/expenses/{{ $expense->id }}/receipt" method="POST" enctype="multipart/form-data" style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                                        @csrf
+                                        <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf" required style="font-size: 0.75rem; max-width: 10rem;">
+                                        <button type="submit" style="background: none; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0.2rem 0.45rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; color: var(--primary-navy);">Attach</button>
+                                    </form>
                                 @endif
                             </td>
                             <td style="padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9; text-align: right;">

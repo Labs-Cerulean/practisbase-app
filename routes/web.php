@@ -157,6 +157,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::post('/expenses', [ExpenseController::class, 'store']);
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
         Route::get('/expenses/{expense}/receipt', [ExpenseController::class, 'downloadReceipt']);
+        Route::post('/expenses/{expense}/receipt', [ExpenseController::class, 'attachReceipt']);
 
         Route::get('/exports/accountant', [AccountantDownloadController::class, 'index']);
         Route::post('/exports/accountant', [AccountantDownloadController::class, 'download']);

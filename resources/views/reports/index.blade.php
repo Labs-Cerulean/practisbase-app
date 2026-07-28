@@ -26,6 +26,15 @@
                 @endif
             </h1>
             <p style="color: var(--text-muted); font-size: 0.95rem;">Review your strict fiscal tax and VAT liabilities.</p>
+            @if($isYearClosed && ($from_snapshot ?? false))
+                <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); color: #065f46; font-size: 0.8rem; max-width: 42rem;">
+                    Frozen snapshot{{ !empty($snapshotFrozenAt) ? ' from ' . \Illuminate\Support\Carbon::parse($snapshotFrozenAt)->format('d M Y H:i') : '' }}. Settings changes after close do not recalculate this year.
+                </div>
+            @elseif($isYearClosed && ($legacyClosedWithoutSnapshot ?? false))
+                <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); color: #92400e; font-size: 0.8rem; max-width: 42rem;">
+                    This year was closed before snapshots existed — figures are recalculated live. Re-close is not available; treat with care if Settings changed since close.
+                </div>
+            @endif
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
                 <a href="/exports/accountant" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Accountant</a>
                 <a href="/expenses?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Expense Ledger</a>
@@ -341,7 +350,7 @@
             <div style="flex: 1; min-width: 300px;">
                 <h3 style="font-size: 1.1rem; color: var(--primary-navy); margin-bottom: 0.25rem; font-weight: 700;">{{ $isYearClosed ? 'Final Fiscal Report' : 'Close Fiscal Year' }}</h3>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; line-height: 1.5;">
-                    {{ $isYearClosed ? "This year is permanently locked. You can safely send this official report to your accountant." : "Lock this year to generate your official, unchangeable report for your accountant. Once locked, no documents or payments can be backdated to " . $selectedYear . "." }}
+                    {{ $isYearClosed ? "This year is permanently locked. Figures are frozen from the close snapshot — later Settings changes will not rewrite them." : "Lock this year to freeze the official report for your accountant. Once locked, no documents or payments can be backdated to " . $selectedYear . ", and the tax math for this year is snapshotted." }}
                 </p>
             </div>
             
