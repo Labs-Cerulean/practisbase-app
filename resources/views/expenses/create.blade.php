@@ -9,6 +9,13 @@
             <a href="/expenses" style="color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem;">Cancel</a>
         </div>
 
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+            <p style="margin: 0; font-size: 0.85rem; color: #78350f; line-height: 1.45;">
+                Claim only costs for your practice (or the business share of mixed costs such as car, fuel, or home bills).
+                <button type="button" data-open-expense-guide style="background: none; border: none; padding: 0; font: inherit; color: #92400e; font-weight: 700; cursor: pointer; border-bottom: 1px dotted #92400e;">What is claimable?</button>
+            </p>
+        </div>
+
         @if($errors->any())
             <div style="background: #fef2f2; color: #991b1b; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px solid #fecaca;">
                 @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
@@ -57,4 +64,6 @@
             <button type="submit" style="width: 100%; padding: 0.9rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save Expense</button>
         </form>
     </div>
+
+    @include('expenses.partials.claim-guide-modal')
 @endsection

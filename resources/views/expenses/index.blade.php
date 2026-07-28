@@ -9,8 +9,22 @@
             <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
                 Logged expenses for {{ $year }} replace the Settings estimate in your Live Fiscal Report when the year total is greater than zero.
             </p>
+            <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                Only practice costs belong here —
+                <button type="button" data-open-expense-guide style="background: none; border: none; padding: 0; font: inherit; color: var(--primary-navy); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">what is claimable?</button>
+            </p>
         </div>
-        <a href="/expenses/create" style="background: var(--primary-cerulean); color: white; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">+ Log Expense</a>
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+            <button type="button" data-open-expense-guide style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: var(--shadow-sm);">Claim guide</button>
+            <a href="/expenses/create" style="background: var(--primary-cerulean); color: white; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">+ Log Expense</a>
+        </div>
+    </div>
+
+    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; justify-content: space-between;">
+        <p style="margin: 0; font-size: 0.85rem; color: #78350f; line-height: 1.45; flex: 1; min-width: 220px;">
+            <strong>Trap alert:</strong> Car costs, fuel, personal insurance, and home bills are easy to over-claim. Personal spending is not deductible — only the business share of mixed costs.
+        </p>
+        <button type="button" data-open-expense-guide style="background: none; border: none; padding: 0; font: inherit; color: #92400e; font-weight: 700; font-size: 0.85rem; cursor: pointer; border-bottom: 1px dotted #92400e; white-space: nowrap;">Read the guide</button>
     </div>
 
     @if(session('success'))
@@ -93,4 +107,6 @@
             </table>
         </div>
     @endif
+
+    @include('expenses.partials.claim-guide-modal')
 @endsection
