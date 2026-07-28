@@ -21,6 +21,11 @@
             {{ session('success') }}
         </div>
     @endif
+    @if(session('revenue_warning'))
+        <div style="background: #fef2f2; color: #991b1b; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px solid #fecaca; border-left: 4px solid #dc2626;">
+            <strong>Article 11 threshold:</strong> {{ session('revenue_warning') }}
+        </div>
+    @endif
     @if($errors->any())
         <div style="background: #fef2f2; color: #991b1b; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 1px solid #fecaca;">
             @foreach($errors->all() as $error)

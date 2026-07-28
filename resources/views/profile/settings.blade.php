@@ -129,10 +129,38 @@
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Contact support to change your registered profession.</div>
                     </div>
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant Number (Optional)</label>
-                        <input type="text" name="warrant_number" value="{{ $user->warrant_number }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant / Council</label>
+                        <select name="warrant_type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                            <option value="">— Optional —</option>
+                            <option value="Medical Council Malta" {{ $user->warrant_type === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
+                            <option value="Kamra tal-Periti" {{ $user->warrant_type === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
+                            <option value="Engineering Board" {{ $user->warrant_type === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
+                            @if($user->warrant_type && ! in_array($user->warrant_type, ['Medical Council Malta', 'Kamra tal-Periti', 'Engineering Board'], true))
+                                <option value="{{ $user->warrant_type }}" selected>{{ $user->warrant_type }}</option>
+                            @endif
+                        </select>
                     </div>
                 </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Medical Reg / Warrant Number</label>
+                    <input type="text" name="warrant_number" value="{{ $user->warrant_number }}" placeholder="e.g. 3264" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Printed as “Medical Reg Nº” on clinical PDFs.</div>
+                </div>
+
+                @if($user->canAccessProPackage('med'))
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinic phone</label>
+                            <input type="text" name="clinic_phone" value="{{ $user->clinic_phone }}" placeholder="e.g. +356 21XX XXXX" maxlength="64" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinic address</label>
+                            <input type="text" name="clinic_address" value="{{ $user->clinic_address }}" placeholder="Clinic / consulting rooms" maxlength="500" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin: -0.5rem 0 1.25rem;">Shown on prescription / referral / certificate letterheads.</div>
+                @endif
             </div>
 
             <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
@@ -297,26 +325,53 @@
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
             <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Document Branding</h3>
-            @if($user->canAccessStandardTools())
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Upload a logo for invoice / RFP PDFs (Standard+).</p>
-                @if($user->logoDataUri())
-                    <div style="margin-bottom: 1rem;">
-                        <img src="{{ $user->logoDataUri() }}" alt="Current logo" style="max-height: 64px; max-width: 200px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
-                    </div>
-                @endif
+            @if($user->canAccessStandardTools() || $user->canAccessProPackage('med'))
                 <form action="/settings/branding" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
-                    <div style="margin-bottom: 1rem;">
-                        <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB · private object storage (Cloudflare R2 in production).</p>
-                    </div>
-                    @if($user->logo_path)
-                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1rem; cursor: pointer;">
-                            <input type="checkbox" name="remove_logo" value="1">
-                            Remove current logo
-                        </label>
+
+                    @if($user->canAccessStandardTools())
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Logo for invoices / RFPs and clinical letterheads (Standard+).</p>
+                        @if($user->logoDataUri())
+                            <div style="margin-bottom: 1rem;">
+                                <img src="{{ $user->logoDataUri() }}" alt="Current logo" style="max-height: 64px; max-width: 200px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
+                            </div>
+                        @endif
+                        <div style="margin-bottom: 1rem;">
+                            <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB.</p>
+                        </div>
+                        @if($user->logo_path)
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1.25rem; cursor: pointer;">
+                                <input type="checkbox" name="remove_logo" value="1">
+                                Remove current logo
+                            </label>
+                        @endif
                     @endif
+
+                    @if($user->canAccessProPackage('med'))
+                        <div style="{{ $user->canAccessStandardTools() ? 'border-top: 1px solid var(--border-light); padding-top: 1.25rem; margin-top: 0.5rem;' : '' }}">
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+                                <strong style="color: var(--primary-navy);">Clinical stamp / signature image</strong> — printed on issued prescriptions, referrals, and certificates. Prefer a clear PNG (stamp alone, or stamp + signature).
+                            </p>
+                            @if($user->clinicalStampDataUri())
+                                <div style="margin-bottom: 1rem;">
+                                    <img src="{{ $user->clinicalStampDataUri() }}" alt="Clinical stamp" style="max-height: 96px; max-width: 240px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
+                                </div>
+                            @endif
+                            <div style="margin-bottom: 1rem;">
+                                <input type="file" name="clinical_stamp" accept=".jpg,.jpeg,.png,.webp">
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB · private storage.</p>
+                            </div>
+                            @if($user->clinical_stamp_path)
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1rem; cursor: pointer;">
+                                    <input type="checkbox" name="remove_clinical_stamp" value="1">
+                                    Remove clinical stamp
+                                </label>
+                            @endif
+                        </div>
+                    @endif
+
                     <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Save Branding</button>
                 </form>
             @else

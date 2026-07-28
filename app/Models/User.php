@@ -42,6 +42,9 @@ use Illuminate\Notifications\Notifiable;
     'estimated_expenses',
     'clients_created_count',
     'logo_path',
+    'clinic_phone',
+    'clinic_address',
+    'clinical_stamp_path',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -89,24 +92,33 @@ class User extends Authenticatable
 
     /**
      * Standard+ with ledger rows for the year → use ledger total.
-     * Otherwise fall back to estimated_expenses (Free / empty ledger).
+     * Article 10: deduct expense net (ex-VAT); reclaimable VAT is handled on the VAT side.
+     * Article 11 / exempt: deduct gross (amount + VAT).
      *
-     * @return array{amount: float, source: string, ledger_total: float, estimate: float}
+     * @return array{amount: float, source: string, ledger_total: float, ledger_ex_vat: float, input_vat: float, estimate: float, ex_vat: bool}
      */
     public function deductibleExpensesForYear(int $year): array
     {
         $estimate = (float) ($this->estimated_expenses ?? 0);
-        $ledgerTotal = (float) Expense::where('user_id', $this->id)
+        $row = Expense::where('user_id', $this->id)
             ->whereYear('expense_date', $year)
-            ->selectRaw('COALESCE(SUM(amount + vat_amount), 0) as total')
-            ->value('total');
+            ->selectRaw('COALESCE(SUM(amount), 0) as ex_vat, COALESCE(SUM(vat_amount), 0) as input_vat')
+            ->first();
 
-        if ($this->canAccessStandardTools() && $ledgerTotal > 0) {
+        $ledgerExVat = (float) ($row->ex_vat ?? 0);
+        $inputVat = (float) ($row->input_vat ?? 0);
+        $useExVat = $this->vat_status === 'article_10';
+        $ledgerTotal = $useExVat ? $ledgerExVat : ($ledgerExVat + $inputVat);
+
+        if ($this->canAccessStandardTools() && ($ledgerExVat + $inputVat) > 0) {
             return [
                 'amount' => $ledgerTotal,
                 'source' => 'ledger',
                 'ledger_total' => $ledgerTotal,
+                'ledger_ex_vat' => $ledgerExVat,
+                'input_vat' => $inputVat,
                 'estimate' => $estimate,
+                'ex_vat' => $useExVat,
             ];
         }
 
@@ -114,24 +126,37 @@ class User extends Authenticatable
             'amount' => $estimate,
             'source' => 'estimate',
             'ledger_total' => $ledgerTotal,
+            'ledger_ex_vat' => $ledgerExVat,
+            'input_vat' => $inputVat,
             'estimate' => $estimate,
+            'ex_vat' => $useExVat,
         ];
     }
 
     public function logoDataUri(): ?string
     {
-        if (! filled($this->logo_path)) {
+        return $this->storedImageDataUri($this->logo_path);
+    }
+
+    public function clinicalStampDataUri(): ?string
+    {
+        return $this->storedImageDataUri($this->clinical_stamp_path);
+    }
+
+    private function storedImageDataUri(?string $path): ?string
+    {
+        if (! filled($path)) {
             return null;
         }
 
         $disk = \App\Support\TenantStorage::disk();
 
-        if (! $disk->exists($this->logo_path)) {
+        if (! $disk->exists($path)) {
             return null;
         }
 
-        $binary = $disk->get($this->logo_path);
-        $ext = strtolower(pathinfo($this->logo_path, PATHINFO_EXTENSION));
+        $binary = $disk->get($path);
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $mime = match ($ext) {
             'jpg', 'jpeg' => 'image/jpeg',
             'gif' => 'image/gif',

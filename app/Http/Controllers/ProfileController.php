@@ -116,6 +116,8 @@ class ProfileController extends Controller
             'postnominals' => 'nullable|string|max:255',
             'warrant_type' => 'nullable|string|max:255',
             'warrant_number' => 'nullable|string|max:255',
+            'clinic_phone' => 'nullable|string|max:64',
+            'clinic_address' => 'nullable|string|max:500',
             'employment_type' => 'required|in:full_time,part_time',
             'date_of_birth' => 'required_if:employment_type,full_time|nullable|date',
             'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
@@ -154,8 +156,10 @@ class ProfileController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'postnominals' => filled($request->postnominals) ? trim($request->postnominals) : null,
-            'warrant_type' => $request->warrant_type,
-            'warrant_number' => $request->warrant_number,
+            'warrant_type' => filled($request->warrant_type) ? trim($request->warrant_type) : null,
+            'warrant_number' => filled($request->warrant_number) ? trim($request->warrant_number) : null,
+            'clinic_phone' => filled($request->clinic_phone) ? trim($request->clinic_phone) : null,
+            'clinic_address' => filled($request->clinic_address) ? trim($request->clinic_address) : null,
             'employment_type' => $request->employment_type,
             'date_of_birth' => $request->employment_type === 'full_time' ? $request->date_of_birth : null,
             'vat_status' => $isMedical ? 'exempt' : $request->vat_status,
@@ -175,26 +179,31 @@ class ProfileController extends Controller
     public function updateBranding(Request $request)
     {
         $user = Auth::user();
+        $canLogo = $user->canAccessStandardTools();
+        $canStamp = $user->canAccessProPackage('med');
 
-        if (! $user->canAccessStandardTools()) {
+        if (! $canLogo && ! $canStamp) {
             return redirect('/settings')->withErrors([
-                'branding' => 'Custom logo branding is available on Standard and Pro plans.',
+                'branding' => 'Document branding is available on Standard and Pro plans.',
             ]);
         }
 
         $request->validate([
             'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'remove_logo' => 'nullable|boolean',
+            'clinical_stamp' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'remove_clinical_stamp' => 'nullable|boolean',
         ]);
 
-        if ($request->boolean('remove_logo') && $user->logo_path) {
+        $messages = [];
+
+        if ($canLogo && $request->boolean('remove_logo') && $user->logo_path) {
             TenantStorage::disk()->delete($user->logo_path);
             $user->update(['logo_path' => null]);
-
-            return back()->with('success', 'Logo removed. Documents will use PractisBase defaults.');
+            $messages[] = 'Logo removed.';
         }
 
-        if ($request->hasFile('logo')) {
+        if ($canLogo && $request->hasFile('logo')) {
             if ($user->logo_path) {
                 TenantStorage::disk()->delete($user->logo_path);
             }
@@ -205,11 +214,34 @@ class ProfileController extends Controller
             );
 
             $user->update(['logo_path' => $path]);
-
-            return back()->with('success', 'Logo uploaded. It will appear on new PDF downloads.');
+            $messages[] = 'Logo uploaded.';
         }
 
-        return back()->withErrors(['logo' => 'Choose an image to upload, or check remove logo.']);
+        if ($canStamp && $request->boolean('remove_clinical_stamp') && $user->clinical_stamp_path) {
+            TenantStorage::disk()->delete($user->clinical_stamp_path);
+            $user->update(['clinical_stamp_path' => null]);
+            $messages[] = 'Clinical stamp removed.';
+        }
+
+        if ($canStamp && $request->hasFile('clinical_stamp')) {
+            if ($user->clinical_stamp_path) {
+                TenantStorage::disk()->delete($user->clinical_stamp_path);
+            }
+
+            $path = $request->file('clinical_stamp')->store(
+                TenantStorage::brandingPath($user->id),
+                TenantStorage::diskName()
+            );
+
+            $user->update(['clinical_stamp_path' => $path]);
+            $messages[] = 'Clinical stamp uploaded. It will appear on issued prescriptions, referrals, and certificates.';
+        }
+
+        if ($messages === []) {
+            return back()->withErrors(['logo' => 'Choose an image to upload, or check a remove option.']);
+        }
+
+        return back()->with('success', implode(' ', $messages));
     }
 
     public function updatePassword(Request $request)
