@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Support\FiscalReportEngine;
+use App\Support\PracticeGuidance;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -18,7 +20,6 @@ class DashboardController extends Controller
         $clientCount = Client::where('user_id', $userId)->count();
         $archivedCount = Client::onlyTrashed()->where('user_id', $userId)->count();
 
-        // --- Current calendar year (official invoices only for fiscal-facing KPIs) ---
         $ytdInvoices = Invoice::where('user_id', $userId)
             ->where('type', 'invoice')
             ->whereYear('issue_date', $year)
@@ -40,7 +41,6 @@ class DashboardController extends Controller
 
         $ytdOfficialDues = max(0, $ytdNetInvoiced - max(0, $ytdInvoiceCash));
 
-        // --- Open / overdue official invoices (all-time open books) ---
         $openInvoices = Invoice::where('user_id', $userId)
             ->where('type', 'invoice')
             ->with([
@@ -69,13 +69,30 @@ class DashboardController extends Controller
 
         $recentOpen = $openInvoices->take(5);
 
-        // --- Lifetime snapshot (secondary; not tax liability) ---
         $topLevelTotal = Invoice::where('user_id', $userId)->whereNull('parent_document_id')->sum('total');
         $lifetimeCredits = Invoice::where('user_id', $userId)->where('type', 'credit_note')->sum('total');
         $totalPipeline = $topLevelTotal - $lifetimeCredits;
         $lifetimeInvoices = Invoice::where('user_id', $userId)->where('type', 'invoice')->sum('total');
         $netInvoiced = $lifetimeInvoices - $lifetimeCredits;
         $unbilledPipeline = max(0, $totalPipeline - $netInvoiced);
+
+        $glance = null;
+        if ($user->canAccessReports()) {
+            $report = FiscalReportEngine::compute($user, $year);
+            $taxDue = (float) ($report['totalTaxLiability'] ?? 0) + (float) ($report['sscLiability'] ?? 0);
+            $taxPaid = (float) ($report['ptTaxPaid'] ?? 0) + (float) ($report['ptSscPaid'] ?? 0);
+            $glance = [
+                'fiscal_revenue' => (float) ($report['fiscalRevenue'] ?? 0),
+                'net_profit' => (float) ($report['netProfit'] ?? 0),
+                'tax_set_aside' => max(0, $taxDue - $taxPaid),
+                'tax_due' => $taxDue,
+                'vat_balance' => (float) ($report['vatBalance'] ?? 0),
+                'has_article_10' => (bool) ($report['hasArticle10'] ?? $report['isArticle10'] ?? false),
+            ];
+        }
+
+        $checklist = PracticeGuidance::firstWeekChecklist($user);
+        $deadlines = PracticeGuidance::softDeadlines($user, $year);
 
         return view('dashboard', compact(
             'user',
@@ -93,7 +110,10 @@ class DashboardController extends Controller
             'recentOpen',
             'totalPipeline',
             'netInvoiced',
-            'unbilledPipeline'
+            'unbilledPipeline',
+            'glance',
+            'checklist',
+            'deadlines'
         ));
     }
 }

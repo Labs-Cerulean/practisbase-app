@@ -75,7 +75,7 @@
                     <input type="number" name="vat_amount" step="0.01" min="0" value="{{ old('vat_amount', '0') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
             </div>
-            <p id="capitalPreview" style="display: none; font-size: 0.8rem; color: var(--primary-navy); margin: -0.5rem 0 1.25rem; line-height: 1.4;"></p>
+            <p id="deductPreview" style="display: none; font-size: 0.85rem; color: var(--primary-navy); margin: -0.5rem 0 1.25rem; line-height: 1.45; padding: 0.65rem 0.85rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md);"></p>
 
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Receipt upload <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
@@ -101,13 +101,12 @@
             var bizWrap = document.getElementById('businessUseWrap');
             var bizInput = document.getElementById('businessUsePercent');
             var wfhWrap = document.getElementById('wfhWrap');
-            var preview = document.getElementById('capitalPreview');
+            var preview = document.getElementById('deductPreview');
             var amount = document.getElementById('expenseAmount');
             var homePct = @json($user->home_office_percent !== null ? (float) $user->home_office_percent : null);
 
             function sync() {
                 var v = cat.value;
-                var capital = ['laptop', 'equipment', 'car'].indexOf(v) !== -1;
                 var biz = v === 'car' || v === 'fuel';
                 var wfh = v.indexOf('wfh_') === 0;
 
@@ -129,34 +128,66 @@
                     hint.textContent = 'Logged in full for the year (subject to being a genuine practice cost).';
                 }
 
-                updateCapitalPreview();
+                updateDeductPreview();
             }
 
-            function updateCapitalPreview() {
+            function updateDeductPreview() {
                 var v = cat.value;
-                if (['laptop', 'equipment', 'car'].indexOf(v) === -1) {
-                    preview.style.display = 'none';
-                    return;
-                }
                 var cost = Number(amount.value || 0);
-                var rate = rates[v] || 0.25;
-                var pct = v === 'car' ? Number(bizInput.value || 0) / 100 : 1;
-                if (cost <= 0 || pct <= 0) {
+                if (cost <= 0) {
                     preview.style.display = 'none';
                     return;
                 }
-                var year1 = (cost * rate * pct).toFixed(2);
+
+                if (['laptop', 'equipment', 'car'].indexOf(v) !== -1) {
+                    var rate = rates[v] || 0.25;
+                    var pct = v === 'car' ? Number(bizInput.value || 0) / 100 : 1;
+                    if (pct <= 0) {
+                        preview.style.display = 'none';
+                        return;
+                    }
+                    var year1 = (cost * rate * pct).toFixed(2);
+                    preview.style.display = 'block';
+                    preview.innerHTML = 'Counts as <strong>€' + year1 + '</strong> this year (about ' + Math.round(rate * 100) + '% wear &amp; tear'
+                        + (v === 'car' ? ' × practice-use %' : '') + ').';
+                    return;
+                }
+
+                if (v === 'fuel') {
+                    var fuelPct = Number(bizInput.value || 0);
+                    if (fuelPct <= 0) {
+                        preview.style.display = 'none';
+                        return;
+                    }
+                    var fuelShare = (cost * fuelPct / 100).toFixed(2);
+                    preview.style.display = 'block';
+                    preview.innerHTML = 'Counts as <strong>€' + fuelShare + '</strong> (' + fuelPct + '% practice-use of €' + cost.toFixed(2) + ').';
+                    return;
+                }
+
+                if (v.indexOf('wfh_') === 0) {
+                    if (!homePct || homePct <= 0) {
+                        preview.style.display = 'block';
+                        preview.innerHTML = 'Set your home-office % so we can show how much of this bill counts.';
+                        return;
+                    }
+                    var wfhShare = (cost * homePct / 100).toFixed(2);
+                    preview.style.display = 'block';
+                    preview.innerHTML = 'Counts as <strong>€' + wfhShare + '</strong> (' + homePct + '% home-office of €' + cost.toFixed(2) + ').';
+                    return;
+                }
+
                 preview.style.display = 'block';
-                preview.textContent = 'This year\'s wear & tear estimate: €' + year1 + ' (about ' + Math.round(rate * 100) + '% of cost' + (v === 'car' ? ' × practice-use %' : '') + ').';
+                preview.innerHTML = 'Counts as <strong>€' + cost.toFixed(2) + '</strong> toward deductible expenses this year.';
             }
 
             cat.addEventListener('change', sync);
-            amount.addEventListener('input', updateCapitalPreview);
-            bizInput.addEventListener('input', updateCapitalPreview);
+            amount.addEventListener('input', updateDeductPreview);
+            bizInput.addEventListener('input', updateDeductPreview);
             document.addEventListener('business-use-updated', function (e) {
                 if (e.detail && e.detail.car != null && bizInput) {
                     bizInput.value = e.detail.car;
-                    updateCapitalPreview();
+                    updateDeductPreview();
                 }
                 if (e.detail && e.detail.home != null) {
                     homePct = Number(e.detail.home);
