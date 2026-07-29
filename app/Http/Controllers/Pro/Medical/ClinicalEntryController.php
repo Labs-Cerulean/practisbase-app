@@ -7,6 +7,7 @@ use App\Models\ClinicalAttachment;
 use App\Models\ClinicalEntry;
 use App\Models\MedicalVault;
 use App\Models\Patient;
+use App\Models\PrescriptionCatalogItem;
 use App\Support\IssueCode;
 use App\Support\MedicalVaultCrypto;
 use App\Support\TenantStorage;
@@ -80,6 +81,10 @@ class ClinicalEntryController extends Controller
             $this->storeAttachmentFile($request, $user->id, $vault->id, $patient->id, $entry->id, $key);
         }
 
+        if ($validated['entry_type'] === 'prescription' && ! empty($validated['medicines'])) {
+            PrescriptionCatalogItem::rememberForUser($user->id, $validated['medicines']);
+        }
+
         $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
             ? 'Draft ' . (ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document') . ' saved. Edit until Stamp & issue — then it locks and gets an issue code on the PDF.'
             : 'Journal note saved encrypted in your vault.';
@@ -146,6 +151,10 @@ class ClinicalEntryController extends Controller
             if ($vault) {
                 $this->storeAttachmentFile($request, $user->id, $vault->id, $patient->id, $entry->id, $key);
             }
+        }
+
+        if ($validated['entry_type'] === 'prescription' && ! empty($validated['medicines'])) {
+            PrescriptionCatalogItem::rememberForUser($user->id, $validated['medicines']);
         }
 
         return redirect('/pro/medical/patients/' . $patient->id)

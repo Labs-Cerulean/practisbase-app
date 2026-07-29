@@ -1,10 +1,11 @@
+{{-- Middle-ground Rx pad: classic letterhead + serious pharmacist authenticity. --}}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>{{ $documentTitle }}</title>
     <style>
-        @page { margin: 18mm 16mm 16mm 16mm; }
+        @page { margin: 16mm 15mm 14mm 15mm; }
         body {
             font-family: DejaVu Sans, Helvetica, Arial, sans-serif;
             color: #111827;
@@ -15,18 +16,20 @@
         }
         .pad-header {
             text-align: center;
-            margin-bottom: 22px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0f172a;
         }
         .pad-logo {
-            max-height: 48px;
+            max-height: 44px;
             max-width: 140px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .pad-name {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: bold;
             color: #0f172a;
-            margin: 0 0 3px;
+            margin: 0 0 2px;
             letter-spacing: 0.01em;
         }
         .pad-line {
@@ -39,8 +42,19 @@
             color: #475569;
             margin: 1px 0;
         }
+        .doc-banner {
+            margin: 10px 0 14px;
+            background: #0f172a;
+            color: #fff;
+            padding: 7px 12px;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            text-align: center;
+        }
         .patient-row {
-            margin: 18px 0 8px;
+            margin: 4px 0 6px;
             width: 100%;
             border-collapse: collapse;
         }
@@ -63,9 +77,15 @@
             color: #0f172a;
             min-height: 18px;
         }
+        .dob-note {
+            font-size: 9px;
+            color: #64748b;
+            margin-top: 4px;
+            margin-bottom: 8px;
+        }
         .rx-wrap {
-            margin-top: 14px;
-            min-height: 320px;
+            margin-top: 10px;
+            min-height: 260px;
         }
         .rx-table {
             width: 100%;
@@ -78,7 +98,7 @@
         }
         .rx-symbol {
             font-family: Times-Roman, "Times New Roman", serif;
-            font-size: 34px;
+            font-size: 32px;
             font-weight: bold;
             font-style: italic;
             color: #0f172a;
@@ -90,7 +110,7 @@
             padding-left: 8px;
         }
         .rx-item {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             page-break-inside: avoid;
         }
         .rx-num {
@@ -112,13 +132,24 @@
         }
         .notes {
             margin-top: 10px;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
             font-size: 11px;
             color: #334155;
             white-space: pre-wrap;
             line-height: 1.45;
         }
+        .notes-label {
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: bold;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
         .sign-block {
-            margin-top: 36px;
+            margin-top: 28px;
             width: 100%;
             border-collapse: collapse;
         }
@@ -126,7 +157,7 @@
             vertical-align: bottom;
         }
         .sign-space {
-            height: 54px;
+            height: 48px;
         }
         .sign-rule {
             border-top: 1px solid #334155;
@@ -144,7 +175,7 @@
             margin-top: 4px;
         }
         .pad-footer {
-            margin-top: 28px;
+            margin-top: 20px;
             border-top: 1.5px solid #0f172a;
             padding-top: 10px;
         }
@@ -178,21 +209,61 @@
             color: #0f172a;
             margin-right: 16px;
         }
-        .auth-quiet {
+        .auth-box {
+            margin-top: 12px;
+            border: 2px solid #0f172a;
+            padding: 10px 12px;
+            background: #f8fafc;
+            page-break-inside: avoid;
+        }
+        .auth-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.06em;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        .auth-caption {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: bold;
+        }
+        .auth-code {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 0.08em;
+            color: #0f172a;
+            font-family: DejaVu Sans Mono, monospace;
+            margin-top: 2px;
+        }
+        .auth-date {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-top: 2px;
+        }
+        .auth-time {
+            font-size: 11px;
+            color: #475569;
+        }
+        .pharm-guide {
             margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #cbd5e1;
+            font-size: 9px;
+            color: #334155;
+            line-height: 1.45;
+        }
+        .pharm-guide strong {
+            color: #0f172a;
+        }
+        .legal-foot {
+            margin-top: 8px;
             font-size: 8px;
             color: #64748b;
             line-height: 1.4;
-        }
-        .auth-quiet strong {
-            color: #334155;
-            font-family: DejaVu Sans Mono, monospace;
-            letter-spacing: 0.04em;
-        }
-        .dob-note {
-            font-size: 9px;
-            color: #64748b;
-            margin-top: 4px;
         }
     </style>
 </head>
@@ -245,6 +316,8 @@
         @endif
     </div>
 
+    <div class="doc-banner">Prescription · for the pharmacist · quote unique issue code when verifying</div>
+
     <table class="patient-row">
         <tr>
             <td style="width: 62%;">
@@ -267,7 +340,9 @@
         </tr>
     </table>
     @if(!empty($patientPayload['date_of_birth']))
-        <div class="dob-note">DOB: {{ \Illuminate\Support\Carbon::parse($patientPayload['date_of_birth'])->format('d/m/Y') }}</div>
+        <div class="dob-note">DOB: {{ \Illuminate\Support\Carbon::parse($patientPayload['date_of_birth'])->format('d/m/Y') }} · Practice ref {{ $patient->public_ref }} · Issue code {{ $entry->issue_code }}</div>
+    @else
+        <div class="dob-note">Practice ref {{ $patient->public_ref }} · Issue code {{ $entry->issue_code }}</div>
     @endif
 
     <div class="rx-wrap">
@@ -308,7 +383,10 @@
                     @endforelse
 
                     @if($generalNotes !== '')
-                        <div class="notes">{{ $generalNotes }}</div>
+                        <div class="notes">
+                            <div class="notes-label">Notes for pharmacist / patient</div>
+                            {{ $generalNotes }}
+                        </div>
                     @endif
                 </td>
             </tr>
@@ -321,12 +399,12 @@
             <td style="width: 55%;">
                 @if($stampUri)
                     <div style="text-align: right; margin-bottom: 4px;">
-                        <img src="{{ $stampUri }}" alt="Clinical stamp" style="max-height: 95px; max-width: 240px;">
+                        <img src="{{ $stampUri }}" alt="Clinical stamp" style="max-height: 90px; max-width: 230px;">
                     </div>
                 @else
                     <div class="sign-space"></div>
                 @endif
-                <div class="sign-rule">Signature</div>
+                <div class="sign-rule">Prescriber signature / stamp</div>
                 <div class="prescriber-hint">
                     {{ $user->name }}
                     @if($user->postnominalsLine())
@@ -340,21 +418,41 @@
     <div class="pad-footer">
         <table class="footer-table">
             <tr>
-                <td style="width: 55%;">
+                <td style="width: 100%;">
                     <span class="check {{ $dispenseMode === 'single' ? 'check-on' : '' }}">{{ $dispenseMode === 'single' ? '✓' : '' }}</span>
                     <span class="check-label">Single</span>
                     <span class="check {{ $dispenseMode === 'repeat' ? 'check-on' : '' }}">{{ $dispenseMode === 'repeat' ? '✓' : '' }}</span>
                     <span class="check-label">Repeat</span>
                 </td>
-                <td style="width: 45%; text-align: right; font-size: 9px; color: #64748b;">
-                    Ref {{ $patient->public_ref }}
-                </td>
             </tr>
         </table>
-        <div class="auth-quiet">
-            Issued {{ $entry->issued_at->format('d M Y H:i') }}
-            · Issue code <strong>{{ $entry->issue_code }}</strong>
-            · Verify with the issuing practice. Professional aid only — not a government-certified form.
+
+        <div class="auth-box">
+            <div class="auth-label">Pharmacist authenticity mark</div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="width: 58%; vertical-align: top; padding-right: 12px;">
+                        <div class="auth-caption">Unique issue code</div>
+                        <div class="auth-code">{{ $entry->issue_code }}</div>
+                    </td>
+                    <td style="width: 42%; vertical-align: top;">
+                        <div class="auth-caption">Issued on</div>
+                        <div class="auth-date">{{ $entry->issued_at->format('d M Y') }}</div>
+                        <div class="auth-time">{{ $entry->issued_at->format('H:i') }}</div>
+                    </td>
+                </tr>
+            </table>
+            <div class="pharm-guide">
+                <strong>For the pharmacist:</strong>
+                This code identifies a single issued original from the practice named above.
+                Quote <strong>{{ $entry->issue_code }}</strong> when verifying with the issuing practice.
+                Do not accept photocopies or reprints that reuse the same code without confirmation.
+                Dispense as marked (Single / Repeat). Professional aid only — not a government-certified form.
+            </div>
+        </div>
+
+        <div class="legal-foot">
+            Generated by PractisBase after vault unlock. Verify the unique issue code with the issuing practice before dispensing if authenticity is in doubt.
         </div>
     </div>
 </body>
