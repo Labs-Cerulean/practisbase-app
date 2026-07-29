@@ -16,6 +16,7 @@ use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
 use App\Http\Controllers\Pro\Medical\ClinicalAttachmentController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryPdfController;
 use App\Http\Controllers\Pro\Medical\MedicalBackupController;
+use App\Http\Controllers\Pro\Medical\PrescriptionCatalogController;
 use App\Http\Controllers\Pro\Medical\StampableLedgerController;
 use App\Http\Controllers\Pro\Medical\VaultDeviceController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
@@ -186,6 +187,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::middleware('vault')->group(function () {
             Route::get('/stampables', [StampableLedgerController::class, 'index']);
             Route::post('/issue-codes/lookup', [StampableLedgerController::class, 'lookupIssueCode']);
+            Route::get('/prescription-catalog', [PrescriptionCatalogController::class, 'suggest']);
             Route::get('/patients', [PatientController::class, 'index']);
             Route::get('/patients/create', [PatientController::class, 'create']);
             Route::post('/patients', [PatientController::class, 'store']);
