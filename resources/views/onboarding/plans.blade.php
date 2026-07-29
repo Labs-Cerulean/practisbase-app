@@ -140,7 +140,7 @@
                     <div class="pricing-card" style="border-top: 4px solid {{ $accent }};">
                         <div class="tier-name" style="color: {{ $accent }};">{{ \App\Support\TierPolicy::label($proTier) }}</div>
                         <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_PRO }}<span>/mo</span></div>
-                        <p class="tier-blurb">Everything — Standard accounts plus practice tools.</p>
+                        <p class="tier-blurb">Everything — Standard accounts plus practice tools. Save €{{ \App\Support\TierPolicy::bundleSavingsEuro() }}/mo vs buying both.</p>
                         <ul class="feature-list">
                             <li><strong>All Standard financial features</strong></li>
                             <li>Unlimited clients</li>

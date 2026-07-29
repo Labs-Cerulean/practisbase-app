@@ -24,7 +24,16 @@ class TierPolicy
 
     public const PRICE_PRACTICE = '24.99';
 
-    public const PRICE_PRO = '49.99';
+    public const PRICE_PRO = '34.99';
+
+    /** Separate Standard + Practice list price minus Full Pro (marketing). */
+    public static function bundleSavingsEuro(): string
+    {
+        $separate = (float) self::PRICE_STANDARD + (float) self::PRICE_PRACTICE;
+        $pro = (float) self::PRICE_PRO;
+
+        return number_format(max(0, $separate - $pro), 2);
+    }
 
     public const TIER_FREE = 'free';
 
@@ -296,13 +305,19 @@ class TierPolicy
         $notes = [];
 
         if (self::isDowngrade($from, $to)) {
-            $notes[] = 'This removes access from '.self::label($from).' to '.self::label($to).'. Existing data is not deleted, but some tools stop immediately.';
+            $notes[] = 'Access changes from '.self::label($from).' to '.self::label($to).'. Existing data is not deleted, but some tools stop immediately.';
         }
 
         $fromPractice = self::tierHasPracticeTools($from);
         $toPractice = self::tierHasPracticeTools($to);
         $fromFinancial = self::tierHasStandardFinancial($from);
         $toFinancial = self::tierHasStandardFinancial($to);
+
+        if ($fromPractice && ! $toPractice && ! $fromFinancial && $toFinancial) {
+            $notes[] = 'You are swapping Practice tools for Standard accounts (Tax & VAT). Clinical/project tools will lock until you return to Practice or Full Pro.';
+        } elseif (! $fromPractice && $toPractice && $fromFinancial && ! $toFinancial) {
+            $notes[] = 'You are swapping Standard accounts for Practice tools. Tax & VAT / unlimited clients stop; Free invoicing (5 lifetime clients) remains.';
+        }
 
         if ($fromPractice && ! $toPractice) {
             $notes[] = 'Practice tools become inaccessible (patients, stampables, DMS, stamper, certificates). Medical vault ciphertext stays retained and locked — re-upgrade later still needs your recovery code.';
@@ -327,7 +342,7 @@ class TierPolicy
         }
 
         if (str_starts_with($to, 'pro-')) {
-            $notes[] = 'Full Pro includes Standard financial tools plus your profession package.';
+            $notes[] = 'Full Pro includes Standard financial tools plus your profession package (save €'.self::bundleSavingsEuro().'/mo vs buying both).';
         }
 
         if (! self::isDowngrade($from, $to) && self::tierRank($to) >= self::tierRank($from)) {
