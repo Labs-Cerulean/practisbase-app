@@ -121,13 +121,26 @@
             @endif
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
-                    {{ $expenseInfo['source'] === 'ledger' ? 'Expense ledger' : 'Estimated expenses' }}
+                    {{ $expenseInfo['source'] === 'ledger' ? 'Deductible expenses' : 'Estimated expenses' }}
                     @if(($expenseInfo['ex_vat'] ?? false) && $expenseInfo['source'] === 'ledger')
-                        <span style="color: #64748b;">(ex-VAT)</span>
+                        <span style="color: #64748b;">(regime-aware)</span>
                     @endif
                 </div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: #ef4444;">-€{{ number_format($deductibleExpenses, 2) }}</div>
             </div>
+            @if($expenseInfo['source'] === 'ledger' && (($expenseInfo['wear_and_tear'] ?? 0) > 0.009 || ($expenseInfo['business_share'] ?? 0) > 0.009 || ($expenseInfo['wfh_share'] ?? 0) > 0.009))
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin: -0.15rem 0 0.65rem; line-height: 1.45;">
+                    @if(($expenseInfo['cash_deductible'] ?? 0) > 0.009)
+                        Cash / shared costs €{{ number_format($expenseInfo['cash_deductible'], 2) }}
+                    @endif
+                    @if(($expenseInfo['wear_and_tear'] ?? 0) > 0.009)
+                        · Wear &amp; tear €{{ number_format($expenseInfo['wear_and_tear'], 2) }}
+                    @endif
+                    @if(($expenseInfo['wfh_share'] ?? 0) > 0.009)
+                        · of which WFH share €{{ number_format($expenseInfo['wfh_share'], 2) }}
+                    @endif
+                </div>
+            @endif
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="font-size: 0.8rem; color: var(--text-muted);">Net Taxable Profit</div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: var(--primary-navy);">€{{ number_format($netProfit, 2) }}</div>

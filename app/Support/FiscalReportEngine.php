@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CapitalAsset;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -325,26 +326,69 @@ class FiscalReportEngine
 
         $expenses = Expense::where('user_id', $user->id)
             ->whereYear('expense_date', $year)
-            ->get(['expense_date', 'amount', 'vat_amount']);
+            ->get(['expense_date', 'amount', 'vat_amount', 'category', 'business_use_percent']);
 
         $ledgerExVat = 0.0;
         $ledgerVat = 0.0;
+        $cashDeductible = 0.0;
+        $wearAndTear = 0.0;
+        $businessShareNote = 0.0;
+        $wfhShareNote = 0.0;
+
         foreach ($expenses as $expense) {
             $day = Carbon::parse($expense->expense_date)->toDateString();
             $i = $resolveIndex($day);
             $isArt10 = ($bucket[$i]['regime']['vat_status'] ?? '') === 'article_10';
             $ex = (float) $expense->amount;
             $vat = (float) $expense->vat_amount;
+            $category = (string) $expense->category;
+            $treatment = ExpenseTreatment::forCategory($category);
             $ledgerExVat += $ex;
             $ledgerVat += $vat;
             $bucket[$i]['ledger_ex_vat'] += $ex;
             $bucket[$i]['ledger_vat'] += $vat;
-            if ($isArt10) {
-                $bucket[$i]['deductible_expenses'] += $ex;
-                $bucket[$i]['input_vat'] += $vat;
-            } else {
-                $bucket[$i]['deductible_expenses'] += $ex + $vat;
+
+            if ($treatment === ExpenseTreatment::CAPITAL) {
+                // Full cost is not deducted — wear & tear added below. Art 10 input VAT still reclaimable.
+                if ($isArt10) {
+                    $bucket[$i]['input_vat'] += $vat;
+                }
+                continue;
             }
+
+            $grossOrNet = $isArt10 ? $ex : ($ex + $vat);
+            $share = 100.0;
+            if ($treatment === ExpenseTreatment::BUSINESS_SHARE) {
+                $share = max(0.0, min(100.0, (float) ($expense->business_use_percent ?? 0)));
+                $businessShareNote += $grossOrNet * ($share / 100.0);
+            } elseif ($treatment === ExpenseTreatment::WFH_SHARE) {
+                $share = max(0.0, min(100.0, (float) ($expense->business_use_percent ?? $user->home_office_percent ?? 0)));
+                $wfhShareNote += $grossOrNet * ($share / 100.0);
+            }
+
+            $deduct = $grossOrNet * ($share / 100.0);
+            $bucket[$i]['deductible_expenses'] += $deduct;
+            $cashDeductible += $deduct;
+            if ($isArt10) {
+                $bucket[$i]['input_vat'] += $vat * ($share / 100.0);
+            }
+        }
+
+        $assets = CapitalAsset::where('user_id', $user->id)
+            ->where('purchase_date', '<=', sprintf('%04d-12-31', $year))
+            ->get();
+        foreach ($assets as $asset) {
+            $allowance = $asset->allowanceForYear($year);
+            if ($allowance <= 0) {
+                continue;
+            }
+            $wearAndTear += $allowance;
+            $purchaseYear = (int) $asset->purchase_date->format('Y');
+            $attrDate = $purchaseYear === $year
+                ? $asset->purchase_date->toDateString()
+                : sprintf('%04d-01-01', $year);
+            $i = $resolveIndex($attrDate);
+            $bucket[$i]['deductible_expenses'] += $allowance;
         }
 
         $byYear = $user->estimated_expenses_by_year ?? [];
@@ -353,7 +397,7 @@ class FiscalReportEngine
             ? (float) $byYear[$yearKey]
             : (float) ($user->estimated_expenses ?? 0);
 
-        $useLedger = $user->canAccessStandardTools() && ($ledgerExVat + $ledgerVat) > 0;
+        $useLedger = $user->canAccessStandardTools() && (($ledgerExVat + $ledgerVat) > 0 || $wearAndTear > 0);
         if (! $useLedger) {
             // Estimate path: apply year-end VAT treatment to the annual estimate.
             $yearEnd = $windows !== [] ? $windows[array_key_last($windows)]['regime'] : RegimeHistory::tipFromUser($user);
@@ -374,6 +418,10 @@ class FiscalReportEngine
                 'input_vat' => 0.0,
                 'estimate' => $estimate,
                 'ex_vat' => $isArt10,
+                'cash_deductible' => 0.0,
+                'wear_and_tear' => 0.0,
+                'business_share' => 0.0,
+                'wfh_share' => 0.0,
             ];
         } else {
             $expenseInfo = [
@@ -384,6 +432,10 @@ class FiscalReportEngine
                 'input_vat' => array_sum(array_column($bucket, 'input_vat')),
                 'estimate' => $estimate,
                 'ex_vat' => true,
+                'cash_deductible' => round($cashDeductible, 2),
+                'wear_and_tear' => round($wearAndTear, 2),
+                'business_share' => round($businessShareNote, 2),
+                'wfh_share' => round($wfhShareNote, 2),
             ];
         }
 
