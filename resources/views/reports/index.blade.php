@@ -151,7 +151,7 @@
                 <div style="font-size: 0.95rem; font-weight: 600; color: var(--primary-navy);">€{{ number_format($netProfit, 2) }}</div>
             </div>
             <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
-                Still to settle (tax + SSC): <strong style="color: {{ ($taxBalance + $sscBalance) > 0 ? '#b45309' : '#059669' }};">€{{ number_format(max(0, $taxBalance) + max(0, $sscBalance), 2) }}</strong>
+                Still to settle (tax + SSC): <strong style="color: {{ ($taxBalance + $sscBalance) > 0 ? '#b45309' : '#059669' }};">€{{ number_format(max(0, $taxBalance + $sscBalance), 2) }}</strong>
                 · <button type="button" class="report-tab-btn" data-tab="tax" style="background: none; border: none; padding: 0; font: inherit; color: var(--primary-cerulean); font-weight: 600; cursor: pointer;">Open Tax &amp; SSC →</button>
             </div>
         </div>

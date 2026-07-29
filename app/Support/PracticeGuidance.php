@@ -26,11 +26,13 @@ class PracticeGuidance
 
         if ($user->canAccessReports() && ($vatStatus === 'article_10' || $vatStatus === 'article_11')) {
             // Soft approximate CFR-style windows (mid-month after quarter) — advisory only.
+            // Include prior-year Q4 so Jan/Feb still surfaces that return before Q1.
             $quarters = [
-                1 => ['due' => Carbon::create($year, 5, 15), 'period' => '1', 'label' => 'VAT Q1'],
-                2 => ['due' => Carbon::create($year, 8, 15), 'period' => '2', 'label' => 'VAT Q2'],
-                3 => ['due' => Carbon::create($year, 11, 15), 'period' => '3', 'label' => 'VAT Q3'],
-                4 => ['due' => Carbon::create($year + 1, 2, 15), 'period' => '4', 'label' => 'VAT Q4'],
+                ['due' => Carbon::create($year, 2, 15), 'period' => '4', 'label' => 'VAT Q4', 'report_year' => $year - 1],
+                ['due' => Carbon::create($year, 5, 15), 'period' => '1', 'label' => 'VAT Q1', 'report_year' => $year],
+                ['due' => Carbon::create($year, 8, 15), 'period' => '2', 'label' => 'VAT Q2', 'report_year' => $year],
+                ['due' => Carbon::create($year, 11, 15), 'period' => '3', 'label' => 'VAT Q3', 'report_year' => $year],
+                ['due' => Carbon::create($year + 1, 2, 15), 'period' => '4', 'label' => 'VAT Q4', 'report_year' => $year],
             ];
 
             $next = null;
@@ -45,7 +47,7 @@ class PracticeGuidance
                     'key' => 'vat_q',
                     'label' => $next['label'],
                     'hint' => 'Around '.$next['due']->format('d M Y').' — open your period pack',
-                    'href' => '/reports?year='.$year.'&period='.$next['period'].'#tab-vat',
+                    'href' => '/reports?year='.$next['report_year'].'&period='.$next['period'].'#tab-vat',
                     'due' => $next['due']->toDateString(),
                     'urgent' => $next['due']->diffInDays($today) <= 21,
                 ];
@@ -62,11 +64,11 @@ class PracticeGuidance
         }
 
         if ($user->canAccessReports()) {
-            // Soft provisional tax reminders (common instalment months).
+            // Soft provisional tax reminders (aligned with existing payment-guide months).
             $ptMonths = [
                 Carbon::create($year, 4, 30),
                 Carbon::create($year, 8, 31),
-                Carbon::create($year, 12, 31),
+                Carbon::create($year, 12, 21),
             ];
             foreach ($ptMonths as $due) {
                 if ($due->gte($today->copy()->subDays(14))) {

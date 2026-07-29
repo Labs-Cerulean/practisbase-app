@@ -159,21 +159,26 @@ class ExpenseController extends Controller
             }
         });
 
-        $countsAs = $amount;
+        $regime = RegimeHistory::forDate($user, $validated['expense_date']);
+        $isArt10 = ($regime['vat_status'] ?? '') === 'article_10';
+        // Match FiscalReportEngine: Art 10 deducts ex-VAT; otherwise amount + VAT is the income-tax base.
+        $basis = $isArt10 ? $amount : ($amount + $vatAmount);
+
+        $countsAs = $basis;
         $shareNote = '';
         if (ExpenseTreatment::isCapital($category)) {
             $rate = ExpenseTreatment::capitalRate($category) ?? 0.25;
             $pct = $category === 'car' ? ((float) ($businessUse ?? 100) / 100) : 1.0;
-            $countsAs = round($amount * $rate * $pct, 2);
+            $countsAs = round($basis * $rate * $pct, 2);
             $shareNote = ' Capital item — about '.round($rate * 100).'% wear & tear this year'
                 .($category === 'car' ? ' × practice-use %' : '')
                 .' (not the full cost in year one).';
         } elseif ($category === 'fuel' && $businessUse !== null) {
-            $countsAs = round($amount * ((float) $businessUse / 100), 2);
+            $countsAs = round($basis * ((float) $businessUse / 100), 2);
             $shareNote = ' Only the practice-use share is deductible.';
         } elseif (ExpenseTreatment::requiresHomeOfficePercent($category)) {
             $homePct = (float) ($user->home_office_percent ?? 0);
-            $countsAs = round($amount * ($homePct / 100), 2);
+            $countsAs = round($basis * ($homePct / 100), 2);
             $shareNote = $homePct > 0
                 ? ' Only your home-office share ('.rtrim(rtrim(number_format($homePct, 2), '0'), '.').'%) is deductible.'
                 : ' Set a home-office % so this bill can count.';

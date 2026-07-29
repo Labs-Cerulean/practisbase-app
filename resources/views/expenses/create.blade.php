@@ -72,7 +72,7 @@
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">VAT amount <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
-                    <input type="number" name="vat_amount" step="0.01" min="0" value="{{ old('vat_amount', '0') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="number" name="vat_amount" id="expenseVatAmount" step="0.01" min="0" value="{{ old('vat_amount', '0') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
             </div>
             <p id="deductPreview" style="display: none; font-size: 0.85rem; color: var(--primary-navy); margin: -0.5rem 0 1.25rem; line-height: 1.45; padding: 0.65rem 0.85rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md);"></p>
@@ -103,7 +103,15 @@
             var wfhWrap = document.getElementById('wfhWrap');
             var preview = document.getElementById('deductPreview');
             var amount = document.getElementById('expenseAmount');
+            var vatAmount = document.getElementById('expenseVatAmount');
             var homePct = @json($user->home_office_percent !== null ? (float) $user->home_office_percent : null);
+            var isArt10 = @json(($user->vat_status ?? '') === 'article_10');
+
+            function deductibleBasis() {
+                var cost = Number(amount.value || 0);
+                var vat = Number(vatAmount.value || 0);
+                return isArt10 ? cost : (cost + vat);
+            }
 
             function sync() {
                 var v = cat.value;
@@ -138,6 +146,8 @@
                     preview.style.display = 'none';
                     return;
                 }
+                var basis = deductibleBasis();
+                var basisNote = isArt10 ? '' : ' (incl. VAT in tax base while not on Article 10)';
 
                 if (['laptop', 'equipment', 'car'].indexOf(v) !== -1) {
                     var rate = rates[v] || 0.25;
@@ -146,10 +156,10 @@
                         preview.style.display = 'none';
                         return;
                     }
-                    var year1 = (cost * rate * pct).toFixed(2);
+                    var year1 = (basis * rate * pct).toFixed(2);
                     preview.style.display = 'block';
                     preview.innerHTML = 'Counts as <strong>€' + year1 + '</strong> this year (about ' + Math.round(rate * 100) + '% wear &amp; tear'
-                        + (v === 'car' ? ' × practice-use %' : '') + ').';
+                        + (v === 'car' ? ' × practice-use %' : '') + ')' + basisNote + '.';
                     return;
                 }
 
@@ -159,9 +169,9 @@
                         preview.style.display = 'none';
                         return;
                     }
-                    var fuelShare = (cost * fuelPct / 100).toFixed(2);
+                    var fuelShare = (basis * fuelPct / 100).toFixed(2);
                     preview.style.display = 'block';
-                    preview.innerHTML = 'Counts as <strong>€' + fuelShare + '</strong> (' + fuelPct + '% practice-use of €' + cost.toFixed(2) + ').';
+                    preview.innerHTML = 'Counts as <strong>€' + fuelShare + '</strong> (' + fuelPct + '% practice-use)' + basisNote + '.';
                     return;
                 }
 
@@ -171,18 +181,19 @@
                         preview.innerHTML = 'Set your home-office % so we can show how much of this bill counts.';
                         return;
                     }
-                    var wfhShare = (cost * homePct / 100).toFixed(2);
+                    var wfhShare = (basis * homePct / 100).toFixed(2);
                     preview.style.display = 'block';
-                    preview.innerHTML = 'Counts as <strong>€' + wfhShare + '</strong> (' + homePct + '% home-office of €' + cost.toFixed(2) + ').';
+                    preview.innerHTML = 'Counts as <strong>€' + wfhShare + '</strong> (' + homePct + '% home-office)' + basisNote + '.';
                     return;
                 }
 
                 preview.style.display = 'block';
-                preview.innerHTML = 'Counts as <strong>€' + cost.toFixed(2) + '</strong> toward deductible expenses this year.';
+                preview.innerHTML = 'Counts as <strong>€' + basis.toFixed(2) + '</strong> toward deductible expenses this year' + basisNote + '.';
             }
 
             cat.addEventListener('change', sync);
             amount.addEventListener('input', updateDeductPreview);
+            vatAmount.addEventListener('input', updateDeductPreview);
             bizInput.addEventListener('input', updateDeductPreview);
             document.addEventListener('business-use-updated', function (e) {
                 if (e.detail && e.detail.car != null && bizInput) {
