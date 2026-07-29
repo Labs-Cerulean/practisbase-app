@@ -151,6 +151,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::post('/reports/tax-payments', [ReportController::class, 'storeTaxPayment']);
         Route::delete('/reports/tax-payments/{id}', [ReportController::class, 'destroyTaxPayment']);
         Route::get('/reports/ta22.pdf', [ReportController::class, 'downloadTa22']);
+        Route::get('/reports/vat.pdf', [ReportController::class, 'downloadVatPeriod']);
 
         Route::get('/expenses', [ExpenseController::class, 'index']);
         Route::get('/expenses/create', [ExpenseController::class, 'create']);

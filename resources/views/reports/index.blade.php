@@ -38,21 +38,31 @@
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;">
                 <a href="/exports/accountant" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Accountant</a>
                 <a href="/expenses?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Expense Ledger</a>
+                <a href="/reports/vat.pdf?year={{ $selectedYear }}&period={{ urlencode($selectedPeriod ?? 'full') }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Download VAT period PDF</a>
                 @if(($hasPartTime ?? false) || ($profile['employment_display'] ?? $user->employment_type) === 'part_time' || ($ta22Liability ?? 0) > 0)
                     <a href="/reports/ta22.pdf?year={{ $selectedYear }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Download TA22 summary PDF</a>
                 @endif
             </div>
         </div>
         
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <form method="GET" action="/reports" style="display: flex; gap: 0.4rem; align-items: center; background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.25rem 0.5rem; box-shadow: var(--shadow-sm);">
+                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Period</label>
+                <select name="period" onchange="this.form.submit()" style="border: none; background: transparent; font-weight: 600; color: var(--primary-navy); padding: 0.35rem 0.15rem; font-size: 0.85rem;">
+                    @foreach(($vatPeriodOptions ?? []) as $opt)
+                        <option value="{{ $opt['value'] }}" {{ ($selectedPeriod ?? 'full') == $opt['value'] ? 'selected' : '' }}>{{ $opt['label'] }}</option>
+                    @endforeach
+                </select>
+            </form>
             @if($selectedYear > $earliestYear)
-                <a href="/reports?year={{ $selectedYear - 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&larr; {{ $selectedYear - 1 }}</a>
+                <a href="/reports?year={{ $selectedYear - 1 }}&period={{ urlencode($selectedPeriod ?? 'full') }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&larr; {{ $selectedYear - 1 }}</a>
             @else
                 <span style="padding: 0.5rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #cbd5e1; font-weight: 600; cursor: not-allowed;" title="No fiscal data recorded prior to {{ $earliestYear }}">&larr; {{ $selectedYear - 1 }}</span>
             @endif
 
             @if($selectedYear < $currentYear)
-                <a href="/reports?year={{ $selectedYear + 1 }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">{{ $selectedYear + 1 }} &rarr;</a>
+                <a href="/reports?year={{ $selectedYear + 1 }}&period={{ urlencode($selectedPeriod ?? 'full') }}" style="padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; color: var(--primary-navy); font-weight: 600; box-shadow: var(--shadow-sm); transition: 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">{{ $selectedYear + 1 }} &rarr;</a>
             @else
                 <span style="padding: 0.5rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #cbd5e1; font-weight: 600; cursor: not-allowed;" title="Cannot view future tax years">{{ $selectedYear + 1 }} &rarr;</span>
             @endif
@@ -100,6 +110,67 @@
                 </ul>
             @endif
             <button type="button" onclick="showBreakdown('regimes', 'Tax setup periods')" style="margin-top: 0.65rem; background: none; border: none; padding: 0; font: inherit; color: var(--primary-navy); font-weight: 600; font-size: 0.8rem; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">View period breakdown</button>
+        </div>
+    @endif
+
+    @if(!empty($vatPeriod))
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.85rem;">
+                <div>
+                    <div style="color: var(--text-muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;">VAT period pack</div>
+                    <h2 style="margin: 0.25rem 0 0; color: var(--primary-navy); font-size: 1.15rem;">{{ $vatPeriod['period_label'] }}</h2>
+                    <p style="margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                        Same ledger math as your annual report, sliced to this period. Article 10 dated documents only for output/input VAT.
+                    </p>
+                </div>
+                <a href="/reports/vat.pdf?year={{ $selectedYear }}&period={{ urlencode($selectedPeriod ?? 'full') }}" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Download / print PDF</a>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Net sales</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.25rem;">€{{ number_format($vatPeriod['sales_gross'], 2) }}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">{{ $vatPeriod['invoice_count'] }} inv · {{ $vatPeriod['credit_count'] }} CN</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Output VAT</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.25rem;">€{{ number_format($vatPeriod['output_vat'], 2) }}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">Art 10 ex-VAT €{{ number_format($vatPeriod['art10_sales_subtotal'], 2) }}</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Input VAT</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.25rem;">€{{ number_format($vatPeriod['input_vat'], 2) }}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">{{ $vatPeriod['expense_count'] }} expenses</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Net VAT</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: {{ $vatPeriod['net_vat'] < 0 ? '#059669' : 'var(--primary-navy)' }}; margin-top: 0.25rem;">
+                        {{ $vatPeriod['net_vat'] < 0 ? 'Reclaim ' : '' }}€{{ number_format(abs($vatPeriod['net_vat']), 2) }}
+                    </div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">VAT paid</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: #059669; margin-top: 0.25rem;">€{{ number_format($vatPeriod['vat_paid'], 2) }}</div>
+                </div>
+                <div style="background: {{ $vatPeriod['vat_balance'] > 0.009 ? '#fef2f2' : ($vatPeriod['vat_balance'] < -0.009 ? '#f0fdf4' : '#f8fafc') }}; border: 1px solid {{ $vatPeriod['vat_balance'] > 0.009 ? '#fecaca' : ($vatPeriod['vat_balance'] < -0.009 ? '#bbf7d0' : 'var(--border-light)') }}; border-radius: var(--radius-md); padding: 0.85rem 1rem;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">VAT balance</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: {{ $vatPeriod['vat_balance'] > 0 ? '#dc2626' : ($vatPeriod['vat_balance'] < 0 ? '#059669' : 'var(--primary-navy)') }}; margin-top: 0.25rem;">
+                        {{ $vatPeriod['vat_balance'] < 0 ? 'Refund ' : '' }}€{{ number_format(abs($vatPeriod['vat_balance']), 2) }}
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-muted);">
+                <div>
+                    Deductible cash/shared costs in period: <strong style="color: var(--primary-navy);">€{{ number_format($vatPeriod['deductible_expenses'], 2) }}</strong>
+                    @if(($vatPeriod['wear_and_tear'] ?? 0) > 0.009)
+                        · Wear &amp; tear (income tax): <strong style="color: var(--primary-navy);">€{{ number_format($vatPeriod['wear_and_tear'], 2) }}</strong>
+                    @endif
+                </div>
+                @unless($vatPeriod['show_vat_math'])
+                    <div style="color: #92400e;">No Article 10 activity in this period — VAT lines may be zero.</div>
+                @endunless
+            </div>
         </div>
     @endif
 
