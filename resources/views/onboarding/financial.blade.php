@@ -30,11 +30,11 @@
             @csrf
 
             <div class="form-group">
-                <label>1. Is this your only source of employment?</label>
+                <label>1. How do you work?</label>
                 <select name="employment_type" id="employmentType" class="form-select" onchange="handleEmploymentChange()" required>
                     <option value="">Select an option...</option>
-                    <option value="full_time">Yes - I am Full-Time Self-Employed</option>
-                    <option value="part_time">No - I am an employee elsewhere (Part-Time Self-Employed)</option>
+                    <option value="full_time">This practice is my main work (full-time self-employed)</option>
+                    <option value="part_time">I also have a main job (part-time self-employed)</option>
                 </select>
 
                 <div id="partTimeWarning" class="warning-box">
@@ -50,13 +50,13 @@
             <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">
 
             <div class="form-group">
-                <label>2. What is your VAT Registration Status?</label>
+                <label>2. Do you charge VAT?</label>
                 
                 <select name="vat_status" id="vatStatus" class="form-select" onchange="handleVatChange()" required>
-                    <option value="">Select your VAT Article...</option>
-                    <option value="article_11">Article 11 (Exempt - Annual revenue UNDER €35,000)</option>
-                    <option value="article_10">Article 10 (Standard - Annual revenue OVER €35,000)</option>
-                    <option value="exempt">VAT Exempt (Fifth Schedule - E.g. Education, Insurance, Medical)</option>
+                    <option value="">Select how you handle VAT...</option>
+                    <option value="article_11">No VAT yet — billed under €35k / year (Article 11)</option>
+                    <option value="article_10">I charge 18% VAT (Article 10)</option>
+                    <option value="exempt">Exempt work (e.g. therapeutic medical — Fifth Schedule)</option>
                 </select>
 
                 @if($user->profession === 'Medical Professional')

@@ -159,13 +159,27 @@ class ExpenseController extends Controller
             }
         });
 
-        $msg = 'Expense logged successfully.';
+        $countsAs = $amount;
+        $shareNote = '';
         if (ExpenseTreatment::isCapital($category)) {
-            $rate = (ExpenseTreatment::capitalRate($category) ?? 0.25) * 100;
-            $msg .= " This is a capital item — about {$rate}% wear & tear per year is applied for tax (not the full cost in year one).";
-        } elseif (ExpenseTreatment::requiresBusinessUsePercent($category) || ExpenseTreatment::requiresHomeOfficePercent($category)) {
-            $msg .= ' Only the practice / home-office share counts toward your deductible expenses.';
+            $rate = ExpenseTreatment::capitalRate($category) ?? 0.25;
+            $pct = $category === 'car' ? ((float) ($businessUse ?? 100) / 100) : 1.0;
+            $countsAs = round($amount * $rate * $pct, 2);
+            $shareNote = ' Capital item — about '.round($rate * 100).'% wear & tear this year'
+                .($category === 'car' ? ' × practice-use %' : '')
+                .' (not the full cost in year one).';
+        } elseif ($category === 'fuel' && $businessUse !== null) {
+            $countsAs = round($amount * ((float) $businessUse / 100), 2);
+            $shareNote = ' Only the practice-use share is deductible.';
+        } elseif (ExpenseTreatment::requiresHomeOfficePercent($category)) {
+            $homePct = (float) ($user->home_office_percent ?? 0);
+            $countsAs = round($amount * ($homePct / 100), 2);
+            $shareNote = $homePct > 0
+                ? ' Only your home-office share ('.rtrim(rtrim(number_format($homePct, 2), '0'), '.').'%) is deductible.'
+                : ' Set a home-office % so this bill can count.';
         }
+
+        $msg = 'Expense logged. Counts as €'.number_format($countsAs, 2).' toward deductible expenses this year.'.$shareNote;
 
         return redirect('/expenses?year=' . $year)->with('success', $msg);
     }

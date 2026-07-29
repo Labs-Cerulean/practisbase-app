@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\TaxPayment;
 use App\Support\FiscalReportEngine;
 use App\Support\FiscalYearGuard;
+use App\Support\PracticeGuidance;
 use App\Support\VatPeriodSummary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -88,6 +89,7 @@ class ReportController extends Controller
             'vatPeriod' => $vatPeriod,
             'vatPeriodOptions' => $vatPeriodOptions,
             'selectedPeriod' => $vatPeriod['period_key'] === 'full' ? 'full' : (string) $selectedQuarter,
+            'deadlines' => PracticeGuidance::softDeadlines($user, $selectedYear),
         ]));
     }
 

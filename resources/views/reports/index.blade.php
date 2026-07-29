@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Fiscal Report')
+@section('page_title', 'Tax & VAT')
 
 @section('content')
 
@@ -18,14 +18,14 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <div>
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">
-                Fiscal Report: {{ $selectedYear }}
+                Tax &amp; VAT: {{ $selectedYear }}
                 @if($isYearClosed)
                     <span style="background: #e2e8f0; color: #475569; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; vertical-align: middle; margin-left: 0.5rem;">🔒 CLOSED & FINAL</span>
                 @else
                     <span style="background: #fef08a; color: #854d0e; font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; vertical-align: middle; margin-left: 0.5rem;">📝 LIVE DRAFT</span>
                 @endif
             </h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">Review your strict fiscal tax and VAT liabilities.</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">Your year in plain language — invoices, tax &amp; SSC, VAT, and what you have already paid.</p>
             @if($isYearClosed && ($from_snapshot ?? false))
                 <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); color: #065f46; font-size: 0.8rem; max-width: 42rem;">
                     Frozen snapshot{{ !empty($snapshotFrozenAt) ? ' from ' . \Illuminate\Support\Carbon::parse($snapshotFrozenAt)->format('d M Y H:i') : '' }}. Settings changes after close do not recalculate this year.
@@ -113,6 +113,62 @@
         </div>
     @endif
 
+    @if(!empty($deadlines))
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
+            @foreach($deadlines as $chip)
+                <a href="{{ $chip['href'] }}" style="display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none; background: {{ $chip['urgent'] ? '#fffbeb' : 'white' }}; border: 1px solid {{ $chip['urgent'] ? '#fde68a' : 'var(--border-light)' }}; color: {{ $chip['urgent'] ? '#92400e' : 'var(--primary-navy)' }}; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-size: 0.8rem; box-shadow: var(--shadow-sm);">
+                    <strong style="font-weight: 700;">{{ $chip['label'] }}</strong>
+                    <span style="opacity: 0.85;">{{ $chip['hint'] }}</span>
+                </a>
+            @endforeach
+        </div>
+        <p style="margin: -0.5rem 0 1.25rem; font-size: 0.75rem; color: var(--text-muted);">Soft reminders only — confirm official dates with CFR / your accountant.</p>
+    @endif
+
+    <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0;">
+        <button type="button" class="report-tab-btn" data-tab="overview" style="padding: 0.65rem 1rem; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">Overview</button>
+        <button type="button" class="report-tab-btn" data-tab="tax" style="padding: 0.65rem 1rem; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">Tax &amp; SSC</button>
+        <button type="button" class="report-tab-btn" data-tab="vat" style="padding: 0.65rem 1rem; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">VAT</button>
+        <button type="button" class="report-tab-btn" data-tab="payments" style="padding: 0.65rem 1rem; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); cursor: pointer;">Payments</button>
+    </div>
+
+    <div id="tab-overview" class="report-tab-panel">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Income at a glance</div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">
+                    {{ ($isArticle10 ?? false) ? 'Official invoiced (ex-VAT)' : 'Official Invoiced' }}
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($fiscalRevenue ?? $invoicedRevenue, 2) }}</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Deductible expenses</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: #ef4444;">-€{{ number_format($deductibleExpenses, 2) }}</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Net taxable profit</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: var(--primary-navy);">€{{ number_format($netProfit, 2) }}</div>
+            </div>
+            <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+                Still to settle (tax + SSC): <strong style="color: {{ ($taxBalance + $sscBalance) > 0 ? '#b45309' : '#059669' }};">€{{ number_format(max(0, $taxBalance) + max(0, $sscBalance), 2) }}</strong>
+                · <button type="button" class="report-tab-btn" data-tab="tax" style="background: none; border: none; padding: 0; font: inherit; color: var(--primary-cerulean); font-weight: 600; cursor: pointer;">Open Tax &amp; SSC →</button>
+            </div>
+        </div>
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Quick jumps</div>
+            <ul style="list-style: none; margin: 0; padding: 0; display: grid; gap: 0.65rem; font-size: 0.9rem;">
+                <li><button type="button" class="report-tab-btn" data-tab="tax" style="background: none; border: none; padding: 0; font: inherit; color: var(--primary-navy); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">Tax, TA22 &amp; SSC settlement</button></li>
+                <li><button type="button" class="report-tab-btn" data-tab="vat" style="background: none; border: none; padding: 0; font: inherit; color: var(--primary-navy); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">VAT period pack &amp; balance</button></li>
+                <li><button type="button" class="report-tab-btn" data-tab="payments" style="background: none; border: none; padding: 0; font: inherit; color: var(--primary-navy); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">Log provisional / VAT payments</button></li>
+                <li><a href="/expenses?year={{ $selectedYear }}" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Expense ledger →</a></li>
+                <li><a href="/exports/accountant" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Pack for accountant →</a></li>
+            </ul>
+        </div>
+    </div>
+    </div>
+
+    <div id="tab-vat" class="report-tab-panel" style="display: none;">
     @if(!empty($vatPeriod))
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.85rem;">
@@ -174,6 +230,70 @@
         </div>
     @endif
 
+    <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">VAT Tracking (full year)</div>
+            
+            @if($hasArticle10 ?? ($isArticle10 ?? false))
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">Net VAT due</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $vatLiability < 0 ? '#059669' : 'var(--primary-navy)' }}; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">
+                        {{ $vatLiability < 0 ? 'Reclaim: ' : '' }}€{{ number_format(abs($vatLiability), 2) }}
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Less: VAT Paid</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #059669;">-€{{ number_format($vatPaid, 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">VAT Balance</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $vatBalance > 0 ? '#dc2626' : ($vatBalance < 0 ? '#059669' : 'var(--text-main)') }};">
+                        {{ $vatBalance < 0 ? 'Refund: ' : '' }}€{{ number_format(abs($vatBalance), 2) }}
+                    </div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
+                    Output VAT from invoices minus expense input VAT. Click “Net VAT due” for the breakdown.
+                    @if($mixedVat ?? false)
+                        <div style="margin-top: 0.35rem; color: #92400e;">VAT status changed mid-year — only Article 10 dated documents are included.</div>
+                    @endif
+                </div>
+            @elseif(($hasArticle11 ?? false) || ($profile['vat_status'] ?? $user->vat_status) === 'article_11')
+                @php
+                    $threshold = 35000;
+                    $percent = min(100, ($invoicedRevenue / $threshold) * 100);
+                    $isOverThreshold = $invoicedRevenue > $threshold;
+                @endphp
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">Article 11 Threshold Progress</span>
+                        <strong style="color: {{ $isOverThreshold ? '#dc2626' : 'var(--text-main)' }};">{{ number_format($percent, 1) }}%</strong>
+                    </div>
+                    
+                    <div style="width: 100%; background-color: #f1f5f9; border-radius: 9999px; height: 0.75rem; overflow: hidden;">
+                        <div style="background-color: {{ $isOverThreshold ? '#dc2626' : ($percent > 90 ? '#ef4444' : ($percent > 75 ? '#f59e0b' : '#10b981')) }}; height: 100%; width: {{ $percent }}%;"></div>
+                    </div>
+                    
+                    <div style="font-size: 0.75rem; color: {{ $isOverThreshold ? '#dc2626' : 'var(--text-muted)' }}; margin-top: 0.75rem; text-align: center; font-weight: {{ $isOverThreshold ? '700' : '400' }};">
+                        Billed: €{{ number_format($invoicedRevenue, 2) }} / €35,000.00
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid {{ $isOverThreshold ? '#fecaca' : 'var(--border-light)' }}; padding-top: 0.75rem; font-size: 0.85rem; color: {{ $isOverThreshold ? '#991b1b' : 'var(--text-muted)' }}; background: {{ $isOverThreshold ? '#fef2f2' : 'transparent' }}; margin: -1.5rem; margin-top: 1rem; padding: 1.5rem; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg);">
+                    @if($isOverThreshold)
+                        <strong>CRITICAL ACTION REQUIRED:</strong> You have exceeded the €35,000 exempt threshold. By law, you must register for Article 10 (Standard VAT) within 30 days.
+                    @else
+                        <strong>Action Required:</strong> Submit your annual declaration confirming your revenue remains under the threshold.
+                    @endif
+                </div>
+            @else
+                <div style="margin-bottom: 1rem; text-align: center; color: #166534; background: #f0fdf4; padding: 1rem; border-radius: var(--radius-md);">
+                    <strong>VAT Exempt</strong><br>
+                    <span style="font-size: 0.85rem;">Fifth Schedule Exemption Active</span>
+                </div>
+            @endif
+    </div>
+    </div>{{-- /tab-vat --}}
+
+    <div id="tab-tax" class="report-tab-panel" style="display: none;">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
         
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
@@ -305,71 +425,11 @@
                 </div>
             </div>
         </div>
-
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">VAT Tracking</div>
-            
-            @if($hasArticle10 ?? ($isArticle10 ?? false))
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">Net VAT due</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $vatLiability < 0 ? '#059669' : 'var(--primary-navy)' }}; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);" onclick="showBreakdown('vat', 'VAT')" title="View Breakdown">
-                        {{ $vatLiability < 0 ? 'Reclaim: ' : '' }}€{{ number_format(abs($vatLiability), 2) }}
-                    </div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.85rem; color: #059669; font-weight: 600;">Less: VAT Paid</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #059669;">-€{{ number_format($vatPaid, 2) }}</div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">VAT Balance</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: {{ $vatBalance > 0 ? '#dc2626' : ($vatBalance < 0 ? '#059669' : 'var(--text-main)') }};">
-                        {{ $vatBalance < 0 ? 'Refund: ' : '' }}€{{ number_format(abs($vatBalance), 2) }}
-                    </div>
-                </div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 1rem;">
-                    Output VAT from invoices minus expense input VAT. Click “Net VAT due” for the breakdown.
-                    @if($mixedVat ?? false)
-                        <div style="margin-top: 0.35rem; color: #92400e;">VAT status changed mid-year — only Article 10 dated documents are included.</div>
-                    @endif
-                </div>
-            @elseif(($hasArticle11 ?? false) || ($profile['vat_status'] ?? $user->vat_status) === 'article_11')
-                @php
-                    $threshold = 35000;
-                    $percent = min(100, ($invoicedRevenue / $threshold) * 100);
-                    $isOverThreshold = $invoicedRevenue > $threshold;
-                @endphp
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">Article 11 Threshold Progress</span>
-                        <strong style="color: {{ $isOverThreshold ? '#dc2626' : 'var(--text-main)' }};">{{ number_format($percent, 1) }}%</strong>
-                    </div>
-                    
-                    <div style="width: 100%; background-color: #f1f5f9; border-radius: 9999px; height: 0.75rem; overflow: hidden;">
-                        <div style="background-color: {{ $isOverThreshold ? '#dc2626' : ($percent > 90 ? '#ef4444' : ($percent > 75 ? '#f59e0b' : '#10b981')) }}; height: 100%; width: {{ $percent }}%;"></div>
-                    </div>
-                    
-                    <div style="font-size: 0.75rem; color: {{ $isOverThreshold ? '#dc2626' : 'var(--text-muted)' }}; margin-top: 0.75rem; text-align: center; font-weight: {{ $isOverThreshold ? '700' : '400' }};">
-                        Billed: €{{ number_format($invoicedRevenue, 2) }} / €35,000.00
-                    </div>
-                </div>
-                
-                <div style="border-top: 1px solid {{ $isOverThreshold ? '#fecaca' : 'var(--border-light)' }}; padding-top: 0.75rem; font-size: 0.85rem; color: {{ $isOverThreshold ? '#991b1b' : 'var(--text-muted)' }}; background: {{ $isOverThreshold ? '#fef2f2' : 'transparent' }}; margin: -1.5rem; margin-top: 1rem; padding: 1.5rem; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg);">
-                    @if($isOverThreshold)
-                        <strong>🚨 CRITICAL ACTION REQUIRED:</strong> You have exceeded the €35,000 exempt threshold. By law, you must register for Article 10 (Standard VAT) within 30 days.
-                    @else
-                        <strong>Action Required:</strong> Submit your annual declaration confirming your revenue remains under the threshold.
-                    @endif
-                </div>
-            @else
-                <div style="margin-bottom: 1rem; text-align: center; color: #166534; background: #f0fdf4; padding: 1rem; border-radius: var(--radius-md);">
-                    <strong>VAT Exempt</strong><br>
-                    <span style="font-size: 0.85rem;">Fifth Schedule Exemption Active</span>
-                </div>
-            @endif
-        </div>
     </div>
+    </div>{{-- /tab-tax --}}
 
-    <div style="margin-top: 3rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
+    <div id="tab-payments" class="report-tab-panel" style="display: none;">
+    <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
         <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
             <div>
                 <h3 style="margin: 0; color: var(--primary-navy); font-size: 1.1rem;">Government Payment Ledger</h3>
@@ -446,6 +506,7 @@
             </div>
         </div>
     </div>
+    </div>{{-- /tab-payments --}}
 
     <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-light);">
         <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; background: {{ $isYearClosed ? '#f8fafc' : 'white' }}; border: 1px solid {{ $isYearClosed ? '#e2e8f0' : '#cbd5e1' }}; padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
@@ -587,5 +648,37 @@
             paymentTypeSelect.addEventListener('change', updateSmartGuide);
             updateSmartGuide(); 
         }
+
+        // --- REPORT TABS ---
+        (function () {
+            var valid = { overview: true, tax: true, vat: true, payments: true };
+            function activate(tab) {
+                if (!valid[tab]) tab = 'overview';
+                document.querySelectorAll('.report-tab-panel').forEach(function (el) {
+                    el.style.display = el.id === 'tab-' + tab ? 'block' : 'none';
+                });
+                document.querySelectorAll('.report-tab-btn').forEach(function (btn) {
+                    var on = btn.getAttribute('data-tab') === tab;
+                    btn.style.color = on ? 'var(--primary-navy)' : 'var(--text-muted)';
+                    btn.style.borderBottomColor = on ? 'var(--primary-cerulean)' : 'transparent';
+                });
+                if (history.replaceState) {
+                    history.replaceState(null, '', '#' + 'tab-' + tab);
+                } else {
+                    location.hash = 'tab-' + tab;
+                }
+            }
+            document.querySelectorAll('.report-tab-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    activate(btn.getAttribute('data-tab'));
+                });
+            });
+            var hash = (location.hash || '').replace(/^#/, '');
+            var initial = 'overview';
+            if (hash.indexOf('tab-') === 0) {
+                initial = hash.slice(4);
+            }
+            activate(initial);
+        })();
     </script>
 @endsection

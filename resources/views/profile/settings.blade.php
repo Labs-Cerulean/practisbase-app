@@ -5,7 +5,18 @@
 @section('content')
     <div style="max-width: 650px; margin: 0 auto;">
         
-        <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 1.5rem;">Settings</h1>
+        <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.75rem;">Settings</h1>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.8rem;">
+            <a href="#plan" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Plan</a>
+            <span style="color: #cbd5e1;">·</span>
+            <a href="#practice" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Practice</a>
+            <span style="color: #cbd5e1;">·</span>
+            <a href="#tax-setup" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Tax setup</a>
+            <span style="color: #cbd5e1;">·</span>
+            <a href="#payments" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payments</a>
+            <span style="color: #cbd5e1;">·</span>
+            <a href="#security" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Security</a>
+        </div>
 
         @if(session('success'))
             <div style="background: #d1fae5; border: 1px solid #10b981; color: #047857; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; font-weight: 500;">
@@ -29,10 +40,10 @@
             </div>
         @endif
 
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Subscription</h3>
+        <div id="plan" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Plan</h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 1.25rem;">
-                Current plan drives client limits and Fiscal Report access. Deletes do <strong>not</strong> free Free-tier client slots.
+                Your plan controls client limits and Tax &amp; VAT access. Deletes do <strong>not</strong> free Free-tier client slots.
             </p>
 
             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;">
@@ -46,7 +57,7 @@
 
             @unless($user->isPaid())
                 <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #92400e; font-size: 0.85rem; line-height: 1.45;">
-                    Free includes Dashboard + ledger only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard or Pro for <strong>unlimited clients</strong> and the <strong>Fiscal Report</strong>.
+                    Free includes Overview + invoices only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard or Pro for <strong>unlimited clients</strong> and <strong>Tax &amp; VAT</strong>.
                 </div>
             @endunless
 
@@ -104,7 +115,7 @@
             @method('PUT')
 
             <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Personal Details</h3>
+                <h3 id="practice" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Practice profile</h3>
                 
                 <div class="form-group" style="margin-bottom: 1.25rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Full Name / Practice Name</label>
@@ -163,16 +174,18 @@
                 @endif
             </div>
 
-            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Fiscal & Compliance Setup</h3>
+            <div id="tax-setup" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.35rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Tax setup</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 1.5rem; line-height: 1.45;">Plain-language choices below — we map them to Maltese sole-trader rules (TA22, Article 10/11, etc.) for your Tax &amp; VAT report.</p>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Employment Type</label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">How do you work?</label>
                         <select name="employment_type" id="empType" onchange="handleEmpChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="full_time" {{ $user->employment_type === 'full_time' ? 'selected' : '' }}>Full-Time Self-Employed</option>
-                            <option value="part_time" {{ $user->employment_type === 'part_time' ? 'selected' : '' }}>Part-Time Self-Employed</option>
+                            <option value="full_time" {{ $user->employment_type === 'full_time' ? 'selected' : '' }}>This practice is my main work (full-time self-employed)</option>
+                            <option value="part_time" {{ $user->employment_type === 'part_time' ? 'selected' : '' }}>I also have a main job (part-time self-employed)</option>
                         </select>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Part-time uses the TA22 flat-rate scheme where it applies.</div>
                     </div>
                     
                     <div id="dobSettingsGroup" style="display: {{ $user->employment_type === 'full_time' || ($dobLocked ?? false) ? 'block' : 'none' }};">
@@ -224,11 +237,11 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">VAT Registration Status</label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Do you charge VAT?</label>
                         <select name="vat_status" id="vatSettingsStatus" onchange="handleVatChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="article_11" {{ $user->vat_status === 'article_11' ? 'selected' : '' }}>Article 11 (Exempt - Under €35k)</option>
-                            <option value="article_10" {{ $user->vat_status === 'article_10' ? 'selected' : '' }}>Article 10 (Standard - Over €35k)</option>
-                            <option value="exempt" {{ $user->vat_status === 'exempt' ? 'selected' : '' }}>VAT Exempt (Fifth Schedule)</option>
+                            <option value="article_11" {{ $user->vat_status === 'article_11' ? 'selected' : '' }}>No VAT yet — under €35k (Article 11)</option>
+                            <option value="article_10" {{ $user->vat_status === 'article_10' ? 'selected' : '' }}>Yes — I charge 18% VAT (Article 10)</option>
+                            <option value="exempt" {{ $user->vat_status === 'exempt' ? 'selected' : '' }}>Exempt work (e.g. therapeutic medical / Fifth Schedule)</option>
                         </select>
                     </div>
                     
@@ -250,8 +263,8 @@
                 </div>
 
                 <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Fiscal Configuration</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">These details are required to accurately generate your Live Fiscal Report. <br><em>Note: This information is strictly for calculation purposes and does not appear on your invoices.</em></p>
+                <h3 id="tax-details" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Tax details for calculations</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Used only for your Tax &amp; VAT report — never printed on invoices.</p>
                 
                 <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
                     
@@ -308,7 +321,7 @@
                 </div>
             </div>
 
-                <h3 style="color: var(--primary-navy); margin-top: 2rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Accepted Payment Methods</h3>
+                <h3 id="payments" style="color: var(--primary-navy); margin-top: 2rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">How clients pay you</h3>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Select how you want clients to pay you. These will be automatically formatted onto your invoices. <strong>(Select at least one)</strong></p>
 
                 @php $pm = $user->payment_methods ?? []; @endphp
@@ -479,7 +492,7 @@
         @endif
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Security</h3>
+            <h3 id="security" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Security</h3>
             
             <form action="/settings/password" method="POST">
                 @csrf

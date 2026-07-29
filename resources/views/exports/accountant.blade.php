@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Accountant')
+@section('page_title', 'For accountant')
 
 @section('content')
     <div style="max-width: 720px; margin: 0 auto;">

@@ -25,41 +25,44 @@
 
             <nav class="sidebar-nav">
                 <ul>
+                    <li class="nav-section-label">Home</li>
                     <li>
-                        <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Dashboard</a>
+                        <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Overview</a>
                     </li>
+
+                    <li class="nav-section-label">Practice</li>
                     <li>
                         <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
                     </li>
                     <li>
-                        <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Ledger</a>
+                        <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
                     </li>
 
                     @auth
                         @if(auth()->user()->canAccessReports())
-                            <li class="nav-section-label">Standard</li>
+                            <li class="nav-section-label">Money</li>
                             <li>
-                                <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Fiscal Report</a>
+                                <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Tax &amp; VAT</a>
                             </li>
                             <li>
                                 <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">Expenses</a>
                             </li>
                             <li>
-                                <a href="/exports/accountant" class="nav-link {{ request()->is('exports*') ? 'active' : '' }}">Accountant</a>
+                                <a href="/exports/accountant" class="nav-link {{ request()->is('exports*') ? 'active' : '' }}">For accountant</a>
                             </li>
                         @endif
 
                         @if(auth()->user()->canAccessProPackage('med'))
-                            <li class="nav-section-label">Pro</li>
+                            <li class="nav-section-label">Clinical</li>
                             <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
                             <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Stampables</a></li>
                         @elseif(auth()->user()->canAccessProPackage('arch'))
-                            <li class="nav-section-label">Pro</li>
+                            <li class="nav-section-label">Projects</li>
                             <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') ? 'active' : '' }}">Projects</a></li>
                             <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
                             <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
                         @elseif(auth()->user()->canAccessProPackage('eng'))
-                            <li class="nav-section-label">Pro</li>
+                            <li class="nav-section-label">Projects</li>
                             <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') ? 'active' : '' }}">Projects</a></li>
                             <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
                             <li><span class="nav-link" style="opacity: 0.55; cursor: default;">EMS / BMS</span></li>
