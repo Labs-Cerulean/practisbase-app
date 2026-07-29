@@ -90,7 +90,7 @@ class ClientController extends Controller
 
         if (! $user->canAddClient()) {
             return redirect('/clients')->withErrors([
-                'client_limit' => 'Free plan allows ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Deleting a client does not free a slot. Upgrade to Standard or Pro for unlimited clients.',
+                'client_limit' => 'Free / Practice plans allow ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Deleting a client does not free a slot. Upgrade to Standard or Full Pro for unlimited clients.',
             ]);
         }
 
@@ -104,7 +104,7 @@ class ClientController extends Controller
 
         if (! $user->canAddClient()) {
             return redirect('/clients')->withErrors([
-                'client_limit' => 'Free plan allows ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Deleting a client does not free a slot. Upgrade to Standard or Pro for unlimited clients.',
+                'client_limit' => 'Free / Practice plans allow ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Deleting a client does not free a slot. Upgrade to Standard or Full Pro for unlimited clients.',
             ]);
         }
 

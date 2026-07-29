@@ -43,21 +43,25 @@
         <div id="plan" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
             <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Plan</h3>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 1.25rem;">
-                Your plan controls client limits and Tax &amp; VAT access. Deletes do <strong>not</strong> free Free-tier client slots.
+                Plans split <strong>accounts</strong> (Tax &amp; VAT) from <strong>practice tools</strong> (clinical / projects). Practice keeps the Free financial layer ({{ $user->freeClientCap() }} lifetime clients). Deletes do <strong>not</strong> free Free-tier slots.
             </p>
 
             <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;">
                 <span style="display: inline-block; background: rgba(2, 132, 199, 0.1); color: var(--primary-cerulean); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.35rem 0.75rem; border-radius: 20px; border: 1px solid rgba(2, 132, 199, 0.25);">
-                    {{ ucwords(str_replace('-', ' ', $user->tier ?: 'free')) }}
+                    {{ \App\Support\TierPolicy::label($user->tier ?: 'free') }}
                 </span>
                 <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 600;">
                     {{ $user->clientUsageLabel() }}
                 </span>
             </div>
 
-            @unless($user->isPaid())
+            @unless($user->hasStandardFinancial())
                 <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #92400e; font-size: 0.85rem; line-height: 1.45;">
-                    Free includes Overview + invoices only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard or Pro for <strong>unlimited clients</strong> and <strong>Tax &amp; VAT</strong>.
+                    @if($user->isPracticeOnly())
+                        Practice includes Free invoicing only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to <strong>Full Pro</strong> for unlimited clients and <strong>Tax &amp; VAT</strong>.
+                    @else
+                        Free includes Overview + invoices only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard for accounts, Practice for profession tools, or Full Pro for both.
+                    @endif
                 </div>
             @endunless
 
@@ -75,6 +79,9 @@
                         @foreach(($allowedTiers ?? ['free', 'standard']) as $tierOption)
                             <option value="{{ $tierOption }}" {{ ($user->tier ?: 'free') === $tierOption ? 'selected' : '' }}>
                                 {{ \App\Support\TierPolicy::label($tierOption) }}
+                                @if(\App\Support\TierPolicy::priceLabel($tierOption) !== '')
+                                    ({{ \App\Support\TierPolicy::priceLabel($tierOption) }}/mo)
+                                @endif
                             </option>
                         @endforeach
                     </select>
@@ -84,7 +91,7 @@
                 </div>
                 <div id="plan-change-preview" style="display: none; margin-top: 0.85rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; line-height: 1.45;"></div>
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-                    Pro packages are limited to your registered profession. Contact support to change profession.
+                    Practice and Pro packages are limited to your registered profession. Contact support to change profession.
                 </div>
             </form>
         </div>
@@ -530,7 +537,7 @@
     <script>
         (function () {
             var currentTier = @json($currentTier ?? \App\Support\TierPolicy::normalize($user->tier));
-            var ranks = { free: 0, standard: 1, 'pro-med': 2, 'pro-arch': 2, 'pro-eng': 2 };
+            var downgradeMap = @json(collect($allowedTiers ?? [])->mapWithKeys(fn ($t) => [$t => \App\Support\TierPolicy::isDowngrade($currentTier ?? $user->tier, $t)])->all());
             var consequences = @json($planConsequences ?? []);
             var form = document.getElementById('plan-change-form');
             var select = document.getElementById('plan-tier-select');
@@ -544,7 +551,7 @@
             if (!form || !select || !preview) return;
 
             function isDowngrade(to) {
-                return (ranks[to] ?? 0) < (ranks[currentTier] ?? 0);
+                return !!downgradeMap[to];
             }
 
             function renderPreview() {

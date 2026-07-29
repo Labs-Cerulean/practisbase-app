@@ -6,7 +6,13 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
         <div>
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Hello{{ $user->name ? ', '.explode(' ', $user->name)[0] : '' }}</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">Your {{ $year }} practice at a glance — official invoices only count for tax.</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
+                @if($user->isPracticeOnly())
+                    Practice tools are on — invoices use the Free financial layer until you add Tax &amp; VAT.
+                @else
+                    Your {{ $year }} practice at a glance — official invoices only count for tax.
+                @endif
+            </p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/ledger/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
@@ -16,6 +22,18 @@
             @endif
         </div>
     </div>
+
+    @if($user->isPracticeOnly())
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); padding: 1.1rem 1.35rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div>
+                <div style="font-weight: 700; color: #1e3a8a;">Ready for Tax &amp; VAT?</div>
+                <div style="font-size: 0.85rem; color: #1e40af; line-height: 1.45; margin-top: 0.2rem;">
+                    Practice keeps Free invoicing ({{ $user->freeClientCap() }} lifetime clients). Full Pro unlocks unlimited clients, expenses, and your Tax &amp; VAT report.
+                </div>
+            </div>
+            <a href="/settings#plan" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Upgrade to Full Pro</a>
+        </div>
+    @endif
 
     @if(!empty($deadlines))
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">

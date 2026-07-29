@@ -69,7 +69,7 @@ class ProfileController extends Controller
         $currentTier = \App\Support\TierPolicy::normalize($user->tier);
 
         $request->validate([
-            'tier' => 'required|in:free,standard,pro-med,pro-arch,pro-eng',
+            'tier' => \App\Support\TierPolicy::validationRule(),
             'confirm_downgrade' => 'nullable|accepted',
             'confirm_downgrade_typed' => 'nullable|string|max:32',
         ]);

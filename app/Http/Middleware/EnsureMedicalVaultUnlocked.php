@@ -16,7 +16,7 @@ class EnsureMedicalVaultUnlocked
         if (! $user || ! $user->canAccessProPackage('med')) {
             return redirect('/settings')->with(
                 'error',
-                'Pro Medical access requires a Medical Professional on the pro-med plan.'
+                'Medical practice tools require a Medical Professional on Practice Medical or Pro Medical.'
             );
         }
 

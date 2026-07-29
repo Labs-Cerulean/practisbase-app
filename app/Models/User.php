@@ -206,6 +206,26 @@ class User extends Authenticatable
         return \App\Support\TierPolicy::canAccessStandardTools($this);
     }
 
+    public function hasStandardFinancial(): bool
+    {
+        return \App\Support\TierPolicy::hasStandardFinancial($this);
+    }
+
+    public function hasPracticeTools(): bool
+    {
+        return \App\Support\TierPolicy::hasPracticeTools($this);
+    }
+
+    public function hasUnlimitedClients(): bool
+    {
+        return \App\Support\TierPolicy::hasUnlimitedClients($this);
+    }
+
+    public function isPracticeOnly(): bool
+    {
+        return \App\Support\TierPolicy::isPracticeOnly($this);
+    }
+
     public function isPaid(): bool
     {
         return \App\Support\TierPolicy::isPaid($this);
@@ -272,7 +292,7 @@ class User extends Authenticatable
     {
         $used = $this->lifetimeClientCount();
 
-        if ($this->isPaid()) {
+        if ($this->hasUnlimitedClients()) {
             return $used . ' lifetime clients created (unlimited on your plan)';
         }
 
