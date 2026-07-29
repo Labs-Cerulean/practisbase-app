@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PractisBase — Pricing for Maltese sole traders</title>
+    <title>PractisBase | Pricing for Maltese sole traders</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +19,13 @@
             --pb-sand: #f4f7fb;
             --pb-line: #d5e2ef;
             --pb-mute: #5b6b7c;
+            --path-accounts: #0284c7;
+            --path-med: #0f766e;
+            --path-med-soft: #ccfbf1;
+            --path-arch: #3f6212;
+            --path-arch-soft: #ecfccb;
+            --path-eng: #0c4a6e;
+            --path-eng-soft: #e0f2fe;
         }
 
         * { box-sizing: border-box; }
@@ -128,6 +135,7 @@
             color: var(--pb-mute);
             font-size: 0.95rem;
             line-height: 1.45;
+            max-width: 40rem;
         }
 
         .ladder {
@@ -240,55 +248,180 @@
             margin: -0.35rem 0 0.85rem;
         }
 
-        .profession-tabs {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-        .profession-tabs button {
+        .accounts-path {
+            margin-top: 2.5rem;
+            padding: 1.5rem 1.5rem 1.35rem;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.82);
             border: 1px solid var(--pb-line);
-            background: rgba(255, 255, 255, 0.8);
-            color: var(--pb-ink);
-            border-radius: 999px;
-            padding: 0.45rem 0.9rem;
-            font-weight: 700;
-            font-size: 0.82rem;
-            cursor: pointer;
+            border-left: 5px solid var(--path-accounts);
         }
-        .profession-tabs button.active {
-            background: var(--pb-ink);
-            color: #fff;
-            border-color: var(--pb-ink);
-        }
-        .profession-panel { display: none; }
-        .profession-panel.active { display: block; }
-        .pair {
+        .accounts-path .section-title { font-size: 1.2rem; }
+        .step-row {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.85rem;
+            margin-top: 1rem;
         }
         @media (max-width: 720px) {
-            .pair { grid-template-columns: 1fr; }
+            .step-row { grid-template-columns: 1fr; }
         }
-        .pair .plan { min-height: auto; }
-
-        .path {
-            margin-top: 2.5rem;
-            padding: 1.35rem 1.5rem;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.75);
+        .step {
+            background: #fff;
             border: 1px solid var(--pb-line);
+            border-radius: 12px;
+            padding: 1rem 1.05rem;
         }
-        .path ol {
-            margin: 0.75rem 0 0;
-            padding-left: 1.15rem;
+        .step-num {
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--path-accounts);
+            margin: 0 0 0.35rem;
+        }
+        .step h3 {
+            margin: 0 0 0.35rem;
+            font-size: 1rem;
+            color: var(--pb-ink);
+        }
+        .step p {
+            margin: 0;
+            font-size: 0.88rem;
             color: var(--pb-mute);
-            font-size: 0.92rem;
-            line-height: 1.55;
+            line-height: 1.45;
         }
-        .path li { margin-bottom: 0.35rem; }
-        .path strong { color: var(--pb-ink); }
+
+        .paths-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        @media (max-width: 900px) {
+            .paths-grid { grid-template-columns: 1fr; }
+        }
+
+        .prof-path {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid var(--pb-line);
+            border-radius: 16px;
+            padding: 1.25rem 1.2rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+            box-shadow: 0 12px 30px rgba(15, 39, 68, 0.06);
+            border-top: 5px solid var(--path-accent);
+        }
+        .prof-path.med { --path-accent: var(--path-med); --path-soft: var(--path-med-soft); }
+        .prof-path.arch { --path-accent: var(--path-arch); --path-soft: var(--path-arch-soft); }
+        .prof-path.eng { --path-accent: var(--path-eng); --path-soft: var(--path-eng-soft); }
+
+        .prof-label {
+            display: inline-block;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--path-accent);
+            background: var(--path-soft);
+            padding: 0.3rem 0.55rem;
+            border-radius: 6px;
+            margin-bottom: 0.65rem;
+        }
+        .prof-path h3 {
+            font-family: Fraunces, Georgia, serif;
+            font-size: 1.25rem;
+            margin: 0 0 0.35rem;
+            color: var(--pb-ink);
+        }
+        .prof-path .prof-lead {
+            margin: 0 0 1rem;
+            font-size: 0.9rem;
+            color: var(--pb-mute);
+            line-height: 1.45;
+        }
+        .prof-path .tools-label {
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--path-accent);
+            margin: 0 0 0.45rem;
+        }
+        .prof-path ul {
+            list-style: none;
+            margin: 0 0 1.15rem;
+            padding: 0;
+            flex: 1;
+        }
+        .prof-path li {
+            display: flex;
+            gap: 0.45rem;
+            align-items: flex-start;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            margin-bottom: 0.45rem;
+            color: var(--pb-ink);
+        }
+        .prof-path li::before {
+            content: "";
+            width: 0.55rem;
+            height: 0.55rem;
+            margin-top: 0.35rem;
+            border-radius: 999px;
+            background: var(--path-accent);
+            flex-shrink: 0;
+        }
+        .prof-prices {
+            display: grid;
+            gap: 0.55rem;
+            margin-top: auto;
+        }
+        .prof-price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.7rem 0.85rem;
+            border-radius: 10px;
+            border: 1px solid var(--pb-line);
+            background: #fff;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .prof-price-row:hover {
+            border-color: var(--path-accent);
+            transform: translateY(-1px);
+        }
+        .prof-price-row.pro {
+            background: var(--path-soft);
+            border-color: var(--path-accent);
+        }
+        .prof-price-row strong {
+            display: block;
+            font-size: 0.82rem;
+            color: var(--pb-ink);
+        }
+        .prof-price-row span.hint {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--pb-mute);
+            margin-top: 0.1rem;
+        }
+        .prof-price-row .amount {
+            font-family: Fraunces, Georgia, serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--path-accent);
+            white-space: nowrap;
+        }
+        .prof-price-row .amount small {
+            font-family: "DM Sans", sans-serif;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--pb-mute);
+        }
 
         .site-footer {
             text-align: center;
@@ -305,13 +438,16 @@
             .hero p { animation-delay: 0.14s; }
             .hero-cta { animation-delay: 0.2s; }
             .beta-chip { animation-delay: 0.26s; }
-            .ladder .plan {
+            .ladder .plan, .prof-path, .accounts-path {
                 animation: rise 0.65s ease both;
             }
             .ladder .plan:nth-child(1) { animation-delay: 0.05s; }
             .ladder .plan:nth-child(2) { animation-delay: 0.12s; }
             .ladder .plan:nth-child(3) { animation-delay: 0.19s; }
             .ladder .plan:nth-child(4) { animation-delay: 0.26s; }
+            .prof-path.med { animation-delay: 0.08s; }
+            .prof-path.arch { animation-delay: 0.16s; }
+            .prof-path.eng { animation-delay: 0.24s; }
         }
         @keyframes rise {
             from { opacity: 0; transform: translateY(12px); }
@@ -337,18 +473,18 @@
 
     <section class="hero">
         <p class="hero-brand">PractisBase</p>
-        <h1>Accounts when you need them. Practice tools when you don’t.</h1>
-        <p>Built for Maltese self-employed sole traders — doctors, architects, engineers. Not Ltd companies. Start lean, grow into the full system.</p>
+        <h1>Accounts for your trade. Tools for your practice.</h1>
+        <p>Built for Maltese self employed sole traders: doctors, architects, and engineers. Not Ltd companies. Start lean, grow into the full system.</p>
         <div class="hero-cta">
             <a href="/register" class="btn btn-primary">Start free</a>
             <a href="#plans" class="btn btn-ghost">Compare plans</a>
         </div>
-        <div class="beta-chip">Closed beta — no card charge yet. Invited testers pick any plan.</div>
+        <div class="beta-chip">Closed beta. No card charge yet. Invited testers pick any plan.</div>
     </section>
 
     <section class="section" id="plans">
         <h2 class="section-title">The ladder</h2>
-        <p class="section-sub">Four clear steps. Full Pro is priced as a bundle — about €{{ $save }}/mo less than buying Standard and Practice separately.</p>
+        <p class="section-sub">Four clear steps. Full Pro is priced as a bundle: about €{{ $save }}/mo less than buying Standard and Practice separately.</p>
 
         <div class="ladder">
             <article class="plan">
@@ -357,7 +493,7 @@
                 <p class="plan-blurb">Try invoicing with a hard client cap.</p>
                 <ul>
                     <li>Up to 5 lifetime clients</li>
-                    <li>Invoices &amp; RFPs</li>
+                    <li>Invoices and RFPs</li>
                     <li>Overview dashboard</li>
                 </ul>
                 <a href="/register" class="btn btn-ghost">Start free</a>
@@ -367,11 +503,11 @@
                 <span class="plan-badge">Accounts</span>
                 <div class="plan-name">Standard</div>
                 <div class="plan-price">€{{ $std }}<span>/mo</span></div>
-                <p class="plan-blurb">Sole-trader Tax &amp; VAT — no profession tools.</p>
+                <p class="plan-blurb">Sole trader Tax and VAT. No profession tools.</p>
                 <ul>
                     <li>Unlimited clients</li>
-                    <li>Tax &amp; VAT report</li>
-                    <li>Expenses &amp; accountant pack</li>
+                    <li>Tax and VAT report</li>
+                    <li>Expenses and accountant pack</li>
                     <li>Custom branding</li>
                 </ul>
                 <a href="/register" class="btn btn-primary">Choose Standard</a>
@@ -381,21 +517,21 @@
                 <span class="plan-badge">Profession</span>
                 <div class="plan-name">Practice</div>
                 <div class="plan-price">€{{ $prac }}<span>/mo</span></div>
-                <p class="plan-blurb">Niche clinical / project tools + Free invoicing.</p>
+                <p class="plan-blurb">Your profession tools plus Free invoicing.</p>
                 <ul>
                     <li>Free financial layer (5 clients)</li>
-                    <li>Patients, DMS, or projects</li>
-                    <li>Stampables &amp; certificates</li>
+                    <li>Medical, Architect, or Engineer tools</li>
+                    <li>Stampables and certificates</li>
                     <li>Upgrade path to Full Pro</li>
                 </ul>
-                <a href="#profession" class="btn btn-ghost">See Practice</a>
+                <a href="#paths" class="btn btn-ghost">See practice paths</a>
             </article>
 
             <article class="plan bargain">
                 <span class="plan-badge">Best value</span>
                 <div class="plan-name">Full Pro</div>
                 <div class="plan-price">€{{ $pro }}<span>/mo</span></div>
-                <p class="plan-blurb">Standard accounts + your profession package.</p>
+                <p class="plan-blurb">Standard accounts plus your profession package.</p>
                 <p class="save-note">Save €{{ $save }}/mo vs €{{ $std }} + €{{ $prac }}</p>
                 <ul>
                     <li>Everything in Standard</li>
@@ -403,138 +539,132 @@
                     <li>Unlimited clients</li>
                     <li>One plan for the whole desk</li>
                 </ul>
-                <a href="#profession" class="btn btn-primary">Choose Full Pro</a>
+                <a href="#paths" class="btn btn-primary">Choose Full Pro</a>
             </article>
         </div>
 
-        <div class="path">
-            <h2 class="section-title" style="font-size: 1.15rem;">Typical paths</h2>
-            <ol>
-                <li><strong>Accounts first:</strong> Free → Standard → Full Pro when you need clinical/project tools.</li>
-                <li><strong>Practice first:</strong> Free → Practice → Full Pro when Tax &amp; VAT becomes real.</li>
-                <li><strong>All in:</strong> Straight to Full Pro if you already run both desks.</li>
-            </ol>
+        <div class="accounts-path" id="accounts-path">
+            <h2 class="section-title">Accounts path</h2>
+            <p class="section-sub" style="margin-bottom: 0;">The general route for any sole trader who needs the books first. Add a profession package later when the practice tools matter.</p>
+            <div class="step-row">
+                <div class="step">
+                    <div class="step-num">Step 1</div>
+                    <h3>Free</h3>
+                    <p>Invoice a small client list and learn the desk.</p>
+                </div>
+                <div class="step">
+                    <div class="step-num">Step 2</div>
+                    <h3>Standard</h3>
+                    <p>Unlock Tax and VAT, expenses, and the accountant pack.</p>
+                </div>
+                <div class="step">
+                    <div class="step-num">Step 3</div>
+                    <h3>Full Pro</h3>
+                    <p>Keep Standard accounts and add Medical, Architect, or Engineer tools.</p>
+                </div>
+            </div>
         </div>
     </section>
 
-    <section class="section" id="profession">
-        <h2 class="section-title">Profession packages</h2>
-        <p class="section-sub">Practice and Full Pro are matched to your warrant. Pick your profession to compare Practice-only vs the Full Pro bundle.</p>
+    <section class="section" id="paths">
+        <h2 class="section-title">Practice paths</h2>
+        <p class="section-sub">Each profession gets its own tools. Practice is tools plus Free invoicing. Full Pro adds Standard Tax and VAT (save €{{ $save }}/mo vs buying both).</p>
 
-        <div class="profession-tabs" role="tablist">
-            <button type="button" class="active" data-tab="med">Medical</button>
-            <button type="button" data-tab="arch">Architect</button>
-            <button type="button" data-tab="eng">Engineer</button>
-        </div>
+        <div class="paths-grid">
+            <article class="prof-path med">
+                <span class="prof-label">Medical</span>
+                <h3>Clinical desk</h3>
+                <p class="prof-lead">For doctors who need a vaulted patient record and issued stampables.</p>
+                <div class="tools-label">What you get</div>
+                <ul>
+                    <li>Encrypted patient vault and journals</li>
+                    <li>Prescriptions with pharmacist issue codes</li>
+                    <li>Referrals and medical certificates</li>
+                    <li>Clinical stamp and stampable ledger</li>
+                    <li>Trusted device unlock and medical backup</li>
+                </ul>
+                <div class="prof-prices">
+                    <a class="prof-price-row" href="/register">
+                        <span>
+                            <strong>Practice Medical</strong>
+                            <span class="hint">Tools + Free invoicing</span>
+                        </span>
+                        <span class="amount">€{{ $prac }}<small>/mo</small></span>
+                    </a>
+                    <a class="prof-price-row pro" href="/register">
+                        <span>
+                            <strong>Pro Medical</strong>
+                            <span class="hint">Tools + Standard accounts</span>
+                        </span>
+                        <span class="amount">€{{ $pro }}<small>/mo</small></span>
+                    </a>
+                </div>
+            </article>
 
-        <div class="profession-panel active" data-panel="med">
-            <div class="pair">
-                <article class="plan">
-                    <div class="plan-name">Practice Medical</div>
-                    <div class="plan-price">€{{ $prac }}<span>/mo</span></div>
-                    <p class="plan-blurb">Clinical tools + Free invoicing. No Tax &amp; VAT yet.</p>
-                    <ul>
-                        <li>Secure patient journals</li>
-                        <li>Prescriptions &amp; referrals</li>
-                        <li>Clinical stampables</li>
-                        <li>5 lifetime clients on invoices</li>
-                    </ul>
-                    <a href="/register" class="btn btn-ghost">Select Practice Med</a>
-                </article>
-                <article class="plan bargain">
-                    <span class="plan-badge">Bundle</span>
-                    <div class="plan-name">Pro Medical</div>
-                    <div class="plan-price">€{{ $pro }}<span>/mo</span></div>
-                    <p class="plan-blurb">Practice tools + Standard Tax &amp; VAT.</p>
-                    <p class="save-note">Save €{{ $save }}/mo vs buying both</p>
-                    <ul>
-                        <li>All Practice Medical tools</li>
-                        <li>Unlimited clients</li>
-                        <li>Tax &amp; VAT, expenses, accountant</li>
-                    </ul>
-                    <a href="/register" class="btn btn-primary">Select Pro Med</a>
-                </article>
-            </div>
-        </div>
+            <article class="prof-path arch">
+                <span class="prof-label">Architect</span>
+                <h3>Studio desk</h3>
+                <p class="prof-lead">For architects running project files, stamps, and phase tracking.</p>
+                <div class="tools-label">What you get</div>
+                <ul>
+                    <li>Architect document management (DMS)</li>
+                    <li>Project records and phase tracking</li>
+                    <li>Document stamper for issued files</li>
+                    <li>Shared certificate register</li>
+                    <li>Practice branding on exports</li>
+                </ul>
+                <div class="prof-prices">
+                    <a class="prof-price-row" href="/register">
+                        <span>
+                            <strong>Practice Architect</strong>
+                            <span class="hint">Tools + Free invoicing</span>
+                        </span>
+                        <span class="amount">€{{ $prac }}<small>/mo</small></span>
+                    </a>
+                    <a class="prof-price-row pro" href="/register">
+                        <span>
+                            <strong>Pro Architect</strong>
+                            <span class="hint">Tools + Standard accounts</span>
+                        </span>
+                        <span class="amount">€{{ $pro }}<small>/mo</small></span>
+                    </a>
+                </div>
+            </article>
 
-        <div class="profession-panel" data-panel="arch">
-            <div class="pair">
-                <article class="plan">
-                    <div class="plan-name">Practice Architect</div>
-                    <div class="plan-price">€{{ $prac }}<span>/mo</span></div>
-                    <p class="plan-blurb">Project tools + Free invoicing. No Tax &amp; VAT yet.</p>
-                    <ul>
-                        <li>Architect DMS</li>
-                        <li>Document stamper</li>
-                        <li>Project phase tracking</li>
-                        <li>5 lifetime clients on invoices</li>
-                    </ul>
-                    <a href="/register" class="btn btn-ghost">Select Practice Arch</a>
-                </article>
-                <article class="plan bargain">
-                    <span class="plan-badge">Bundle</span>
-                    <div class="plan-name">Pro Architect</div>
-                    <div class="plan-price">€{{ $pro }}<span>/mo</span></div>
-                    <p class="plan-blurb">Practice tools + Standard Tax &amp; VAT.</p>
-                    <p class="save-note">Save €{{ $save }}/mo vs buying both</p>
-                    <ul>
-                        <li>All Practice Architect tools</li>
-                        <li>Unlimited clients</li>
-                        <li>Tax &amp; VAT, expenses, accountant</li>
-                    </ul>
-                    <a href="/register" class="btn btn-primary">Select Pro Arch</a>
-                </article>
-            </div>
-        </div>
-
-        <div class="profession-panel" data-panel="eng">
-            <div class="pair">
-                <article class="plan">
-                    <div class="plan-name">Practice Engineer</div>
-                    <div class="plan-price">€{{ $prac }}<span>/mo</span></div>
-                    <p class="plan-blurb">Engineering tools + Free invoicing. No Tax &amp; VAT yet.</p>
-                    <ul>
-                        <li>Projects &amp; certificates</li>
-                        <li>Technical exports</li>
-                        <li>5 lifetime clients on invoices</li>
-                    </ul>
-                    <a href="/register" class="btn btn-ghost">Select Practice Eng</a>
-                </article>
-                <article class="plan bargain">
-                    <span class="plan-badge">Bundle</span>
-                    <div class="plan-name">Pro Engineer</div>
-                    <div class="plan-price">€{{ $pro }}<span>/mo</span></div>
-                    <p class="plan-blurb">Practice tools + Standard Tax &amp; VAT.</p>
-                    <p class="save-note">Save €{{ $save }}/mo vs buying both</p>
-                    <ul>
-                        <li>All Practice Engineer tools</li>
-                        <li>Unlimited clients</li>
-                        <li>Tax &amp; VAT, expenses, accountant</li>
-                    </ul>
-                    <a href="/register" class="btn btn-primary">Select Pro Eng</a>
-                </article>
-            </div>
+            <article class="prof-path eng">
+                <span class="prof-label">Engineer</span>
+                <h3>Technical desk</h3>
+                <p class="prof-lead">For engineers who need projects, certificates, and clean technical exports.</p>
+                <div class="tools-label">What you get</div>
+                <ul>
+                    <li>Engineering project workspace</li>
+                    <li>Certificate issue and lookup</li>
+                    <li>Technical document exports</li>
+                    <li>Shared certificate register</li>
+                    <li>Practice branding on exports</li>
+                </ul>
+                <div class="prof-prices">
+                    <a class="prof-price-row" href="/register">
+                        <span>
+                            <strong>Practice Engineer</strong>
+                            <span class="hint">Tools + Free invoicing</span>
+                        </span>
+                        <span class="amount">€{{ $prac }}<small>/mo</small></span>
+                    </a>
+                    <a class="prof-price-row pro" href="/register">
+                        <span>
+                            <strong>Pro Engineer</strong>
+                            <span class="hint">Tools + Standard accounts</span>
+                        </span>
+                        <span class="amount">€{{ $pro }}<small>/mo</small></span>
+                    </a>
+                </div>
+            </article>
         </div>
     </section>
 
     <footer class="site-footer">
-        PractisBase models self-employed sole traders in Malta. Sole-trader scope only — not Ltd company accounts.
+        PractisBase models self employed sole traders in Malta. Sole trader scope only, not Ltd company accounts.
     </footer>
-
-    <script>
-        (function () {
-            var tabs = document.querySelectorAll('.profession-tabs button');
-            var panels = document.querySelectorAll('.profession-panel');
-            tabs.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var id = btn.getAttribute('data-tab');
-                    tabs.forEach(function (b) { b.classList.toggle('active', b === btn); });
-                    panels.forEach(function (p) {
-                        p.classList.toggle('active', p.getAttribute('data-panel') === id);
-                    });
-                });
-            });
-        })();
-    </script>
 </body>
 </html>
