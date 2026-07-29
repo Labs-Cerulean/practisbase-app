@@ -2,14 +2,19 @@
 
 namespace App\Support;
 
+use App\Models\ArchitectProject;
 use App\Models\Client;
+use App\Models\ClinicalEntry;
+use App\Models\EngineerProject;
 use App\Models\Expense;
 use App\Models\Invoice;
+use App\Models\MedicalVault;
+use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
 /**
- * Soft deadlines + first-week checklist for sole-trader UX (not a CFR calendar engine).
+ * Soft deadlines + first-week checklist for sole trader UX (not a CFR calendar engine).
  */
 class PracticeGuidance
 {
@@ -25,7 +30,7 @@ class PracticeGuidance
         $vatStatus = $user->vat_status;
 
         if ($user->canAccessReports() && ($vatStatus === 'article_10' || $vatStatus === 'article_11')) {
-            // Soft approximate CFR-style windows (mid-month after quarter) — advisory only.
+            // Soft approximate CFR-style windows (mid-month after quarter). Advisory only.
             // Include prior-year Q4 so Jan/Feb still surfaces that return before Q1.
             $quarters = [
                 ['due' => Carbon::create($year, 2, 15), 'period' => '4', 'label' => 'VAT Q4', 'report_year' => $year - 1],
@@ -46,7 +51,7 @@ class PracticeGuidance
                 $chips[] = [
                     'key' => 'vat_q',
                     'label' => $next['label'],
-                    'hint' => 'Around '.$next['due']->format('d M Y').' — open your period pack',
+                    'hint' => 'Around '.$next['due']->format('d M Y').'. Open your period pack',
                     'href' => '/reports?year='.$next['report_year'].'&period='.$next['period'].'#tab-vat',
                     'due' => $next['due']->toDateString(),
                     'urgent' => $next['due']->diffInDays($today) <= 21,
@@ -55,7 +60,7 @@ class PracticeGuidance
                 $chips[] = [
                     'key' => 'vat_art11',
                     'label' => 'Article 11 watch',
-                    'hint' => 'Keep billed revenue under €35k — check your report',
+                    'hint' => 'Keep billed revenue under €35k. Check your report',
                     'href' => '/reports?year='.$year.'#tab-vat',
                     'due' => null,
                     'urgent' => false,
@@ -64,7 +69,6 @@ class PracticeGuidance
         }
 
         if ($user->canAccessReports()) {
-            // Soft provisional tax reminders (aligned with existing payment-guide months).
             $ptMonths = [
                 Carbon::create($year, 4, 30),
                 Carbon::create($year, 8, 31),
@@ -75,7 +79,7 @@ class PracticeGuidance
                     $chips[] = [
                         'key' => 'pt',
                         'label' => 'Provisional tax',
-                        'hint' => 'Around '.$due->format('M Y').' — log a payment when you pay',
+                        'hint' => 'Around '.$due->format('M Y').'. Log a payment when you pay',
                         'href' => '/reports?year='.$year.'#tab-payments',
                         'due' => $due->toDateString(),
                         'urgent' => $due->diffInDays($today) <= 21,
@@ -93,32 +97,108 @@ class PracticeGuidance
      */
     public static function firstWeekChecklist(User $user): array
     {
+        $items = [];
+
+        if ($user->canAccessProPackage('med')) {
+            $vault = MedicalVault::activeForUser($user->id);
+            $hasPatient = Patient::where('user_id', $user->id)->exists();
+            $hasStampable = ClinicalEntry::where('user_id', $user->id)
+                ->whereIn('entry_type', ClinicalEntry::STAMPABLE_TYPES)
+                ->exists();
+
+            $items[] = [
+                'key' => 'vault',
+                'label' => 'Set up or unlock your clinical vault',
+                'href' => $vault ? '/pro/medical/vault/unlock' : '/pro/medical/vault/setup',
+                'done' => (bool) $vault,
+            ];
+            $items[] = [
+                'key' => 'patient',
+                'label' => 'Add your first patient',
+                'href' => '/pro/medical/patients/create',
+                'done' => $hasPatient,
+            ];
+            $items[] = [
+                'key' => 'stampable',
+                'label' => 'Draft a prescription, referral, or certificate',
+                'href' => '/pro/medical/patients',
+                'done' => $hasStampable,
+            ];
+        } elseif ($user->canAccessProPackage('arch')) {
+            $hasProject = ArchitectProject::where('user_id', $user->id)->exists();
+            $items[] = [
+                'key' => 'arch_project',
+                'label' => 'Create your first architect project',
+                'href' => '/pro/architect/projects/create',
+                'done' => $hasProject,
+            ];
+            $items[] = [
+                'key' => 'stamper',
+                'label' => 'Open the document stamper',
+                'href' => '/pro/architect/stamper',
+                'done' => $hasProject,
+            ];
+        } elseif ($user->canAccessProPackage('eng')) {
+            $hasProject = EngineerProject::where('user_id', $user->id)->exists();
+            $items[] = [
+                'key' => 'eng_project',
+                'label' => 'Create your first engineering project',
+                'href' => '/pro/engineer/projects/create',
+                'done' => $hasProject,
+            ];
+            $items[] = [
+                'key' => 'certificates',
+                'label' => 'Open the certificate register',
+                'href' => '/pro/certificates',
+                'done' => $hasProject,
+            ];
+        }
+
         $hasClient = Client::where('user_id', $user->id)->exists();
         $hasInvoice = Invoice::where('user_id', $user->id)->whereIn('type', ['invoice', 'rfp'])->exists();
         $hasExpense = Expense::where('user_id', $user->id)->exists();
         $taxOk = filled($user->employment_type) && filled($user->vat_status);
         $canReports = $user->canAccessReports();
+        $practiceOnly = $user->isPracticeOnly();
 
-        $items = [
-            [
+        if ($canReports) {
+            $items[] = [
                 'key' => 'tax',
-                'label' => 'Confirm how you work & VAT (tax setup)',
+                'label' => 'Confirm how you work and VAT (tax setup)',
                 'href' => '/settings#tax-setup',
                 'done' => $taxOk,
-            ],
-            [
+            ];
+        } elseif (! $user->hasPracticeTools()) {
+            $items[] = [
+                'key' => 'tax',
+                'label' => 'Confirm how you work and VAT (tax setup)',
+                'href' => '/settings#tax-setup',
+                'done' => $taxOk,
+            ];
+        }
+
+        if (! $practiceOnly || $canReports) {
+            $items[] = [
                 'key' => 'client',
-                'label' => 'Add your first client',
+                'label' => 'Add your first billing client',
                 'href' => '/clients/create',
                 'done' => $hasClient,
-            ],
-            [
+            ];
+            $items[] = [
                 'key' => 'invoice',
                 'label' => 'Create your first invoice or RFP',
                 'href' => '/ledger/create',
                 'done' => $hasInvoice,
-            ],
-        ];
+            ];
+        } else {
+            // Practice-only: billing is secondary. Keep one light invoicing nudge.
+            $items[] = [
+                'key' => 'client',
+                'label' => 'Add a billing client when you need to invoice (Free layer)',
+                'href' => '/clients/create',
+                'done' => $hasClient,
+            ];
+        }
 
         if ($canReports) {
             $items[] = [
@@ -129,7 +209,7 @@ class PracticeGuidance
             ];
             $items[] = [
                 'key' => 'report',
-                'label' => 'Open Tax & VAT report',
+                'label' => 'Open Tax and VAT report',
                 'href' => '/reports',
                 'done' => $hasInvoice || $hasExpense,
             ];

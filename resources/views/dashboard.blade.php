@@ -3,35 +3,173 @@
 @section('page_title', 'Overview')
 
 @section('content')
+    @php
+        $firstName = $user->name ? explode(' ', $user->name)[0] : '';
+        $deskAccent = match ($package) {
+            'med' => '#0f766e',
+            'arch' => '#3f6212',
+            'eng' => '#0c4a6e',
+            default => 'var(--primary-cerulean)',
+        };
+        $subtitle = match ($mode) {
+            'practice' => match ($package) {
+                'med' => 'Clinical tools first. Free invoicing sits underneath.',
+                'arch' => 'Studio tools first. Free invoicing sits underneath.',
+                'eng' => 'Technical tools first. Free invoicing sits underneath.',
+                default => 'Practice tools first. Free invoicing sits underneath.',
+            },
+            'pro' => 'Practice desk and Tax and VAT in one place.',
+            'standard' => 'Your '.$year.' accounts at a glance. Official invoices only count for tax.',
+            default => 'Free invoicing layer. Upgrade when you need Tax and VAT or profession tools.',
+        };
+    @endphp
+
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
         <div>
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Hello{{ $user->name ? ', '.explode(' ', $user->name)[0] : '' }}</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
-                @if($user->isPracticeOnly())
-                    Practice tools are on — invoices use the Free financial layer until you add Tax &amp; VAT.
-                @else
-                    Your {{ $year }} practice at a glance — official invoices only count for tax.
-                @endif
-            </p>
+            <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">{{ $tierLabel }}</div>
+            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Hello{{ $firstName ? ', '.$firstName : '' }}</h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">{{ $subtitle }}</p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <a href="/ledger/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
-            <a href="/clients/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
-            @if($user->canAccessReports())
+            @if($practiceDesk && ($practiceDesk['kind'] ?? null) === 'med')
+                @if($practiceDesk['vault_unlocked'])
+                    <a href="/pro/medical/patients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Patient</a>
+                @elseif($practiceDesk['vault_setup'])
+                    <a href="/pro/medical/vault/unlock" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Unlock vault</a>
+                @else
+                    <a href="/pro/medical/vault/setup" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Set up vault</a>
+                @endif
+            @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'arch')
+                <a href="/pro/architect/projects/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Project</a>
+                <a href="/pro/architect/stamper" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Stamper</a>
+            @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
+                <a href="/pro/engineer/projects/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Project</a>
+                <a href="/pro/certificates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Certificates</a>
+            @endif
+
+            @if($hasFinancial || $mode === 'free')
+                <a href="/ledger/create" style="background: {{ $hasPractice && ! $hasFinancial ? 'white' : 'var(--primary-cerulean)' }}; color: {{ $hasPractice && ! $hasFinancial ? 'var(--primary-navy)' : 'white' }}; border: {{ $hasPractice && ! $hasFinancial ? '1px solid var(--border-light)' : 'none' }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
+                <a href="/clients/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
+            @elseif($practiceOnly)
+                <a href="/ledger/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
+            @endif
+
+            @if($hasFinancial)
                 <a href="/expenses/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Expense</a>
             @endif
         </div>
     </div>
 
-    @if($user->isPracticeOnly())
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); padding: 1.1rem 1.35rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
+    @if($practiceOnly)
+        <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
             <div>
-                <div style="font-weight: 700; color: #1e3a8a;">Ready for Tax &amp; VAT?</div>
-                <div style="font-size: 0.85rem; color: #1e40af; line-height: 1.45; margin-top: 0.2rem;">
-                    Practice keeps Free invoicing ({{ $user->freeClientCap() }} lifetime clients). Full Pro unlocks unlimited clients, expenses, and your Tax &amp; VAT report.
+                <div style="font-weight: 700; color: var(--primary-navy);">Free billing layer</div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.2rem;">
+                    {{ $clientsUsed }}/{{ $clientCap }} lifetime clients on invoices.
+                    Full Pro adds unlimited clients, expenses, and Tax and VAT.
                 </div>
             </div>
-            <a href="/settings#plan" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Upgrade to Full Pro</a>
+            <a href="/settings#plan" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Upgrade to Full Pro</a>
+        </div>
+    @endif
+
+    @if($practiceDesk)
+        <div style="background: white; border: 1px solid var(--border-light); border-left: 5px solid {{ $deskAccent }}; border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: {{ $deskAccent }}; text-transform: uppercase; letter-spacing: 0.04em;">{{ $practiceDesk['title'] }}</div>
+                @if(($practiceDesk['kind'] ?? null) === 'med')
+                    <a href="/pro/medical/patients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open patients →</a>
+                @elseif(($practiceDesk['kind'] ?? null) === 'arch')
+                    <a href="/pro/architect/projects" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open projects →</a>
+                @else
+                    <a href="/pro/engineer/projects" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open projects →</a>
+                @endif
+            </div>
+
+            @if(($practiceDesk['kind'] ?? null) === 'med')
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Patients</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['patient_count'] }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Drafts to stamp</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: {{ $practiceDesk['draft_stampables'] > 0 ? '#b45309' : 'var(--primary-navy)' }};">{{ $practiceDesk['draft_stampables'] }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Issued {{ $year }}</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['issued_ytd'] }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Vault</div>
+                        <div style="font-size: 1.05rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.2rem;">
+                            @if(! $practiceDesk['vault_setup'])
+                                Not set up
+                            @elseif($practiceDesk['vault_unlocked'])
+                                Unlocked
+                            @else
+                                Locked
+                            @endif
+                        </div>
+                        @if($practiceDesk['vault_setup'] && $practiceDesk['backup_overdue'])
+                            <div style="font-size: 0.75rem; color: #b45309; margin-top: 0.2rem;">Backup overdue</div>
+                        @endif
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: {{ $practiceDesk['recent_drafts']->isEmpty() ? '0' : '1rem' }};">
+                    @if($practiceDesk['vault_unlocked'])
+                        <a href="/pro/medical/stampables" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Stampables</a>
+                        <a href="/pro/medical/patients" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Patients</a>
+                    @elseif($practiceDesk['vault_setup'])
+                        <a href="/pro/medical/vault/unlock" style="padding: 0.55rem 0.85rem; background: {{ $deskAccent }}; color: white; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem;">Unlock to continue</a>
+                    @else
+                        <a href="/pro/medical/vault/setup" style="padding: 0.55rem 0.85rem; background: {{ $deskAccent }}; color: white; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem;">Set up clinical vault</a>
+                    @endif
+                </div>
+
+                @if($practiceDesk['recent_drafts']->isNotEmpty())
+                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.85rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.55rem;">Awaiting stamp</div>
+                        @foreach($practiceDesk['recent_drafts'] as $draft)
+                            <div style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border-light); font-size: 0.9rem;">
+                                <span style="font-weight: 600; color: var(--primary-navy);">{{ $draft->typeLabel() }}</span>
+                                <span style="color: var(--text-muted);">{{ $draft->entry_date?->format('d M Y') }}</span>
+                            </div>
+                        @endforeach
+                        @if($practiceDesk['vault_unlocked'])
+                            <a href="/pro/medical/stampables" style="display: inline-block; margin-top: 0.65rem; font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Review stampables →</a>
+                        @endif
+                    </div>
+                @endif
+            @else
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Projects</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['project_count'] }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Active</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['active_count'] }}</div>
+                    </div>
+                </div>
+
+                @if($practiceDesk['recent_projects']->isEmpty())
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">No projects yet. Create one to start the desk.</p>
+                @else
+                    @foreach($practiceDesk['recent_projects'] as $project)
+                        @php
+                            $phaseLabel = $practiceDesk['kind'] === 'arch'
+                                ? (\App\Models\ArchitectProject::PHASES[$project->phase] ?? $project->phase)
+                                : (\App\Models\EngineerProject::PHASES[$project->phase] ?? $project->phase);
+                        @endphp
+                        <div style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border-light); font-size: 0.9rem;">
+                            <span style="font-weight: 600; color: var(--primary-navy);">{{ $project->name }}</span>
+                            <span style="color: var(--text-muted);">{{ $phaseLabel }}</span>
+                        </div>
+                    @endforeach
+                @endif
+            @endif
         </div>
     @endif
 
@@ -50,7 +188,7 @@
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
                 <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">{{ $year }} at a glance</div>
-                <a href="/reports" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Open Tax &amp; VAT →</a>
+                <a href="/reports" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Open Tax and VAT →</a>
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
                 <div>
@@ -62,7 +200,7 @@
                     <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($glance['net_profit'], 2) }}</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Tax &amp; SSC still to set aside</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Tax and SSC still to set aside</div>
                     <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['tax_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['tax_set_aside'], 2) }}</div>
                 </div>
                 @if($glance['has_article_10'])
@@ -75,7 +213,7 @@
                 @endif
             </div>
             <p style="margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
-                Live draft from your invoices and expenses. Click Tax &amp; VAT for the full breakdown.
+                Live draft from your invoices and expenses. Open Tax and VAT for the full breakdown.
             </p>
         </div>
     @endif
@@ -101,116 +239,174 @@
         </div>
     @endif
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">Clients</div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.35rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Active</div>
-                <div style="font-size: 1.45rem; font-weight: 700; color: var(--primary-navy);">{{ $clientCount }}</div>
+    {{-- Practice-only: compact free billing strip (not the full finance cockpit) --}}
+    @if($practiceOnly && $billing)
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.15rem 1.35rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Free billing</div>
+                <a href="/ledger" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Open ledger →</a>
             </div>
-            @if($archivedCount > 0)
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">{{ $archivedCount }} archived</div>
-            @endif
-            <a href="/clients" style="font-size: 0.8rem; color: var(--primary-cerulean); text-decoration: none; font-weight: 600;">View clients →</a>
-        </div>
-
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">{{ $year }} invoiced</div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Net official</div>
-                <div style="font-size: 1.45rem; font-weight: 700; color: #0369a1;">€{{ number_format($ytdNetInvoiced, 2) }}</div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
-                <span>Cash received</span>
-                <span style="font-weight: 600; color: #059669;">€{{ number_format($ytdInvoiceCash, 2) }}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
-                <span>Still owed to you</span>
-                <span style="font-weight: 600; color: #dc2626;">€{{ number_format($ytdOfficialDues, 2) }}</span>
-            </div>
-        </div>
-
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">Collections</div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Overdue</div>
-                <div style="font-size: 1.45rem; font-weight: 700; color: {{ $overdueCount > 0 ? '#dc2626' : 'var(--primary-navy)' }};">€{{ number_format($overdueTotal, 2) }}</div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
-                <span>{{ $overdueCount }} overdue · {{ $unpaidCount }} unpaid</span>
-                <span style="font-weight: 600;">€{{ number_format($unpaidTotal, 2) }} open</span>
-            </div>
-            <a href="/ledger?status=open&doc_type=invoice" style="font-size: 0.8rem; color: var(--primary-cerulean); text-decoration: none; font-weight: 600;">Review open invoices →</a>
-        </div>
-
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">Pro-formas (RFP)</div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Not yet invoiced</div>
-                <div style="font-size: 1.45rem; font-weight: 700; color: #4338ca;">€{{ number_format($unbilledPipeline, 2) }}</div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                <span>RFP cash {{ $year }}</span>
-                <span style="font-weight: 600;">€{{ number_format($ytdRfpCash, 2) }}</span>
-            </div>
-            <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">RFPs do not count for tax until you convert them to an official invoice.</p>
-        </div>
-    </div>
-
-    @if($clientCount === 0 && $archivedCount === 0)
-        <div style="padding: 3rem; border: 2px dashed var(--border-light); background: rgba(255,255,255,0.5); border-radius: var(--radius-md); text-align: center;">
-            <h3 style="color: var(--primary-navy); margin-bottom: 0.5rem;">Start with a client</h3>
-            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Add who you bill, then create your first invoice or RFP.</p>
-            <a href="/clients/create" style="display: inline-block; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600;">
-                + Add client
-            </a>
-        </div>
-    @else
-        <div class="dash-split" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.25rem;">
-            <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); padding: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h3 style="color: var(--primary-navy); margin: 0; font-size: 1.05rem;">Open invoices</h3>
-                    <a href="/ledger?status=open&doc_type=invoice" style="font-size: 0.8rem; color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">All invoices</a>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.85rem;">
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Clients</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: var(--primary-navy);">{{ $clientsUsed }}/{{ $clientCap }}</div>
                 </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ $year }} invoiced</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: #0369a1;">€{{ number_format($billing['ytdNetInvoiced'], 2) }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Open invoices</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: {{ $billing['overdueCount'] > 0 ? '#dc2626' : 'var(--primary-navy)' }};">€{{ number_format($billing['unpaidTotal'], 2) }}</div>
+                </div>
+            </div>
+        </div>
+    @endif
 
-                @if($recentOpen->isEmpty())
-                    <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Nothing outstanding. Nice work.</p>
-                @else
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        @foreach($recentOpen as $doc)
-                            <div style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px dashed var(--border-light);">
-                                <div>
-                                    <div style="font-weight: 700; color: var(--primary-navy);">{{ $doc->invoice_number }}</div>
-                                    <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                        {{ $doc->client->name ?? 'Client' }}
-                                        · due {{ $doc->due_date?->format('d M Y') ?? '—' }}
-                                        @if($doc->is_overdue)
-                                            <span style="color: #dc2626; font-weight: 700;"> · OVERDUE</span>
-                                        @endif
+    {{-- Standard / Full Pro / Free: full financial KPI grid --}}
+    @if(($hasFinancial || $mode === 'free') && $billing)
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
+                <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">Clients</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.35rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Active</div>
+                    <div style="font-size: 1.45rem; font-weight: 700; color: var(--primary-navy);">
+                        {{ $clientCount }}@if($clientCap !== null)<span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;"> / {{ $clientCap }}</span>@endif
+                    </div>
+                </div>
+                @if($archivedCount > 0)
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">{{ $archivedCount }} archived</div>
+                @endif
+                <a href="/clients" style="font-size: 0.8rem; color: var(--primary-cerulean); text-decoration: none; font-weight: 600;">View clients →</a>
+            </div>
+
+            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
+                <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">{{ $year }} invoiced</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Net official</div>
+                    <div style="font-size: 1.45rem; font-weight: 700; color: #0369a1;">€{{ number_format($billing['ytdNetInvoiced'], 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
+                    <span>Cash received</span>
+                    <span style="font-weight: 600; color: #059669;">€{{ number_format($billing['ytdInvoiceCash'], 2) }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                    <span>Still owed to you</span>
+                    <span style="font-weight: 600; color: #dc2626;">€{{ number_format($billing['ytdOfficialDues'], 2) }}</span>
+                </div>
+            </div>
+
+            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
+                <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">Collections</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Overdue</div>
+                    <div style="font-size: 1.45rem; font-weight: 700; color: {{ $billing['overdueCount'] > 0 ? '#dc2626' : 'var(--primary-navy)' }};">€{{ number_format($billing['overdueTotal'], 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
+                    <span>{{ $billing['overdueCount'] }} overdue · {{ $billing['unpaidCount'] }} unpaid</span>
+                    <span style="font-weight: 600;">€{{ number_format($billing['unpaidTotal'], 2) }} open</span>
+                </div>
+                <a href="/ledger?status=open&doc_type=invoice" style="font-size: 0.8rem; color: var(--primary-cerulean); text-decoration: none; font-weight: 600;">Review open invoices →</a>
+            </div>
+
+            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; box-shadow: var(--shadow-sm);">
+                <div style="color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.45rem;">Pro-formas (RFP)</div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Not yet invoiced</div>
+                    <div style="font-size: 1.45rem; font-weight: 700; color: #4338ca;">€{{ number_format($billing['unbilledPipeline'], 2) }}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                    <span>RFP cash {{ $year }}</span>
+                    <span style="font-weight: 600;">€{{ number_format($billing['ytdRfpCash'], 2) }}</span>
+                </div>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">RFPs do not count for tax until you convert them to an official invoice.</p>
+            </div>
+        </div>
+    @endif
+
+    @if(($hasFinancial || $mode === 'free') && $billing)
+        @if($clientCount === 0 && $archivedCount === 0 && ! $hasPractice)
+            <div style="padding: 3rem; border: 2px dashed var(--border-light); background: rgba(255,255,255,0.5); border-radius: var(--radius-md); text-align: center;">
+                <h3 style="color: var(--primary-navy); margin-bottom: 0.5rem;">Start with a client</h3>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Add who you bill, then create your first invoice or RFP.</p>
+                <a href="/clients/create" style="display: inline-block; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600;">
+                    + Add client
+                </a>
+            </div>
+        @elseif($clientCount > 0 || $archivedCount > 0 || $hasFinancial)
+            <div class="dash-split" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.25rem;">
+                <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: var(--primary-navy); margin: 0; font-size: 1.05rem;">Open invoices</h3>
+                        <a href="/ledger?status=open&doc_type=invoice" style="font-size: 0.8rem; color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">All invoices</a>
+                    </div>
+
+                    @if($billing['recentOpen']->isEmpty())
+                        <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">Nothing outstanding. Nice work.</p>
+                    @else
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            @foreach($billing['recentOpen'] as $doc)
+                                <div style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px dashed var(--border-light);">
+                                    <div>
+                                        <div style="font-weight: 700; color: var(--primary-navy);">{{ $doc->invoice_number }}</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                            {{ $doc->client->name ?? 'Client' }}
+                                            · due {{ $doc->due_date?->format('d M Y') ?? '—' }}
+                                            @if($doc->is_overdue)
+                                                <span style="color: #dc2626; font-weight: 700;"> · OVERDUE</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div style="font-weight: 700; color: {{ $doc->is_overdue ? '#dc2626' : 'var(--primary-navy)' }}; white-space: nowrap;">
+                                        €{{ number_format($doc->open_balance, 2) }}
                                     </div>
                                 </div>
-                                <div style="font-weight: 700; color: {{ $doc->is_overdue ? '#dc2626' : 'var(--primary-navy)' }}; white-space: nowrap;">
-                                    €{{ number_format($doc->open_balance, 2) }}
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-
-            <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); padding: 1.5rem;">
-                <h3 style="color: var(--primary-navy); margin: 0 0 1rem; font-size: 1.05rem;">Shortcuts</h3>
-                <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-                    <a href="/ledger/create" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Create invoice or RFP</a>
-                    <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Manage clients</a>
-                    @if($user->canAccessReports())
-                        <a href="/reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Tax &amp; VAT report</a>
-                        <a href="/expenses" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Expense ledger</a>
-                    @else
-                        <a href="/settings#plan" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--text-muted); font-weight: 600; font-size: 0.9rem;">Upgrade for Tax &amp; VAT</a>
+                            @endforeach
+                        </div>
                     @endif
-                    <a href="/settings#tax-setup" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Tax setup</a>
                 </div>
+
+                <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); padding: 1.5rem;">
+                    <h3 style="color: var(--primary-navy); margin: 0 0 1rem; font-size: 1.05rem;">Shortcuts</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                        @if($hasPractice && ($practiceDesk['kind'] ?? null) === 'med')
+                            <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
+                            <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Stampables</a>
+                        @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'arch')
+                            <a href="/pro/architect/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect projects</a>
+                            <a href="/pro/architect/stamper" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Document stamper</a>
+                        @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'eng')
+                            <a href="/pro/engineer/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering projects</a>
+                            <a href="/pro/certificates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Certificates</a>
+                        @endif
+                        <a href="/ledger/create" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Create invoice or RFP</a>
+                        <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Manage clients</a>
+                        @if($hasFinancial)
+                            <a href="/reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Tax and VAT report</a>
+                            <a href="/expenses" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Expense ledger</a>
+                            <a href="/settings#tax-setup" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Tax setup</a>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+    @elseif($practiceOnly)
+        <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); padding: 1.5rem;">
+            <h3 style="color: var(--primary-navy); margin: 0 0 1rem; font-size: 1.05rem;">Shortcuts</h3>
+            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                @if(($practiceDesk['kind'] ?? null) === 'med')
+                    <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
+                    <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Stampables</a>
+                @elseif(($practiceDesk['kind'] ?? null) === 'arch')
+                    <a href="/pro/architect/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect projects</a>
+                    <a href="/pro/architect/stamper" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Document stamper</a>
+                @elseif(($practiceDesk['kind'] ?? null) === 'eng')
+                    <a href="/pro/engineer/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering projects</a>
+                    <a href="/pro/certificates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Certificates</a>
+                @endif
+                <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Billing clients (Free layer)</a>
+                <a href="/ledger/create" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Create invoice or RFP</a>
+                <a href="/settings#plan" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--text-muted); font-weight: 600; font-size: 0.9rem;">Upgrade for Tax and VAT</a>
             </div>
         </div>
     @endif
