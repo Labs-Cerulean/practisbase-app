@@ -4,27 +4,69 @@ namespace App\Support;
 
 use App\Models\User;
 
+/**
+ * Entitlements:
+ * - Free financial: clients + invoices (lifetime client cap)
+ * - Standard financial: Tax & VAT, expenses, accountant, unlimited clients, branding
+ * - Practice tools: med/arch/eng profession packages
+ *
+ * Tiers:
+ * - free → free financial only
+ * - standard → Standard financial only
+ * - practice-{med|arch|eng} → Practice tools + Free financial (land-and-expand)
+ * - pro-{med|arch|eng} → Practice tools + Standard financial (full)
+ */
 class TierPolicy
 {
     public const FREE_CLIENT_LIFETIME_CAP = 5;
 
+    public const PRICE_STANDARD = '15.99';
+
+    public const PRICE_PRACTICE = '24.99';
+
+    public const PRICE_PRO = '49.99';
+
     public const TIER_FREE = 'free';
+
     public const TIER_STANDARD = 'standard';
+
+    public const TIER_PRACTICE_MED = 'practice-med';
+
+    public const TIER_PRACTICE_ARCH = 'practice-arch';
+
+    public const TIER_PRACTICE_ENG = 'practice-eng';
+
     public const TIER_PRO_MED = 'pro-med';
+
     public const TIER_PRO_ARCH = 'pro-arch';
+
     public const TIER_PRO_ENG = 'pro-eng';
+
+    /** @return list<string> */
+    public static function allTiers(): array
+    {
+        return [
+            self::TIER_FREE,
+            self::TIER_STANDARD,
+            self::TIER_PRACTICE_MED,
+            self::TIER_PRACTICE_ARCH,
+            self::TIER_PRACTICE_ENG,
+            self::TIER_PRO_MED,
+            self::TIER_PRO_ARCH,
+            self::TIER_PRO_ENG,
+        ];
+    }
 
     public static function normalize(?string $tier): string
     {
         $tier = $tier ?: self::TIER_FREE;
 
-        return in_array($tier, [
-            self::TIER_FREE,
-            self::TIER_STANDARD,
-            self::TIER_PRO_MED,
-            self::TIER_PRO_ARCH,
-            self::TIER_PRO_ENG,
-        ], true) ? $tier : self::TIER_FREE;
+        return in_array($tier, self::allTiers(), true) ? $tier : self::TIER_FREE;
+    }
+
+    public static function validationRule(): string
+    {
+        return 'required|in:'.implode(',', self::allTiers());
     }
 
     public static function isPaid(User $user): bool
@@ -32,36 +74,74 @@ class TierPolicy
         return self::normalize($user->tier) !== self::TIER_FREE;
     }
 
+    /** Full Pro (Standard financial + practice tools). */
     public static function isPro(User $user): bool
     {
         return str_starts_with(self::normalize($user->tier), 'pro-');
     }
 
-    public static function proPackage(User $user): ?string
+    public static function isPracticeOnly(User $user): bool
+    {
+        return str_starts_with(self::normalize($user->tier), 'practice-');
+    }
+
+    public static function hasPracticeTools(User $user): bool
     {
         $tier = self::normalize($user->tier);
 
-        return match ($tier) {
-            self::TIER_PRO_MED => 'med',
-            self::TIER_PRO_ARCH => 'arch',
-            self::TIER_PRO_ENG => 'eng',
+        return str_starts_with($tier, 'practice-') || str_starts_with($tier, 'pro-');
+    }
+
+    /** Tax & VAT, expenses, accountant, unlimited clients, invoice logo. */
+    public static function hasStandardFinancial(User $user): bool
+    {
+        $tier = self::normalize($user->tier);
+
+        return $tier === self::TIER_STANDARD || str_starts_with($tier, 'pro-');
+    }
+
+    public static function tierHasStandardFinancial(string $tier): bool
+    {
+        $tier = self::normalize($tier);
+
+        return $tier === self::TIER_STANDARD || str_starts_with($tier, 'pro-');
+    }
+
+    public static function tierHasPracticeTools(string $tier): bool
+    {
+        $tier = self::normalize($tier);
+
+        return str_starts_with($tier, 'practice-') || str_starts_with($tier, 'pro-');
+    }
+
+    public static function proPackage(User $user): ?string
+    {
+        return self::packageForTier(self::normalize($user->tier));
+    }
+
+    public static function packageForTier(string $tier): ?string
+    {
+        return match (self::normalize($tier)) {
+            self::TIER_PRACTICE_MED, self::TIER_PRO_MED => 'med',
+            self::TIER_PRACTICE_ARCH, self::TIER_PRO_ARCH => 'arch',
+            self::TIER_PRACTICE_ENG, self::TIER_PRO_ENG => 'eng',
             default => null,
         };
     }
 
     public static function canAccessReports(User $user): bool
     {
-        return self::isPaid($user);
+        return self::hasStandardFinancial($user);
     }
 
     public static function canAccessStandardTools(User $user): bool
     {
-        return self::isPaid($user);
+        return self::hasStandardFinancial($user);
     }
 
     public static function canAccessProPackage(User $user, string $package): bool
     {
-        if (! self::isPro($user)) {
+        if (! self::hasPracticeTools($user)) {
             return false;
         }
 
@@ -86,9 +166,14 @@ class TierPolicy
         return (int) ($user->clients_created_count ?? 0);
     }
 
+    public static function hasUnlimitedClients(User $user): bool
+    {
+        return self::hasStandardFinancial($user);
+    }
+
     public static function canAddClient(User $user): bool
     {
-        if (self::isPaid($user)) {
+        if (self::hasUnlimitedClients($user)) {
             return true;
         }
 
@@ -100,9 +185,18 @@ class TierPolicy
         $tiers = [self::TIER_FREE, self::TIER_STANDARD];
 
         return match ($profession) {
-            'Medical Professional' => array_merge($tiers, [self::TIER_PRO_MED]),
-            'Architect / Perit' => array_merge($tiers, [self::TIER_PRO_ARCH]),
-            'Engineer' => array_merge($tiers, [self::TIER_PRO_ENG]),
+            'Medical Professional' => array_merge($tiers, [
+                self::TIER_PRACTICE_MED,
+                self::TIER_PRO_MED,
+            ]),
+            'Architect / Perit' => array_merge($tiers, [
+                self::TIER_PRACTICE_ARCH,
+                self::TIER_PRO_ARCH,
+            ]),
+            'Engineer' => array_merge($tiers, [
+                self::TIER_PRACTICE_ENG,
+                self::TIER_PRO_ENG,
+            ]),
             default => $tiers,
         };
     }
@@ -121,27 +215,44 @@ class TierPolicy
     {
         $tier = self::normalize($user->tier);
 
-        if (in_array('standard', $allowedTiers, true) && self::isPaid($user)) {
+        // "standard" means Standard financial access (Standard or Full Pro — not Practice-only).
+        if (in_array('standard', $allowedTiers, true) && self::hasStandardFinancial($user)) {
             return true;
         }
 
         return in_array($tier, $allowedTiers, true);
     }
 
-    /** Free = 0, Standard = 1, any Pro = 2. */
+    /**
+     * Capability score for upgrade/downgrade UI.
+     * free=0, practice=1, standard=2, full pro=3.
+     */
     public static function tierRank(string $tier): int
     {
-        return match (self::normalize($tier)) {
-            self::TIER_FREE => 0,
-            self::TIER_STANDARD => 1,
-            self::TIER_PRO_MED, self::TIER_PRO_ARCH, self::TIER_PRO_ENG => 2,
-            default => 0,
-        };
+        $tier = self::normalize($tier);
+
+        if (str_starts_with($tier, 'pro-')) {
+            return 3;
+        }
+        if ($tier === self::TIER_STANDARD) {
+            return 2;
+        }
+        if (str_starts_with($tier, 'practice-')) {
+            return 1;
+        }
+
+        return 0;
     }
 
     public static function isDowngrade(string $from, string $to): bool
     {
-        return self::tierRank($to) < self::tierRank($from);
+        $from = self::normalize($from);
+        $to = self::normalize($to);
+
+        $losesFinancial = self::tierHasStandardFinancial($from) && ! self::tierHasStandardFinancial($to);
+        $losesPractice = self::tierHasPracticeTools($from) && ! self::tierHasPracticeTools($to);
+
+        return $losesFinancial || $losesPractice;
     }
 
     public static function label(string $tier): string
@@ -149,6 +260,9 @@ class TierPolicy
         return match (self::normalize($tier)) {
             self::TIER_FREE => 'Free',
             self::TIER_STANDARD => 'Standard',
+            self::TIER_PRACTICE_MED => 'Practice Medical',
+            self::TIER_PRACTICE_ARCH => 'Practice Architect',
+            self::TIER_PRACTICE_ENG => 'Practice Engineer',
             self::TIER_PRO_MED => 'Pro Medical',
             self::TIER_PRO_ARCH => 'Pro Architect',
             self::TIER_PRO_ENG => 'Pro Engineer',
@@ -156,9 +270,18 @@ class TierPolicy
         };
     }
 
+    public static function priceLabel(string $tier): string
+    {
+        return match (self::normalize($tier)) {
+            self::TIER_FREE => '€0',
+            self::TIER_STANDARD => '€'.self::PRICE_STANDARD,
+            self::TIER_PRACTICE_MED, self::TIER_PRACTICE_ARCH, self::TIER_PRACTICE_ENG => '€'.self::PRICE_PRACTICE,
+            self::TIER_PRO_MED, self::TIER_PRO_ARCH, self::TIER_PRO_ENG => '€'.self::PRICE_PRO,
+            default => '',
+        };
+    }
+
     /**
-     * Human-readable consequences of moving from one tier to another.
-     *
      * @return list<string>
      */
     public static function changeConsequences(string $from, string $to): array
@@ -171,27 +294,44 @@ class TierPolicy
         }
 
         $notes = [];
-        $fromRank = self::tierRank($from);
-        $toRank = self::tierRank($to);
 
-        if ($toRank < $fromRank) {
-            $notes[] = 'This is a downgrade from '.self::label($from).' to '.self::label($to).'. Your existing data is not deleted, but access to some tools will stop immediately.';
+        if (self::isDowngrade($from, $to)) {
+            $notes[] = 'This removes access from '.self::label($from).' to '.self::label($to).'. Existing data is not deleted, but some tools stop immediately.';
         }
 
-        if (str_starts_with($from, 'pro-') && ! str_starts_with($to, 'pro-')) {
-            $notes[] = 'Pro tools become inaccessible (patients, stampables, DMS, stamper, certificates). Medical vault ciphertext stays retained and locked — re-upgrade later still needs your recovery code.';
-            $notes[] = 'Vault unlock and medical backup stay unavailable until you return to Pro Medical.';
+        $fromPractice = self::tierHasPracticeTools($from);
+        $toPractice = self::tierHasPracticeTools($to);
+        $fromFinancial = self::tierHasStandardFinancial($from);
+        $toFinancial = self::tierHasStandardFinancial($to);
+
+        if ($fromPractice && ! $toPractice) {
+            $notes[] = 'Practice tools become inaccessible (patients, stampables, DMS, stamper, certificates). Medical vault ciphertext stays retained and locked — re-upgrade later still needs your recovery code.';
+            $notes[] = 'Vault unlock and medical backup stay unavailable until you return to a Medical practice or Pro plan.';
         }
 
-        if ($fromRank >= 1 && $toRank < 1) {
-            $notes[] = 'Standard tools become inaccessible: Fiscal Report, Expenses, Accountant download, and custom branding.';
-            $notes[] = 'Free keeps Dashboard + ledger only, with a lifetime cap of '.self::FREE_CLIENT_LIFETIME_CAP.' clients. Existing clients stay visible; deletes do not free slots.';
-        } elseif ($fromRank >= 2 && $toRank === 1) {
-            $notes[] = 'You keep Standard tools (Fiscal Report, Expenses, Accountant, branding) but lose Pro package features.';
+        if ($fromFinancial && ! $toFinancial) {
+            $notes[] = 'Tax & VAT, Expenses, Accountant download, and custom invoice branding become inaccessible.';
+            $notes[] = 'You keep Overview + invoices with a lifetime cap of '.self::FREE_CLIENT_LIFETIME_CAP.' clients. Existing clients stay visible; deletes do not free slots.';
         }
 
-        if ($toRank > $fromRank) {
-            $notes[] = 'Upgrade to '.self::label($to).' unlocks that plan’s features. Closed beta: no card charge yet.';
+        if (! $fromFinancial && $toFinancial) {
+            $notes[] = 'Unlocks Tax & VAT, Expenses, Accountant pack, custom branding, and unlimited clients.';
+        }
+
+        if (! $fromPractice && $toPractice) {
+            $notes[] = 'Unlocks your profession practice tools (clinical / projects / certificates).';
+        }
+
+        if (str_starts_with($to, 'practice-') && ! $toFinancial) {
+            $notes[] = 'Practice keeps the Free financial layer (5 lifetime clients + invoices). Add Full Pro later for Tax & VAT.';
+        }
+
+        if (str_starts_with($to, 'pro-')) {
+            $notes[] = 'Full Pro includes Standard financial tools plus your profession package.';
+        }
+
+        if (! self::isDowngrade($from, $to) && self::tierRank($to) >= self::tierRank($from)) {
+            $notes[] = 'Upgrade to '.self::label($to).'. Closed beta: no card charge yet.';
         }
 
         return array_values(array_unique($notes));

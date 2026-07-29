@@ -15,7 +15,7 @@
 
     <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); font-size: 0.85rem; color: var(--text-main); font-weight: 600;">
         {{ auth()->user()->clientUsageLabel() }}
-        @unless(auth()->user()->isPaid())
+        @unless(auth()->user()->hasUnlimitedClients())
             <span style="font-weight: 500; color: var(--text-muted);"> — archiving a client does not free a Free-plan slot.</span>
         @endunless
     </div>

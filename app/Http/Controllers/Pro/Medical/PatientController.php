@@ -203,7 +203,7 @@ class PatientController extends Controller
 
         if (! $user->canAddClient()) {
             return back()->withErrors([
-                'billing_client' => 'Free plan allows ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Upgrade to Standard or Pro, or unlink/archive is not enough — deletes do not free a slot.',
+                'billing_client' => 'Free / Practice plans allow ' . TierPolicy::FREE_CLIENT_LIFETIME_CAP . ' lifetime clients. Upgrade to Standard or Full Pro, or unlink/archive is not enough — deletes do not free a slot.',
             ]);
         }
 

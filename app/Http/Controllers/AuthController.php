@@ -115,7 +115,7 @@ class AuthController extends Controller
     public function savePlan(Request $request)
     {
         $request->validate([
-            'tier' => 'required|in:free,standard,pro-med,pro-arch,pro-eng'
+            'tier' => \App\Support\TierPolicy::validationRule(),
         ]);
 
         $user = Auth::user();

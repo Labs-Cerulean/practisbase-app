@@ -29,7 +29,7 @@
         
         .pricing-grid { 
             display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); 
             gap: 1.5rem; 
         }
         .pricing-card { 
@@ -61,8 +61,9 @@
         }
         
         .tier-name { font-size: 1.15rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.25rem; }
-        .tier-price { font-size: 2.25rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 1rem; }
+        .tier-price { font-size: 2.25rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.35rem; }
         .tier-price span { font-size: 0.9rem; color: var(--text-muted); font-weight: 400; }
+        .tier-blurb { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 1rem; line-height: 1.4; min-height: 2.4em; }
         
         .feature-list { list-style: none; padding: 0; margin-bottom: 1.5rem; flex-grow: 1; font-size: 0.9rem; }
         .feature-list li { margin-bottom: 0.6rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.3; }
@@ -88,6 +89,7 @@
         .btn-outline:hover { background: rgba(2, 132, 199, 0.05); }
         .btn-solid { background: var(--primary-cerulean); color: white; border: 1px solid var(--primary-cerulean); }
         .btn-solid:hover { background: var(--primary-cerulean-hover); }
+        .section-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 2rem 0 0.85rem; }
     </style>
 </head>
 <body>
@@ -109,80 +111,123 @@
     <main class="pricing-container">
         <div class="pricing-header">
             <h1>Simple, Professional Pricing</h1>
-            <p>Built exclusively for Maltese <strong>self-employed sole traders</strong> and professional practices — not Ltd companies. Upgrade as your practice grows.</p>
+            <p>Built exclusively for Maltese <strong>self-employed sole traders</strong> — not Ltd companies. Start with practice tools or accounts; grow into the full system.</p>
             <p style="margin-top: 0.75rem; font-size: 0.95rem; color: #1e3a8a; background: #eff6ff; display: inline-block; padding: 0.5rem 0.9rem; border-radius: 8px; border: 1px solid #bfdbfe;">
                 Closed beta — card billing is not live yet. Invited testers get plan access without Stripe.
             </p>
         </div>
 
+        <div class="section-label">Accounts</div>
         <div class="pricing-grid">
-            
             <div class="pricing-card">
                 <div class="tier-name">Free</div>
                 <div class="tier-price">€0<span>/mo</span></div>
+                <p class="tier-blurb">Basic invoicing to get started.</p>
                 <ul class="feature-list">
-                    <li><strong>Up to 5 Clients</strong></li>
-                    <li>Basic Invoices & Ledger</li>
-                    <li>Summary Dashboard</li>
-                    <li>Standard Support</li>
+                    <li><strong>Up to 5 Clients</strong> (lifetime)</li>
+                    <li>Invoices &amp; RFPs</li>
+                    <li>Overview dashboard</li>
                 </ul>
                 <a href="/register" class="btn-tier btn-outline">Start for Free</a>
             </div>
 
             <div class="pricing-card popular">
-                <div class="popular-badge">Most Popular</div>
+                <div class="popular-badge">Accounts</div>
                 <div class="tier-name">Standard</div>
-                <div class="tier-price">€15.99<span>/mo</span></div>
+                <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_STANDARD }}<span>/mo</span></div>
+                <p class="tier-blurb">Sole-trader Tax &amp; VAT — no profession tools.</p>
                 <ul class="feature-list">
                     <li><strong>Unlimited Clients</strong></li>
-                    <li>Custom Branding & Logo</li>
-                    <li>Expense Tracking & Receipts</li>
-                    <li>Document & File Uploads</li>
-                    <li><strong>Automated TA22 Form</strong></li>
-                    <li>Accountant VAT Export</li>
+                    <li>Tax &amp; VAT report</li>
+                    <li>Expenses &amp; receipts</li>
+                    <li>Accountant pack</li>
+                    <li>Custom branding</li>
                 </ul>
                 <a href="/register" class="btn-tier btn-solid">Upgrade to Standard</a>
             </div>
+        </div>
 
+        <div class="section-label">Practice tools (profession-matched)</div>
+        <div class="pricing-grid">
             <div class="pricing-card" style="border-top: 4px solid #059669;">
-                <div class="tier-name" style="color: #059669;">Pro Medical ⚕️</div>
-                <div class="tier-price">€49.99<span>/mo</span></div>
+                <div class="tier-name" style="color: #059669;">Practice Medical</div>
+                <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_PRACTICE }}<span>/mo</span></div>
+                <p class="tier-blurb">Clinical tools + Free invoicing. Add Tax &amp; VAT later.</p>
                 <ul class="feature-list">
-                    <li>All Standard Features</li>
-                    <li class="group-header" style="color: #059669;">Medical Tools:</li>
-                    <li>Secure Patient Journals</li>
-                    <li>Digital Prescriptions</li>
-                    <li>Referral Letters</li>
+                    <li>Free financial layer (5 clients)</li>
+                    <li class="group-header" style="color: #059669;">Medical tools:</li>
+                    <li>Secure patient journals</li>
+                    <li>Prescriptions &amp; referrals</li>
+                    <li>Clinical stampables</li>
+                </ul>
+                <a href="/register" class="btn-tier btn-outline" style="border-color: #059669; color: #059669;">Select Practice Med</a>
+            </div>
+
+            <div class="pricing-card" style="border-top: 4px solid var(--primary-navy);">
+                <div class="tier-name" style="color: var(--primary-navy);">Practice Architect</div>
+                <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_PRACTICE }}<span>/mo</span></div>
+                <p class="tier-blurb">Project tools + Free invoicing. Add Tax &amp; VAT later.</p>
+                <ul class="feature-list">
+                    <li>Free financial layer (5 clients)</li>
+                    <li class="group-header" style="color: var(--primary-navy);">Architect tools:</li>
+                    <li>Architect DMS</li>
+                    <li>Document stamper</li>
+                    <li>Project phase tracking</li>
+                </ul>
+                <a href="/register" class="btn-tier btn-outline" style="border-color: var(--primary-navy); color: var(--primary-navy);">Select Practice Arch</a>
+            </div>
+
+            <div class="pricing-card" style="border-top: 4px solid #d97706;">
+                <div class="tier-name" style="color: #d97706;">Practice Engineer</div>
+                <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_PRACTICE }}<span>/mo</span></div>
+                <p class="tier-blurb">Engineering tools + Free invoicing. Add Tax &amp; VAT later.</p>
+                <ul class="feature-list">
+                    <li>Free financial layer (5 clients)</li>
+                    <li class="group-header" style="color: #d97706;">Engineering tools:</li>
+                    <li>Projects &amp; certificates</li>
+                    <li>Technical exports</li>
+                </ul>
+                <a href="/register" class="btn-tier btn-outline" style="border-color: #d97706; color: #d97706;">Select Practice Eng</a>
+            </div>
+        </div>
+
+        <div class="section-label">Full Pro — practice + Standard accounts</div>
+        <div class="pricing-grid">
+            <div class="pricing-card" style="border-top: 4px solid #059669;">
+                <div class="tier-name" style="color: #059669;">Pro Medical</div>
+                <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_PRO }}<span>/mo</span></div>
+                <p class="tier-blurb">All Standard financial features + medical tools.</p>
+                <ul class="feature-list">
+                    <li>Unlimited clients &amp; Tax &amp; VAT</li>
+                    <li class="group-header" style="color: #059669;">Medical tools:</li>
+                    <li>Patients, prescriptions, referrals</li>
                 </ul>
                 <a href="/register" class="btn-tier btn-outline" style="border-color: #059669; color: #059669;">Select Pro Med</a>
             </div>
 
             <div class="pricing-card" style="border-top: 4px solid var(--primary-navy);">
-                <div class="tier-name" style="color: var(--primary-navy);">Pro Architect 📐</div>
-                <div class="tier-price">€49.99<span>/mo</span></div>
+                <div class="tier-name" style="color: var(--primary-navy);">Pro Architect</div>
+                <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_PRO }}<span>/mo</span></div>
+                <p class="tier-blurb">All Standard financial features + architect tools.</p>
                 <ul class="feature-list">
-                    <li>All Standard Features</li>
-                    <li class="group-header" style="color: var(--primary-navy);">Architect Tools:</li>
-                    <li>Architect DMS</li>
-                    <li>Document Stamper</li>
-                    <li>Project Phase Tracking</li>
+                    <li>Unlimited clients &amp; Tax &amp; VAT</li>
+                    <li class="group-header" style="color: var(--primary-navy);">Architect tools:</li>
+                    <li>DMS, stamper, projects</li>
                 </ul>
                 <a href="/register" class="btn-tier btn-outline" style="border-color: var(--primary-navy); color: var(--primary-navy);">Select Pro Arch</a>
             </div>
 
             <div class="pricing-card" style="border-top: 4px solid #d97706;">
-                <div class="tier-name" style="color: #d97706;">Pro Engineer ⚙️</div>
-                <div class="tier-price">€49.99<span>/mo</span></div>
+                <div class="tier-name" style="color: #d97706;">Pro Engineer</div>
+                <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_PRO }}<span>/mo</span></div>
+                <p class="tier-blurb">All Standard financial features + engineering tools.</p>
                 <ul class="feature-list">
-                    <li>All Standard Features</li>
-                    <li class="group-header" style="color: #d97706;">Engineering Tools:</li>
-                    <li>EMS / BMS Templates</li>
-                    <li>Certification Generator</li>
-                    <li>Technical Specs Export</li>
+                    <li>Unlimited clients &amp; Tax &amp; VAT</li>
+                    <li class="group-header" style="color: #d97706;">Engineering tools:</li>
+                    <li>Projects &amp; certificates</li>
                 </ul>
                 <a href="/register" class="btn-tier btn-outline" style="border-color: #d97706; color: #d97706;">Select Pro Eng</a>
             </div>
-
         </div>
     </main>
 

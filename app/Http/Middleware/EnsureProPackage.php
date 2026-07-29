@@ -37,7 +37,7 @@ class EnsureProPackage
 
         return redirect('/settings')->with(
             'error',
-            'That Pro feature requires a matching profession and active Pro plan.'
+            'That feature requires a matching profession and an active Practice or Pro plan.'
         );
     }
 }
