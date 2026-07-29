@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\TaxPayment;
 use App\Support\FiscalReportEngine;
 use App\Support\FiscalYearGuard;
+use App\Support\VatPeriodSummary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -70,6 +71,10 @@ class ReportController extends Controller
             }
         }
 
+        $selectedQuarter = VatPeriodSummary::parsePeriodParam($request->input('period', 'full'));
+        $vatPeriod = VatPeriodSummary::forUser($user, $selectedYear, $selectedQuarter);
+        $vatPeriodOptions = VatPeriodSummary::periodOptions($selectedYear);
+
         return view('reports.index', array_merge($report, [
             'user' => $user,
             'selectedYear' => $selectedYear,
@@ -80,7 +85,31 @@ class ReportController extends Controller
             'uninvoicedRfpCash' => $uninvoicedRfpCash,
             'legacyClosedWithoutSnapshot' => (bool) ($report['legacy_closed_without_snapshot'] ?? false),
             'snapshotFrozenAt' => $report['frozen_at'] ?? ($closedRow->closed_at ?? null),
+            'vatPeriod' => $vatPeriod,
+            'vatPeriodOptions' => $vatPeriodOptions,
+            'selectedPeriod' => $vatPeriod['period_key'] === 'full' ? 'full' : (string) $selectedQuarter,
         ]));
+    }
+
+    public function downloadVatPeriod(Request $request)
+    {
+        $user = Auth::user();
+        $selectedYear = (int) $request->input('year', date('Y'));
+        $selectedQuarter = VatPeriodSummary::parsePeriodParam($request->input('period', 'full'));
+        $vatPeriod = VatPeriodSummary::forUser($user, $selectedYear, $selectedQuarter);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.vat-period', [
+            'user' => $user,
+            'vatPeriod' => $vatPeriod,
+            'generatedAt' => now(),
+        ]);
+        $pdf->setPaper('a4', 'portrait');
+
+        $slug = $vatPeriod['period_key'] === 'full'
+            ? 'VAT-'.$selectedYear
+            : 'VAT-'.$selectedYear.'-'.$vatPeriod['period_key'];
+
+        return $pdf->download($slug.'.pdf');
     }
 
     public function downloadTa22(Request $request)
