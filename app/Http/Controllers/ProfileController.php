@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use App\Support\FiscalReportEngine;
+use App\Support\FiscalYearGuard;
+use App\Support\RegimeHistory;
 use App\Support\TenantStorage;
 
 class ProfileController extends Controller
@@ -44,6 +46,7 @@ class ProfileController extends Controller
 
         $hasClosedFiscalYears = FiscalReportEngine::hasClosedYears($user->id);
         $dobLocked = $hasClosedFiscalYears && filled($user->date_of_birth);
+        RegimeHistory::ensureBaseline($user);
 
         return view('profile.settings', [
             'user' => $user,
@@ -56,6 +59,7 @@ class ProfileController extends Controller
             'medicalVaultDevices' => $medicalVaultDevices,
             'hasClosedFiscalYears' => $hasClosedFiscalYears,
             'dobLocked' => $dobLocked,
+            'regimeSegments' => RegimeHistory::listForUser($user),
         ]);
     }
 
@@ -133,6 +137,7 @@ class ProfileController extends Controller
             'tax_computation' => 'required|in:single,married,parent',
             'primary_salary' => 'required|numeric|min:0',
             'estimated_expenses' => 'required|numeric|min:0',
+            'regime_effective_from' => 'nullable|date|before_or_equal:today',
             'pm_cheque_name' => 'required_if:pm_cheque,1|nullable|string',
             'pm_cheque_address' => 'required_if:pm_cheque,1|nullable|string',
             'bank_names' => 'required_if:pm_bank,1|array',
@@ -180,6 +185,35 @@ class ProfileController extends Controller
         $byYear = $user->estimated_expenses_by_year ?? [];
         $byYear[(string) date('Y')] = (float) $request->estimated_expenses;
 
+        $oldRegime = RegimeHistory::tipFromUser($user);
+        $newRegime = [
+            'vat_status' => $vatStatus,
+            'employment_type' => $request->employment_type,
+            'max_ssc_paid' => $request->has('max_ssc_paid'),
+            'primary_salary' => (float) $request->primary_salary,
+            'tax_computation' => $request->tax_computation,
+        ];
+        $regimeChanged = RegimeHistory::regimeChanged($oldRegime, $newRegime);
+        $regimeEffectiveFrom = null;
+
+        if ($regimeChanged) {
+            $request->validate([
+                'regime_effective_from' => 'required|date|before_or_equal:today',
+            ], [
+                'regime_effective_from.required' => 'Choose the date this tax setup applies from (invoices and expenses before that date keep the previous setup).',
+            ]);
+            $regimeEffectiveFrom = $request->input('regime_effective_from');
+            $effectiveYear = FiscalYearGuard::yearFromDate($regimeEffectiveFrom);
+            if (FiscalYearGuard::isClosed($user->id, $effectiveYear)) {
+                return back()->withErrors([
+                    'regime_effective_from' => "Cannot apply a tax setup change from {$regimeEffectiveFrom} — fiscal year {$effectiveYear} is closed.",
+                ])->withInput();
+            }
+            // Capture current tip as baseline before overwriting users.*.
+            RegimeHistory::ensureBaseline($user);
+            RegimeHistory::applyChange($user, $newRegime, $regimeEffectiveFrom);
+        }
+
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
@@ -203,6 +237,9 @@ class ProfileController extends Controller
         ]);
 
         $msg = 'Profile updated successfully.';
+        if ($regimeChanged && $regimeEffectiveFrom) {
+            $msg .= ' Tax setup applies from '.$regimeEffectiveFrom.' — earlier open-year documents keep the previous regime.';
+        }
         if ($hasClosedFiscalYears) {
             $msg .= ' Closed fiscal years stay frozen — this change only affects open years.';
         }

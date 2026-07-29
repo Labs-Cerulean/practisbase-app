@@ -191,7 +191,34 @@
 
                 @if($hasClosedFiscalYears ?? false)
                     <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: var(--radius-md); color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
-                        You have closed fiscal year(s). Changing employment type, VAT status, salary, or tax computation only affects <strong>open</strong> years. Closed years keep their frozen report snapshot.
+                        You have closed fiscal year(s). Changing employment type, VAT status, salary, or tax computation only affects <strong>open</strong> years. Closed years keep their frozen report snapshot. You cannot apply a regime change from a date inside a closed year.
+                    </div>
+                @endif
+
+                <div id="regimeEffectiveWrap" style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md);">
+                    <label style="display: block; font-weight: 700; margin-bottom: 0.35rem; font-size: 0.9rem; color: #92400e;">Apply this tax setup from</label>
+                    <p style="margin: 0 0 0.65rem; font-size: 0.8rem; color: #78350f; line-height: 1.45;">
+                        You changed VAT, employment, salary, tax status, or SSC max-paid. Invoices and expenses <strong>before</strong> this date keep the previous setup. Defaults to today.
+                    </p>
+                    <input type="date" name="regime_effective_from" id="regimeEffectiveFrom" value="{{ old('regime_effective_from', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" style="width: 100%; max-width: 16rem; padding: 0.75rem; border: 1px solid #f59e0b; border-radius: var(--radius-md); background: white;">
+                    @error('regime_effective_from')
+                        <div style="color: #991b1b; font-size: 0.8rem; margin-top: 0.4rem;">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                @if(!empty($regimeSegments) && count($regimeSegments) > 0)
+                    <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.45rem;">Tax setup history</div>
+                        <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+                            @foreach($regimeSegments as $seg)
+                                <li>
+                                    From {{ \Illuminate\Support\Carbon::parse($seg['effective_from'])->format('d M Y') }}:
+                                    {{ $seg['employment_type'] === 'part_time' ? 'Part-time' : 'Full-time' }},
+                                    {{ str_replace('_', ' ', $seg['vat_status']) }},
+                                    salary €{{ number_format($seg['primary_salary'], 2) }}
+                                </li>
+                            @endforeach
+                        </ul>
                     </div>
                 @endif
 
@@ -230,7 +257,7 @@
                     
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Tax Computation Status</label>
-                        <select name="tax_computation" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: inherit; background: white;">
+                        <select name="tax_computation" id="taxComputation" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: inherit; background: white;">
                             <option value="" disabled {{ !$user->tax_computation ? 'selected' : '' }}>Select your status</option>
                             <option value="single" {{ $user->tax_computation === 'single' ? 'selected' : '' }}>Single</option>
                             <option value="married" {{ $user->tax_computation === 'married' ? 'selected' : '' }}>Married</option>
@@ -243,13 +270,13 @@
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">If this practice is your secondary income, enter your main job's annual salary. Otherwise, enter 0.</p>
                         <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
                             <span style="color: var(--text-muted); font-weight: 600;">€</span>
-                            <input type="number" name="primary_salary" step="0.01" min="0" value="{{ $user->primary_salary ?? '0.00' }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
+                            <input type="number" name="primary_salary" id="primarySalary" step="0.01" min="0" value="{{ $user->primary_salary ?? '0.00' }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
                         </div>
                     </div>
 
                     <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem;">
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
-                            <input type="checkbox" name="max_ssc_paid" value="1" {{ $user->max_ssc_paid ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                            <input type="checkbox" name="max_ssc_paid" id="maxSscPaid" value="1" {{ $user->max_ssc_paid ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
                             I already pay the maximum Social Security (SSC) at my primary job.
                         </label>
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-left: 1.7rem; margin-top: 0.25rem;">Checking this box legally exempts your part-time self-employed income from further SSC contributions.</p>
@@ -571,6 +598,7 @@
                 dobGroup.style.display = 'none';
                 dobInput.required = false;
             }
+            syncRegimeEffective();
         }
 
         // Handle VAT toggle logic
@@ -586,14 +614,43 @@
                 vatGroup.style.display = 'none';
                 vatInput.required = false;
             }
+            syncRegimeEffective();
+        }
+
+        var regimeBaseline = {
+            employment_type: @json($user->employment_type),
+            vat_status: @json($user->vat_status),
+            tax_computation: @json($user->tax_computation ?: 'single'),
+            primary_salary: @json(number_format((float) ($user->primary_salary ?? 0), 2, '.', '')),
+            max_ssc_paid: @json((bool) $user->max_ssc_paid)
+        };
+
+        function syncRegimeEffective() {
+            var wrap = document.getElementById('regimeEffectiveWrap');
+            var input = document.getElementById('regimeEffectiveFrom');
+            if (!wrap || !input) return;
+            var emp = document.getElementById('empType');
+            var vat = document.getElementById('vatSettingsStatus');
+            var tax = document.getElementById('taxComputation');
+            var sal = document.getElementById('primarySalary');
+            var ssc = document.getElementById('maxSscPaid');
+            var changed = false;
+            if (emp && emp.value !== regimeBaseline.employment_type) changed = true;
+            if (vat && vat.value !== regimeBaseline.vat_status) changed = true;
+            if (tax && tax.value !== regimeBaseline.tax_computation) changed = true;
+            if (sal && Number(sal.value || 0).toFixed(2) !== Number(regimeBaseline.primary_salary || 0).toFixed(2)) changed = true;
+            if (ssc && !!ssc.checked !== !!regimeBaseline.max_ssc_paid) changed = true;
+            wrap.style.display = changed ? 'block' : 'none';
+            input.required = changed;
         }
 
         // Handle Profession change logic (Show Strict Medical Warning but DO NOT lock the dropdown)
         function handleProfChange() {
-            const prof = document.getElementById('profInput').value;
+            const profEl = document.getElementById('profInput');
             const alert = document.getElementById('medicalVatAlert');
-            
-            if (prof === 'Medical Professional') {
+            if (!profEl || !alert) return;
+
+            if (profEl.value === 'Medical Professional') {
                 alert.style.display = 'block';
             } else {
                 alert.style.display = 'none';
@@ -603,6 +660,21 @@
         // Run once on load to ensure initial state is correct
         document.addEventListener("DOMContentLoaded", function() {
             handleProfChange();
+            syncRegimeEffective();
+            ['empType', 'vatSettingsStatus', 'taxComputation', 'primarySalary', 'maxSscPaid'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', syncRegimeEffective);
+                el.addEventListener('input', syncRegimeEffective);
+            });
+            @if($errors->has('regime_effective_from'))
+                var wrapErr = document.getElementById('regimeEffectiveWrap');
+                if (wrapErr) {
+                    wrapErr.style.display = 'block';
+                    var inputErr = document.getElementById('regimeEffectiveFrom');
+                    if (inputErr) inputErr.required = true;
+                }
+            @endif
         });
 
         function toggleSection(sectionId) {

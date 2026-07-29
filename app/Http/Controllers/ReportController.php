@@ -87,12 +87,6 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->employment_type !== 'part_time') {
-            return redirect('/reports')->withErrors([
-                'fiscal_error' => 'TA22 summary is only available for part-time self-employed profiles.',
-            ]);
-        }
-
         $selectedYear = (int) $request->input('year', date('Y'));
         $closedRow = FiscalReportEngine::loadClosedYearRow($user->id, $selectedYear);
         $report = null;
@@ -103,6 +97,12 @@ class ReportController extends Controller
         }
         if (! $report) {
             $report = FiscalReportEngine::compute($user, $selectedYear);
+        }
+
+        if (! ($report['hasPartTime'] ?? false) && ($report['ta22Liability'] ?? 0) <= 0 && ($report['profile']['employment_type'] ?? '') !== 'part_time') {
+            return redirect('/reports')->withErrors([
+                'fiscal_error' => 'TA22 summary is only available for part-time self-employed periods in this year.',
+            ]);
         }
 
         $invoicedRevenue = $report['invoicedRevenue'];

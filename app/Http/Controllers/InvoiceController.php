@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Support\DocumentNumber;
 use App\Support\FiscalYearTotals;
 use App\Support\FiscalYearGuard;
+use App\Support\RegimeHistory;
 
 class InvoiceController extends Controller
 {
@@ -131,9 +132,12 @@ class InvoiceController extends Controller
             return back()->withErrors(['fiscal_error' => $lockError])->withInput();
         }
 
+        $regime = RegimeHistory::forDate($user, $request->issue_date);
+        $regimeVat = $regime['vat_status'] ?? $user->vat_status;
+
         // Article 10 official invoices / charging VAT require a supplier VAT number on the document.
-        $applyingVat = $user->vat_status === 'article_10' && $request->has('apply_vat');
-        if ($user->missingVatNumberForArticle10Documents() && ($request->type === 'invoice' || $applyingVat)) {
+        $applyingVat = $regimeVat === 'article_10' && $request->has('apply_vat');
+        if ($regimeVat === 'article_10' && ! $user->hasVatNumber() && ($request->type === 'invoice' || $applyingVat)) {
             return back()
                 ->withErrors([
                     'vat_number' => 'Add your VAT number in Settings before issuing an Article 10 invoice or charging 18% VAT. You can skip this for RFPs until you have your MT number.',
@@ -162,14 +166,14 @@ class InvoiceController extends Controller
 
         // 2. Strict VAT Enforcement Logic
         $vatTotal = 0;
-        // Only Article 10 users are legally allowed to apply VAT
-        if ($user->vat_status === 'article_10' && $request->has('apply_vat')) {
+        // Only Article 10 regimes are legally allowed to apply VAT
+        if ($regimeVat === 'article_10' && $request->has('apply_vat')) {
             $vatTotal = $subtotal * 0.18;
         }
         $total = $subtotal + $vatTotal;
 
         // 3. €35k Threshold Monitor (Only check if they are Art 11 and issuing a real Invoice)
-        if ($user->vat_status === 'article_11' && $request->type === 'invoice') {
+        if ($regimeVat === 'article_11' && $request->type === 'invoice') {
             $year = (int) date('Y', strtotime($request->issue_date));
             $ytdNet = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
 
@@ -215,7 +219,8 @@ class InvoiceController extends Controller
         if ($document->status === 'cancelled') abort(400, 'Cannot convert a cancelled RFP.');
 
         // 1. Check the €35k limit for Article 11 users BEFORE converting
-        if ($user->vat_status === 'article_11') {
+        $convertRegime = RegimeHistory::forDate($user, date('Y-m-d'));
+        if (($convertRegime['vat_status'] ?? $user->vat_status) === 'article_11') {
             $ytdRevenue = Invoice::where('user_id', $user->id)
                 ->where('type', 'invoice')
                 ->whereYear('issue_date', date('Y'))
@@ -521,7 +526,8 @@ class InvoiceController extends Controller
             return back()->withErrors(['payment_error' => 'Conversion cannot exceed the remaining RFP value of €' . number_format($maxAllowable, 2)]);
         }
 
-        if ($user->vat_status === 'article_11') {
+        $partialRegime = RegimeHistory::forDate($user, date('Y-m-d'));
+        if (($partialRegime['vat_status'] ?? $user->vat_status) === 'article_11') {
             $year = (int) date('Y', strtotime((string) $document->issue_date));
             $ytdNet = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
 

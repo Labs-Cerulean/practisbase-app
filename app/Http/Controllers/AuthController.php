@@ -106,6 +106,9 @@ class AuthController extends Controller
             'vat_number' => $vatNumber,
         ]);
 
+        $user->refresh();
+        \App\Support\RegimeHistory::ensureBaseline($user);
+
         return redirect('/onboarding/plans');
     }
 
