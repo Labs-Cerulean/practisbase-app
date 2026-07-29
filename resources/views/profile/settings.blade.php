@@ -656,11 +656,14 @@
             syncRegimeEffective();
         }
 
+        @php
+            $regimePrimarySalary = number_format((float) ($user->primary_salary ?? 0), 2, '.', '');
+        @endphp
         var regimeBaseline = {
             employment_type: @json($user->employment_type),
             vat_status: @json($user->vat_status),
             tax_computation: @json($user->tax_computation ?: 'single'),
-            primary_salary: @json(number_format((float) ($user->primary_salary ?? 0), 2, '.', '')),
+            primary_salary: @json($regimePrimarySalary),
             max_ssc_paid: @json((bool) $user->max_ssc_paid)
         };
 
