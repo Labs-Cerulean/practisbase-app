@@ -115,17 +115,8 @@
 
     <script>
         (function () {
-            var projects = @json($projects->map(fn ($p) => [
-                'id' => $p->id,
-                'name' => $p->name,
-                'client_id' => $p->architect_client_id,
-                'label' => $p->name.($p->site_locality ? ' · '.$p->site_locality : '').($p->reference_code ? ' · '.$p->reference_code : ''),
-            ])->values());
-            var pas = @json($pas->map(fn ($pa) => [
-                'id' => $pa->id,
-                'project_id' => $pa->architect_project_id,
-                'label' => $pa->pa_number.($pa->title ? ' · '.$pa->title : ''),
-            ])->values());
+            var projects = @json($projectCascade);
+            var pas = @json($paCascade);
 
             var clientEl = document.getElementById('fillClient');
             var projectEl = document.getElementById('fillProject');

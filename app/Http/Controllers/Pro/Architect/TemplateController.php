@@ -39,12 +39,42 @@ class TemplateController extends Controller
             ->orderBy('pa_number')
             ->get(['id', 'pa_number', 'title', 'architect_project_id']);
 
+        $projectCascade = $projects->map(function ($p) {
+            $label = $p->name;
+            if ($p->site_locality) {
+                $label .= ' · '.$p->site_locality;
+            }
+            if ($p->reference_code) {
+                $label .= ' · '.$p->reference_code;
+            }
+
+            return [
+                'id' => $p->id,
+                'name' => $p->name,
+                'client_id' => $p->architect_client_id,
+                'label' => $label,
+            ];
+        })->values()->all();
+
+        $paCascade = $pas->map(function ($pa) {
+            $label = $pa->pa_number;
+            if ($pa->title) {
+                $label .= ' · '.$pa->title;
+            }
+
+            return [
+                'id' => $pa->id,
+                'project_id' => $pa->architect_project_id,
+                'label' => $label,
+            ];
+        })->values()->all();
+
         return view('pro.architect.templates-fill', [
             'template' => $tpl,
             'fields' => BcaTemplateCatalog::resolvedFields($tpl),
             'clients' => $clients,
-            'projects' => $projects,
-            'pas' => $pas,
+            'projectCascade' => $projectCascade,
+            'paCascade' => $paCascade,
             'preselect' => [
                 'client_id' => $request->query('client_id'),
                 'project_id' => $request->query('project_id'),

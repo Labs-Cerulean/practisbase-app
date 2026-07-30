@@ -123,7 +123,14 @@ class FiscalReportEngine
                 $breakdowns['ta22'] = [];
                 [$incomeTaxLiability, $breakdowns['income_tax']] =
                     self::computeFullTimeTax($netProfit, $primarySalary, $taxBrackets);
-                $sscLiability = self::computeFullTimeSsc($netProfit, $ageAtYearEnd, $year, $sscFtRules, $breakdowns);
+                $sscLiability = self::computeFullTimeSsc(
+                    $netProfit,
+                    (bool) ($yearEndRegime['max_ssc_paid'] ?? false),
+                    $ageAtYearEnd,
+                    $year,
+                    $sscFtRules,
+                    $breakdowns
+                );
             }
         } else {
             [$ta22Liability, $ptIncomeTax, $breakdowns['ta22'], $ptIncomeBreakdown] =
@@ -160,7 +167,14 @@ class FiscalReportEngine
             $ptBreakdown = [];
             $ftBreakdown = [];
             $sscPt = self::computePartTimeSsc($ptProfit, $ptMaxSscPaid, $ageAtYearEnd, $sscPtRules, $ptBreakdown);
-            $sscFt = self::computeFullTimeSsc($ftProfit, $ageAtYearEnd, $year, $sscFtRules, $ftBreakdown);
+            $sscFt = self::computeFullTimeSsc(
+                $ftProfit,
+                (bool) ($yearEndRegime['max_ssc_paid'] ?? false),
+                $ageAtYearEnd,
+                $year,
+                $sscFtRules,
+                $ftBreakdown
+            );
             $sscLiability = $sscPt + $sscFt;
             $breakdowns['ssc'] = array_merge(
                 ['Mid-year note' => 'SSC calculated separately on part-time and full-time period profits.'],
@@ -607,11 +621,18 @@ class FiscalReportEngine
      */
     private static function computeFullTimeSsc(
         float $netProfit,
+        bool $maxSscPaid,
         ?int $ageAtYearEnd,
         int $year,
         array $sscFtRules,
         array &$breakdowns
     ): float {
+        if ($maxSscPaid) {
+            $breakdowns['ssc'] = ['Status' => 'Exempt. You have certified that your maximum legal SSC is already paid through your primary employment.'];
+
+            return 0.0;
+        }
+
         if ($sscFtRules === []) {
             $breakdowns['ssc'] = ['Status' => 'No full-time SSC rates loaded.'];
 
@@ -658,6 +679,10 @@ class FiscalReportEngine
             }
         } else {
             $ageNote .= ' Add date of birth in Settings for age checks (under-18 exemption).';
+        }
+
+        if ($netProfit <= 0.009 && $sscLiability > 0) {
+            $ageNote .= ' At €0 business profit the lowest Class 2 band still applies as a minimum contribution unless you certify maximum SSC is already paid via primary employment.';
         }
 
         $breakdowns['ssc'] = [

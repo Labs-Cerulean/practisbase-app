@@ -49,7 +49,7 @@
 
             @if($hasFinancial || $mode === 'free')
                 <a href="/ledger/create" style="background: {{ $hasPractice && ! $hasFinancial ? 'white' : 'var(--primary-cerulean)' }}; color: {{ $hasPractice && ! $hasFinancial ? 'var(--primary-navy)' : 'white' }}; border: {{ $hasPractice && ! $hasFinancial ? '1px solid var(--border-light)' : 'none' }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
-                <a href="/clients/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
+                <a href="/clients/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">{{ $hasPractice ? '+ Billing client' : '+ Client' }}</a>
             @elseif($practiceOnly)
                 <a href="/ledger/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
             @endif
@@ -215,8 +215,12 @@
                     <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($glance['net_profit'], 2) }}</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Tax and SSC still to set aside</div>
-                    <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['tax_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['tax_set_aside'], 2) }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Income tax still to set aside</div>
+                    <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['tax_only_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['tax_only_set_aside'], 2) }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">SSC still to set aside</div>
+                    <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['ssc_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['ssc_set_aside'], 2) }}</div>
                 </div>
                 @if($glance['has_article_10'])
                     <div>
@@ -229,6 +233,9 @@
             </div>
             <p style="margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
                 Live draft from your invoices and expenses. Open Tax and VAT for the full breakdown.
+                @if(!empty($glance['ssc_minimum_band']))
+                    The SSC figure is the Class 2 minimum band (weekly rate × 52), which can apply even at €0 profit. If your maximum SSC is already paid through primary employment, tick that in Settings → tax setup.
+                @endif
             </p>
         </div>
     @endif

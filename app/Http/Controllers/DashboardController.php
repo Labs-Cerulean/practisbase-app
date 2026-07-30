@@ -42,13 +42,20 @@ class DashboardController extends Controller
         $glance = null;
         if ($hasFinancial) {
             $report = FiscalReportEngine::compute($user, $year);
-            $taxDue = (float) ($report['totalTaxLiability'] ?? 0) + (float) ($report['sscLiability'] ?? 0);
-            $taxPaid = (float) ($report['ptTaxPaid'] ?? 0) + (float) ($report['ptSscPaid'] ?? 0);
+            $taxDue = (float) ($report['totalTaxLiability'] ?? 0);
+            $sscDue = (float) ($report['sscLiability'] ?? 0);
+            $taxPaid = (float) ($report['ptTaxPaid'] ?? 0);
+            $sscPaid = (float) ($report['ptSscPaid'] ?? 0);
+            $netProfit = (float) ($report['netProfit'] ?? 0);
             $glance = [
                 'fiscal_revenue' => (float) ($report['fiscalRevenue'] ?? 0),
-                'net_profit' => (float) ($report['netProfit'] ?? 0),
-                'tax_set_aside' => max(0, $taxDue - $taxPaid),
+                'net_profit' => $netProfit,
+                'tax_set_aside' => max(0, ($taxDue + $sscDue) - ($taxPaid + $sscPaid)),
+                'tax_only_set_aside' => max(0, $taxDue - $taxPaid),
+                'ssc_set_aside' => max(0, $sscDue - $sscPaid),
                 'tax_due' => $taxDue,
+                'ssc_due' => $sscDue,
+                'ssc_minimum_band' => $netProfit <= 0.009 && $sscDue > 0.009,
                 'vat_balance' => (float) ($report['vatBalance'] ?? 0),
                 'has_article_10' => (bool) ($report['hasArticle10'] ?? $report['isArticle10'] ?? false),
             ];
