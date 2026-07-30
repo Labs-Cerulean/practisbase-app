@@ -125,17 +125,24 @@ class PracticeGuidance
                 'done' => $hasStampable,
             ];
         } elseif ($user->canAccessProPackage('arch')) {
+            $hasClient = \App\Models\ArchitectClient::where('user_id', $user->id)->exists();
             $hasProject = ArchitectProject::where('user_id', $user->id)->exists();
             $items[] = [
+                'key' => 'arch_client',
+                'label' => 'Add your first architect client',
+                'href' => '/pro/architect/clients/create',
+                'done' => $hasClient,
+            ];
+            $items[] = [
                 'key' => 'arch_project',
-                'label' => 'Create your first architect project',
+                'label' => 'Create a project under a client',
                 'href' => '/pro/architect/projects/create',
                 'done' => $hasProject,
             ];
             $items[] = [
-                'key' => 'stamper',
-                'label' => 'Open the document stamper',
-                'href' => '/pro/architect/stamper',
+                'key' => 'templates',
+                'label' => 'Open the BCA templates library',
+                'href' => '/pro/architect/templates',
                 'done' => $hasProject,
             ];
         } elseif ($user->canAccessProPackage('eng')) {

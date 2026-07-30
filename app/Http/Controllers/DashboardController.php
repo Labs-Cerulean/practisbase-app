@@ -206,6 +206,7 @@ class DashboardController extends Controller
     private function architectDesk(int $userId): array
     {
         $projects = ArchitectProject::where('user_id', $userId)
+            ->with('client')
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get();
@@ -213,7 +214,9 @@ class DashboardController extends Controller
         return [
             'kind' => 'arch',
             'title' => 'Studio desk',
+            'client_count' => \App\Models\ArchitectClient::where('user_id', $userId)->count(),
             'project_count' => ArchitectProject::where('user_id', $userId)->count(),
+            'pa_count' => \App\Models\ArchitectPaApplication::where('user_id', $userId)->count(),
             'active_count' => ArchitectProject::where('user_id', $userId)->where('status', 'active')->count(),
             'recent_projects' => $projects,
         ];
@@ -233,7 +236,7 @@ class DashboardController extends Controller
             'kind' => 'eng',
             'title' => 'Technical desk',
             'project_count' => EngineerProject::where('user_id', $userId)->count(),
-            'active_count' => EngineerProject::where('user_id', $userId)->where('status', '!=', 'completed')->count(),
+            'active_count' => EngineerProject::where('user_id', $userId)->where('status', 'active')->count(),
             'recent_projects' => $projects,
         ];
     }
