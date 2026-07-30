@@ -1,0 +1,52 @@
+@extends('layouts.app')
+
+@section('page_title', $pa ? 'Edit PA' : 'New PA')
+
+@section('content')
+    <div style="margin-bottom: 1.25rem;">
+        <a href="/pro/architect/projects/{{ $project->id }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->name }}</a>
+        <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">{{ $pa ? 'Edit PA application' : 'New PA application' }}</h1>
+    </div>
+
+    @if($errors->any())
+        <div style="background: #fef2f2; color: #991b1b; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+            <ul style="margin: 0; padding-left: 1.1rem;">
+                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form method="POST" action="{{ $pa ? '/pro/architect/pa/'.$pa->id : '/pro/architect/projects/'.$project->id.'/pa' }}" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; max-width: 720px; box-shadow: var(--shadow-sm);">
+        @csrf
+        @if($pa) @method('PUT') @endif
+        <div style="display: grid; gap: 0.85rem;">
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">PA number *</label>
+                <input type="text" name="pa_number" value="{{ old('pa_number', $pa->pa_number ?? '') }}" required placeholder="e.g. PA/01234/24" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            </div>
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Title / description</label>
+                <input type="text" name="title" value="{{ old('title', $pa->title ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+                <div>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Status</label>
+                    <select name="status" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        @foreach($statuses as $key => $label)
+                            <option value="{{ $key }}" @selected(old('status', $pa->status ?? 'active') === $key)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Works commencement</label>
+                    <input type="date" name="works_commencement_date" max="{{ date('Y-m-d') }}" value="{{ old('works_commencement_date', optional($pa->works_commencement_date ?? null)->format('Y-m-d')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+            </div>
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Notes</label>
+                <textarea name="notes" rows="3" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('notes', $pa->notes ?? '') }}</textarea>
+            </div>
+            <button type="submit" style="background: #3f6212; color: white; border: none; padding: 0.75rem 1.1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; width: fit-content;">Save PA</button>
+        </div>
+    </form>
+@endsection

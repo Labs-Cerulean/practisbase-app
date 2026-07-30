@@ -57,8 +57,11 @@
                             <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
                             <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Stampables</a></li>
                         @elseif(auth()->user()->canAccessProPackage('arch'))
-                            <li class="nav-section-label">Projects</li>
-                            <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') ? 'active' : '' }}">Projects</a></li>
+                            <li class="nav-section-label">Practice</li>
+                            <li><a href="/pro/architect/clients" class="nav-link {{ request()->is('pro/architect/clients*') ? 'active' : '' }}">Clients</a></li>
+                            <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>
+                            <li><a href="/pro/architect/documents" class="nav-link {{ request()->is('pro/architect/documents*') ? 'active' : '' }}">Documents</a></li>
+                            <li><a href="/pro/architect/templates" class="nav-link {{ request()->is('pro/architect/templates*') ? 'active' : '' }}">BCA templates</a></li>
                             <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
                             <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
                         @elseif(auth()->user()->canAccessProPackage('eng'))

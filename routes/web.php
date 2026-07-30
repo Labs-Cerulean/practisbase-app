@@ -21,6 +21,11 @@ use App\Http\Controllers\Pro\Medical\StampableLedgerController;
 use App\Http\Controllers\Pro\Medical\VaultDeviceController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
+use App\Http\Controllers\Pro\Architect\ClientController as ArchitectClientController;
+use App\Http\Controllers\Pro\Architect\PaApplicationController as ArchitectPaController;
+use App\Http\Controllers\Pro\Architect\DocumentController as ArchitectDocumentController;
+use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateController;
+use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
 use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
 
@@ -209,9 +214,43 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
     });
 
     Route::middleware('pro:arch')->prefix('pro/architect')->group(function () {
+        Route::get('/clients', [ArchitectClientController::class, 'index']);
+        Route::get('/clients/create', [ArchitectClientController::class, 'create']);
+        Route::post('/clients', [ArchitectClientController::class, 'store']);
+        Route::get('/clients/{client}', [ArchitectClientController::class, 'show']);
+        Route::get('/clients/{client}/edit', [ArchitectClientController::class, 'edit']);
+        Route::put('/clients/{client}', [ArchitectClientController::class, 'update']);
+
         Route::get('/projects', [ArchitectProjectController::class, 'index']);
         Route::get('/projects/create', [ArchitectProjectController::class, 'create']);
         Route::post('/projects', [ArchitectProjectController::class, 'store']);
+        Route::get('/projects/{project}', [ArchitectProjectController::class, 'show']);
+        Route::get('/projects/{project}/edit', [ArchitectProjectController::class, 'edit']);
+        Route::put('/projects/{project}', [ArchitectProjectController::class, 'update']);
+        Route::post('/projects/{project}/parties', [ArchitectProjectController::class, 'storeParty']);
+        Route::delete('/projects/{project}/parties/{party}', [ArchitectProjectController::class, 'destroyParty']);
+
+        Route::get('/projects/{project}/pa/create', [ArchitectPaController::class, 'create']);
+        Route::post('/projects/{project}/pa', [ArchitectPaController::class, 'store']);
+        Route::get('/pa/{pa}', [ArchitectPaController::class, 'show']);
+        Route::get('/pa/{pa}/edit', [ArchitectPaController::class, 'edit']);
+        Route::put('/pa/{pa}', [ArchitectPaController::class, 'update']);
+
+        Route::get('/documents', [ArchitectDocumentController::class, 'index']);
+        Route::get('/documents/create', [ArchitectDocumentController::class, 'create']);
+        Route::post('/documents', [ArchitectDocumentController::class, 'store']);
+        Route::get('/documents/{document}', [ArchitectDocumentController::class, 'show']);
+        Route::put('/documents/{document}', [ArchitectDocumentController::class, 'update']);
+        Route::post('/documents/{document}/revisions', [ArchitectDocumentController::class, 'uploadRevision']);
+        Route::get('/documents/{document}/revisions/{revision}/download', [ArchitectDocumentController::class, 'download']);
+
+        Route::get('/templates', [ArchitectTemplateController::class, 'index']);
+        Route::get('/templates/{key}/blank', [ArchitectTemplateController::class, 'downloadBlank']);
+        Route::post('/templates/{key}/generate', [ArchitectTemplateController::class, 'generate']);
+
+        Route::get('/licences/search', [ArchitectLicenceController::class, 'search']);
+        Route::post('/licences', [ArchitectLicenceController::class, 'store']);
+
         Route::get('/stamper', [StamperController::class, 'form']);
         Route::post('/stamper', [StamperController::class, 'generate']);
     });
