@@ -245,6 +245,7 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::get('/documents/{document}/revisions/{revision}/download', [ArchitectDocumentController::class, 'download']);
 
         Route::get('/templates', [ArchitectTemplateController::class, 'index']);
+        Route::get('/templates/{key}/fill', [ArchitectTemplateController::class, 'fill']);
         Route::get('/templates/{key}/blank', [ArchitectTemplateController::class, 'downloadBlank']);
         Route::post('/templates/{key}/generate', [ArchitectTemplateController::class, 'generate']);
 
