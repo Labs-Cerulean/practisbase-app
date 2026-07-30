@@ -20,6 +20,76 @@ class BcaTemplateCatalog
     ];
 
     /**
+     * Shared field definitions used by fill forms.
+     *
+     * @return array<string, array{label: string, type: string, help?: string}>
+     */
+    public static function fieldLibrary(): array
+    {
+        return [
+            'client' => [
+                'label' => 'Client',
+                'type' => 'client',
+                'help' => 'Developer / applicant / owner on your architect client list.',
+            ],
+            'project' => [
+                'label' => 'Project',
+                'type' => 'project',
+                'help' => 'Filtered to the selected client.',
+            ],
+            'pa' => [
+                'label' => 'PA number',
+                'type' => 'pa',
+                'help' => 'Filtered to the selected project (and client).',
+            ],
+            'extra_text' => [
+                'label' => 'Additional wording',
+                'type' => 'textarea',
+                'help' => 'Any extra text to include in the declaration body.',
+            ],
+            'reasons' => [
+                'label' => 'Reasons',
+                'type' => 'textarea',
+                'help' => 'Reasons supporting the declaration or exemption.',
+            ],
+            'works_description' => [
+                'label' => 'Description of works',
+                'type' => 'textarea',
+            ],
+            'mitigation' => [
+                'label' => 'Mitigation measures',
+                'type' => 'textarea',
+            ],
+            'ds_number' => [
+                'label' => 'DS number',
+                'type' => 'text',
+                'help' => 'e.g. DS 12345/24',
+            ],
+            'start_date' => [
+                'label' => 'Start date',
+                'type' => 'date',
+            ],
+            'end_date' => [
+                'label' => 'End date',
+                'type' => 'date',
+            ],
+            'third_party_count' => [
+                'label' => 'Third party properties eligible for condition report',
+                'type' => 'text',
+            ],
+            'complex_count' => [
+                'label' => 'Complexes affected by excavation',
+                'type' => 'text',
+            ],
+            'commencement_override' => [
+                'label' => 'Works commencement date (override)',
+                'type' => 'date',
+                'help' => 'Leave blank to use the project / PA commencement date.',
+            ],
+        ];
+    }
+
+    /**
      * @return list<array{
      *   key: string,
      *   title: string,
@@ -27,7 +97,8 @@ class BcaTemplateCatalog
      *   description: string,
      *   blank_file: ?string,
      *   fillable: bool,
-     *   preferred_scope: string
+     *   preferred_scope: string,
+     *   fields: list<array{name: string, required: bool}>
      * }>
      */
     public static function all(): array
@@ -41,6 +112,12 @@ class BcaTemplateCatalog
                 'blank_file' => 'declaration-not-under-ln136.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'declaration_reg26_not_affecting',
@@ -50,6 +127,13 @@ class BcaTemplateCatalog
                 'blank_file' => 'declaration-reg26-not-affecting-third-party.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'reasons', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'declaration_condition_reports_complexes',
@@ -59,24 +143,44 @@ class BcaTemplateCatalog
                 'blank_file' => 'declaration-condition-reports-complexes.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'third_party_count', 'required' => true],
+                    ['name' => 'complex_count', 'required' => false],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'site_management_summary',
                 'title' => 'Site management responsibility summary',
                 'group' => 'Site team',
-                'description' => 'Summary of on-site roles, names and mobiles for the PA.',
+                'description' => 'Summary of on-site roles, names and mobiles for the PA. Uses the project site team.',
                 'blank_file' => 'site-management-summary.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'change_of_responsibility',
                 'title' => 'Change of responsibility form',
                 'group' => 'Site team',
-                'description' => 'Developer declaration transferring a site role to a named person.',
+                'description' => 'Developer declaration transferring a site role. Prefills developer and site team.',
                 'blank_file' => 'change-of-responsibility.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'site_notice',
@@ -86,6 +190,12 @@ class BcaTemplateCatalog
                 'blank_file' => 'site-notice-board.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'commencement_override', 'required' => false],
+                ],
             ],
             [
                 'key' => 'method_statement_demolition',
@@ -95,6 +205,14 @@ class BcaTemplateCatalog
                 'blank_file' => 'method-statement-demolition.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'commencement_override', 'required' => false],
+                    ['name' => 'works_description', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'method_statement_excavation',
@@ -104,6 +222,14 @@ class BcaTemplateCatalog
                 'blank_file' => 'method-statement-excavation.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'commencement_override', 'required' => false],
+                    ['name' => 'works_description', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'method_statement_building',
@@ -113,6 +239,14 @@ class BcaTemplateCatalog
                 'blank_file' => 'method-statement-building.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'commencement_override', 'required' => false],
+                    ['name' => 'works_description', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'condition_report',
@@ -122,6 +256,7 @@ class BcaTemplateCatalog
                 'blank_file' => 'condition-report.docx',
                 'fillable' => false,
                 'preferred_scope' => 'project',
+                'fields' => [],
             ],
             [
                 'key' => 'work_outside_hours_exemption',
@@ -131,6 +266,16 @@ class BcaTemplateCatalog
                 'blank_file' => 'work-outside-hours-exemption.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'start_date', 'required' => true],
+                    ['name' => 'end_date', 'required' => true],
+                    ['name' => 'works_description', 'required' => true],
+                    ['name' => 'reasons', 'required' => true],
+                    ['name' => 'mitigation', 'required' => false],
+                ],
             ],
             [
                 'key' => 'summer_break_exemption',
@@ -140,6 +285,16 @@ class BcaTemplateCatalog
                 'blank_file' => 'summer-break-exemption.docx',
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'start_date', 'required' => true],
+                    ['name' => 'end_date', 'required' => true],
+                    ['name' => 'works_description', 'required' => true],
+                    ['name' => 'reasons', 'required' => false],
+                    ['name' => 'mitigation', 'required' => false],
+                ],
             ],
             [
                 'key' => 'ds_clearance_application',
@@ -149,6 +304,13 @@ class BcaTemplateCatalog
                 'blank_file' => 'ds-bca-clearance-application.docx',
                 'fillable' => true,
                 'preferred_scope' => 'project',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => false],
+                    ['name' => 'ds_number', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'insurance_certificate',
@@ -158,6 +320,7 @@ class BcaTemplateCatalog
                 'blank_file' => 'bca-certificate-of-insurance.xlsx',
                 'fillable' => false,
                 'preferred_scope' => 'pa',
+                'fields' => [],
             ],
             [
                 'key' => 'architect_progress_declaration',
@@ -167,6 +330,12 @@ class BcaTemplateCatalog
                 'blank_file' => null,
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'architect_supervision_declaration',
@@ -176,6 +345,12 @@ class BcaTemplateCatalog
                 'blank_file' => null,
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
             [
                 'key' => 'architect_completion_declaration',
@@ -185,6 +360,12 @@ class BcaTemplateCatalog
                 'blank_file' => null,
                 'fillable' => true,
                 'preferred_scope' => 'pa',
+                'fields' => [
+                    ['name' => 'client', 'required' => true],
+                    ['name' => 'project', 'required' => true],
+                    ['name' => 'pa', 'required' => true],
+                    ['name' => 'extra_text', 'required' => false],
+                ],
             ],
         ];
     }
@@ -203,6 +384,32 @@ class BcaTemplateCatalog
     public static function blankPath(string $blankFile): string
     {
         return resource_path('bca-templates/originals/'.$blankFile);
+    }
+
+    /**
+     * @param  array{fields?: list<array{name: string, required: bool}>}  $template
+     * @return list<array{name: string, required: bool, label: string, type: string, help: ?string}>
+     */
+    public static function resolvedFields(array $template): array
+    {
+        $library = self::fieldLibrary();
+        $resolved = [];
+
+        foreach ($template['fields'] ?? [] as $field) {
+            $name = $field['name'];
+            if (! isset($library[$name])) {
+                continue;
+            }
+            $resolved[] = [
+                'name' => $name,
+                'required' => (bool) ($field['required'] ?? false),
+                'label' => $library[$name]['label'],
+                'type' => $library[$name]['type'],
+                'help' => $library[$name]['help'] ?? null,
+            ];
+        }
+
+        return $resolved;
     }
 
     /**

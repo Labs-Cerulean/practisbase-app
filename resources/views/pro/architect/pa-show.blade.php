@@ -15,7 +15,7 @@
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/architect/pa/{{ $pa->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit</a>
             <a href="/pro/architect/documents/create?pa_id={{ $pa->id }}" style="background: #3f6212; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Document</a>
-            <a href="/pro/architect/templates" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Fill template</a>
+            <a href="/pro/architect/templates" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">BCA templates</a>
         </div>
     </div>
 
