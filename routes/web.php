@@ -28,6 +28,11 @@ use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateCo
 use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
 use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
+use App\Http\Controllers\Company\DeskController as CompanyDeskController;
+use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
+use App\Http\Controllers\Company\ClientController as CompanyClientController;
+use App\Http\Controllers\Company\InvoiceController as CompanyInvoiceController;
+use App\Http\Controllers\Company\ExpenseController as CompanyExpenseController;
 
 /*
 |--------------------------------------------------------------------------
@@ -274,5 +279,32 @@ Route::middleware(['auth', 'terms', 'onboarded'])->group(function () {
         Route::post('/projects', [EngineerProjectController::class, 'store']);
         Route::redirect('/certifications', '/pro/certificates');
         Route::redirect('/certifications/create', '/pro/certificates/create');
+    });
+
+    Route::middleware('company_books')->prefix('company')->group(function () {
+        Route::get('/', [CompanyDeskController::class, 'index']);
+        Route::get('/profile', [CompanyProfileController::class, 'edit']);
+        Route::put('/profile', [CompanyProfileController::class, 'update']);
+        Route::post('/profile/capital-received', [CompanyProfileController::class, 'markCapitalReceived']);
+
+        Route::get('/clients', [CompanyClientController::class, 'index']);
+        Route::get('/clients/create', [CompanyClientController::class, 'create']);
+        Route::post('/clients', [CompanyClientController::class, 'store']);
+        Route::get('/clients/{client}/edit', [CompanyClientController::class, 'edit']);
+        Route::put('/clients/{client}', [CompanyClientController::class, 'update']);
+
+        Route::get('/invoices', [CompanyInvoiceController::class, 'index']);
+        Route::get('/invoices/create', [CompanyInvoiceController::class, 'create']);
+        Route::post('/invoices', [CompanyInvoiceController::class, 'store']);
+        Route::post('/invoices/{document}/convert', [CompanyInvoiceController::class, 'convert']);
+        Route::post('/invoices/{document}/pay', [CompanyInvoiceController::class, 'pay']);
+        Route::post('/invoices/{document}/credit', [CompanyInvoiceController::class, 'credit']);
+        Route::get('/invoices/{document}/pdf', [CompanyInvoiceController::class, 'pdf']);
+
+        Route::get('/expenses', [CompanyExpenseController::class, 'index']);
+        Route::get('/expenses/create', [CompanyExpenseController::class, 'create']);
+        Route::post('/expenses', [CompanyExpenseController::class, 'store']);
+        Route::post('/expenses/{expense}/refund', [CompanyExpenseController::class, 'markRefunded']);
+        Route::get('/expenses/{expense}/receipt', [CompanyExpenseController::class, 'receipt']);
     });
 });

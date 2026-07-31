@@ -39,4 +39,9 @@ class TenantStorage
     {
         return 'tenants/' . $userId . '/architect/documents';
     }
+
+    public static function companyReceiptsPath(int $userId): string
+    {
+        return 'tenants/' . $userId . '/company/receipts';
+    }
 }
