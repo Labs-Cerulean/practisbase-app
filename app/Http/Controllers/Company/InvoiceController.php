@@ -41,9 +41,20 @@ class InvoiceController extends Controller
                 ->with('error', 'Add a company client before creating a document.');
         }
 
+        $clientMeta = $clients->mapWithKeys(function (CompanyClient $client) {
+            return [
+                (string) $client->id => [
+                    'has_vat' => filled($client->vat_number),
+                    'has_address' => filled($client->billing_address),
+                    'name' => $client->name,
+                ],
+            ];
+        });
+
         return view('company.invoices-create', [
             'clients' => $clients,
             'profile' => $profile,
+            'clientMeta' => $clientMeta,
         ]);
     }
 
@@ -56,6 +67,7 @@ class InvoiceController extends Controller
             'type' => 'required|in:invoice,rfp',
             'company_client_id' => 'required|exists:company_clients,id,user_id,'.$user->id,
             'issue_date' => 'required|date|before_or_equal:today',
+            'supply_date' => 'nullable|date|before_or_equal:today',
             'due_date' => 'required|date|after_or_equal:issue_date',
             'item_desc' => 'required|array|min:1',
             'item_desc.*' => 'required|string',
@@ -70,11 +82,28 @@ class InvoiceController extends Controller
             return back()->withErrors(['issue_date' => $error])->withInput();
         }
 
+        $supplyDate = $request->filled('supply_date') ? $request->supply_date : $request->issue_date;
+        if ($error = $this->validateSupplyDate($profile, $supplyDate, $request->type)) {
+            return back()->withErrors(['supply_date' => $error])->withInput();
+        }
+
         $applyVat = $profile->isArticle10() && $request->boolean('apply_vat');
         if ($profile->isArticle10() && ! $profile->hasVatNumber() && ($request->type === 'invoice' || $applyVat)) {
             return back()
-                ->withErrors(['vat_number' => 'Add the company VAT number in Company profile before issuing an Article 10 invoice or charging 18% VAT. RFPs can wait.'])
+                ->withErrors([
+                    'vat_number' => 'Add the company VAT number in Company profile before issuing an Article 10 invoice or charging 18% VAT. RFPs can wait.',
+                ])
                 ->withInput();
+        }
+
+        $client = CompanyClient::where('user_id', $user->id)
+            ->where('id', $request->company_client_id)
+            ->firstOrFail();
+
+        if ($request->type === 'invoice') {
+            if ($clientError = $this->validateClientForTaxInvoice($client)) {
+                return back()->withErrors(['company_client_id' => $clientError])->withInput();
+            }
         }
 
         [$items, $subtotal] = $this->buildItems($request);
@@ -90,6 +119,7 @@ class InvoiceController extends Controller
             'type' => $request->type,
             'document_number' => $number,
             'issue_date' => $request->issue_date,
+            'supply_date' => $supplyDate,
             'due_date' => $request->due_date,
             'subtotal' => $subtotal,
             'vat_total' => $vatTotal,
@@ -107,7 +137,8 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
-        $rfp = CompanyInvoice::where('user_id', $user->id)
+        $rfp = CompanyInvoice::with('client')
+            ->where('user_id', $user->id)
             ->where('id', $document)
             ->where('type', 'rfp')
             ->firstOrFail();
@@ -118,9 +149,18 @@ class InvoiceController extends Controller
             ]);
         }
 
+        if ($clientError = $this->validateClientForTaxInvoice($rfp->client)) {
+            return back()->withErrors(['company_client_id' => $clientError]);
+        }
+
         $issueDate = now()->toDateString();
         if ($error = $this->validateIssueDate($profile, $issueDate, 'invoice')) {
             return back()->withErrors(['issue_date' => $error]);
+        }
+
+        $supplyDate = optional($rfp->supply_date)->format('Y-m-d') ?: $issueDate;
+        if ($error = $this->validateSupplyDate($profile, $supplyDate, 'invoice')) {
+            return back()->withErrors(['supply_date' => $error]);
         }
 
         $year = (int) date('Y');
@@ -130,7 +170,7 @@ class InvoiceController extends Controller
         $vatTotal = $applyVat ? round((float) $rfp->subtotal * 0.18, 2) : 0.0;
         $total = round((float) $rfp->subtotal + $vatTotal, 2);
 
-        DB::transaction(function () use ($user, $rfp, $number, $issueDate, $vatTotal, $total) {
+        DB::transaction(function () use ($user, $rfp, $number, $issueDate, $supplyDate, $vatTotal, $total) {
             $invoice = CompanyInvoice::create([
                 'user_id' => $user->id,
                 'company_client_id' => $rfp->company_client_id,
@@ -139,6 +179,7 @@ class InvoiceController extends Controller
                 'type' => 'invoice',
                 'document_number' => $number,
                 'issue_date' => $issueDate,
+                'supply_date' => $supplyDate,
                 'due_date' => $rfp->due_date,
                 'subtotal' => $rfp->subtotal,
                 'vat_total' => $vatTotal,
@@ -221,6 +262,7 @@ class InvoiceController extends Controller
         }
 
         $number = CompanyBooks::nextDocumentNumber($user->id, 'credit_note', (int) date('Y'));
+        $supplyDate = optional($invoice->supply_date)->format('Y-m-d') ?: $issueDate;
 
         CompanyInvoice::create([
             'user_id' => $user->id,
@@ -229,6 +271,7 @@ class InvoiceController extends Controller
             'type' => 'credit_note',
             'document_number' => $number,
             'issue_date' => $issueDate,
+            'supply_date' => $supplyDate,
             'due_date' => $issueDate,
             'subtotal' => $invoice->subtotal,
             'vat_total' => $invoice->vat_total,
@@ -236,7 +279,7 @@ class InvoiceController extends Controller
             'amount_paid' => 0,
             'status' => 'issued',
             'items' => $invoice->items,
-            'notes' => 'Credit note against '.$invoice->document_number,
+            'notes' => 'Credit note amending tax invoice '.$invoice->document_number.'.',
         ]);
 
         return back()->with('success', 'Credit note '.$number.' issued.');
@@ -246,7 +289,7 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
-        $doc = CompanyInvoice::with('client')
+        $doc = CompanyInvoice::with(['client', 'parentDocument'])
             ->where('user_id', $user->id)
             ->where('id', $document)
             ->firstOrFail();
@@ -254,6 +297,7 @@ class InvoiceController extends Controller
         $pdf = Pdf::loadView('company.pdf.document', [
             'document' => $doc,
             'profile' => $profile,
+            'creditedInvoice' => $doc->type === 'credit_note' ? $doc->parentDocument : null,
         ]);
 
         return $pdf->download($doc->document_number.'.pdf');
@@ -283,6 +327,23 @@ class InvoiceController extends Controller
         return [$items, round($subtotal, 2)];
     }
 
+    private function validateClientForTaxInvoice(?CompanyClient $client): ?string
+    {
+        if (! $client) {
+            return 'Select a company client.';
+        }
+
+        if (! filled($client->billing_address)) {
+            return 'Add a billing address on the client record before issuing a tax invoice (required for VAT).';
+        }
+
+        if (! filled($client->vat_number)) {
+            return 'Add the client VAT number before issuing a tax invoice to a VAT-registered B2B customer.';
+        }
+
+        return null;
+    }
+
     private function validateIssueDate(CompanyProfile $profile, string $issueDate, string $type): ?string
     {
         $date = strtotime($issueDate);
@@ -294,6 +355,22 @@ class InvoiceController extends Controller
         if (in_array($type, ['invoice', 'credit_note'], true)
             && $date < $profile->first_period_start->getTimestamp()) {
             return 'Tax invoices cannot be dated before incorporation ('.$profile->first_period_start->format('Y-m-d').').';
+        }
+
+        return null;
+    }
+
+    private function validateSupplyDate(CompanyProfile $profile, string $supplyDate, string $type): ?string
+    {
+        $date = strtotime($supplyDate);
+        $end = $profile->first_period_end->getTimestamp();
+        if ($date > $end) {
+            return 'Supply date is after the first financial period end ('.$profile->first_period_end->format('Y-m-d').').';
+        }
+
+        if (in_array($type, ['invoice', 'credit_note'], true)
+            && $date < $profile->first_period_start->getTimestamp()) {
+            return 'Supply date cannot be before incorporation ('.$profile->first_period_start->format('Y-m-d').').';
         }
 
         return null;

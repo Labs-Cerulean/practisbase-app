@@ -78,7 +78,8 @@
                     <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
                         Credit notes:
                         @foreach($doc->childDocuments->where('type', 'credit_note') as $cn)
-                            {{ $cn->document_number }} (€{{ number_format((float) $cn->total, 2) }})@if(! $loop->last), @endif
+                            <a href="/company/invoices/{{ $cn->id }}/pdf" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">{{ $cn->document_number }}</a>
+                            (€{{ number_format((float) $cn->total, 2) }})@if(! $loop->last), @endif
                         @endforeach
                     </div>
                 @endif

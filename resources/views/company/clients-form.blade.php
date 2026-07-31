@@ -30,7 +30,8 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Client VAT number</label>
-                    <input type="text" name="vat_number" value="{{ old('vat_number', $client->vat_number ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="text" name="vat_number" value="{{ old('vat_number', $client->vat_number ?? '') }}" placeholder="MT…" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Required before issuing a tax invoice (B2B reclaim).</div>
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">C-number / reg.</label>
@@ -39,7 +40,8 @@
             </div>
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Billing address</label>
-                <textarea name="billing_address" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); resize: vertical;">{{ old('billing_address', $client->billing_address ?? '') }}</textarea>
+                <textarea name="billing_address" rows="3" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); resize: vertical;">{{ old('billing_address', $client->billing_address ?? '') }}</textarea>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Required on tax invoices.</div>
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Notes</label>
