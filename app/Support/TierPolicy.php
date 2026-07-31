@@ -26,6 +26,9 @@ class TierPolicy
 
     public const PRICE_PRO = '34.99';
 
+    /** Maltese standard VAT rate shown on public pricing (ex-VAT list prices). */
+    public const VAT_RATE_PERCENT = '18';
+
     /** Separate Standard + Practice list price minus Full Pro (marketing). */
     public static function bundleSavingsEuro(): string
     {
@@ -33,6 +36,18 @@ class TierPolicy
         $pro = (float) self::PRICE_PRO;
 
         return number_format(max(0, $separate - $pro), 2);
+    }
+
+    /** Short suffix under paid list prices, e.g. "+ 18% VAT". */
+    public static function priceVatSuffix(): string
+    {
+        return '+ '.self::VAT_RATE_PERCENT.'% VAT';
+    }
+
+    /** One-line public pricing disclaimer. */
+    public static function pricingVatDisclaimer(): string
+    {
+        return 'Prices exclude '.self::VAT_RATE_PERCENT.'% Maltese VAT. VAT-registered businesses can usually reclaim it.';
     }
 
     public const TIER_FREE = 'free';
@@ -283,9 +298,9 @@ class TierPolicy
     {
         return match (self::normalize($tier)) {
             self::TIER_FREE => '€0',
-            self::TIER_STANDARD => '€'.self::PRICE_STANDARD,
-            self::TIER_PRACTICE_MED, self::TIER_PRACTICE_ARCH, self::TIER_PRACTICE_ENG => '€'.self::PRICE_PRACTICE,
-            self::TIER_PRO_MED, self::TIER_PRO_ARCH, self::TIER_PRO_ENG => '€'.self::PRICE_PRO,
+            self::TIER_STANDARD => '€'.self::PRICE_STANDARD.' + VAT',
+            self::TIER_PRACTICE_MED, self::TIER_PRACTICE_ARCH, self::TIER_PRACTICE_ENG => '€'.self::PRICE_PRACTICE.' + VAT',
+            self::TIER_PRO_MED, self::TIER_PRO_ARCH, self::TIER_PRO_ENG => '€'.self::PRICE_PRO.' + VAT',
             default => '',
         };
     }

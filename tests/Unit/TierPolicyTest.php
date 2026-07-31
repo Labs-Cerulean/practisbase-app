@@ -15,6 +15,10 @@ class TierPolicyTest extends TestCase
         $this->assertSame('24.99', TierPolicy::PRICE_PRACTICE);
         $this->assertSame('34.99', TierPolicy::PRICE_PRO);
         $this->assertSame('5.99', TierPolicy::bundleSavingsEuro());
+        $this->assertSame('+ 18% VAT', TierPolicy::priceVatSuffix());
+        $this->assertStringContainsString('exclude 18%', TierPolicy::pricingVatDisclaimer());
+        $this->assertSame('€15.99 + VAT', TierPolicy::priceLabel('standard'));
+        $this->assertSame('€0', TierPolicy::priceLabel('free'));
     }
 
     public function test_practice_keeps_free_financial_without_tax_vat(): void
