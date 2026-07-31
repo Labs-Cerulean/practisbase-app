@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Support\CompanyBooks;
 use App\Support\FiscalReportEngine;
 use App\Support\FiscalYearGuard;
 use App\Support\RegimeHistory;
@@ -16,6 +17,17 @@ class ProfileController extends Controller
     public function edit()
     {
         $user = Auth::user();
+
+        if ($user->canAccessCompanyBooks()) {
+            $profile = CompanyBooks::ensureProfile($user);
+
+            return view('profile.settings-company', [
+                'user' => $user,
+                'profile' => $profile,
+                'periodLabel' => CompanyBooks::periodLabel($profile),
+            ]);
+        }
+
         $allowedTiers = \App\Support\TierPolicy::allowedTiersForProfession($user->profession);
         $planConsequences = [];
         foreach ($allowedTiers as $tierOption) {
@@ -66,6 +78,11 @@ class ProfileController extends Controller
     public function updatePlan(Request $request)
     {
         $user = Auth::user();
+
+        if ($user->canAccessCompanyBooks()) {
+            return redirect('/settings')->with('error', 'Plan changes are not used for the Cerulean Labs company desk.');
+        }
+
         $currentTier = \App\Support\TierPolicy::normalize($user->tier);
 
         $request->validate([
@@ -114,6 +131,21 @@ class ProfileController extends Controller
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
+
+        if ($user->canAccessCompanyBooks()) {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            ]);
+
+            $user->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+            ]);
+
+            return redirect('/settings')->with('success', 'Login details updated.');
+        }
+
         $isMedical = $user->profession === 'Medical Professional';
         $hasClosedFiscalYears = FiscalReportEngine::hasClosedYears($user->id);
         $dobLocked = $hasClosedFiscalYears && filled($user->date_of_birth);

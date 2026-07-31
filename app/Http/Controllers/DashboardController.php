@@ -21,6 +21,11 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        if ($user->canAccessCompanyBooks()) {
+            return redirect('/company');
+        }
+
         $userId = $user->id;
         $year = (int) date('Y');
 
