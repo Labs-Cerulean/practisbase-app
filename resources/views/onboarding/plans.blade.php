@@ -18,9 +18,11 @@
         .popular-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--primary-cerulean); color: white; padding: 0.2rem 0.75rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
         
         .tier-name { font-size: 1.15rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.25rem; }
-        .tier-price { font-size: 2.25rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.35rem; }
+        .tier-price { font-size: 2.25rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.15rem; }
         .tier-price span { font-size: 0.9rem; color: var(--text-muted); font-weight: 400; }
+        .tier-vat { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin: 0 0 0.5rem; }
         .tier-blurb { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 1rem; line-height: 1.4; min-height: 2.4em; }
+        .vat-banner { background: #eff6ff; color: #1e40af; text-align: center; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; margin-bottom: 1.25rem; border: 1px solid #bfdbfe; line-height: 1.4; }
         
         .feature-list { list-style: none; padding: 0; margin-bottom: 1.5rem; flex-grow: 1; font-size: 0.9rem; }
         .feature-list li { margin-bottom: 0.6rem; color: var(--text-main); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.3; }
@@ -43,6 +45,7 @@
     $allowed = $allowedTiers ?? [];
     $practiceTier = collect($allowed)->first(fn ($t) => str_starts_with($t, 'practice-'));
     $proTier = collect($allowed)->first(fn ($t) => str_starts_with($t, 'pro-'));
+    $vatSuffix = \App\Support\TierPolicy::priceVatSuffix();
 @endphp
 
     <main class="pricing-container">
@@ -52,6 +55,8 @@
             <p style="color: var(--text-muted); font-size: 1rem;">Start with practice tools or accounts — upgrade into the full system later.</p>
             <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.35rem;">[TESTING MODE: No credit card required.]</p>
         </div>
+
+        <div class="vat-banner">{{ \App\Support\TierPolicy::pricingVatDisclaimer() }} Paid tiers show ex-VAT list prices.</div>
 
         <div class="dev-banner">
             DEV BYPASS ACTIVE: Selecting a paid tier will instantly upgrade your account for testing. Stripe is bypassed.
@@ -79,6 +84,7 @@
                 <div class="popular-badge">Accounts</div>
                 <div class="tier-name">Standard</div>
                 <div class="tier-price">€{{ \App\Support\TierPolicy::PRICE_STANDARD }}<span>/mo</span></div>
+                <p class="tier-vat">{{ $vatSuffix }}</p>
                 <p class="tier-blurb">Sole-trader Tax &amp; VAT — no profession tools.</p>
                 <ul class="feature-list">
                     <li><strong>Unlimited Clients</strong></li>

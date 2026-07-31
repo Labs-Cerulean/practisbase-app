@@ -204,6 +204,31 @@
             letter-spacing: -0.02em;
             color: var(--pb-ink);
         }
+        .plan-vat {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--pb-mute);
+            margin: 0.15rem 0 0;
+        }
+        .vat-note {
+            margin: 1.25rem 0 0;
+            padding: 0.85rem 1rem;
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid var(--pb-line);
+            border-radius: 12px;
+            color: var(--pb-mute);
+            font-size: 0.88rem;
+            line-height: 1.45;
+            max-width: 40rem;
+        }
+        .amount-vat {
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--pb-mute);
+            margin-top: 0.15rem;
+            text-align: right;
+        }
         .plan-price span {
             font-family: "DM Sans", sans-serif;
             font-size: 0.85rem;
@@ -461,6 +486,8 @@
     $prac = \App\Support\TierPolicy::PRICE_PRACTICE;
     $pro = \App\Support\TierPolicy::PRICE_PRO;
     $save = \App\Support\TierPolicy::bundleSavingsEuro();
+    $vatSuffix = \App\Support\TierPolicy::priceVatSuffix();
+    $vatDisclaimer = \App\Support\TierPolicy::pricingVatDisclaimer();
 @endphp
 
     <header class="site-header">
@@ -485,6 +512,7 @@
     <section class="section" id="plans">
         <h2 class="section-title">The ladder</h2>
         <p class="section-sub">Four clear steps. Full Pro is priced as a bundle: about €{{ $save }}/mo less than buying Standard and Practice separately.</p>
+        <p class="vat-note">{{ $vatDisclaimer }} List prices below are ex-VAT.</p>
 
         <div class="ladder">
             <article class="plan">
@@ -503,6 +531,7 @@
                 <span class="plan-badge">Accounts</span>
                 <div class="plan-name">Standard</div>
                 <div class="plan-price">€{{ $std }}<span>/mo</span></div>
+                <p class="plan-vat">{{ $vatSuffix }}</p>
                 <p class="plan-blurb">Sole trader Tax and VAT. No profession tools.</p>
                 <ul>
                     <li>Unlimited clients</li>
@@ -517,6 +546,7 @@
                 <span class="plan-badge">Profession</span>
                 <div class="plan-name">Practice</div>
                 <div class="plan-price">€{{ $prac }}<span>/mo</span></div>
+                <p class="plan-vat">{{ $vatSuffix }}</p>
                 <p class="plan-blurb">Your profession tools plus Free invoicing.</p>
                 <ul>
                     <li>Free financial layer (5 clients)</li>
@@ -531,8 +561,9 @@
                 <span class="plan-badge">Best value</span>
                 <div class="plan-name">Full Pro</div>
                 <div class="plan-price">€{{ $pro }}<span>/mo</span></div>
+                <p class="plan-vat">{{ $vatSuffix }}</p>
                 <p class="plan-blurb">Standard accounts plus your profession package.</p>
-                <p class="save-note">Save €{{ $save }}/mo vs €{{ $std }} + €{{ $prac }}</p>
+                <p class="save-note">Save €{{ $save }}/mo vs €{{ $std }} + €{{ $prac }} (ex-VAT)</p>
                 <ul>
                     <li>Everything in Standard</li>
                     <li>Everything in Practice</li>
@@ -568,7 +599,7 @@
 
     <section class="section" id="paths">
         <h2 class="section-title">Practice paths</h2>
-        <p class="section-sub">Each profession gets its own tools. Practice is tools plus Free invoicing. Full Pro adds Standard Tax and VAT (save €{{ $save }}/mo vs buying both).</p>
+        <p class="section-sub">Each profession gets its own tools. Practice is tools plus Free invoicing. Full Pro adds Standard Tax and VAT (save €{{ $save }}/mo vs buying both). Paid prices are ex-VAT ({{ $vatSuffix }}).</p>
 
         <div class="paths-grid">
             <article class="prof-path med">
@@ -589,14 +620,14 @@
                             <strong>Practice Medical</strong>
                             <span class="hint">Tools + Free invoicing</span>
                         </span>
-                        <span class="amount">€{{ $prac }}<small>/mo</small></span>
+                        <span class="amount">€{{ $prac }}<small>/mo</small><span class="amount-vat">{{ $vatSuffix }}</span></span>
                     </a>
                     <a class="prof-price-row pro" href="/register">
                         <span>
                             <strong>Pro Medical</strong>
                             <span class="hint">Tools + Standard accounts</span>
                         </span>
-                        <span class="amount">€{{ $pro }}<small>/mo</small></span>
+                        <span class="amount">€{{ $pro }}<small>/mo</small><span class="amount-vat">{{ $vatSuffix }}</span></span>
                     </a>
                 </div>
             </article>
@@ -619,14 +650,14 @@
                             <strong>Practice Architect</strong>
                             <span class="hint">Tools + Free invoicing</span>
                         </span>
-                        <span class="amount">€{{ $prac }}<small>/mo</small></span>
+                        <span class="amount">€{{ $prac }}<small>/mo</small><span class="amount-vat">{{ $vatSuffix }}</span></span>
                     </a>
                     <a class="prof-price-row pro" href="/register">
                         <span>
                             <strong>Pro Architect</strong>
                             <span class="hint">Tools + Standard accounts</span>
                         </span>
-                        <span class="amount">€{{ $pro }}<small>/mo</small></span>
+                        <span class="amount">€{{ $pro }}<small>/mo</small><span class="amount-vat">{{ $vatSuffix }}</span></span>
                     </a>
                 </div>
             </article>
@@ -649,14 +680,14 @@
                             <strong>Practice Engineer</strong>
                             <span class="hint">Tools + Free invoicing</span>
                         </span>
-                        <span class="amount">€{{ $prac }}<small>/mo</small></span>
+                        <span class="amount">€{{ $prac }}<small>/mo</small><span class="amount-vat">{{ $vatSuffix }}</span></span>
                     </a>
                     <a class="prof-price-row pro" href="/register">
                         <span>
                             <strong>Pro Engineer</strong>
                             <span class="hint">Tools + Standard accounts</span>
                         </span>
-                        <span class="amount">€{{ $pro }}<small>/mo</small></span>
+                        <span class="amount">€{{ $pro }}<small>/mo</small><span class="amount-vat">{{ $vatSuffix }}</span></span>
                     </a>
                 </div>
             </article>
