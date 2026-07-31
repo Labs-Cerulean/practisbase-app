@@ -4,12 +4,17 @@
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
-        <div>
-            <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Internal company desk</div>
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">{{ $profile->legal_name }}</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
-                {{ $profile->registration_number }} · First period {{ $periodLabel }} · Art 10 · {{ ucfirst($profile->vat_filing_frequency) }} VAT
-            </p>
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+            @if($profile->logoDataUri())
+                <img src="{{ $profile->logoDataUri() }}" alt="Company logo" style="max-height: 56px; max-width: 140px; object-fit: contain;">
+            @endif
+            <div>
+                <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Internal company desk</div>
+                <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">{{ $profile->legal_name }}</h1>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
+                    {{ $profile->registration_number }} · First period {{ $periodLabel }} · Art 10 · {{ ucfirst($profile->vat_filing_frequency) }} VAT
+                </p>
+            </div>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/company/invoices/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>

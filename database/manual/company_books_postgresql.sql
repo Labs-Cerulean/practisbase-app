@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS company_profiles (
     share_capital_eur NUMERIC(12, 2) NOT NULL DEFAULT 1200.00,
     share_capital_received_at DATE NULL,
     payment_instructions TEXT NULL,
+    logo_path VARCHAR(500) NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,
     CONSTRAINT company_profiles_user_id_fkey

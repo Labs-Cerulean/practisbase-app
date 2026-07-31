@@ -285,6 +285,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/', [CompanyDeskController::class, 'index']);
         Route::get('/profile', [CompanyProfileController::class, 'edit']);
         Route::put('/profile', [CompanyProfileController::class, 'update']);
+        Route::post('/profile/logo', [CompanyProfileController::class, 'updateLogo']);
         Route::post('/profile/capital-received', [CompanyProfileController::class, 'markCapitalReceived']);
 
         Route::get('/clients', [CompanyClientController::class, 'index']);

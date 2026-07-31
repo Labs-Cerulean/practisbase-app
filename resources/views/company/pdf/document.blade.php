@@ -27,6 +27,9 @@
     <table style="border: none; margin: 0;">
         <tr>
             <td style="border: none; vertical-align: top;">
+                @if($profile->logoDataUri())
+                    <img src="{{ $profile->logoDataUri() }}" alt="Logo" style="max-height: 70px; max-width: 200px; margin-bottom: 10px;"><br>
+                @endif
                 <h1>{{ $profile->legal_name }}</h1>
                 <div class="muted">{{ $profile->registration_number }}</div>
                 <div class="muted" style="margin-top: 6px; white-space: pre-line;">{{ $profile->registered_office }}</div>

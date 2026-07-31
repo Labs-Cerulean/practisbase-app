@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use App\Support\CompanyBooks;
+use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -42,6 +43,41 @@ class ProfileController extends Controller
         ]);
 
         return redirect('/company/profile')->with('success', 'Company profile updated.');
+    }
+
+    public function updateLogo(Request $request)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+
+        $request->validate([
+            'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'remove_logo' => 'nullable|boolean',
+        ]);
+
+        if ($request->boolean('remove_logo') && $profile->logo_path) {
+            TenantStorage::disk()->delete($profile->logo_path);
+            $profile->update(['logo_path' => null]);
+
+            return redirect('/company/profile')->with('success', 'Company logo removed.');
+        }
+
+        if (! $request->hasFile('logo')) {
+            return back()->withErrors(['logo' => 'Choose an image to upload (JPG, PNG, or WebP, max 2 MB).']);
+        }
+
+        if ($profile->logo_path) {
+            TenantStorage::disk()->delete($profile->logo_path);
+        }
+
+        $path = $request->file('logo')->store(
+            TenantStorage::companyBrandingPath($user->id),
+            TenantStorage::diskName()
+        );
+
+        $profile->update(['logo_path' => $path]);
+
+        return redirect('/company/profile')->with('success', 'Company logo uploaded. It will appear on invoice PDFs.');
     }
 
     public function markCapitalReceived(Request $request)

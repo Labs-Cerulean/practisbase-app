@@ -32,7 +32,7 @@
                 {{ $profile->registration_number }} · Art 10 · {{ ucfirst($profile->vat_filing_frequency) }} VAT
                 · First period {{ $periodLabel }}
             </div>
-            <a href="/company/profile" style="display: inline-block; margin-top: 0.75rem; font-size: 0.85rem; font-weight: 700; color: #1e3a8a; text-decoration: none;">Open company profile (VAT · IBAN · payments) →</a>
+            <a href="/company/profile" style="display: inline-block; margin-top: 0.75rem; font-size: 0.85rem; font-weight: 700; color: #1e3a8a; text-decoration: none;">Open company profile (logo · VAT · IBAN · payments) →</a>
         </div>
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">

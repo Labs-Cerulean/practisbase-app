@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TenantStorage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -24,6 +25,7 @@ class CompanyProfile extends Model
         'share_capital_eur',
         'share_capital_received_at',
         'payment_instructions',
+        'logo_path',
     ];
 
     protected function casts(): array
@@ -56,5 +58,29 @@ class CompanyProfile extends Model
     public function shareCapitalReceived(): bool
     {
         return $this->share_capital_received_at !== null;
+    }
+
+    public function logoDataUri(): ?string
+    {
+        if (! filled($this->logo_path)) {
+            return null;
+        }
+
+        $disk = TenantStorage::disk();
+
+        if (! $disk->exists($this->logo_path)) {
+            return null;
+        }
+
+        $binary = $disk->get($this->logo_path);
+        $ext = strtolower(pathinfo($this->logo_path, PATHINFO_EXTENSION));
+        $mime = match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
+
+        return 'data:'.$mime.';base64,'.base64_encode($binary);
     }
 }
