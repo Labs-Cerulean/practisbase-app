@@ -1,0 +1,2 @@
+ALTER TABLE company_profiles
+    ADD COLUMN IF NOT EXISTS logo_path VARCHAR(500) NULL;

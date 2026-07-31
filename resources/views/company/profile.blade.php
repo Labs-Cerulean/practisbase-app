@@ -29,6 +29,39 @@
             </div>
         </div>
 
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.75rem;">Company logo</div>
+            <p style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.45;">
+                Shown on tax invoices, RFPs, and credit note PDFs. Also used on future company reports.
+            </p>
+            @if($profile->logoDataUri())
+                <div style="margin-bottom: 1rem; padding: 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); display: inline-block;">
+                    <img src="{{ $profile->logoDataUri() }}" alt="Company logo" style="max-height: 80px; max-width: 220px; display: block;">
+                </div>
+            @else
+                <div style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);">No logo uploaded yet.</div>
+            @endif
+
+            <form method="POST" action="/company/profile/logo" enctype="multipart/form-data" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end;">
+                @csrf
+                <div style="flex: 1; min-width: 220px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Upload image</label>
+                    <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp,image/*" style="width: 100%; padding: 0.4rem 0;">
+                    @error('logo')<div style="color: #b91c1c; font-size: 0.8rem; margin-top: 0.35rem;">{{ $message }}</div>@enderror
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">JPG, PNG or WebP · max 2 MB</div>
+                </div>
+                <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.65rem 1.1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save logo</button>
+            </form>
+
+            @if($profile->logo_path)
+                <form method="POST" action="/company/profile/logo" style="margin-top: 0.85rem;" onsubmit="return confirm('Remove the company logo from PDFs?');">
+                    @csrf
+                    <input type="hidden" name="remove_logo" value="1">
+                    <button type="submit" style="background: white; color: #b91c1c; border: 1px solid #fecaca; padding: 0.5rem 0.9rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer;">Remove logo</button>
+                </form>
+            @endif
+        </div>
+
         <form method="POST" action="/company/profile" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
             @csrf
             @method('PUT')
