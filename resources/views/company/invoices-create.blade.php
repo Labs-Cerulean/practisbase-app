@@ -35,10 +35,10 @@
                 </label>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 0.75rem;">
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Billed to</label>
-                    <select name="company_client_id" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                    <select name="company_client_id" id="clientSelect" required onchange="checkClient()" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
                         <option value="">Select…</option>
                         @foreach($clients as $client)
                             <option value="{{ $client->id }}" @selected(old('company_client_id') == $client->id)>{{ $client->name }}</option>
@@ -47,7 +47,13 @@
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Issue date</label>
-                    <input type="date" name="issue_date" value="{{ old('issue_date', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" min="{{ $profile->first_period_start->format('Y-m-d') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="date" name="issue_date" id="issueDate" value="{{ old('issue_date', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" min="{{ $profile->first_period_start->format('Y-m-d') }}" required onchange="if (!document.getElementById('supplyTouched').value) { document.getElementById('supplyDate').value = this.value; }" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Supply date</label>
+                    <input type="hidden" id="supplyTouched" value="{{ old('supply_date') ? '1' : '' }}">
+                    <input type="date" name="supply_date" id="supplyDate" value="{{ old('supply_date', old('issue_date', date('Y-m-d'))) }}" max="{{ date('Y-m-d') }}" min="{{ $profile->first_period_start->format('Y-m-d') }}" required onchange="document.getElementById('supplyTouched').value='1'" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">Required if different from issue date.</div>
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Due date</label>
@@ -55,10 +61,12 @@
                 </div>
             </div>
 
-            <h3 style="color: var(--primary-navy); font-size: 1.05rem; margin-bottom: 0.75rem;">Line items (ex-VAT)</h3>
+            <div id="clientWarning" style="display: none; margin-bottom: 1.25rem; padding: 0.75rem 1rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius-md); color: #9a3412; font-size: 0.85rem; line-height: 1.45;"></div>
+
+            <h3 style="color: var(--primary-navy); font-size: 1.05rem; margin-bottom: 0.75rem;">Line items (ex-VAT, EUR)</h3>
             <div id="itemsContainer">
                 <div class="item-row" style="display: grid; grid-template-columns: 3fr 1fr 1fr auto; gap: 0.75rem; margin-bottom: 0.75rem;">
-                    <input type="text" name="item_desc[]" placeholder="Description" required style="padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="text" name="item_desc[]" placeholder="Description of service" required style="padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     <input type="number" name="item_qty[]" value="1" step="0.01" min="0.01" required oninput="calc()" style="padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     <input type="number" name="item_price[]" placeholder="€" step="0.01" min="0" required oninput="calc()" style="padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     <button type="button" onclick="this.closest('.item-row').remove(); calc();" style="padding: 0.7rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
@@ -72,10 +80,10 @@
                     Charge 18% VAT (Article 10)
                 </label>
                 <textarea name="notes" rows="2" placeholder="Notes…" style="width: 100%; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.75rem;">{{ old('notes') }}</textarea>
-                <div style="display: flex; justify-content: flex-end; gap: 1.5rem; font-size: 0.95rem;">
-                    <div>Subtotal <strong id="subEl">€0.00</strong></div>
-                    <div>VAT <strong id="vatEl">€0.00</strong></div>
-                    <div>Total <strong id="totEl">€0.00</strong></div>
+                <div style="display: flex; justify-content: flex-end; gap: 1.5rem; font-size: 0.95rem; flex-wrap: wrap;">
+                    <div>Taxable amount <strong id="subEl">€0.00</strong></div>
+                    <div>VAT 18% <strong id="vatEl">€0.00</strong></div>
+                    <div>Total EUR <strong id="totEl">€0.00</strong></div>
                 </div>
             </div>
 
@@ -84,6 +92,8 @@
     </div>
 
     <script>
+        var clientMeta = @json($clientMeta);
+
         function syncType() {
             var isInv = document.querySelector('input[name="type"]:checked').value === 'invoice';
             document.getElementById('lbl_invoice').style.background = isInv ? 'white' : 'transparent';
@@ -92,6 +102,29 @@
             document.getElementById('lbl_rfp').style.background = !isInv ? 'white' : 'transparent';
             document.getElementById('lbl_rfp').style.border = !isInv ? '1px solid var(--border-light)' : 'none';
             document.getElementById('lbl_rfp').style.color = !isInv ? 'var(--primary-cerulean)' : 'var(--text-muted)';
+            checkClient();
+        }
+        function checkClient() {
+            var warn = document.getElementById('clientWarning');
+            var id = document.getElementById('clientSelect').value;
+            var isInv = document.querySelector('input[name="type"]:checked').value === 'invoice';
+            if (!id || !clientMeta[id]) {
+                warn.style.display = 'none';
+                return;
+            }
+            var meta = clientMeta[id];
+            var missing = [];
+            if (!meta.has_address) missing.push('billing address');
+            if (!meta.has_vat) missing.push('VAT number');
+            if (missing.length && isInv) {
+                warn.style.display = 'block';
+                warn.innerHTML = 'Tax invoices need client <strong>' + missing.join(' and ') + '</strong>. <a href="/company/clients/' + id + '/edit" style="color:#9a3412;font-weight:700;">Edit client</a> before saving.';
+            } else if (missing.length) {
+                warn.style.display = 'block';
+                warn.innerHTML = 'This client is missing ' + missing.join(' and ') + '. Fine for an RFP; required before converting to a tax invoice.';
+            } else {
+                warn.style.display = 'none';
+            }
         }
         function addRow() {
             var row = document.querySelector('.item-row').cloneNode(true);
@@ -115,7 +148,11 @@
             document.getElementById('vatEl').textContent = '€' + vat.toFixed(2);
             document.getElementById('totEl').textContent = '€' + (sub + vat).toFixed(2);
         }
+        document.querySelectorAll('input[name="type"]').forEach(function (el) {
+            el.addEventListener('change', syncType);
+        });
         syncType();
         calc();
+        checkClient();
     </script>
 @endsection

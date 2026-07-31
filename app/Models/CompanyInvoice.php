@@ -14,6 +14,7 @@ class CompanyInvoice extends Model
         'parent_document_id',
         'document_number',
         'issue_date',
+        'supply_date',
         'due_date',
         'subtotal',
         'vat_total',
@@ -31,12 +32,18 @@ class CompanyInvoice extends Model
         return [
             'items' => 'array',
             'issue_date' => 'date',
+            'supply_date' => 'date',
             'due_date' => 'date',
             'subtotal' => 'decimal:2',
             'vat_total' => 'decimal:2',
             'total' => 'decimal:2',
             'amount_paid' => 'decimal:2',
         ];
+    }
+
+    public function effectiveSupplyDate(): \Carbon\CarbonInterface
+    {
+        return $this->supply_date ?? $this->issue_date;
     }
 
     public function user(): BelongsTo
