@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #0f172a; }
+        h1 { font-size: 20px; margin: 0 0 4px; color: #0c4a6e; }
+        .muted { color: #64748b; }
+        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+        th, td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { font-size: 11px; text-transform: uppercase; color: #64748b; }
+        .totals { margin-top: 16px; width: 280px; margin-left: auto; }
+        .totals td { border: none; padding: 4px 0; }
+        .totals .grand { font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    @php
+        $typeLabel = match ($document->type) {
+            'rfp' => 'Request for Payment',
+            'invoice' => 'Tax Invoice',
+            'credit_note' => 'Credit Note',
+            default => strtoupper($document->type),
+        };
+    @endphp
+
+    <table style="border: none; margin: 0;">
+        <tr>
+            <td style="border: none; vertical-align: top;">
+                <h1>{{ $profile->legal_name }}</h1>
+                <div class="muted">{{ $profile->registration_number }}</div>
+                <div class="muted" style="margin-top: 6px; white-space: pre-line;">{{ $profile->registered_office }}</div>
+                @if($profile->vat_number)
+                    <div style="margin-top: 6px;">VAT: {{ $profile->vat_number }}</div>
+                @endif
+            </td>
+            <td style="border: none; vertical-align: top; text-align: right;">
+                <div style="font-size: 16px; font-weight: bold;">{{ $typeLabel }}</div>
+                <div>{{ $document->document_number }}</div>
+                <div class="muted">Issue: {{ $document->issue_date->format('d M Y') }}</div>
+                @if($document->due_date)
+                    <div class="muted">Due: {{ $document->due_date->format('d M Y') }}</div>
+                @endif
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 24px;">
+        <div class="muted" style="font-size: 11px; text-transform: uppercase;">Bill to</div>
+        <div style="font-weight: bold; margin-top: 4px;">{{ $document->client->name ?? '' }}</div>
+        @if(!empty($document->client->billing_address))
+            <div class="muted" style="white-space: pre-line; margin-top: 4px;">{{ $document->client->billing_address }}</div>
+        @endif
+        @if(!empty($document->client->vat_number))
+            <div style="margin-top: 4px;">VAT: {{ $document->client->vat_number }}</div>
+        @endif
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th style="text-align: right;">Qty</th>
+                <th style="text-align: right;">Unit</th>
+                <th style="text-align: right;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(($document->items ?? []) as $item)
+                <tr>
+                    <td>{{ $item['description'] ?? '' }}</td>
+                    <td style="text-align: right;">{{ number_format((float) ($item['quantity'] ?? 0), 2) }}</td>
+                    <td style="text-align: right;">€{{ number_format((float) ($item['unit_price'] ?? 0), 2) }}</td>
+                    <td style="text-align: right;">€{{ number_format((float) ($item['row_total'] ?? 0), 2) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    <table class="totals">
+        <tr>
+            <td>Subtotal</td>
+            <td style="text-align: right;">€{{ number_format((float) $document->subtotal, 2) }}</td>
+        </tr>
+        <tr>
+            <td>VAT 18%</td>
+            <td style="text-align: right;">€{{ number_format((float) $document->vat_total, 2) }}</td>
+        </tr>
+        <tr class="grand">
+            <td>Total</td>
+            <td style="text-align: right;">€{{ number_format((float) $document->total, 2) }}</td>
+        </tr>
+    </table>
+
+    @if($document->notes)
+        <div style="margin-top: 20px;">
+            <div class="muted" style="font-size: 11px; text-transform: uppercase;">Notes</div>
+            <div style="margin-top: 4px; white-space: pre-line;">{{ $document->notes }}</div>
+        </div>
+    @endif
+
+    @if($profile->payment_instructions && $document->type !== 'credit_note')
+        <div style="margin-top: 20px;">
+            <div class="muted" style="font-size: 11px; text-transform: uppercase;">Payment</div>
+            <div style="margin-top: 4px; white-space: pre-line;">{{ $profile->payment_instructions }}</div>
+            @if($profile->bank_iban)
+                <div style="margin-top: 4px;">IBAN: {{ $profile->bank_iban }}</div>
+            @endif
+        </div>
+    @endif
+
+    @if($document->type === 'rfp')
+        <p class="muted" style="margin-top: 24px; font-size: 10px;">This is a request for payment (pro-forma). It is not a VAT tax invoice until converted.</p>
+    @endif
+</body>
+</html>

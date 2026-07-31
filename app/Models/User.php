@@ -48,6 +48,7 @@ use Illuminate\Notifications\Notifiable;
     'clinic_phone',
     'clinic_address',
     'clinical_stamp_path',
+    'company_books_enabled',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -75,6 +76,7 @@ class User extends Authenticatable
             'car_business_use_percent' => 'decimal:2',
             'home_office_percent' => 'decimal:2',
             'clients_created_count' => 'integer',
+            'company_books_enabled' => 'boolean',
         ];
     }
 
@@ -239,6 +241,12 @@ class User extends Authenticatable
     public function canAccessProPackage(string $package): bool
     {
         return \App\Support\TierPolicy::canAccessProPackage($this, $package);
+    }
+
+    /** Internal Cerulean Labs Ltd desk — not a sellable product tier. */
+    public function canAccessCompanyBooks(): bool
+    {
+        return (bool) ($this->company_books_enabled ?? false);
     }
 
     public function proPackage(): ?string

@@ -60,6 +60,18 @@
         </div>
     </div>
 
+    @if($user->canAccessCompanyBooks())
+        <div style="background: #0c4a6e; border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div>
+                <div style="font-weight: 700; color: white;">Cerulean Labs Ltd</div>
+                <div style="font-size: 0.85rem; color: #bae6fd; line-height: 1.45; margin-top: 0.2rem;">
+                    Internal company desk — Art 10 books, separate from your sole-trader ledger.
+                </div>
+            </div>
+            <a href="/company" style="background: white; color: #0c4a6e; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Open company desk →</a>
+        </div>
+    @endif
+
     @if($practiceOnly)
         <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
             <div>

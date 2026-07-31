@@ -71,6 +71,15 @@
                             <li><span class="nav-link" style="opacity: 0.55; cursor: default;">EMS / BMS</span></li>
                         @endif
 
+                        @if(auth()->user()->canAccessCompanyBooks())
+                            <li class="nav-section-label">Cerulean Labs</li>
+                            <li><a href="/company" class="nav-link {{ request()->is('company') ? 'active' : '' }}">Company desk</a></li>
+                            <li><a href="/company/invoices" class="nav-link {{ request()->is('company/invoices*') ? 'active' : '' }}">Ltd invoices</a></li>
+                            <li><a href="/company/expenses" class="nav-link {{ request()->is('company/expenses*') ? 'active' : '' }}">Ltd expenses</a></li>
+                            <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Ltd clients</a></li>
+                            <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Ltd profile</a></li>
+                        @endif
+
                         <li class="nav-mobile-only nav-section-label">Account</li>
                         <li class="nav-mobile-only">
                             <a href="/settings" class="nav-link {{ request()->is('settings*') ? 'active' : '' }}">Settings</a>
@@ -121,6 +130,14 @@
             @endauth
 
             <div class="app-main-body">
+                @auth
+                    @if(session('success'))
+                        <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); color: #065f46; font-size: 0.9rem;">{{ session('success') }}</div>
+                    @endif
+                    @if(session('error'))
+                        <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-md); color: #991b1b; font-size: 0.9rem;">{{ session('error') }}</div>
+                    @endif
+                @endauth
                 @yield('content')
             </div>
 
