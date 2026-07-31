@@ -125,7 +125,9 @@ class AuthController extends Controller
             'tier' => $request->tier
         ]);
 
-        return redirect('/dashboard');
+        $home = Auth::user()->canAccessCompanyBooks() ? '/company' : '/dashboard';
+
+        return redirect($home);
     }
 
     public function loginSubmit(Request $request)
@@ -141,8 +143,9 @@ class AuthController extends Controller
             // Success! Regenerate the session to prevent security fixation attacks
             $request->session()->regenerate();
 
-            // Send them directly to the dashboard
-            return redirect()->intended('/dashboard');
+            $home = Auth::user()->canAccessCompanyBooks() ? '/company' : '/dashboard';
+
+            return redirect()->intended($home);
         }
 
         // 3. Failure! Kick them back with an error message

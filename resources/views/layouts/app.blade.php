@@ -14,70 +14,75 @@
     <link rel="stylesheet" href="/css/style.css?v=shell2">
 </head>
 <body>
+    @php
+        $companyMode = auth()->check() && auth()->user()->canAccessCompanyBooks();
+    @endphp
 
     <div class="app-layout" id="app-layout">
         <div class="nav-backdrop" id="nav-backdrop" hidden></div>
 
         <aside class="app-sidebar" id="app-sidebar">
             <div class="sidebar-brand">
-                <img src="/images/logo.png" alt="PractisBase">
+                <a href="{{ $companyMode ? '/company' : '/dashboard' }}" style="display: block;">
+                    <img src="/images/logo.png" alt="PractisBase">
+                </a>
             </div>
 
             <nav class="sidebar-nav">
                 <ul>
-                    <li class="nav-section-label">Home</li>
-                    <li>
-                        <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Overview</a>
-                    </li>
-
-                    <li class="nav-section-label">Practice</li>
-                    <li>
-                        <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
-                    </li>
-                    <li>
-                        <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
-                    </li>
-
                     @auth
-                        @if(auth()->user()->canAccessReports())
-                            <li class="nav-section-label">Money</li>
+                        @if($companyMode)
+                            <li class="nav-section-label">Cerulean Labs Ltd</li>
+                            <li><a href="/company" class="nav-link {{ request()->is('company') ? 'active' : '' }}">Desk</a></li>
+                            <li><a href="/company/invoices" class="nav-link {{ request()->is('company/invoices*') ? 'active' : '' }}">Invoices</a></li>
+                            <li><a href="/company/expenses" class="nav-link {{ request()->is('company/expenses*') ? 'active' : '' }}">Expenses</a></li>
+                            <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
+                            <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>
+                        @else
+                            <li class="nav-section-label">Home</li>
                             <li>
-                                <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Tax &amp; VAT</a>
+                                <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Overview</a>
                             </li>
-                            <li>
-                                <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">Expenses</a>
-                            </li>
-                            <li>
-                                <a href="/exports/accountant" class="nav-link {{ request()->is('exports*') ? 'active' : '' }}">For accountant</a>
-                            </li>
-                        @endif
 
-                        @if(auth()->user()->canAccessProPackage('med'))
-                            <li class="nav-section-label">Clinical</li>
-                            <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
-                            <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Stampables</a></li>
-                        @elseif(auth()->user()->canAccessProPackage('arch'))
                             <li class="nav-section-label">Practice</li>
-                            <li><a href="/pro/architect/clients" class="nav-link {{ request()->is('pro/architect/clients*') ? 'active' : '' }}">Clients</a></li>
-                            <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>
-                            <li><a href="/pro/architect/documents" class="nav-link {{ request()->is('pro/architect/documents*') ? 'active' : '' }}">Documents</a></li>
-                            <li><a href="/pro/architect/templates" class="nav-link {{ request()->is('pro/architect/templates*') ? 'active' : '' }}">BCA templates</a></li>
-                            <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
-                            <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
-                        @elseif(auth()->user()->canAccessProPackage('eng'))
-                            <li class="nav-section-label">Projects</li>
-                            <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') ? 'active' : '' }}">Projects</a></li>
-                            <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
-                            <li><span class="nav-link" style="opacity: 0.55; cursor: default;">EMS / BMS</span></li>
-                        @endif
+                            <li>
+                                <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
+                            </li>
+                            <li>
+                                <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
+                            </li>
 
-                        @if(auth()->user()->canAccessCompanyBooks())
-                            <li class="nav-section-label">Cerulean Labs</li>
-                            <li><a href="/company" class="nav-link {{ request()->is('company') ? 'active' : '' }}">Company desk</a></li>
-                            <li><a href="/company/invoices" class="nav-link {{ request()->is('company/invoices*') ? 'active' : '' }}">Ltd invoices</a></li>
-                            <li><a href="/company/expenses" class="nav-link {{ request()->is('company/expenses*') ? 'active' : '' }}">Ltd expenses</a></li>
-                            <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Ltd clients</a></li>
-                            <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Ltd profile</a></li>
+                            @if(auth()->user()->canAccessReports())
+                                <li class="nav-section-label">Money</li>
+                                <li>
+                                    <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Tax &amp; VAT</a>
+                                </li>
+                                <li>
+                                    <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">Expenses</a>
+                                </li>
+                                <li>
+                                    <a href="/exports/accountant" class="nav-link {{ request()->is('exports*') ? 'active' : '' }}">For accountant</a>
+                                </li>
+                            @endif
+
+                            @if(auth()->user()->canAccessProPackage('med'))
+                                <li class="nav-section-label">Clinical</li>
+                                <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
+                                <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Stampables</a></li>
+                            @elseif(auth()->user()->canAccessProPackage('arch'))
+                                <li class="nav-section-label">Practice</li>
+                                <li><a href="/pro/architect/clients" class="nav-link {{ request()->is('pro/architect/clients*') ? 'active' : '' }}">Clients</a></li>
+                                <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>
+                                <li><a href="/pro/architect/documents" class="nav-link {{ request()->is('pro/architect/documents*') ? 'active' : '' }}">Documents</a></li>
+                                <li><a href="/pro/architect/templates" class="nav-link {{ request()->is('pro/architect/templates*') ? 'active' : '' }}">BCA templates</a></li>
+                                <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
+                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
+                            @elseif(auth()->user()->canAccessProPackage('eng'))
+                                <li class="nav-section-label">Projects</li>
+                                <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') ? 'active' : '' }}">Projects</a></li>
+                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
+                                <li><span class="nav-link" style="opacity: 0.55; cursor: default;">EMS / BMS</span></li>
+                            @endif
                         @endif
 
                         <li class="nav-mobile-only nav-section-label">Account</li>
@@ -107,11 +112,19 @@
 
             @auth
             <div class="user-profile">
-                <span class="tier-badge">{{ \App\Support\TierPolicy::label(auth()->user()->tier) }}</span>
-                <div class="user-meta">
-                    <div class="user-name">{{ auth()->user()->name }}</div>
-                    <div class="user-profession">{{ auth()->user()->profession }}</div>
-                </div>
+                @if($companyMode)
+                    <span class="tier-badge">Company books</span>
+                    <div class="user-meta">
+                        <div class="user-name">{{ auth()->user()->name }}</div>
+                        <div class="user-profession">Cerulean Labs Ltd</div>
+                    </div>
+                @else
+                    <span class="tier-badge">{{ \App\Support\TierPolicy::label(auth()->user()->tier) }}</span>
+                    <div class="user-meta">
+                        <div class="user-name">{{ auth()->user()->name }}</div>
+                        <div class="user-profession">{{ auth()->user()->profession }}</div>
+                    </div>
+                @endif
                 <div class="avatar" aria-hidden="true">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
                 <a href="/settings" class="header-action header-desktop-only">Settings</a>
                 <form action="/logout" method="POST" class="header-desktop-only header-logout-form">
@@ -125,7 +138,11 @@
         <main class="app-main">
             @auth
                 <div class="beta-banner">
-                    <strong>Closed beta</strong> — billing is not live yet. Plans are granted for testing (Settings). Do not rely on this build as your sole clinical or accounting system of record.
+                    @if($companyMode)
+                        <strong>Cerulean Labs Ltd desk</strong> — internal company books (Art 10). Sole-trader tax tools are disabled on this account.
+                    @else
+                        <strong>Closed beta</strong> — billing is not live yet. Plans are granted for testing (Settings). Do not rely on this build as your sole clinical or accounting system of record.
+                    @endif
                 </div>
             @endauth
 
@@ -142,7 +159,11 @@
             </div>
 
             <footer class="app-footer">
-                <div>&copy; {{ date('Y') }} PractisBase. All rights reserved. For Maltese sole traders only — not for Ltd companies.</div>
+                @if($companyMode ?? false)
+                    <div>&copy; {{ date('Y') }} PractisBase · Internal Cerulean Labs Limited company desk.</div>
+                @else
+                    <div>&copy; {{ date('Y') }} PractisBase. All rights reserved. For Maltese sole traders only — not for Ltd companies.</div>
+                @endif
                 <div class="app-footer-links">
                     <a href="#">Privacy Policy</a>
                     <a href="#">Master Service Agreement</a>

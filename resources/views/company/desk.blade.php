@@ -19,7 +19,7 @@
     </div>
 
     <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #1e3a8a; line-height: 1.45;">
-        Internal only — Cerulean Labs Ltd books. Separate from your sole-trader PractisBase ledger. Not a client product.
+        This login is locked to Cerulean Labs Ltd company books (Art 10, dividends later). Sole-trader Tax &amp; VAT / SSC screens are turned off so you cannot mix the two by mistake.
     </div>
 
     @if(! $profile->shareCapitalReceived())

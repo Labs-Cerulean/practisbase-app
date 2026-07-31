@@ -19,7 +19,7 @@ class EnsureCompanyBooks
         if (! $user->canAccessCompanyBooks()) {
             return redirect('/dashboard')->with(
                 'error',
-                'Company books are an internal Cerulean Labs desk and are not enabled on this account.'
+                'Company books are not enabled on this account.'
             );
         }
 
