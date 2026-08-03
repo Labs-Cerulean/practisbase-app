@@ -4,7 +4,7 @@
 
 @section('content')
     <div style="margin-bottom: 1.25rem;">
-        <a href="/pro/architect/projects/{{ $project->id }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->name }}</a>
+        <a href="/pro/engineer/projects/{{ $project->id }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->name }}</a>
         <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">{{ $pa ? 'Edit PA application' : 'New PA application' }}</h1>
         <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">PA number is optional until Planning Authority issues it.</p>
     </div>
@@ -17,7 +17,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ $pa ? '/pro/architect/pa/'.$pa->id : '/pro/architect/projects/'.$project->id.'/pa' }}" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; max-width: 720px; box-shadow: var(--shadow-sm);">
+    <form method="POST" action="{{ $pa ? '/pro/engineer/pa/'.$pa->id : '/pro/engineer/projects/'.$project->id.'/pa' }}" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem; max-width: 720px; box-shadow: var(--shadow-sm);">
         @csrf
         @if($pa) @method('PUT') @endif
         <div style="display: grid; gap: 0.85rem;">
@@ -47,7 +47,7 @@
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Notes</label>
                 <textarea name="notes" rows="3" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('notes', $pa->notes ?? '') }}</textarea>
             </div>
-            <button type="submit" style="background: #3f6212; color: white; border: none; padding: 0.75rem 1.1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; width: fit-content;">Save PA</button>
+            <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.75rem 1.1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; width: fit-content;">Save PA</button>
         </div>
     </form>
 @endsection

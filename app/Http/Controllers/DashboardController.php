@@ -241,6 +241,7 @@ class DashboardController extends Controller
     {
         $projects = EngineerProject::where('user_id', $userId)
             ->where('status', '!=', 'archived')
+            ->with('client')
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get();
@@ -248,7 +249,9 @@ class DashboardController extends Controller
         return [
             'kind' => 'eng',
             'title' => 'Technical desk',
+            'client_count' => \App\Models\EngineerClient::where('user_id', $userId)->count(),
             'project_count' => EngineerProject::where('user_id', $userId)->where('status', '!=', 'archived')->count(),
+            'pa_count' => \App\Models\EngineerPaApplication::where('user_id', $userId)->count(),
             'active_count' => EngineerProject::where('user_id', $userId)->where('status', 'active')->count(),
             'recent_projects' => $projects,
         ];

@@ -6,6 +6,7 @@
     <div style="margin-bottom: 1.25rem;">
         <a href="{{ $project ? '/pro/architect/projects/'.$project->id : '/pro/architect/projects' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Back</a>
         <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">{{ $project ? 'Edit project' : 'New project' }}</h1>
+        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">PA numbers are optional — add them on the project when issued.</p>
     </div>
 
     @if($clients->isEmpty())

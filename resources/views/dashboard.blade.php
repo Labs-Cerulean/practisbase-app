@@ -43,7 +43,7 @@
                 <a href="/pro/architect/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
                 <a href="/pro/architect/templates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">BCA templates</a>
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
-                <a href="/pro/engineer/projects/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Project</a>
+                <a href="/pro/engineer/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
                 <a href="/pro/certificates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Certificates</a>
             @endif
 
@@ -94,7 +94,7 @@
                 @elseif(($practiceDesk['kind'] ?? null) === 'arch')
                     <a href="/pro/architect/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
                 @else
-                    <a href="/pro/engineer/projects" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open projects →</a>
+                    <a href="/pro/engineer/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
                 @endif
             </div>
 
@@ -156,7 +156,7 @@
                 @endif
             @else
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                    @if(($practiceDesk['kind'] ?? null) === 'arch')
+                    @if(($practiceDesk['kind'] ?? null) === 'arch' || ($practiceDesk['kind'] ?? null) === 'eng')
                         <div>
                             <div style="font-size: 0.75rem; color: var(--text-muted);">Clients</div>
                             <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['client_count'] ?? 0 }}</div>
@@ -169,15 +169,6 @@
                             <div style="font-size: 0.75rem; color: var(--text-muted);">PA applications</div>
                             <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['pa_count'] ?? 0 }}</div>
                         </div>
-                    @else
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Projects</div>
-                            <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['project_count'] }}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Active</div>
-                            <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['active_count'] }}</div>
-                        </div>
                     @endif
                 </div>
 
@@ -189,8 +180,6 @@
                             $phaseLabel = $practiceDesk['kind'] === 'arch'
                                 ? (\App\Models\ArchitectProject::PHASES[$project->phase] ?? $project->phase)
                                 : (\App\Models\EngineerProject::PHASES[$project->phase] ?? $project->phase);
-                        @endphp
-                        @php
                             $projectHref = $practiceDesk['kind'] === 'arch'
                                 ? '/pro/architect/projects/'.$project->id
                                 : '/pro/engineer/projects/'.$project->id;
@@ -415,6 +404,7 @@
                             <a href="/pro/architect/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
                             <a href="/pro/architect/templates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">BCA templates</a>
                         @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'eng')
+                            <a href="/pro/engineer/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering clients</a>
                             <a href="/pro/engineer/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering projects</a>
                             <a href="/pro/certificates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Certificates</a>
                         @endif
@@ -440,6 +430,7 @@
                     <a href="/pro/architect/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
                     <a href="/pro/architect/templates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">BCA templates</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'eng')
+                    <a href="/pro/engineer/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering clients</a>
                     <a href="/pro/engineer/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering projects</a>
                     <a href="/pro/certificates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Certificates</a>
                 @endif

@@ -4,13 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class ArchitectPaApplication extends Model
+class EngineerPaApplication extends Model
 {
     protected $fillable = [
         'user_id',
-        'architect_project_id',
+        'engineer_project_id',
         'pa_number',
         'title',
         'status',
@@ -40,12 +39,7 @@ class ArchitectPaApplication extends Model
 
     public function project(): BelongsTo
     {
-        return $this->belongsTo(ArchitectProject::class, 'architect_project_id');
-    }
-
-    public function documents(): HasMany
-    {
-        return $this->hasMany(ArchitectDocument::class, 'architect_pa_application_id');
+        return $this->belongsTo(EngineerProject::class, 'engineer_project_id');
     }
 
     public function displayLabel(): string

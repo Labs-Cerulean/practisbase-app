@@ -29,13 +29,15 @@
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
                 <h2 style="margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--primary-navy);">PA applications</h2>
                 @if($project->paApplications->isEmpty())
-                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">No PA numbers yet.</p>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
+                        No PA yet — that is fine. Start the project now and add the PA number when Planning Authority issues it.
+                    </p>
                 @else
                     <div style="display: grid; gap: 0.5rem;">
                         @foreach($project->paApplications as $pa)
                             <a href="/pro/architect/pa/{{ $pa->id }}" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; text-decoration: none;">
-                                <div style="font-weight: 700; color: var(--primary-navy);">{{ $pa->pa_number }}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ $pa->title ?: 'No title' }} · {{ $pa->status }}</div>
+                                <div style="font-weight: 700; color: var(--primary-navy);">{{ $pa->displayLabel() }}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ $pa->title ?: 'No title' }} · {{ $statuses[$pa->status] ?? $pa->status }}</div>
                             </a>
                         @endforeach
                     </div>

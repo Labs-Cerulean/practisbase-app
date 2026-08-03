@@ -146,20 +146,27 @@ class PracticeGuidance
                 'done' => $hasProject,
             ];
         } elseif ($user->canAccessProPackage('eng')) {
+            $hasClient = \App\Models\EngineerClient::where('user_id', $user->id)->exists();
             $firstProject = EngineerProject::where('user_id', $user->id)
                 ->where('status', '!=', 'archived')
                 ->orderByDesc('updated_at')
                 ->first();
             $hasProject = $firstProject !== null;
             $items[] = [
+                'key' => 'eng_client',
+                'label' => 'Add your first engineering client',
+                'href' => '/pro/engineer/clients/create',
+                'done' => $hasClient,
+            ];
+            $items[] = [
                 'key' => 'eng_project',
-                'label' => 'Create your first engineering project',
+                'label' => 'Create a project (PA number can wait)',
                 'href' => '/pro/engineer/projects/create',
                 'done' => $hasProject,
             ];
             $items[] = [
                 'key' => 'eng_open',
-                'label' => 'Open a project and confirm phase / status',
+                'label' => 'Open a project desk',
                 'href' => $hasProject
                     ? '/pro/engineer/projects/'.$firstProject->id
                     : '/pro/engineer/projects',

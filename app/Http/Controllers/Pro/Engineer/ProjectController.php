@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pro\Engineer;
 
 use App\Http\Controllers\Controller;
+use App\Models\EngineerClient;
 use App\Models\EngineerProject;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,13 +13,27 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $showArchived = $request->boolean('archived');
+        $q = trim((string) $request->query('q', ''));
 
         $projects = EngineerProject::where('user_id', Auth::id())
+            ->with(['client', 'paApplications'])
+            ->withCount('paApplications')
             ->when(
                 $showArchived,
-                fn ($q) => $q->where('status', 'archived'),
-                fn ($q) => $q->where('status', '!=', 'archived')
+                fn ($query) => $query->where('status', 'archived'),
+                fn ($query) => $query->where('status', '!=', 'archived')
             )
+            ->when($q !== '', function ($query) use ($q) {
+                $like = '%'.$q.'%';
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('name', 'ilike', $like)
+                        ->orWhere('reference_code', 'ilike', $like)
+                        ->orWhere('site_locality', 'ilike', $like)
+                        ->orWhere('site_address', 'ilike', $like)
+                        ->orWhereHas('client', fn ($c) => $c->where('name', 'ilike', $like))
+                        ->orWhereHas('paApplications', fn ($p) => $p->where('pa_number', 'ilike', $like));
+                });
+            })
             ->orderByDesc('updated_at')
             ->get();
 
@@ -28,22 +43,28 @@ class ProjectController extends Controller
             'disciplines' => EngineerProject::DISCIPLINES,
             'statuses' => EngineerProject::STATUSES,
             'showArchived' => $showArchived,
+            'q' => $q,
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $clients = EngineerClient::where('user_id', Auth::id())->orderBy('name')->get();
+        $preselect = (int) $request->query('client_id');
+
         return view('pro.engineer.projects-form', [
             'project' => null,
+            'clients' => $clients,
             'phases' => EngineerProject::PHASES,
             'disciplines' => EngineerProject::DISCIPLINES,
             'statuses' => EngineerProject::STATUSES,
+            'preselectClientId' => $preselect ?: null,
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $this->validateProject($request);
+        $validated = $this->validateProject($request, Auth::id());
 
         $project = EngineerProject::create([
             'user_id' => Auth::id(),
@@ -51,12 +72,16 @@ class ProjectController extends Controller
         ]);
 
         return redirect('/pro/engineer/projects/'.$project->id)
-            ->with('success', 'Engineering project created.');
+            ->with('success', 'Engineering project created. Add a PA number later when it is issued.');
     }
 
     public function show(EngineerProject $project)
     {
         $this->assertOwned($project);
+        $project->load([
+            'client',
+            'paApplications' => fn ($q) => $q->orderByDesc('updated_at'),
+        ]);
 
         return view('pro.engineer.projects-show', [
             'project' => $project,
@@ -69,19 +94,22 @@ class ProjectController extends Controller
     public function edit(EngineerProject $project)
     {
         $this->assertOwned($project);
+        $clients = EngineerClient::where('user_id', Auth::id())->orderBy('name')->get();
 
         return view('pro.engineer.projects-form', [
             'project' => $project,
+            'clients' => $clients,
             'phases' => EngineerProject::PHASES,
             'disciplines' => EngineerProject::DISCIPLINES,
             'statuses' => EngineerProject::STATUSES,
+            'preselectClientId' => $project->engineer_client_id,
         ]);
     }
 
     public function update(Request $request, EngineerProject $project)
     {
         $this->assertOwned($project);
-        $validated = $this->validateProject($request);
+        $validated = $this->validateProject($request, Auth::id());
         $project->update($validated);
 
         return redirect('/pro/engineer/projects/'.$project->id)
@@ -91,16 +119,31 @@ class ProjectController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validateProject(Request $request): array
+    private function validateProject(Request $request, int $userId): array
     {
-        return $request->validate([
+        $validated = $request->validate([
+            'engineer_client_id' => 'required|integer',
             'name' => 'required|string|max:255',
             'reference_code' => 'nullable|string|max:100',
             'discipline' => 'required|in:'.implode(',', array_keys(EngineerProject::DISCIPLINES)),
             'phase' => 'required|in:'.implode(',', array_keys(EngineerProject::PHASES)),
             'status' => 'required|in:'.implode(',', array_keys(EngineerProject::STATUSES)),
+            'site_premises' => 'nullable|string|max:255',
+            'site_street' => 'nullable|string|max:255',
+            'site_locality' => 'nullable|string|max:120',
+            'site_address' => 'nullable|string|max:2000',
+            'commencement_date' => 'nullable|date|before_or_equal:today',
             'notes' => 'nullable|string|max:5000',
         ]);
+
+        $ownsClient = EngineerClient::where('user_id', $userId)
+            ->where('id', $validated['engineer_client_id'])
+            ->exists();
+        if (! $ownsClient) {
+            abort(403);
+        }
+
+        return $validated;
     }
 
     private function assertOwned(EngineerProject $project): void

@@ -28,6 +28,8 @@ use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateCo
 use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
 use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
+use App\Http\Controllers\Pro\Engineer\ClientController as EngineerClientController;
+use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
 use App\Http\Controllers\Company\DeskController as CompanyDeskController;
 use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
@@ -274,12 +276,26 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     });
 
     Route::middleware('pro:eng')->prefix('pro/engineer')->group(function () {
+        Route::get('/clients', [EngineerClientController::class, 'index']);
+        Route::get('/clients/create', [EngineerClientController::class, 'create']);
+        Route::post('/clients', [EngineerClientController::class, 'store']);
+        Route::get('/clients/{client}', [EngineerClientController::class, 'show']);
+        Route::get('/clients/{client}/edit', [EngineerClientController::class, 'edit']);
+        Route::put('/clients/{client}', [EngineerClientController::class, 'update']);
+
         Route::get('/projects', [EngineerProjectController::class, 'index']);
         Route::get('/projects/create', [EngineerProjectController::class, 'create']);
         Route::post('/projects', [EngineerProjectController::class, 'store']);
         Route::get('/projects/{project}', [EngineerProjectController::class, 'show']);
         Route::get('/projects/{project}/edit', [EngineerProjectController::class, 'edit']);
         Route::put('/projects/{project}', [EngineerProjectController::class, 'update']);
+
+        Route::get('/projects/{project}/pa/create', [EngineerPaController::class, 'create']);
+        Route::post('/projects/{project}/pa', [EngineerPaController::class, 'store']);
+        Route::get('/pa/{pa}', [EngineerPaController::class, 'show']);
+        Route::get('/pa/{pa}/edit', [EngineerPaController::class, 'edit']);
+        Route::put('/pa/{pa}', [EngineerPaController::class, 'update']);
+
         Route::redirect('/certifications', '/pro/certificates');
         Route::redirect('/certifications/create', '/pro/certificates/create');
     });

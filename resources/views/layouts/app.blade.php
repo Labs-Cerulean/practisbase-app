@@ -78,10 +78,10 @@
                                 <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
                             @elseif(auth()->user()->canAccessProPackage('eng'))
-                                <li class="nav-section-label">Projects</li>
-                                <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') ? 'active' : '' }}">Projects</a></li>
+                                <li class="nav-section-label">Practice</li>
+                                <li><a href="/pro/engineer/clients" class="nav-link {{ request()->is('pro/engineer/clients*') ? 'active' : '' }}">Clients</a></li>
+                                <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') || request()->is('pro/engineer/pa*') ? 'active' : '' }}">Projects</a></li>
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
-                                <li><span class="nav-link" style="opacity: 0.55; cursor: default;">EMS / BMS</span></li>
                             @endif
                         @endif
 
