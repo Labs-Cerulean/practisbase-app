@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "report_type": "fire",
+      "title": "Fire safety report",
+      "sections": [
+        {
+          "key": "scope",
+          "label": "Scope",
+          "fields": [
+            {"key": "premises_use", "label": "Premises use", "type": "text", "required": true, "options": []},
+            {"key": "standards_referenced", "label": "Standards referenced", "type": "textarea", "required": false, "options": []}
+          ]
+        },
+        {
+          "key": "findings",
+          "label": "Findings",
+          "fields": [
+            {"key": "summary", "label": "Summary of findings", "type": "textarea", "required": true, "options": []},
+            {"key": "risk_rating", "label": "Overall risk", "type": "select", "required": true, "options": ["Low", "Medium", "High"]}
+          ]
+        }
+      ],
+      "example_narrative_snippets": [
+        "Means of escape inspected for the areas listed in scope.",
+        "Detection and alarm provision reviewed against the referenced standard."
+      ]
+    }
+  ]
+}
