@@ -6,6 +6,59 @@ Public prices stay list **ex-VAT + 18% VAT**. Fiscal math stays Maltese-strict (
 
 ---
 
+## Soft-launch rule: do not break what works
+
+Everything below is additive. Soft-launch work **must not** regress:
+
+| Freeze zone | Why |
+|---|---|
+| Document ledger (clients, RFP → invoice, credit notes, payments, PDFs) | Trust base; daily use |
+| Expense engine + receipt attachments | Tax pack integrity |
+| Tax & VAT engine (brackets, TA22, SSC, Art 10/11, PT, year lock) | Legal correctness |
+| Accountant ZIP export | Existing accountant handoff |
+| Medical vault crypto + recovery code + stampables/prescriptions | Patient safety / GDPR |
+| Architect Client → Project → PA + DMS + BCA template fill + stamper | Already usable Practice Arch path |
+| Shared certificate stamp/issue/PDF flow | Works for Arch/Eng today — extend, don’t rewrite |
+| Tier gates (`TierPolicy`, `pro:*` middleware) | Entitlement model is stable |
+| Cerulean company books (internal flag) | Operator-only; ignore for soft launch |
+
+**Implementation hygiene for every Eng/Arch slice:** new tables + new routes + new Blade views; scope every query with `user_id`; reuse existing stamp/PDF patterns; no drive-by refactors of fiscal or Medical controllers.
+
+---
+
+## Package maturity (honest)
+
+Engineer is the thinnest Practice package today. Soft launch cannot pretend otherwise.
+
+| Surface | Medical | Architect | Engineer |
+|---|---|---|---|
+| Project / case workspace | Patients + journals | Client → Project → PA (deep) | **Projects list + create only** (no show/edit, no docs under project) |
+| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA template fill | **None beyond generic cert photo** |
+| Stamp / warrant PDFs | Stampables under patient | Stamper + certs | Shared Certificates only |
+| Mobile-first site workflow | N/A (clinic) | Not yet (neighbor reports planned) | **Not started** |
+| Team seats | Out of soft launch | Out of soft launch | Out of soft launch |
+| BOQ / specs | N/A | Post soft launch | Post soft launch |
+
+### Engineer — what actually exists today
+- `engineer_projects` table + create/list UI (`/pro/engineer/projects`)
+- Discipline / phase labels (including EMS/BMS as **labels only** — no EMS/BMS workflows)
+- Shared `/pro/certificates` register (title, subject, kind, dates, optional photo, stamp & issue, PDF)
+- Nav + dashboard shortcuts
+
+### Engineer — what does **not** exist yet (soft-launch gap)
+- Project detail page, edit, archive
+- Project journals / notes timeline
+- Document / drawing upload + version control under a project
+- Specialised report types (fire, noise, ventilation, lighting)
+- Project-linked field certification logs (equipment examples, expiry reminders, mobile photo → project)
+- Engineer stamp pack tied to a project (beyond generic certificate rows)
+- Technical exports that are more than a single certificate PDF
+- Team delegation into Eng projects
+
+Pricing copy today oversells (“technical document exports”, “project workspace”). Soft launch must either **ship the missing Eng depth** or **narrow public Eng claims** until it does. Prefer shipping depth.
+
+---
+
 ## North star
 
 | Principle | Meaning |
@@ -13,280 +66,278 @@ Public prices stay list **ex-VAT + 18% VAT**. Fiscal math stays Maltese-strict (
 | Master owns money | Billing, ledgers, tax settings, final invoices, and warrant sign-off stay on the sole-trader master account. |
 | Juniors get work, not books | Delegated seats see assigned projects/files only — never firm financials or tax balances. |
 | Profession depth sells Practice/Pro | Medical / Architect / Engineer tools justify the ladder; finance is the trust base. |
+| **Engineer catch-up before soft launch** | Practice Eng must feel like a real technical desk, not a project name + generic certificate. |
 | Library before AI | Ship a native BOQ/spec database first; add optional AI top-ups later with fair-use caps. |
 | Internal Ltd ≠ product | Cerulean Labs company books stay hard-gated operator tooling, not a sold Ltd SKU. |
 
 ---
 
-## Vision map (your five pillars)
+## Vision map (five pillars — post soft launch continues)
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│ 1. Team & Delegation (Arch / Eng packages)                      │
-│    Master sole-trader · scoped seats · no finance access        │
+│ 1. Team & Delegation (Arch / Eng)           POST soft launch    │
 ├─────────────────────────────────────────────────────────────────┤
-│ 2. Core Financial Ledger & Tax Engine          STATUS: LIVE     │
-│    Clients · RFP→Invoice · Expenses · Tax/VAT · Year lock       │
+│ 2. Core Financial Ledger & Tax Engine       LIVE — freeze       │
 ├─────────────────────────────────────────────────────────────────┤
-│ 3. Accountant Access Hook                                       │
-│    ZIP (live) → tokenised read-only inspection portal           │
+│ 3. Accountant Access Hook                   ZIP live; portal    │
+│                                             POST soft launch    │
 ├─────────────────────────────────────────────────────────────────┤
 │ 4. Specialised Profession Tooling                               │
-│    Medical ⚕️ · Architect 📐 · Engineer ⚙️                         │
+│    Medical ⚕️ largely soft-launch ready                          │
+│    Architect 📐 soft-launch ready (+ optional neighbor stretch) │
+│    Engineer ⚙️ LARGEST SOFT-LAUNCH BUILD                         │
 ├─────────────────────────────────────────────────────────────────┤
-│ 5. BOQ & Specification Suite                                    │
-│    5.1 Core library (NotebookLM seed, Twin Block, no AI)        │
-│    5.2 Post-launch AI top-up (Gemini + usage caps)              │
+│ 5. BOQ & Specification Suite                POST soft launch    │
+│    5.1 Core library → 5.2 AI top-up                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Current status (as of this roadmap)
+## Soft-launch definition
 
-### Pillar 2 — Built and operational (trust base)
-- Document ledger: clients, RFPs (non-fiscal until converted), tax invoices, credit notes, payments, PDFs
-- Expense engine: categories, receipt attachments, deductible toggles, capital/WFH helpers
-- Live Tax & VAT: progressive income tax (Single / Married / Parent), TA22 + spillover, SSC weekly/pro-rata caps, Art 10 (Output − Input), Art 11 (€35k breach alerts)
-- Provisional tax logging; June settlement = annual liability − PT payments
-- Governance: fiscal year close/lock, regime/tax setup, bracket year fallback, no future dating
-- Accountant ZIP export (locked year summaries + invoice/expense packs + receipts)
+**Soft launch = closed beta / limited invite** where each sold Practice path is honestly usable:
 
-### Pillar 4 — Profession foundations (partial)
-| Package | Live today | Gap this roadmap fills |
-|---|---|---|
-| **Medical** | Encrypted vault, patients, journals + attachments, prescriptions, referrals, stampables, WebAuthn unlock path | Vault reliability polish; clinical role seats later (out of near-term Arch/Eng seat work) |
-| **Architect** | Client → Project → PA hierarchy, DMS, BCA template fill, stamper, certificates, licence contacts | Neighbor Condition Reports (mobile-first); guided BCA DMS/EMS/CMS packs; team assignment into PA files |
-| **Engineer** | Projects, shared certificates (EMS/BMS thin) | Journals, drawings VC, specialised reports (fire / noise / ventilation / lighting), field cert suite + equipment examples |
+| Path | Soft-launch ready when… |
+|---|---|
+| **Standard / Pro financial** | Already met — ledger, expenses, Tax & VAT, ZIP (keep green) |
+| **Practice / Pro Medical** | Already largely met — vault unlock reliable enough for beta; stampables/Rx work |
+| **Practice / Pro Architect** | Already largely met — PA file + DMS/BCA fill + stamper/certs; neighbor reports optional stretch |
+| **Practice / Pro Engineer** | **Must reach SL-E exit criteria below** before Eng is invited at scale |
 
-### Pillar 1 / 3 / 5 — Not built yet
-- Team seats / scoped roles / project assignment
-- Accountant read-only portal (ZIP remains the offline path)
-- Neighbor condition reports
-- Full BCA method-statement productisation beyond template blanks
-- Engineer drawings VC / specialised report suite depth
-- BOQ & Spec library + Twin Block builder + clone
-- AI BOQ top-up layer
-
-### Internal only (not a sold SKU)
-- Cerulean Labs Ltd company desk (`company_books_enabled`) — Art 10 invoices/expenses/profile/logo
+Out of soft launch (explicitly later): team seats, accountant read-only portal, BOQ library, AI top-up, Medical clinical seats, selling Ltd books.
 
 ---
 
-## Phase map (build order)
+## Soft-launch implementation phasing
+
+Work is ordered to **protect freezes**, close the **Engineer gap first**, then optional Arch polish, then beta gate. Each slice is shippable on its own PR without touching fiscal math.
 
 ```text
-Phase 0  Foundation hardening              [largely done — keep green]
-    │
-Phase 1  Architect/Engineer field depth    ← neighbor reports, BCA suite, eng certs
-    │
-Phase 2  Team & delegation seats           ← juniors on mobile, no finance access
-    │
-Phase 3  Accountant collaboration          ← read-only portal on top of ZIP
-    │
-Phase 4  BOQ & Spec core library           ← NotebookLM-seeded, no end-user AI
-    │
-Phase 5  AI top-up (optional)              ← Gemini draft/parse + usage caps
+SL-0  Freeze & honesty gate          [docs / pricing claims]
+  │
+SL-E  Engineer technical desk        ← CRITICAL PATH TO SOFT LAUNCH
+  │     E1 Project shell
+  │     E2 Documents & drawings VC
+  │     E3 Field certification suite (equipment examples)
+  │     E4 Specialised report templates
+  │     E5 Mobile photo capture polish
+  │
+SL-A  Architect optional stretch     [neighbor reports — nice, not blocking Eng]
+  │
+SL-M  Medical beta polish            [WebAuthn reliability — parallel, small]
+  │
+SL-G  Soft-launch gate               [invite checklist, no Stripe required]
+  │
+─── Soft launch ─────────────────────────────────────────────────
+  │
+P2    Team & delegation
+P3    Accountant read-only portal
+P4    BOQ & Spec core library
+P5    AI top-up
 ```
 
-Phases 1–2 can partially overlap once PA/project assignment exists, but **do not ship team seats before** project-scoped permissions and a clear master-vs-seat auth model.
+---
 
-Medical vault/clinical polish runs **in parallel** and is not blocked by Arch/Eng team work. Medical team seats wait until a separate clinical-role design exists.
+### SL-0 — Freeze & honesty gate
+
+| Task | Detail |
+|---|---|
+| Document freezes | This file’s freeze table is the contract |
+| Eng pricing honesty | Until E1–E4 land, avoid claiming “technical document exports” beyond certificate PDFs — or ship E2/E4 and keep the claim |
+| No fiscal/Medical refactors | Soft-launch PRs touch `Pro/Engineer/*`, Eng views, Eng SQL, shared cert **extensions** only when linking to projects |
+
+**Exit:** Team agrees Eng is the critical path; freeze list respected.
 
 ---
 
-## Phase 0 — Foundation hardening (complete / keep green)
+### SL-E — Engineer technical desk (critical path)
 
-**Goal:** Trust base for everything above. Matches pillar **2**.
+Build **around** existing `engineer_projects` and shared `certificates`. Do not replace them.
 
-| Area | Status | Keep doing |
+#### E1 — Project shell (foundation)
+
+| Deliverable | Notes |
+|---|---|
+| Project show page | Overview: discipline, phase, status, notes, recent activity |
+| Edit + soft archive | Keep list/create; add update; status `active` / `archived` |
+| Dashboard cards | Point into show, not only list |
+| Empty states | Clear “what to do next” (add drawing, log cert, start report) |
+
+**Do not touch:** fiscal routes, Medical, Architect controllers.
+
+**Exit:** Engineer can open a project and update it without creating a new project every time.
+
+#### E2 — Documents & drawings version control
+
+| Deliverable | Notes |
+|---|---|
+| `engineer_documents` (manual SQL) | `user_id`, `engineer_project_id`, title, category (drawing / calc / report / other), current version |
+| Version rows | Upload PDF/image; version number; note; uploaded_at; never delete stamped history lightly |
+| Project Documents tab | Upload, list versions, download |
+| Optional publish snapshot | “Publish pack” ZIP of current versions for a project (this is the real “technical export”) |
+
+**Reuse:** `TenantStorage` path pattern (`tenants/{id}/engineer/...`).
+
+**Exit:** At least one drawing with v1→v2 under a project; master downloads current set.
+
+#### E3 — Field certification suite (equipment examples)
+
+Extend shared certificates — **do not fork a second stamp engine**.
+
+| Deliverable | Notes |
+|---|---|
+| Link cert → project | Nullable `engineer_project_id` on `certificates` (manual SQL) |
+| Engineer-oriented kinds | e.g. equipment / installation / commissioning / inspection (additive to `Certificate::KINDS`) |
+| Seed examples | Catalog/blanks from your real equipment certification examples (dev seed JSON → optional starter rows or template titles only) |
+| Expiry surface | Project show lists certs; highlight expired / expiring ≤30 days |
+| Photo on site | Keep existing photo upload; ensure mobile camera capture works on create/edit |
+| Stamp & issue | Existing flow; after stamp, still immutable |
+
+**Exit:** Engineer logs equipment cert under a project, stamps it, PDF downloads, expiry visible on project.
+
+#### E4 — Specialised report templates
+
+Templated fields first (Blade forms + PDF), not a free-form CMS.
+
+| Report type | Soft-launch minimum |
+|---|---|
+| Fire | Project-linked draft → stampable PDF |
+| Noise | Same pattern |
+| Ventilation | Same pattern |
+| Lighting | Same pattern |
+
+Suggested tables: `engineer_reports` (`type`, `status` draft/stamped, `payload` JSON, `engineer_project_id`, stamp fields mirroring certificates).
+
+**Reuse:** warrant/stamp/signature from user profile; `IssueCode` pattern if appropriate.
+
+**Exit:** One of each report type can be drafted on a project and stamped to PDF. Remaining report richness can deepen post soft launch.
+
+#### E5 — Mobile photo / field polish
+
+| Deliverable | Notes |
+|---|---|
+| Mobile-friendly cert + report forms | Large targets, camera `capture` attributes, minimal typing |
+| Project “Field” strip | Quick links: + Cert photo, + Report, open drawings |
+
+**Exit:** Usable on phone for a site visit without desktop.
+
+**SL-E package exit (Engineer soft-launch ready):** Project shell + documents/versions + project-linked certs with expiry + at least fire/noise/ventilation/lighting draft→PDF + mobile-usable field forms. Shared stamp/PDF and fiscal paths unchanged.
+
+---
+
+### SL-A — Architect optional stretch (not blocking Eng)
+
+| Priority | Item | Soft launch? |
 |---|---|---|
-| Document ledger | Done | Strict RFP vs invoice fiscal weight |
-| Expenses | Done | Receipt integrity + deductible rules |
-| Tax & VAT engine | Done | Bracket fallback, Art 11 alerts, year lock |
-| Settings / regimes | Done | Safe defaults; no mid-year silent wipe |
-| Free → Standard → Practice → Pro ladder | Done | Ex-VAT + VAT transparency on pricing |
-| IDOR / CSRF / mass-assignment hygiene | Ongoing | Always `user_id` scope; no `$request->all()` |
+| P0 | Keep PA / DMS / BCA fill / stamper green | Required (already live) |
+| P1 | Neighbor Condition Reports (mobile) | Stretch — ship if Eng is ahead of schedule |
+| P2 | Guided DMS/EMS/CMS packs beyond blanks | Prefer post soft launch unless quick |
 
-**Exit criteria:** Fiscal regressions blocked; profession packages remain additive, not replacements for the ledger.
+Do **not** delay Eng soft launch for neighbor reports.
 
 ---
 
-## Phase 1 — Architect & Engineer field depth (pre-team)
+### SL-M — Medical beta polish (parallel)
 
-**Goal:** Make Practice/Pro packages indispensable on site and in the studio **before** inviting juniors. Deepens pillar **4B / 4C**.
-
-### 1A — Architect: PA + BCA + Neighbor Condition Reports (priority)
-
-| Deliverable | Notes |
+| Item | Note |
 |---|---|
-| PA-centric project file | Already started (Client → Project → PA); deepen status, dates, parties |
-| BCA compliance suite | Productise **DMS / EMS / CMS** from template blanks into guided, stampable packs aligned to Building & Construction Authority requirements |
-| **Neighbor Condition Reports (core)** | Multiple reports per PA; mobile-first capture while inspecting surrounding properties |
-| Photo & defect logging | Instant camera capture → project file; defect categories + structural notes |
-| Stamper / certificates | Warrant + stamp + signature on reviewed packs |
+| WebAuthn / fingerprint unlock reliability | Fix without changing vault crypto scheme |
+| Recovery code path | Keep sacred; no “reset without code” |
+| No clinical team seats | Post soft launch |
 
-**Mobile rule:** Neighbor Condition Report create/edit must be usable one-handed on phone (large tap targets, camera-first; offline-tolerant later if needed).
-
-**Suggested tables (manual SQL later):** `neighbor_condition_reports`, `neighbor_condition_photos`, `neighbor_defects` — always scoped to master `user_id` + `pa_project_id`.
-
-### 1B — Engineer: journals, certs, specialised reports
-
-| Deliverable | Notes |
-|---|---|
-| Project journal + document / drawing versions | Versioned uploads; publishable report snapshots |
-| Specialised report types | Fire, noise, ventilation, lighting (templated fields first) |
-| Certification suite | Field cert logs, mobile photo proof, expiry reminders, stamp/warrant/signature |
-| Example equipment certs | Seed from your real examples (catalog + blank forms) |
-
-**Exit criteria:** A sole arch/eng can run a live site inspection and PA/project file from phone without juniors; Practice tier value is obvious.
-
-### 1C — Medical (parallel track, not Arch/Eng-gated)
-
-| Deliverable | Notes |
-|---|---|
-| Vault reliability | Fingerprint / WebAuthn unlock polish; recovery-code path remains sacred |
-| GDPR posture | PII strictly decoupled from clinical journals (already the design intent — keep enforcing) |
-| Prescriptions / referrals | Warrant, stamp, signature + retained logs |
-| Clinical seats | Deferred until Arch/Eng seat model is proven |
+Medical is soft-launch eligible once unlock is trustworthy for invited doctors.
 
 ---
 
-## Phase 2 — Team & Delegation (Architect & Engineer packages)
+### SL-G — Soft-launch gate (invite checklist)
 
-**Goal:** Master sole trader keeps the firm; juniors get scoped project work. Delivers pillar **1**.
+Before inviting external Practice Eng users:
 
-### Account model
-- **Sole-trader master account:** total control over billing, financial ledgers, tax settings, master sign-offs, seat invites, role matrix
-- **Team seat:** invited email, accepts invite, restricted role (e.g. Junior Architect / Site Engineer / Draftsperson / Site Inspector)
+- [ ] SL-E exit criteria met on staging
+- [ ] Fiscal regression smoke: create RFP → convert invoice → expense → Tax & VAT glance → year lock still blocks
+- [ ] Medical smoke: unlock vault → open patient → issue stampable (if Med invites in same wave)
+- [ ] Architect smoke: open PA → fill one BCA template → stamp/cert still works
+- [ ] Engineer smoke: create project → upload drawing v1/v2 → log equipment cert → stamp → one specialised report PDF
+- [ ] IDOR spot-check: Eng project/doc/cert IDs scoped to `Auth::id()`
+- [ ] Pricing / onboarding Eng bullets match shipped reality
+- [ ] Stripe still optional (closed beta) — existing plan
 
-### Permissions (non-negotiable)
-
-| Seat **can** | Seat **cannot** |
-|---|---|
-| Open assigned projects / PAs only | Firm-wide client financials / tax balances |
-| Create/edit assigned docs & condition reports | Tax & VAT, expenses, provisional tax |
-| Mobile site inspection + photo upload | Issue tax invoices / credit notes / RFPs |
-| Compile BOQ drafts (once Phase 4 exists) | Change tax settings / close fiscal years |
-| Stream work into master’s PA/project file | View other seats’ unassigned work (unless shared) |
-| Submit packs for master review | Final warrant stamp / official certificate issue (master only, unless explicitly granted later) |
-
-### Technical building blocks
-- `team_memberships` — master `user_id`, seat `user_id`, role, status, invited_at, accepted_at
-- `project_assignments` / `pa_assignments` — scope of work
-- Permission middleware distinct from `tier` / `pro` package checks
-- Audit log — who created/edited site reports (warrant accountability)
-- Master **Review & stamp** queue for seat-submitted packs
-
-**Exit criteria:** Junior on mobile logs a Neighbor Condition Report into the master’s PA file; master stamps; seat never sees Tax & VAT.
+**Soft launch wave suggestion:** Standard/Pro financial + Med + Arch first (already strong), Eng in same wave **only after** SL-E. Or Eng one invite wave later — never Eng-first while shell-only.
 
 ---
 
-## Phase 3 — Accountant Access Hook
+## Post soft launch (unchanged destination)
 
-**Goal:** Seamless collaboration with external accountants **without** data mutation rights. Delivers pillar **3**.
+### P2 — Team & Delegation (Arch & Eng)
+Master invites juniors; project/PA assignments; seats never see Tax & VAT; master review & stamp queue. Natural first seat workflow: Eng field cert photos / Arch neighbor reports.
 
-| Deliverable | Notes |
-|---|---|
-| Accountant ZIP (exists) | One-click batch export: locked FY summaries, itemised invoices (CSV/PDF), categorised expenses, receipt assets — keep as default offline handoff |
-| Read-only inspection portal | Secure, tokenised interface; locked end-of-year reports + VAT breakdowns for June Settlement / VAT returns |
-| Assignment | Master invites accountant email; revoke anytime |
-| Guardrails | No create/update/delete; no escalation into finance write; tokens expire / rotate |
+### P3 — Accountant read-only portal
+Tokenised inspection of locked years on top of existing ZIP.
 
-**Exit criteria:** Accountant reviews June settlement / VAT pack online without a login that can edit the ledger.
+### P4 — BOQ & Spec core library
+NotebookLM → `recipe_book.json` → `boq_categories` / `boq_master_items` / `specification_blocks`; Twin Block linking; Blade+JS builder; clone project. No end-user AI.
 
----
-
-## Phase 4 — BOQ & Specification Suite (core launch, no end-user AI)
-
-**Goal:** Fast, robust native library + builder for Architect and Engineer (and their seats). Delivers pillar **5.1**.
-
-### 4.1 Dev-side seeding — NotebookLM pipeline
-- Offline (dev-side only): ingest hundreds of legacy BOQs/specs → clean standardised `recipe_book.json` files
-- Seed PostgreSQL before launch: `boq_categories`, `boq_master_items`, `specification_blocks`
-- Day-1 library for all Arch/Eng users **and** their team members
-- **No end-user AI dependencies or API costs** at this phase
-
-### 4.2 Trade categories
-- **Engineering:** Electrical, Infrastructure, Firefighting, Drainage, Fire Detection, ELV, HVAC
-- **Architecture:** Demolition & Clearance, Excavation, Concrete & Structural, Masonry, Waterproofing, Finishes, External Works
-
-### 4.3 Product engine
-- **Twin Block auto-linking:** every BOQ line item ↔ corresponding technical specification clause; building a BOQ stitches the complete matching Technical Spec document
-- **Dynamic builder:** spreadsheet-style Blade + Vanilla JS — live qty × rate totals
-- **Clone project:** one-click clone of past job BOQ/spec set
-
-**Exit criteria:** User builds a BOQ from the library and exports a consistent Spec document with **zero** AI calls.
+### P5 — AI top-up
+Gemini 1.5 Flash scope→draft and PDF/scan→BOQ; `ai_usage_logs` + fair-use caps.
 
 ---
 
-## Phase 5 — AI Top-Up Layer (post-launch, optional)
+## Suggested PR sequencing (soft launch)
 
-**Goal:** Speed, not dependency. Core library remains first-class if AI is off or capped. Delivers pillar **5.2**.
+| Order | PR theme | Touches | Risk to freezes |
+|---|---|---|---|
+| 1 | Eng E1 project show/edit/archive | Eng only | Low |
+| 2 | Eng E2 documents + versions (+ optional project ZIP) | Eng SQL + storage | Low |
+| 3 | Eng E3 cert↔project + Eng kinds + expiry UI | certificates column + Eng views | Low–med (shared cert — additive only) |
+| 4 | Eng E4 report types (start with one, then remaining three) | Eng only | Low |
+| 5 | Eng E5 mobile field polish | Eng views/JS | Low |
+| 6 | Pricing/onboarding Eng copy sync | marketing Blade | Low |
+| 7 | Optional Arch neighbor reports | Arch only | Low |
+| 8 | Medical WebAuthn polish | Medical unlock only | Med-scoped |
+| 9 | Soft-launch checklist + beta notes | docs | None |
 
-| Feature | Mechanism |
-|---|---|
-| Project Scope Auto-Assembler | Natural language scope → Gemini 1.5 Flash selects master DB items → ~80% draft BOQ |
-| PDF / Scan → Structured BOQ | Scanned tenders/PDFs → async Gemini Vision → project BOQ tables |
-| Cost control | `ai_usage_logs`, background queue jobs, invisible fair-use caps |
-
-**Exit criteria:** AI is additive; fair-use enforced; library-only path remains fully usable.
-
----
-
-## Suggested build order (dependency-safe)
-
-1. **Neighbor Condition Reports + mobile capture** (Arch) — highest practice differentiator
-2. **BCA method-statement guided packs** (Arch) — DMS / EMS / CMS
-3. **Engineer cert suite + specialised report types** (Eng) — seed from your equipment examples
-4. **Team seats + project/PA assignment + permission matrix**
-5. **Seat mobile workflows** — condition reports / cert photos stream to master; master stamp queue
-6. **Accountant read-only portal** — on top of existing ZIP
-7. **BOQ library seed + Twin Block builder + clone** — NotebookLM → `recipe_book.json` → PostgreSQL
-8. **AI top-up** behind `ai_usage_logs` + caps
-
-Medical continues in parallel (vault unlock reliability, clinical polish). Medical team seats stay out of scope until clinical role design is separate.
+Fiscal, Tax & VAT, expenses, accountant ZIP, Architect DMS/BCA, Medical vault crypto: **no soft-launch feature PRs** unless a critical bug blocks beta.
 
 ---
 
-## Tier / package implications (rough)
+## Explicit non-goals before soft launch
 
-| Capability | Likely home |
-|---|---|
-| Ledger + tax + accountant ZIP | Standard and above |
-| Profession tools (Medical / Arch / Eng foundations) | Practice (profession) or Full Pro |
-| Team seats | Practice/Pro Arch & Eng — seat count TBD |
-| Neighbor reports / BCA / eng cert depth | Practice/Pro Arch & Eng |
-| BOQ & Spec core library | Practice/Pro Arch & Eng (+ seats) |
-| AI top-up | Optional add-on or Pro-only fair-use |
-
-Final seat pricing and seat caps are a commercial decision — lock after Phase 1 field tools prove weekly use.
+- Team seats / scoped roles
+- Accountant read-only portal
+- BOQ library or any Gemini/AI dependency
+- Rewriting shared certificate stamp engine
+- Refactoring FiscalReportEngine / tax brackets “while we’re here”
+- Selling Ltd company books
+- Medical clinical team seats
 
 ---
 
-## Explicit non-goals (near term)
-
-- Selling a general Ltd-company accounting product (Cerulean desk stays internal)
-- Giving seats invoice/tax access “just for convenience”
-- End-user AI as a launch blocker for BOQ
-- Replacing Maltese fiscal rules with simplified approximations
-- Medical clinical team seats before Arch/Eng seat model is proven
-
----
-
-## Success signals
+## Success signals (soft launch)
 
 | Signal | Indicates |
 |---|---|
-| Practice Arch/Eng retention | Field tools (condition reports, certs) used weekly |
-| Seat invites accepted | Delegation model matches real studios |
+| Eng projects have documents + certs attached | Package is no longer a shell |
+| Specialised report PDFs issued in beta | Eng Practice worth €24.99/€34.99 |
+| Fiscal smoke still green after Eng PRs | Freeze held |
+| Arch/Med invitees keep using existing tools | No regression |
+| Pricing bullets match screenshots | Honesty |
+
+---
+
+## Longer-term success signals (post soft launch)
+
+| Signal | Indicates |
+|---|---|
+| Seat invites accepted | Delegation matches real studios |
 | Master stamp queue non-empty | Juniors produce; masters sign |
-| Accountant portal opens without ZIP | Collaboration without mutation risk |
-| BOQ built without AI | Core library is enough |
-| AI drafts accepted then edited | Top-up saves time, doesn’t invent nonsense |
+| Accountant portal without ZIP | Collaboration without mutation risk |
+| BOQ built without AI | Core library enough |
+| AI drafts accepted then edited | Top-up saves time |
 
 ---
 
 ## Document ownership
 
-This roadmap is the product compass for Arch/Eng growth, team delegation, accountant collaboration, and BOQ. Fiscal engine changes stay under Maltese domain rules in `.cursorrules`. Update this file when a phase ships or scope is consciously cut.
+This roadmap is the product compass through soft launch (Engineer catch-up first) and beyond (seats → accountant portal → BOQ → AI). Fiscal engine changes stay under Maltese domain rules in `.cursorrules`. Update this file when a soft-launch slice ships or scope is consciously cut.
