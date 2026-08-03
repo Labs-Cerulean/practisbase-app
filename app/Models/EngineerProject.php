@@ -35,8 +35,20 @@ class EngineerProject extends Model
         'maintenance' => 'Maintenance',
     ];
 
+    public const STATUSES = [
+        'active' => 'Active',
+        'on_hold' => 'On hold',
+        'completed' => 'Completed',
+        'archived' => 'Archived',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->status === 'archived';
     }
 }

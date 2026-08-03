@@ -277,6 +277,9 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/projects', [EngineerProjectController::class, 'index']);
         Route::get('/projects/create', [EngineerProjectController::class, 'create']);
         Route::post('/projects', [EngineerProjectController::class, 'store']);
+        Route::get('/projects/{project}', [EngineerProjectController::class, 'show']);
+        Route::get('/projects/{project}/edit', [EngineerProjectController::class, 'edit']);
+        Route::put('/projects/{project}', [EngineerProjectController::class, 'update']);
         Route::redirect('/certifications', '/pro/certificates');
         Route::redirect('/certifications/create', '/pro/certificates/create');
     });

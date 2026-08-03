@@ -240,6 +240,7 @@ class DashboardController extends Controller
     private function engineerDesk(int $userId): array
     {
         $projects = EngineerProject::where('user_id', $userId)
+            ->where('status', '!=', 'archived')
             ->orderByDesc('updated_at')
             ->limit(5)
             ->get();
@@ -247,7 +248,7 @@ class DashboardController extends Controller
         return [
             'kind' => 'eng',
             'title' => 'Technical desk',
-            'project_count' => EngineerProject::where('user_id', $userId)->count(),
+            'project_count' => EngineerProject::where('user_id', $userId)->where('status', '!=', 'archived')->count(),
             'active_count' => EngineerProject::where('user_id', $userId)->where('status', 'active')->count(),
             'recent_projects' => $projects,
         ];

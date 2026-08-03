@@ -190,10 +190,15 @@
                                 ? (\App\Models\ArchitectProject::PHASES[$project->phase] ?? $project->phase)
                                 : (\App\Models\EngineerProject::PHASES[$project->phase] ?? $project->phase);
                         @endphp
-                        <div style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border-light); font-size: 0.9rem;">
+                        @php
+                            $projectHref = $practiceDesk['kind'] === 'arch'
+                                ? '/pro/architect/projects/'.$project->id
+                                : '/pro/engineer/projects/'.$project->id;
+                        @endphp
+                        <a href="{{ $projectHref }}" style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border-light); font-size: 0.9rem; text-decoration: none;">
                             <span style="font-weight: 600; color: var(--primary-navy);">{{ $project->name }}</span>
                             <span style="color: var(--text-muted);">{{ $phaseLabel }}</span>
-                        </div>
+                        </a>
                     @endforeach
                 @endif
             @endif
