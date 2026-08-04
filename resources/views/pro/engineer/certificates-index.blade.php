@@ -6,7 +6,7 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
             <h1 style="margin: 0 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">Field certificates</h1>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">One generic builder for equipment, scaffold, PA compliance, and similar inspections — not separate products per type.</p>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Cross-project register for equipment, scaffold, PA compliance, and similar field certificates.</p>
         </div>
         <a href="/pro/engineer/certificates/create{{ $projectId ? '?project_id='.$projectId : '' }}" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Certificate</a>
     </div>
@@ -18,7 +18,7 @@
     @if($certs->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
             <p style="color: var(--text-muted); margin: 0 0 1rem;">No field certificates yet.</p>
-            <a href="/pro/engineer/certificates/create" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none;">Build your first certificate</a>
+            <a href="/pro/engineer/certificates/create{{ $projectId ? '?project_id='.$projectId : '' }}" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none;">Choose a project &amp; build a certificate</a>
         </div>
     @else
         <div style="display: grid; gap: 0.65rem;">

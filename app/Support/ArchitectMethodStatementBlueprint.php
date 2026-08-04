@@ -78,7 +78,7 @@ class ArchitectMethodStatementBlueprint
                         ['heading' => '8d. Machinery / equipment allowed', 'body' => ''],
                         ['heading' => '8e. Temporary support / monitoring', 'body' => ''],
                     ],
-                    'appendix_ref' => 'Refer to numbered annexes uploaded with this method statement.',
+                    'appendix_ref' => '',
                     'legal_footer' => "Method Statement for Excavation Works as per Fifth Schedule (regulations 7 & 8) of the Avoidance of Damage to Third Party Properties Regulations.\n\nAdditional drawings and photographs are to be referred to as numbered appendices.",
                 ],
             ],

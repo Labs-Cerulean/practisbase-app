@@ -6,7 +6,7 @@
     @include('pro.shared.field-styles')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
-            <a href="/pro/architect/condition-reports" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Condition reports</a>
+                <a href="{{ $report->project ? '/pro/architect/projects/'.$report->project->id : '/pro/architect/condition-reports' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $report->project ? $report->project->name : 'Condition reports' }}</a>
             <h1 style="margin: 0.4rem 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">{{ $report->title }}</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
                 {{ $report->typeLabel() }}
@@ -84,24 +84,36 @@
         @endif
 
         @if(count($payload['defects']))
+            @php
+                $photosByRow = $report->photos->groupBy(fn ($p) => (string) ($p->linked_row_id ?? ''));
+            @endphp
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
                 <h2 style="margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--primary-navy);">{{ $payload['defects_heading'] ?: 'Observed defects' }}</h2>
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
                         <thead>
                             <tr style="text-align: left; color: var(--text-muted); font-size: 0.72rem;">
+                                <th style="padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border-light);">Id</th>
                                 <th style="padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border-light);">Location</th>
                                 <th style="padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border-light);">Defect</th>
-                                <th style="padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border-light);">Photo</th>
+                                <th style="padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border-light);">Photos</th>
                                 <th style="padding: 0.35rem 0.4rem; border-bottom: 1px solid var(--border-light);">Notes</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($payload['defects'] as $row)
+                                @php
+                                    $linked = $photosByRow->get((string) ($row['id'] ?? ''), collect());
+                                    $photoLabels = $linked->map(function ($photo) use ($report) {
+                                        $n = $report->photos->search(fn ($p) => $p->id === $photo->id);
+                                        return 'P'.(($n === false ? 0 : $n) + 1);
+                                    })->implode(', ');
+                                @endphp
                                 <tr>
+                                    <td style="padding: 0.4rem; border-bottom: 1px dashed var(--border-light); font-size: 0.75rem; color: var(--text-muted);">{{ $row['id'] ?? '—' }}</td>
                                     <td style="padding: 0.4rem; border-bottom: 1px dashed var(--border-light);">{{ $row['location'] }}</td>
                                     <td style="padding: 0.4rem; border-bottom: 1px dashed var(--border-light); font-weight: 650;">{{ $row['defect'] }}</td>
-                                    <td style="padding: 0.4rem; border-bottom: 1px dashed var(--border-light);">{{ $row['photo_ref'] }}</td>
+                                    <td style="padding: 0.4rem; border-bottom: 1px dashed var(--border-light);">{{ $photoLabels ?: ($row['photo_ref'] ?: '—') }}</td>
                                     <td style="padding: 0.4rem; border-bottom: 1px dashed var(--border-light); color: var(--text-muted);">{{ $row['notes'] }}</td>
                                 </tr>
                             @endforeach
@@ -117,7 +129,9 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.65rem;">
                     @foreach($report->photos as $photo)
                         <a href="/pro/architect/condition-reports/{{ $report->id }}/photos/{{ $photo->id }}" target="_blank" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.5rem; text-decoration: none; font-size: 0.78rem; color: #3f6212; font-weight: 600;">
-                            Photo {{ $loop->iteration }}@if($photo->caption) — {{ $photo->caption }}@endif
+                            Photo {{ $loop->iteration }}
+                            @if($photo->linked_row_id)<div style="color: var(--text-muted); font-weight: 500;">Issue {{ $photo->linked_row_id }}</div>@endif
+                            @if($photo->caption)<div style="color: var(--text-muted); font-weight: 500;">{{ $photo->caption }}</div>@endif
                         </a>
                     @endforeach
                 </div>

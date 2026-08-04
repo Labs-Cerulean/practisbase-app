@@ -12,6 +12,7 @@ class EngineerReportPhoto extends Model
         'engineer_report_id',
         'file_path',
         'caption',
+        'linked_row_id',
         'sort_order',
     ];
 

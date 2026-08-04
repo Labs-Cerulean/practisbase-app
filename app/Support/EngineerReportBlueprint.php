@@ -9,6 +9,74 @@ namespace App\Support;
 class EngineerReportBlueprint
 {
     /**
+     * @return array{id: string, item: string, outcome: string, comments: string}
+     */
+    public static function blankChecklistRow(): array
+    {
+        return [
+            'id' => PracticeDocumentContext::newRowId('c'),
+            'item' => '',
+            'outcome' => '',
+            'comments' => '',
+        ];
+    }
+
+    /**
+     * @return array{id: string, location: string, parameter: string, reading: string, unit: string, limit: string, result: string}
+     */
+    public static function blankMeasurementRow(): array
+    {
+        return [
+            'id' => PracticeDocumentContext::newRowId('m'),
+            'location' => '',
+            'parameter' => '',
+            'reading' => '',
+            'unit' => '',
+            'limit' => '',
+            'result' => '',
+        ];
+    }
+
+    /**
+     * Optional helper items — not seeded into new reports.
+     *
+     * @return list<string>
+     */
+    public static function commonChecklistItems(string $starterKey): array
+    {
+        return match ($starterKey) {
+            'fire' => [
+                'Means of escape / travel distances',
+                'Fire detection / alarm provision',
+                'Emergency lighting',
+                'Fire-fighting equipment / access',
+                'Compartmentation / fire doors',
+                'Signage',
+            ],
+            'noise' => [
+                'Meter calibration verified',
+                'Background / ambient measured',
+                'Source operating conditions noted',
+            ],
+            'ventilation' => [
+                'Supply / extract operation',
+                'Filters / coils condition',
+                'Controls / interlocks',
+                'Fresh air provision vs design',
+                'Transfer / make-up paths',
+            ],
+            'lighting' => [
+                'General illuminance adequacy',
+                'Uniformity',
+                'Glare / veiling reflections',
+                'Emergency lighting (if applicable)',
+                'Controls / switching',
+            ],
+            default => [],
+        };
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function emptyPayload(): array
@@ -22,13 +90,9 @@ class EngineerReportBlueprint
             'highlight_label' => 'Overall conclusion',
             'highlight_value' => '',
             'checklist_heading' => 'Inspection checklist',
-            'checklist' => [
-                ['item' => '', 'outcome' => '', 'comments' => ''],
-            ],
+            'checklist' => [self::blankChecklistRow()],
             'measurements_heading' => 'Measurements / readings',
-            'measurements' => [
-                ['location' => '', 'parameter' => '', 'reading' => '', 'unit' => '', 'limit' => '', 'result' => ''],
-            ],
+            'measurements' => [self::blankMeasurementRow()],
             'sections' => [
                 ['heading' => 'Scope of survey', 'body' => ''],
                 ['heading' => 'Findings', 'body' => ''],
@@ -66,16 +130,9 @@ class EngineerReportBlueprint
                     'highlight_label' => 'Overall risk',
                     'highlight_value' => '',
                     'checklist_heading' => 'Fire safety inspection items',
-                    'checklist' => [
-                        ['item' => 'Means of escape / travel distances', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Fire detection / alarm provision', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Emergency lighting', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Fire-fighting equipment / access', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Compartmentation / fire doors', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Signage', 'outcome' => '', 'comments' => ''],
-                    ],
+                    'checklist' => [self::blankChecklistRow()],
                     'measurements_heading' => '',
-                    'measurements' => [],
+                    'measurements' => [self::blankMeasurementRow()],
                     'sections' => [
                         ['heading' => 'Scope of survey', 'body' => 'Means of escape and fire safety provisions inspected for the areas listed in scope.'],
                         ['heading' => 'Findings', 'body' => ''],
@@ -100,16 +157,9 @@ class EngineerReportBlueprint
                     'highlight_label' => 'Overall assessment',
                     'highlight_value' => '',
                     'checklist_heading' => 'Assessment checks',
-                    'checklist' => [
-                        ['item' => 'Meter calibration verified', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Background / ambient measured', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Source operating conditions noted', 'outcome' => '', 'comments' => ''],
-                    ],
+                    'checklist' => [self::blankChecklistRow()],
                     'measurements_heading' => 'Noise measurements',
-                    'measurements' => [
-                        ['location' => '', 'parameter' => 'LAeq', 'reading' => '', 'unit' => 'dB(A)', 'limit' => '', 'result' => ''],
-                        ['location' => '', 'parameter' => 'LAFmax', 'reading' => '', 'unit' => 'dB(A)', 'limit' => '', 'result' => ''],
-                    ],
+                    'measurements' => [self::blankMeasurementRow()],
                     'sections' => [
                         ['heading' => 'Methodology', 'body' => ''],
                         ['heading' => 'Findings', 'body' => ''],
@@ -133,19 +183,9 @@ class EngineerReportBlueprint
                     'highlight_label' => 'Overall conclusion',
                     'highlight_value' => '',
                     'checklist_heading' => 'Ventilation inspection items',
-                    'checklist' => [
-                        ['item' => 'Supply / extract operation', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Filters / coils condition', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Controls / interlocks', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Fresh air provision vs design', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Transfer / make-up paths', 'outcome' => '', 'comments' => ''],
-                    ],
+                    'checklist' => [self::blankChecklistRow()],
                     'measurements_heading' => 'Airflow / ventilation readings',
-                    'measurements' => [
-                        ['location' => '', 'parameter' => 'Supply airflow', 'reading' => '', 'unit' => 'l/s', 'limit' => '', 'result' => ''],
-                        ['location' => '', 'parameter' => 'Extract airflow', 'reading' => '', 'unit' => 'l/s', 'limit' => '', 'result' => ''],
-                        ['location' => '', 'parameter' => 'ACH (est.)', 'reading' => '', 'unit' => 'h⁻¹', 'limit' => '', 'result' => ''],
-                    ],
+                    'measurements' => [self::blankMeasurementRow()],
                     'sections' => [
                         ['heading' => 'Scope of survey', 'body' => ''],
                         ['heading' => 'Findings', 'body' => ''],
@@ -169,18 +209,9 @@ class EngineerReportBlueprint
                     'highlight_label' => 'Overall conclusion',
                     'highlight_value' => '',
                     'checklist_heading' => 'Lighting inspection items',
-                    'checklist' => [
-                        ['item' => 'General illuminance adequacy', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Uniformity', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Glare / veiling reflections', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Emergency lighting (if applicable)', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Controls / switching', 'outcome' => '', 'comments' => ''],
-                    ],
+                    'checklist' => [self::blankChecklistRow()],
                     'measurements_heading' => 'Illuminance readings',
-                    'measurements' => [
-                        ['location' => '', 'parameter' => 'Illuminance', 'reading' => '', 'unit' => 'lux', 'limit' => '', 'result' => ''],
-                        ['location' => '', 'parameter' => 'Illuminance', 'reading' => '', 'unit' => 'lux', 'limit' => '', 'result' => ''],
-                    ],
+                    'measurements' => [self::blankMeasurementRow()],
                     'sections' => [
                         ['heading' => 'Methodology', 'body' => ''],
                         ['heading' => 'Findings', 'body' => ''],
@@ -232,12 +263,13 @@ class EngineerReportBlueprint
             $item = trim((string) ($row['item'] ?? ''));
             $outcome = trim((string) ($row['outcome'] ?? ''));
             $comments = trim((string) ($row['comments'] ?? ''));
-            if ($item === '' && $outcome === '' && $comments === '') {
-                continue;
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '' || ! preg_match('/^[A-Za-z0-9_\-]{2,32}$/', $id)) {
+                $id = PracticeDocumentContext::newRowId('c');
             }
-            $checklist[] = ['item' => $item, 'outcome' => $outcome, 'comments' => $comments];
+            $checklist[] = ['id' => $id, 'item' => $item, 'outcome' => $outcome, 'comments' => $comments];
         }
-        $base['checklist'] = $checklist;
+        $base['checklist'] = $checklist !== [] ? $checklist : [self::blankChecklistRow()];
 
         $measurements = [];
         foreach (($raw['measurements'] ?? []) as $row) {
@@ -250,10 +282,12 @@ class EngineerReportBlueprint
             $unit = trim((string) ($row['unit'] ?? ''));
             $limit = trim((string) ($row['limit'] ?? ''));
             $result = trim((string) ($row['result'] ?? ''));
-            if ($location === '' && $parameter === '' && $reading === '' && $unit === '' && $limit === '' && $result === '') {
-                continue;
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '' || ! preg_match('/^[A-Za-z0-9_\-]{2,32}$/', $id)) {
+                $id = PracticeDocumentContext::newRowId('m');
             }
             $measurements[] = [
+                'id' => $id,
                 'location' => $location,
                 'parameter' => $parameter,
                 'reading' => $reading,
@@ -262,7 +296,7 @@ class EngineerReportBlueprint
                 'result' => $result,
             ];
         }
-        $base['measurements'] = $measurements;
+        $base['measurements'] = $measurements !== [] ? $measurements : [self::blankMeasurementRow()];
 
         $sections = [];
         foreach (($raw['sections'] ?? []) as $row) {
@@ -279,5 +313,43 @@ class EngineerReportBlueprint
         $base['sections'] = $sections;
 
         return $base;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<array{id: string, label: string}>
+     */
+    public static function photoLinkOptions(array $payload): array
+    {
+        $options = [];
+        foreach (($payload['checklist'] ?? []) as $i => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '') {
+                continue;
+            }
+            $item = trim((string) ($row['item'] ?? ''));
+            $options[] = [
+                'id' => $id,
+                'label' => 'Checklist '.($i + 1).($item !== '' ? ' — '.$item : ''),
+            ];
+        }
+        foreach (($payload['measurements'] ?? []) as $i => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '') {
+                continue;
+            }
+            $location = trim((string) ($row['location'] ?? ''));
+            $parameter = trim((string) ($row['parameter'] ?? ''));
+            $parts = array_filter(['Measurement '.($i + 1), $location, $parameter]);
+            $options[] = ['id' => $id, 'label' => implode(' — ', $parts)];
+        }
+
+        return $options;
     }
 }

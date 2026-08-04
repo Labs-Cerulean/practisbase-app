@@ -6,7 +6,7 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
             <h1 style="margin: 0 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">Method statements</h1>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">DMS / EMS / CMS — one builder with schedule starters, stampable PDF. Official BCA blanks remain under Templates.</p>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Cross-project register. New statements start from a project so details and refs auto-fill.</p>
         </div>
         <a href="/pro/architect/method-statements/create{{ $projectId ? '?project_id='.$projectId : '' }}" style="background: #3f6212; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Method statement</a>
     </div>
@@ -18,7 +18,7 @@
     @if($statements->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
             <p style="color: var(--text-muted); margin: 0 0 1rem;">No method statements yet.</p>
-            <a href="/pro/architect/method-statements/create?starter=excavation" style="color: #3f6212; font-weight: 700; text-decoration: none;">Build your first method statement</a>
+            <a href="/pro/architect/method-statements/create{{ $projectId ? '?project_id='.$projectId.'&starter=excavation' : '?starter=excavation' }}" style="color: #3f6212; font-weight: 700; text-decoration: none;">Choose a project &amp; build a method statement</a>
         </div>
     @else
         <div style="display: grid; gap: 0.65rem;">

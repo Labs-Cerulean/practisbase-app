@@ -9,6 +9,7 @@ use App\Models\EngineerPaApplication;
 use App\Models\EngineerProject;
 use App\Support\EngineerCertificateBlueprint;
 use App\Support\IssueCode;
+use App\Support\PracticeDocumentContext;
 use App\Support\TenantStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -34,25 +35,57 @@ class CertificateController extends Controller
 
     public function create(Request $request)
     {
+        $projects = EngineerProject::where('user_id', Auth::id())
+            ->where('status', '!=', 'archived')
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+
+        $projectId = (int) $request->query('project_id');
+        if ($projectId <= 0 || ! $projects->contains('id', $projectId)) {
+            return view('pro.shared.pick-project', [
+                'projects' => $projects,
+                'heading' => 'Choose a project for this field certificate',
+                'lead' => 'Field certificates sit under a project so holder, site, contact, and filing refs auto-fill.',
+                'backHref' => '/pro/engineer/certificates',
+                'createProjectHref' => '/pro/engineer/projects/create',
+                'continueBase' => '/pro/engineer/certificates/create?starter='.urlencode((string) $request->query('starter', 'blank')),
+                'accent' => 'var(--primary-cerulean)',
+            ]);
+        }
+
+        $project = $projects->firstWhere('id', $projectId);
         $starterKey = (string) $request->query('starter', 'blank');
         $starters = EngineerCertificateBlueprint::starters();
         if (! isset($starters[$starterKey])) {
             $starterKey = 'blank';
         }
         $starter = $starters[$starterKey];
+        $paId = (int) $request->query('pa_id');
+        $pas = EngineerPaApplication::where('user_id', Auth::id())
+            ->where('engineer_project_id', $projectId)
+            ->orderByDesc('updated_at')
+            ->get();
+        $pa = $paId > 0 ? $pas->firstWhere('id', $paId) : null;
+        $context = PracticeDocumentContext::engineerPrefill($project, $pa, 'EC');
+        $payload = $this->prefillPermissionAttributes($starter['payload'], $context);
 
         return view('pro.engineer.certificates-form', [
             'certificate' => null,
-            'projects' => EngineerProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => EngineerPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
-            'payload' => $starter['payload'],
+            'projects' => $projects,
+            'pas' => $pas,
+            'payload' => $payload,
             'starters' => $starters,
             'starterKey' => $starterKey,
             'defaultTitle' => $starter['title'],
             'prefill' => [
-                'project_id' => $request->query('project_id'),
-                'pa_id' => $request->query('pa_id'),
+                'project_id' => $projectId,
+                'pa_id' => $pa?->id,
             ],
+            'context' => $context,
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'eng', 'EC'),
+            'commonChecklistItems' => EngineerCertificateBlueprint::commonChecklistItems($starterKey),
+            'photoLinkOptions' => EngineerCertificateBlueprint::photoLinkOptions($payload),
         ]);
     }
 
@@ -60,13 +93,20 @@ class CertificateController extends Controller
     {
         $validated = $this->validateCertificate($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = EngineerProject::where('user_id', Auth::id())
+            ->where('id', $scope['engineer_project_id'])
+            ->firstOrFail();
+        $certificateNumber = trim((string) ($validated['certificate_number'] ?? ''));
+        if ($certificateNumber === '') {
+            $certificateNumber = PracticeDocumentContext::nextEngineerCertificateRef(Auth::id(), $project);
+        }
 
         $certificate = EngineerCertificate::create([
             'user_id' => Auth::id(),
             'engineer_project_id' => $scope['engineer_project_id'],
             'engineer_pa_application_id' => $scope['engineer_pa_application_id'],
             'title' => $validated['title'],
-            'certificate_number' => $validated['certificate_number'] ?? null,
+            'certificate_number' => $certificateNumber,
             'inspected_on' => $validated['inspected_on'] ?? null,
             'issued_on' => $validated['issued_on'],
             'expires_on' => $validated['expires_on'] ?? null,
@@ -105,11 +145,25 @@ class CertificateController extends Controller
                 ->withErrors(['certificate' => 'This certificate was stamped and issued. It can no longer be edited.']);
         }
 
+        $projects = EngineerProject::where('user_id', Auth::id())
+            ->where(function ($q) use ($certificate) {
+                $q->where('status', '!=', 'archived')
+                    ->orWhere('id', $certificate->engineer_project_id);
+            })
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+        $pas = EngineerPaApplication::where('user_id', Auth::id())
+            ->where('engineer_project_id', $certificate->engineer_project_id)
+            ->orderByDesc('updated_at')
+            ->get();
+        $payload = $certificate->normalizedPayload();
+
         return view('pro.engineer.certificates-form', [
             'certificate' => $certificate,
-            'projects' => EngineerProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => EngineerPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
-            'payload' => $certificate->normalizedPayload(),
+            'projects' => $projects,
+            'pas' => $pas,
+            'payload' => $payload,
             'starters' => EngineerCertificateBlueprint::starters(),
             'starterKey' => null,
             'defaultTitle' => $certificate->title,
@@ -117,6 +171,18 @@ class CertificateController extends Controller
                 'project_id' => $certificate->engineer_project_id,
                 'pa_id' => $certificate->engineer_pa_application_id,
             ],
+            'context' => [
+                'holder_name' => $certificate->holder_name,
+                'holder_address' => $certificate->holder_address,
+                'contact_person' => $certificate->contact_person,
+                'contact_phone' => $certificate->contact_phone,
+                'site_address' => $certificate->site_address,
+                'suggested_ref' => $certificate->certificate_number,
+                'pa_number' => $certificate->paApplication?->pa_number ?? '',
+            ],
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'eng', 'EC'),
+            'commonChecklistItems' => EngineerCertificateBlueprint::commonChecklistItems('blank'),
+            'photoLinkOptions' => EngineerCertificateBlueprint::photoLinkOptions($payload),
         ]);
     }
 
@@ -130,12 +196,20 @@ class CertificateController extends Controller
 
         $validated = $this->validateCertificate($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = EngineerProject::where('user_id', Auth::id())
+            ->where('id', $scope['engineer_project_id'])
+            ->firstOrFail();
+        $certificateNumber = trim((string) ($validated['certificate_number'] ?? ''));
+        if ($certificateNumber === '') {
+            $certificateNumber = $certificate->certificate_number
+                ?: PracticeDocumentContext::nextEngineerCertificateRef(Auth::id(), $project);
+        }
 
         $certificate->update([
             'engineer_project_id' => $scope['engineer_project_id'],
             'engineer_pa_application_id' => $scope['engineer_pa_application_id'],
             'title' => $validated['title'],
-            'certificate_number' => $validated['certificate_number'] ?? null,
+            'certificate_number' => $certificateNumber,
             'inspected_on' => $validated['inspected_on'] ?? null,
             'issued_on' => $validated['issued_on'],
             'expires_on' => $validated['expires_on'] ?? null,
@@ -160,6 +234,9 @@ class CertificateController extends Controller
         $this->assertOwned($certificate);
         if ($certificate->isStamped()) {
             return back()->withErrors(['certificate' => 'Already stamped and issued.']);
+        }
+        if (! $certificate->engineer_project_id) {
+            return back()->withErrors(['certificate' => 'Link this certificate to a project before stamping.']);
         }
 
         $certificate->stamped_at = now();
@@ -225,7 +302,7 @@ class CertificateController extends Controller
             'contact_person' => 'nullable|string|max:255',
             'contact_phone' => 'nullable|string|max:64',
             'site_address' => 'nullable|string|max:2000',
-            'engineer_project_id' => 'nullable|integer',
+            'engineer_project_id' => 'required|integer',
             'engineer_pa_application_id' => 'nullable|integer',
             'payload' => 'nullable|array',
             'payload.subject_heading' => 'nullable|string|max:255',
@@ -237,6 +314,7 @@ class CertificateController extends Controller
             'payload.attributes.*.label' => 'nullable|string|max:255',
             'payload.attributes.*.value' => 'nullable|string|max:2000',
             'payload.checklist' => 'nullable|array|max:60',
+            'payload.checklist.*.id' => 'nullable|string|max:32',
             'payload.checklist.*.item' => 'nullable|string|max:500',
             'payload.checklist.*.outcome' => 'nullable|string|max:120',
             'payload.checklist.*.comments' => 'nullable|string|max:1000',
@@ -247,6 +325,8 @@ class CertificateController extends Controller
             'photos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'photo_captions' => 'nullable|array',
             'photo_captions.*' => 'nullable|string|max:255',
+            'photo_linked_row_ids' => 'nullable|array',
+            'photo_linked_row_ids.*' => 'nullable|string|max:64',
         ]);
 
         return $validated;
@@ -254,19 +334,16 @@ class CertificateController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{engineer_project_id: ?int, engineer_pa_application_id: ?int}
+     * @return array{engineer_project_id: int, engineer_pa_application_id: ?int}
      */
     private function resolveScope(int $userId, array $validated): array
     {
         $projectId = (int) ($validated['engineer_project_id'] ?? 0);
         $paId = (int) ($validated['engineer_pa_application_id'] ?? 0);
 
-        $project = null;
-        if ($projectId > 0) {
-            $project = EngineerProject::where('user_id', $userId)->where('id', $projectId)->first();
-            if (! $project) {
-                abort(403);
-            }
+        $project = EngineerProject::where('user_id', $userId)->where('id', $projectId)->first();
+        if (! $project) {
+            abort(403);
         }
 
         $pa = null;
@@ -275,16 +352,13 @@ class CertificateController extends Controller
             if (! $pa) {
                 abort(403);
             }
-            if ($project && $pa->engineer_project_id !== $project->id) {
+            if ($pa->engineer_project_id !== $project->id) {
                 abort(403);
-            }
-            if (! $project) {
-                $project = EngineerProject::where('user_id', $userId)->where('id', $pa->engineer_project_id)->first();
             }
         }
 
         return [
-            'engineer_project_id' => $project?->id,
+            'engineer_project_id' => $project->id,
             'engineer_pa_application_id' => $pa?->id,
         ];
     }
@@ -296,6 +370,7 @@ class CertificateController extends Controller
         }
 
         $captions = $request->input('photo_captions', []);
+        $linked = $request->input('photo_linked_row_ids', []);
         $sort = (int) $certificate->photos()->max('sort_order');
 
         foreach ($request->file('photos') as $i => $file) {
@@ -312,9 +387,30 @@ class CertificateController extends Controller
                 'engineer_certificate_id' => $certificate->id,
                 'file_path' => $path,
                 'caption' => is_array($captions) ? trim((string) ($captions[$i] ?? '')) ?: null : null,
+                'linked_row_id' => is_array($linked) ? trim((string) ($linked[$i] ?? '')) ?: null : null,
                 'sort_order' => $sort,
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private function prefillPermissionAttributes(array $payload, array $context): array
+    {
+        foreach (($payload['attributes'] ?? []) as $i => $row) {
+            $label = strtolower(trim((string) ($row['label'] ?? '')));
+            if ($label === 'pa / permission reference' && trim((string) ($row['value'] ?? '')) === '') {
+                $payload['attributes'][$i]['value'] = (string) ($context['pa_number'] ?? '');
+            }
+            if ($label === 'full address of premises' && trim((string) ($row['value'] ?? '')) === '') {
+                $payload['attributes'][$i]['value'] = (string) ($context['site_address'] ?? '');
+            }
+        }
+
+        return $payload;
     }
 
     private function assertOwned(EngineerCertificate $certificate): void

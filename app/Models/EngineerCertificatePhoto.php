@@ -12,6 +12,7 @@ class EngineerCertificatePhoto extends Model
         'engineer_certificate_id',
         'file_path',
         'caption',
+        'linked_row_id',
         'sort_order',
     ];
 

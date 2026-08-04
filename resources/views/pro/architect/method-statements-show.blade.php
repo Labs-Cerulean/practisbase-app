@@ -6,7 +6,7 @@
     @include('pro.shared.field-styles')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
-            <a href="/pro/architect/method-statements" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Method statements</a>
+            <a href="{{ $statement->project ? '/pro/architect/projects/'.$statement->project->id : '/pro/architect/method-statements' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $statement->project ? $statement->project->name : 'Method statements' }}</a>
             <h1 style="margin: 0.4rem 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">{{ $statement->title }}</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
                 {{ $statement->typeLabel() }}
@@ -88,7 +88,8 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.65rem;">
                     @foreach($statement->photos as $photo)
                         <a href="/pro/architect/method-statements/{{ $statement->id }}/photos/{{ $photo->id }}" target="_blank" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.5rem; text-decoration: none; font-size: 0.78rem; color: #3f6212; font-weight: 600;">
-                            Photo {{ $loop->iteration }}@if($photo->caption) — {{ $photo->caption }}@endif
+                            Photo {{ $loop->iteration }}
+                            @if($photo->caption)<div style="color: var(--text-muted); font-weight: 500;">{{ $photo->caption }}</div>@endif
                         </a>
                     @endforeach
                 </div>
