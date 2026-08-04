@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use App\Support\CompanyBooks;
+use App\Support\CompanyLedger;
 use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -93,6 +94,9 @@ class ProfileController extends Controller
             'share_capital_received_at' => $validated['share_capital_received_at'],
         ]);
 
-        return redirect('/company')->with('success', 'Share capital marked as received at BOV.');
+        CompanyLedger::ensureChart($user);
+        CompanyLedger::postShareCapital($profile->fresh());
+
+        return redirect('/company')->with('success', 'Share capital marked as received and posted to the ledger.');
     }
 }

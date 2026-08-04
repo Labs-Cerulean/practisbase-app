@@ -34,8 +34,12 @@
                         @if($companyMode)
                             <li class="nav-section-label">Cerulean Labs Ltd</li>
                             <li><a href="/company" class="nav-link {{ request()->is('company') ? 'active' : '' }}">Desk</a></li>
+                            <li><a href="/company/accounts" class="nav-link {{ request()->is('company/accounts*') ? 'active' : '' }}">Accounts</a></li>
                             <li><a href="/company/invoices" class="nav-link {{ request()->is('company/invoices*') ? 'active' : '' }}">Invoices</a></li>
+                            <li><a href="/company/recurring" class="nav-link {{ request()->is('company/recurring*') ? 'active' : '' }}">Monthly billing</a></li>
                             <li><a href="/company/expenses" class="nav-link {{ request()->is('company/expenses*') ? 'active' : '' }}">Expenses</a></li>
+                            <li><a href="/company/bank" class="nav-link {{ request()->is('company/bank*') ? 'active' : '' }}">Bank recon</a></li>
+                            <li><a href="/company/dividends" class="nav-link {{ request()->is('company/dividends*') ? 'active' : '' }}">Dividends</a></li>
                             <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
                             <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>
                         @else

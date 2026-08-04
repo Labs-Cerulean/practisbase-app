@@ -7,6 +7,7 @@ use App\Models\CompanyExpense;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyPayment;
 use App\Support\CompanyBooks;
+use App\Support\CompanyLedger;
 use Illuminate\Support\Facades\Auth;
 
 class DeskController extends Controller
@@ -47,11 +48,13 @@ class DeskController extends Controller
             ->sum('amount');
 
         $collected = (float) CompanyPayment::where('user_id', $userId)
+            ->where('is_transfer', false)
             ->whereYear('payment_date', $year)
             ->sum('amount');
 
         $openRfps = CompanyInvoice::where('user_id', $userId)
             ->where('type', 'rfp')
+            ->where('status', '!=', 'converted')
             ->whereNull('parent_document_id')
             ->count();
 
@@ -73,6 +76,12 @@ class DeskController extends Controller
                 ->whereMonth('issue_date', $month)
                 ->sum('total');
 
+        CompanyLedger::ensureChart($user);
+        $asOf = now()->toDateString();
+        $periodStart = $profile->first_period_start->format('Y-m-d');
+        $pl = CompanyLedger::profitAndLoss($userId, $periodStart, $asOf);
+        $bs = CompanyLedger::balanceSheet($userId, $asOf, $periodStart);
+
         return view('company.desk', [
             'profile' => $profile,
             'periodLabel' => CompanyBooks::periodLabel($profile),
@@ -86,6 +95,12 @@ class DeskController extends Controller
             'openRfps' => $openRfps,
             'monthBilled' => $monthBilled,
             'year' => $year,
+            'netProfit' => $pl['net_profit'],
+            'booksBalanced' => $bs['balanced'],
+            'bankBalance' => CompanyLedger::naturalBalance(
+                \App\Models\CompanyGlAccount::where('user_id', $userId)->where('account_code', '1000')->firstOrFail(),
+                (float) (CompanyLedger::accountBalances($userId, $asOf)['1000'] ?? 0)
+            ),
         ]);
     }
 }

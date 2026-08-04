@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Company;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyExpense;
 use App\Support\CompanyBooks;
+use App\Support\CompanyLedger;
 use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -77,7 +78,7 @@ class ExpenseController extends Controller
             );
         }
 
-        CompanyExpense::create([
+        $expense = CompanyExpense::create([
             'user_id' => $user->id,
             'expense_date' => $expenseDate,
             'category' => $validated['category'],
@@ -89,7 +90,10 @@ class ExpenseController extends Controller
             'is_pre_incorporation' => $isPre,
         ]);
 
-        return redirect('/company/expenses')->with('success', 'Expense logged.');
+        CompanyLedger::ensureChart($user);
+        CompanyLedger::postExpense($expense);
+
+        return redirect('/company/expenses')->with('success', 'Expense logged and posted to the ledger.');
     }
 
     public function markRefunded(Request $request, int $expense)
@@ -99,6 +103,9 @@ class ExpenseController extends Controller
 
         if ($model->funded_by !== 'director') {
             return back()->withErrors(['expense' => 'Only director-funded costs can be marked refunded.']);
+        }
+        if ($model->director_refunded_at) {
+            return back()->withErrors(['expense' => 'This director cost was already marked refunded.']);
         }
 
         $validated = $request->validate([
@@ -111,7 +118,10 @@ class ExpenseController extends Controller
             'refund_reference' => $validated['refund_reference'] ?? null,
         ]);
 
-        return back()->with('success', 'Director refund recorded.');
+        CompanyLedger::ensureChart($user);
+        CompanyLedger::postDirectorRefund($model->fresh());
+
+        return back()->with('success', 'Director refund recorded and posted.');
     }
 
     public function receipt(int $expense)

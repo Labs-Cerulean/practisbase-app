@@ -5,24 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CompanyPayment extends Model
+class CompanyBankStatementLine extends Model
 {
     protected $fillable = [
         'user_id',
-        'company_invoice_id',
+        'statement_date',
+        'description',
         'amount',
-        'payment_date',
-        'payment_method',
-        'notes',
-        'is_transfer',
+        'status',
+        'matched_journal_line_id',
+        'import_batch',
     ];
 
     protected function casts(): array
     {
         return [
-            'payment_date' => 'date',
+            'statement_date' => 'date',
             'amount' => 'decimal:2',
-            'is_transfer' => 'boolean',
         ];
     }
 
@@ -31,8 +30,8 @@ class CompanyPayment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function invoice(): BelongsTo
+    public function matchedLine(): BelongsTo
     {
-        return $this->belongsTo(CompanyInvoice::class, 'company_invoice_id');
+        return $this->belongsTo(CompanyJournalLine::class, 'matched_journal_line_id');
     }
 }

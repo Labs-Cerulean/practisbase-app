@@ -8,6 +8,7 @@ use App\Models\CompanyInvoice;
 use App\Models\CompanyPayment;
 use App\Models\CompanyProfile;
 use App\Support\CompanyBooks;
+use App\Support\CompanyLedger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -113,7 +114,7 @@ class InvoiceController extends Controller
         $year = (int) date('Y', strtotime($request->issue_date));
         $number = CompanyBooks::nextDocumentNumber($user->id, $request->type, $year);
 
-        CompanyInvoice::create([
+        $document = CompanyInvoice::create([
             'user_id' => $user->id,
             'company_client_id' => $request->company_client_id,
             'type' => $request->type,
@@ -130,6 +131,11 @@ class InvoiceController extends Controller
             'notes' => $request->notes,
         ]);
 
+        if ($document->type === 'invoice') {
+            CompanyLedger::ensureChart($user);
+            CompanyLedger::postInvoiceIssued($document);
+        }
+
         return redirect('/company/invoices')->with('success', 'Document '.$number.' created.');
     }
 
@@ -137,11 +143,15 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
-        $rfp = CompanyInvoice::with('client')
+        $rfp = CompanyInvoice::with(['client', 'payments'])
             ->where('user_id', $user->id)
             ->where('id', $document)
             ->where('type', 'rfp')
             ->firstOrFail();
+
+        if ($rfp->status === 'converted' || CompanyInvoice::where('user_id', $user->id)->where('linked_document_id', $rfp->id)->where('type', 'invoice')->exists()) {
+            return back()->withErrors(['document' => 'This RFP has already been converted.']);
+        }
 
         if (! $profile->hasVatNumber() && $profile->isArticle10()) {
             return back()->withErrors([
@@ -171,6 +181,8 @@ class InvoiceController extends Controller
         $total = round((float) $rfp->subtotal + $vatTotal, 2);
 
         DB::transaction(function () use ($user, $rfp, $number, $issueDate, $supplyDate, $vatTotal, $total) {
+            CompanyLedger::ensureChart($user);
+
             $invoice = CompanyInvoice::create([
                 'user_id' => $user->id,
                 'company_client_id' => $rfp->company_client_id,
@@ -190,28 +202,57 @@ class InvoiceController extends Controller
                 'notes' => $rfp->notes,
             ]);
 
-            $rfpPaid = (float) $rfp->amount_paid;
-            if ($rfpPaid > 0) {
-                $transfer = min($rfpPaid, $total);
-                CompanyPayment::create([
-                    'user_id' => $user->id,
-                    'company_invoice_id' => $invoice->id,
-                    'amount' => $transfer,
-                    'payment_date' => now()->toDateString(),
-                    'payment_method' => 'transfer_from_rfp',
-                    'notes' => 'Transferred from '.$rfp->document_number,
-                ]);
-                $invoice->update([
-                    'amount_paid' => $transfer,
-                    'status' => $transfer >= $total ? 'paid' : 'partial',
-                ]);
-                $rfp->update([
-                    'amount_paid' => max(0, $rfpPaid - $transfer),
-                    'status' => 'converted',
-                ]);
-            } else {
-                $rfp->update(['status' => 'converted']);
+            CompanyLedger::postInvoiceIssued($invoice);
+
+            $cashPayments = $rfp->payments()->where('is_transfer', false)->orderBy('payment_date')->orderBy('id')->get();
+            $applied = 0.0;
+            foreach ($cashPayments as $payment) {
+                if ($applied >= $total) {
+                    break;
+                }
+                $room = round($total - $applied, 2);
+                $take = min((float) $payment->amount, $room);
+                if ($take <= 0) {
+                    continue;
+                }
+
+                if (round($take, 2) === round((float) $payment->amount, 2)) {
+                    $payment->update([
+                        'company_invoice_id' => $invoice->id,
+                        'notes' => trim(($payment->notes ? $payment->notes.' · ' : '').'Reassigned from '.$rfp->document_number),
+                    ]);
+                } else {
+                    $payment->update(['amount' => round((float) $payment->amount - $take, 2)]);
+                    CompanyPayment::create([
+                        'user_id' => $user->id,
+                        'company_invoice_id' => $invoice->id,
+                        'amount' => $take,
+                        'payment_date' => $payment->payment_date,
+                        'payment_method' => $payment->payment_method,
+                        'notes' => 'Split / reassigned from '.$rfp->document_number,
+                        'is_transfer' => false,
+                    ]);
+                }
+
+                CompanyLedger::postAdvanceToReceivable(
+                    $invoice,
+                    $take,
+                    optional($payment->payment_date)->format('Y-m-d') ?: $issueDate,
+                    'company_invoice:'.$invoice->id.':advance:'.$payment->id
+                );
+                $applied = round($applied + $take, 2);
             }
+
+            $invoice->update([
+                'amount_paid' => $applied,
+                'status' => $applied >= $total ? 'paid' : ($applied > 0 ? 'partial' : 'unpaid'),
+            ]);
+
+            $rfpRemaining = (float) $rfp->payments()->sum('amount');
+            $rfp->update([
+                'amount_paid' => $rfpRemaining,
+                'status' => 'converted',
+            ]);
         });
 
         return redirect('/company/invoices')->with('success', 'RFP converted to tax invoice.');
@@ -222,6 +263,10 @@ class InvoiceController extends Controller
         $user = Auth::user();
         $invoice = CompanyInvoice::where('user_id', $user->id)->where('id', $document)->firstOrFail();
 
+        if (in_array($invoice->status, ['converted'], true)) {
+            return back()->withErrors(['payment' => 'Converted RFPs cannot receive new payments. Pay the tax invoice instead.']);
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date|before_or_equal:today',
@@ -229,14 +274,23 @@ class InvoiceController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        CompanyPayment::create([
+        $balance = max(0, (float) $invoice->balance());
+        if ((float) $validated['amount'] - $balance > 0.009 && $invoice->type === 'invoice') {
+            return back()->withErrors(['amount' => 'Payment exceeds open balance of €'.number_format($balance, 2).'.']);
+        }
+
+        $payment = CompanyPayment::create([
             'user_id' => $user->id,
             'company_invoice_id' => $invoice->id,
             'amount' => $validated['amount'],
             'payment_date' => $validated['payment_date'],
             'payment_method' => $validated['payment_method'],
             'notes' => $validated['notes'] ?? null,
+            'is_transfer' => false,
         ]);
+
+        CompanyLedger::ensureChart($user);
+        CompanyLedger::postPayment($payment, $invoice);
 
         $paid = (float) $invoice->payments()->sum('amount');
         $invoice->update([
@@ -244,7 +298,7 @@ class InvoiceController extends Controller
             'status' => $paid >= (float) $invoice->total ? 'paid' : 'partial',
         ]);
 
-        return back()->with('success', 'Payment recorded.');
+        return back()->with('success', 'Payment recorded and posted to the ledger.');
     }
 
     public function credit(int $document)
@@ -264,7 +318,7 @@ class InvoiceController extends Controller
         $number = CompanyBooks::nextDocumentNumber($user->id, 'credit_note', (int) date('Y'));
         $supplyDate = optional($invoice->supply_date)->format('Y-m-d') ?: $issueDate;
 
-        CompanyInvoice::create([
+        $credit = CompanyInvoice::create([
             'user_id' => $user->id,
             'company_client_id' => $invoice->company_client_id,
             'parent_document_id' => $invoice->id,
@@ -282,7 +336,10 @@ class InvoiceController extends Controller
             'notes' => 'Credit note amending tax invoice '.$invoice->document_number.'.',
         ]);
 
-        return back()->with('success', 'Credit note '.$number.' issued.');
+        CompanyLedger::ensureChart($user);
+        CompanyLedger::postCreditNote($credit);
+
+        return back()->with('success', 'Credit note '.$number.' issued and posted.');
     }
 
     public function pdf(int $document)

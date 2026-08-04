@@ -40,6 +40,10 @@ use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
 use App\Http\Controllers\Company\InvoiceController as CompanyInvoiceController;
 use App\Http\Controllers\Company\ExpenseController as CompanyExpenseController;
+use App\Http\Controllers\Company\AccountsController as CompanyAccountsController;
+use App\Http\Controllers\Company\BankController as CompanyBankController;
+use App\Http\Controllers\Company\DividendController as CompanyDividendController;
+use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringInvoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -379,5 +383,25 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/expenses', [CompanyExpenseController::class, 'store']);
         Route::post('/expenses/{expense}/refund', [CompanyExpenseController::class, 'markRefunded']);
         Route::get('/expenses/{expense}/receipt', [CompanyExpenseController::class, 'receipt']);
+
+        Route::get('/accounts', [CompanyAccountsController::class, 'index']);
+        Route::get('/accounts/chart', [CompanyAccountsController::class, 'chart']);
+        Route::get('/accounts/journals', [CompanyAccountsController::class, 'journals']);
+        Route::get('/accounts/customer-statement', [CompanyAccountsController::class, 'customerStatement']);
+        Route::post('/accounts/lock', [CompanyAccountsController::class, 'lock']);
+        Route::post('/accounts/unlock', [CompanyAccountsController::class, 'unlock']);
+
+        Route::get('/bank', [CompanyBankController::class, 'index']);
+        Route::post('/bank', [CompanyBankController::class, 'store']);
+        Route::post('/bank/{line}/match', [CompanyBankController::class, 'match']);
+
+        Route::get('/dividends', [CompanyDividendController::class, 'index']);
+        Route::post('/dividends', [CompanyDividendController::class, 'store']);
+        Route::post('/dividends/{dividend}/pay', [CompanyDividendController::class, 'pay']);
+
+        Route::get('/recurring', [CompanyRecurringInvoiceController::class, 'index']);
+        Route::post('/recurring', [CompanyRecurringInvoiceController::class, 'store']);
+        Route::post('/recurring/generate', [CompanyRecurringInvoiceController::class, 'generateDue']);
+        Route::post('/recurring/{schedule}/toggle', [CompanyRecurringInvoiceController::class, 'toggle']);
     });
 });
