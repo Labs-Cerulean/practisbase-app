@@ -26,6 +26,10 @@
             Condition report
             <span>Neighbour + photo</span>
         </a>
+        <a href="/pro/architect/method-statements/create?project_id={{ $project->id }}&amp;starter=excavation">
+            Method statement
+            <span>DMS / EMS / CMS</span>
+        </a>
         <a href="/pro/architect/documents/create?project_id={{ $project->id }}">
             Document
             <span>Drawing / upload</span>
@@ -33,10 +37,6 @@
         <a href="/pro/architect/projects/{{ $project->id }}/pa/create">
             PA
             <span>Number optional</span>
-        </a>
-        <a href="/pro/architect/projects/{{ $project->id }}/edit">
-            Edit project
-            <span>Site / status</span>
         </a>
     </nav>
 
@@ -97,6 +97,29 @@
                                 <div style="font-size: 0.78rem; color: var(--text-muted);">
                                     {{ $cr->typeLabel() }} · {{ $cr->isStamped() ? $cr->issue_code : 'Draft' }}
                                     @if($cr->inspected_address) · {{ \Illuminate\Support\Str::limit($cr->inspected_address, 36) }} @endif
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
+            </section>
+
+            <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Method statements</h2>
+                    <a href="/pro/architect/method-statements/create?project_id={{ $project->id }}" style="font-size: 0.82rem; font-weight: 600; color: #3f6212; text-decoration: none;">+ Build MS</a>
+                </div>
+                @if($project->methodStatements->isEmpty())
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
+                        No method statements yet. Starters cover demolition (DMS), excavation (Fifth Schedule EMS), and building works (Sixth Schedule CMS).
+                    </p>
+                @else
+                    <div style="display: grid; gap: 0.5rem;">
+                        @foreach($project->methodStatements as $ms)
+                            <a href="/pro/architect/method-statements/{{ $ms->id }}" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; text-decoration: none;">
+                                <div style="font-weight: 650; color: var(--primary-navy);">{{ $ms->title }}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                                    {{ $ms->typeLabel() }} · {{ $ms->isStamped() ? $ms->issue_code : 'Draft' }}
                                 </div>
                             </a>
                         @endforeach
