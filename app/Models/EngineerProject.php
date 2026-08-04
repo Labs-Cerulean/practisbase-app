@@ -76,6 +76,11 @@ class EngineerProject extends Model
         return $this->hasMany(EngineerDocument::class, 'engineer_project_id');
     }
 
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(EngineerCertificate::class, 'engineer_project_id');
+    }
+
     public function isArchived(): bool
     {
         return $this->status === 'archived';
