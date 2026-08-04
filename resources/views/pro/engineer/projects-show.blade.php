@@ -3,7 +3,7 @@
 @section('page_title', $project->name)
 
 @section('content')
-    @include('pro.engineer._field-styles')
+    @include('pro.shared.field-styles')
 
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <div>

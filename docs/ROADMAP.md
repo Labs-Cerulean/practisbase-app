@@ -28,14 +28,14 @@ Everything below is additive. Soft-launch work **must not** regress:
 
 ## Package maturity (honest)
 
-Engineer is the thinnest Practice package today. Soft launch cannot pretend otherwise.
+Engineer E1–E5 and Architect CR/MS are shipped. Soft launch still needs the shared BOQ/Spec library (SL-B) before Arch/Eng paths are fully honest.
 
 | Surface | Medical | Architect | Engineer |
 |---|---|---|---|
-| Project / case workspace | Patients + journals | Client → Project → PA (deep) | **Projects list + create only** |
+| Project / case workspace | Patients + journals | Client → Project → PA (deep) | Client → Project → PA + project desk |
 | Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA, condition reports + method statements (DMS/EMS/CMS) + Field strip | Field certs + specialised reports; mobile Field strip + camera capture |
-| Stamp / warrant PDFs | Stampables under patient | Stamper + certs + condition report stamp | Shared Certificates + Eng field certs/reports |
-| Mobile-first site workflow | N/A (clinic) | Field strip + camera condition reports | Field strip + camera cert/report forms |
+| Stamp / warrant PDFs | Stampables under patient | Stamper + condition reports + method statements + simple certs | Shared Certificates + Eng field certs/reports |
+| Mobile-first site workflow | N/A (clinic) | Field strip + camera on CR/MS forms | Field strip + camera cert/report forms |
 | BOQ / Spec library | N/A | **Pre soft launch (shared Arch/Eng)** | **Pre soft launch (shared Arch/Eng)** |
 | Team seats | Out of soft launch | Out of soft launch | Out of soft launch |
 
@@ -55,7 +55,7 @@ Engineer is the thinnest Practice package today. Soft launch cannot pretend othe
 - Master BOQ + Twin Block specs (seeded from your legacy docs — **pre launch**)
 - Builder UI + clone project
 
-Pricing copy today oversells Eng. Soft launch must ship Eng depth **and** a usable BOQ/spec library (or narrow claims). Prefer shipping both.
+Pricing/onboarding copy should match the desks above. Soft launch still needs a usable BOQ/spec library (or narrower claims). Prefer shipping the library.
 
 ---
 
@@ -65,7 +65,7 @@ Pricing copy today oversells Eng. Soft launch must ship Eng depth **and** a usab
 |---|---|
 | Master owns money | Billing, ledgers, tax, final invoices, warrant sign-off stay on master. |
 | Juniors get work, not books | Seats never see firm financials (post soft launch). |
-| **Engineer catch-up + BOQ before soft launch** | Eng desk must be real; Arch/Eng need a native library on day 1 of beta. |
+| **BOQ before soft launch** | Eng desk is real (E1–E5); Arch/Eng still need a native BOQ/Spec library on day 1 of beta. |
 | Library before AI | Seed + Twin Block ship pre launch; Gemini top-up stays post launch. |
 | Internal Ltd ≠ product | Cerulean company books stay operator-only. |
 
@@ -84,8 +84,8 @@ Pricing copy today oversells Eng. Soft launch must ship Eng depth **and** a usab
 ├─────────────────────────────────────────────────────────────────┤
 │ 4. Specialised Profession Tooling                               │
 │    Medical ⚕️ soft-launch ready (+ unlock polish)                │
-│    Architect 📐 soft-launch ready (+ condition reports)         │
-│    Engineer ⚙️ CRITICAL PATH (shell → docs → certs → reports)   │
+│    Architect 📐 soft-launch ready (+ CR + method statements)    │
+│    Engineer ⚙️ E1–E5 shipped (BOQ / Spec is the remaining gap) │
 ├─────────────────────────────────────────────────────────────────┤
 │ 5. BOQ & Specification Suite                                    │
 │    5.1 Core library + Twin Block + builder   PRE soft launch    │
@@ -128,7 +128,7 @@ SL-B  BOQ & Spec core library          ← PRE LAUNCH (parallel with SL-E once E
   │     B2 Twin Block linking + project BOQ builder UI
   │     B3 Spec export + clone project
   │
-SL-A  Architect                          [condition reports shipped]
+SL-A  Architect                          [CR + method statements shipped]
 SL-M  Medical WebAuthn polish          [parallel]
   │
 SL-G  Soft-launch gate
@@ -175,7 +175,7 @@ Fire / noise / ventilation / lighting — draft → stampable PDF; `engineer_rep
 #### E5 — Mobile field polish
 Camera-first cert/report forms; project Field strip.
 
-**SL-E exit:** Project shell + docs/versions + project-linked certs + four report types draft→PDF + mobile-usable forms. Fiscal/Medical/Arch freezes untouched.
+**SL-E exit:** Project shell + docs/versions + project-linked certs + four report types draft→PDF + mobile-usable forms. Fiscal/Medical/Arch freezes untouched. **Shipped (E1–E5).**
 
 ---
 
@@ -207,7 +207,7 @@ Soft launch does **not** need every line from every legacy job — it needs a **
 
 ### SL-A / SL-M / SL-G
 
-- **SL-A:** Keep Arch green; neighbour condition reports (Seventh Schedule) shipped.  
+- **SL-A:** Keep Arch green; neighbour condition reports + method statements (DMS/EMS/CMS) shipped.  
 - **SL-M:** WebAuthn reliability only; recovery code sacred.  
 - **SL-G checklist:** SL-E + SL-B met; fiscal / Med / Arch smokes green; Eng smoke includes BOQ add + Spec export; pricing matches reality; Stripe still optional.
 
@@ -362,7 +362,7 @@ Gemini 1.5 Flash: scope → draft BOQ; PDF/scan → structured BOQ; `ai_usage_lo
 | 7 | BOQ B2 builder + Twin Block | Arch/Eng project views | Low–med |
 | 8 | BOQ B3 Spec export + clone | Arch/Eng | Low |
 | 9 | Pricing/onboarding copy sync | marketing Blade | Low |
-| 10 | Optional Arch neighbor / Med WebAuthn | scoped | Low |
+| 10 | Optional Med WebAuthn polish | Med | Low |
 | 11 | Soft-launch checklist | docs | None |
 
 B0 (NotebookLM) runs **outside** git until curated JSON is ready to commit (steps 6–8). Fiscal freezes: no feature PRs unless a beta-blocking bug.

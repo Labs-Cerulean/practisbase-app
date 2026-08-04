@@ -3,7 +3,7 @@
 @section('page_title', $project->name)
 
 @section('content')
-    @include('pro.engineer._field-styles')
+    @include('pro.shared.field-styles')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <div>
             <a href="{{ $project->client ? '/pro/architect/clients/'.$project->client->id : '/pro/architect/projects' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->client->name ?? 'Projects' }}</a>
@@ -107,7 +107,7 @@
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
                     <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Method statements</h2>
-                    <a href="/pro/architect/method-statements/create?project_id={{ $project->id }}" style="font-size: 0.82rem; font-weight: 600; color: #3f6212; text-decoration: none;">+ Build MS</a>
+                    <a href="/pro/architect/method-statements/create?project_id={{ $project->id }}&amp;starter=excavation" style="font-size: 0.82rem; font-weight: 600; color: #3f6212; text-decoration: none;">+ Build MS</a>
                 </div>
                 @if($project->methodStatements->isEmpty())
                     <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">

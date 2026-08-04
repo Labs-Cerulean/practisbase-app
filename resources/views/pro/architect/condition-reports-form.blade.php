@@ -3,7 +3,7 @@
 @section('page_title', $report ? 'Edit condition report' : 'New condition report')
 
 @section('content')
-    @include('pro.engineer._field-styles')
+    @include('pro.shared.field-styles')
     @php
         $isEdit = $report !== null;
         $action = $isEdit ? '/pro/architect/condition-reports/'.$report->id : '/pro/architect/condition-reports';
@@ -161,7 +161,7 @@
             <textarea name="payload[legal_footer]" rows="3" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ $p['legal_footer'] }}</textarea>
         </section>
 
-        @include('pro.engineer._field-photos')
+        @include('pro.shared.field-photos')
 
         <div class="eng-field-savebar">
             <button type="submit" style="background: #3f6212;">{{ $isEdit ? 'Save draft' : 'Save draft report' }}</button>

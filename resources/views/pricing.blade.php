@@ -635,13 +635,13 @@
             <article class="prof-path arch">
                 <span class="prof-label">Architect</span>
                 <h3>Studio desk</h3>
-                <p class="prof-lead">For architects running project files, stamps, and phase tracking.</p>
+                <p class="prof-lead">For architects running condition reports, method statements, stamps, and project files.</p>
                 <div class="tools-label">What you get</div>
                 <ul>
+                    <li>Condition reports and method statements</li>
+                    <li>BCA template catalog + blank downloads</li>
                     <li>Architect document management (DMS)</li>
-                    <li>Project records and phase tracking</li>
-                    <li>Document stamper for issued files</li>
-                    <li>Shared certificate register</li>
+                    <li>Project records, phase tracking, and stamper</li>
                     <li>Practice branding on exports</li>
                 </ul>
                 <div class="prof-prices">
@@ -665,14 +665,14 @@
             <article class="prof-path eng">
                 <span class="prof-label">Engineer</span>
                 <h3>Technical desk</h3>
-                <p class="prof-lead">For engineers who need projects, certificates, and clean technical exports.</p>
+                <p class="prof-lead">For engineers who need projects, field certificates, and specialised reports.</p>
                 <div class="tools-label">What you get</div>
                 <ul>
-                    <li>Engineering project workspace</li>
-                    <li>Certificate issue and lookup</li>
-                    <li>Technical document exports</li>
-                    <li>Shared certificate register</li>
-                    <li>Practice branding on exports</li>
+                    <li>Engineering project workspace (Client → Project → PA)</li>
+                    <li>Field certificates and specialised reports</li>
+                    <li>Site photos + drawings / document version control</li>
+                    <li>Shared simple certificate register</li>
+                    <li>Practice branding on stampable PDFs</li>
                 </ul>
                 <div class="prof-prices">
                     <a class="prof-price-row" href="/register">

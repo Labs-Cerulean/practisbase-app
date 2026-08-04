@@ -3,7 +3,7 @@
 @section('page_title', $certificate ? 'Edit certificate' : 'New certificate')
 
 @section('content')
-    @include('pro.engineer._field-styles')
+    @include('pro.shared.field-styles')
     @php
         $isEdit = $certificate !== null;
         $action = $isEdit ? '/pro/engineer/certificates/'.$certificate->id : '/pro/engineer/certificates';
@@ -191,7 +191,7 @@
             </div>
         </section>
 
-        @include('pro.engineer._field-photos')
+        @include('pro.shared.field-photos')
 
         <div class="eng-field-savebar">
             <button type="submit">{{ $isEdit ? 'Save draft' : 'Save draft certificate' }}</button>

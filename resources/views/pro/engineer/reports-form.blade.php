@@ -3,7 +3,7 @@
 @section('page_title', $report ? 'Edit report' : 'New report')
 
 @section('content')
-    @include('pro.engineer._field-styles')
+    @include('pro.shared.field-styles')
     @php
         $isEdit = $report !== null;
         $action = $isEdit ? '/pro/engineer/reports/'.$report->id : '/pro/engineer/reports';
@@ -215,7 +215,7 @@
             </div>
         </section>
 
-        @include('pro.engineer._field-photos')
+        @include('pro.shared.field-photos')
 
         <div class="eng-field-savebar">
             <button type="submit">{{ $isEdit ? 'Save draft' : 'Save draft report' }}</button>

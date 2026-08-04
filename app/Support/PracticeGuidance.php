@@ -141,7 +141,7 @@ class PracticeGuidance
             ];
             $items[] = [
                 'key' => 'templates',
-                'label' => 'Open the BCA templates library',
+                'label' => 'Browse the BCA templates library',
                 'href' => '/pro/architect/templates',
                 'done' => $hasProject,
             ];

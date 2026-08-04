@@ -1,4 +1,4 @@
-{{-- Shared Engineer field / mobile polish styles --}}
+{{-- Shared Arch/Eng field / mobile polish styles --}}
 <style>
     .eng-field-strip {
         display: grid;
