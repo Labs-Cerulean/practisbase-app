@@ -24,7 +24,7 @@
     </div>
 
     <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #1e3a8a; line-height: 1.45;">
-        This login is locked to Cerulean Labs Ltd company books (Art 10, dividends later). Sole-trader Tax &amp; VAT / SSC screens are turned off so you cannot mix the two by mistake.
+        This login is locked to Cerulean Labs Ltd company books (Art 10 double-entry ledger). Sole-trader Tax &amp; VAT / SSC screens stay off so you cannot mix the two.
     </div>
 
     @if(! $profile->shareCapitalReceived())
@@ -76,28 +76,52 @@
                 <div style="font-size: 1.35rem; font-weight: 700; color: {{ $vatBalance > 0 ? '#b45309' : '#059669' }};">€{{ number_format($vatBalance, 2) }}</div>
             </div>
             <div>
-                <div style="font-size: 0.75rem; color: var(--text-muted);">Owed to you (director)</div>
-                <div style="font-size: 1.35rem; font-weight: 700; color: {{ $owedToDirector > 0 ? '#b45309' : '#059669' }};">€{{ number_format($owedToDirector, 2) }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Net profit (YTD books)</div>
+                <div style="font-size: 1.35rem; font-weight: 700; color: {{ $netProfit >= 0 ? '#059669' : '#b91c1c' }};">€{{ number_format($netProfit, 2) }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">BOV ledger balance</div>
+                <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($bankBalance, 2) }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Balance sheet</div>
+                <div style="font-size: 1.05rem; font-weight: 700; color: {{ $booksBalanced ? '#059669' : '#b91c1c' }};">{{ $booksBalanced ? 'Balanced' : 'Out of balance' }}</div>
             </div>
         </div>
         <p style="margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
-            Draft from company invoices and expenses only. Output VAT €{{ number_format($outputVat, 2) }} − input VAT €{{ number_format($inputVat, 2) }}.
+            Operational billing plus posted double-entry journals. Output VAT €{{ number_format($outputVat, 2) }} − input VAT €{{ number_format($inputVat, 2) }}.
             Open RFPs: {{ $openRfps }}. Share capital: {{ $profile->shareCapitalReceived() ? 'received '.$profile->share_capital_received_at->format('d M Y') : 'pending at BOV' }}.
         </p>
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <a href="/company/accounts" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Accounts</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">TB · P&amp;L · Balance sheet · journals</div>
+        </a>
         <a href="/company/invoices" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Invoices &amp; RFPs</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Bill B2B clients · convert RFPs · PDF</div>
         </a>
+        <a href="/company/recurring" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Monthly billing</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Recurring B2B invoice schedules</div>
+        </a>
         <a href="/company/expenses" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Expenses</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Photo/PDF · director refunds</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Photo/PDF · director loan postings</div>
+        </a>
+        <a href="/company/bank" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Bank recon</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Match BOV lines to the ledger</div>
+        </a>
+        <a href="/company/dividends" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Dividends</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Declare · pay from retained earnings</div>
         </a>
         <a href="/company/clients" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Clients</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Company customers (not practice)</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Company customers + statements</div>
         </a>
         <a href="/company/profile" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Company profile</div>

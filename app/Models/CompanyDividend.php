@@ -5,34 +5,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CompanyPayment extends Model
+class CompanyDividend extends Model
 {
     protected $fillable = [
         'user_id',
-        'company_invoice_id',
+        'declared_on',
+        'paid_on',
         'amount',
-        'payment_date',
-        'payment_method',
-        'notes',
-        'is_transfer',
+        'description',
+        'status',
     ];
 
     protected function casts(): array
     {
         return [
-            'payment_date' => 'date',
+            'declared_on' => 'date',
+            'paid_on' => 'date',
             'amount' => 'decimal:2',
-            'is_transfer' => 'boolean',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function invoice(): BelongsTo
-    {
-        return $this->belongsTo(CompanyInvoice::class, 'company_invoice_id');
     }
 }
