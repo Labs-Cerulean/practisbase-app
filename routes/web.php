@@ -367,6 +367,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/clients', [CompanyClientController::class, 'index']);
         Route::get('/clients/create', [CompanyClientController::class, 'create']);
         Route::post('/clients', [CompanyClientController::class, 'store']);
+        Route::get('/clients/{client}', [CompanyClientController::class, 'show']);
         Route::get('/clients/{client}/edit', [CompanyClientController::class, 'edit']);
         Route::put('/clients/{client}', [CompanyClientController::class, 'update']);
 
