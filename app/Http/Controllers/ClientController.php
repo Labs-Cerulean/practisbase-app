@@ -145,20 +145,39 @@ class ClientController extends Controller
         return redirect('/clients')->with('success', 'Client added successfully!');
     }
 
-    // 4. View a Specific Client Profile + statement of what they owe
-    public function show(Client $client)
+    // 4. View a Specific Client Profile + open statement + full history
+    public function show(Request $request, Client $client)
     {
         $this->authorizeClient($client);
+
+        $tab = $request->input('tab', 'statement');
+        if (! in_array($tab, ['statement', 'history'], true)) {
+            $tab = 'statement';
+        }
 
         $documents = $client->invoices()
             ->with([
                 'payments' => fn ($q) => $q->orderBy('payment_date')->orderBy('id'),
-                'childDocuments' => fn ($q) => $q->where('type', 'invoice'),
+                'childDocuments',
             ])
             ->orderBy('issue_date')
             ->orderBy('id')
             ->get();
 
+        $history = $this->buildTransactionHistory($documents);
+        $statement = $this->buildOpenStatement($documents);
+
+        return view('clients.show', compact('client', 'statement', 'history', 'tab'));
+    }
+
+    /**
+     * Full chronological log — includes settled invoices and converted RFPs.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Invoice>  $documents
+     * @return array{rows: \Illuminate\Support\Collection, official_owed: float, rfp_owed: float, total_owed: float}
+     */
+    private function buildTransactionHistory($documents): array
+    {
         $rows = collect();
         $runningOfficial = 0.0;
         $runningRfp = 0.0;
@@ -174,6 +193,7 @@ class ClientController extends Controller
                     'credit' => (float) $doc->total,
                     'official_balance' => $runningOfficial,
                     'rfp_balance' => $runningRfp,
+                    'note' => null,
                 ]);
                 continue;
             }
@@ -188,64 +208,133 @@ class ClientController extends Controller
                     'credit' => 0.0,
                     'official_balance' => $runningOfficial,
                     'rfp_balance' => $runningRfp,
+                    'note' => null,
                 ]);
             } elseif ($doc->type === 'rfp') {
-                $converted = (float) $doc->childDocuments->sum('total');
+                $converted = (float) $doc->childDocuments->where('type', 'invoice')->sum('total');
                 $remaining = round(max(0, (float) $doc->total - $converted), 2);
-                if ($remaining >= 0.009) {
-                    $runningRfp = round($runningRfp + $remaining, 2);
+                $label = 'RFP '.$doc->invoice_number;
+                if ($doc->status === 'converted' || $remaining < 0.009) {
+                    $label .= ' (converted)';
+                } else {
+                    $label .= ' (pro-forma)';
+                }
+                $runningRfp = round($runningRfp + (float) $doc->total, 2);
+                $rows->push([
+                    'date' => $doc->issue_date,
+                    'label' => $label,
+                    'kind' => 'rfp',
+                    'debit' => (float) $doc->total,
+                    'credit' => 0.0,
+                    'official_balance' => $runningOfficial,
+                    'rfp_balance' => $runningRfp,
+                    'note' => $converted >= 0.009 ? '€'.number_format($converted, 2).' later converted to tax invoice(s)' : null,
+                ]);
+                if ($converted >= 0.009) {
+                    $runningRfp = round($runningRfp - $converted, 2);
                     $rows->push([
                         'date' => $doc->issue_date,
-                        'label' => 'RFP '.$doc->invoice_number.' (not yet tax-invoiced)',
-                        'kind' => 'rfp',
-                        'debit' => $remaining,
-                        'credit' => 0.0,
-                        'official_balance' => $runningOfficial,
-                        'rfp_balance' => $runningRfp,
-                    ]);
-                } elseif ($doc->status === 'converted') {
-                    $rows->push([
-                        'date' => $doc->issue_date,
-                        'label' => 'RFP '.$doc->invoice_number.' (fully converted)',
-                        'kind' => 'rfp',
+                        'label' => 'RFP '.$doc->invoice_number.' → converted to tax invoice',
+                        'kind' => 'convert',
                         'debit' => 0.0,
-                        'credit' => 0.0,
+                        'credit' => $converted,
                         'official_balance' => $runningOfficial,
                         'rfp_balance' => $runningRfp,
+                        'note' => 'Removes converted amount from RFP track (invoice rows carry the tax bill)',
                     ]);
                 }
             }
 
             foreach ($doc->payments as $payment) {
-                if ($payment->is_transfer) {
-                    continue;
-                }
                 $amount = (float) $payment->amount;
-                if ($doc->type === 'invoice') {
-                    $runningOfficial = round($runningOfficial - $amount, 2);
-                } elseif ($doc->type === 'rfp') {
-                    $runningRfp = round($runningRfp - $amount, 2);
+                $isTransfer = (bool) $payment->is_transfer;
+                if (! $isTransfer) {
+                    if ($doc->type === 'invoice') {
+                        $runningOfficial = round($runningOfficial - $amount, 2);
+                    } elseif ($doc->type === 'rfp') {
+                        $runningRfp = round($runningRfp - $amount, 2);
+                    }
                 }
                 $rows->push([
                     'date' => $payment->payment_date,
                     'label' => ($amount < 0 ? 'Refund on ' : 'Payment on ').$doc->invoice_number,
-                    'kind' => 'payment',
+                    'kind' => $isTransfer ? 'transfer' : 'payment',
                     'debit' => $amount < 0 ? abs($amount) : 0.0,
                     'credit' => $amount > 0 ? $amount : 0.0,
                     'official_balance' => $runningOfficial,
                     'rfp_balance' => $runningRfp,
+                    'note' => $isTransfer ? 'Internal transfer — not client cash collected' : null,
                 ]);
             }
         }
 
-        $statement = [
+        return [
             'rows' => $rows,
             'official_owed' => max(0, $runningOfficial),
             'rfp_owed' => max(0, $runningRfp),
             'total_owed' => max(0, $runningOfficial) + max(0, $runningRfp),
         ];
+    }
 
-        return view('clients.show', compact('client', 'statement'));
+    /**
+     * Open-item statement — settled invoices and fully converted RFPs are omitted.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Invoice>  $documents
+     * @return array{rows: \Illuminate\Support\Collection, official_owed: float, rfp_owed: float, total_owed: float}
+     */
+    private function buildOpenStatement($documents): array
+    {
+        $rows = collect();
+        $officialOwed = 0.0;
+        $rfpOwed = 0.0;
+
+        foreach ($documents as $doc) {
+            if ($doc->type === 'invoice') {
+                $credits = (float) $doc->childDocuments->where('type', 'credit_note')->sum('total');
+                $paid = (float) $doc->payments->where('is_transfer', false)->sum('amount');
+                $due = round((float) $doc->total - $credits - $paid, 2);
+                if ($due <= 0.009) {
+                    continue;
+                }
+                $officialOwed = round($officialOwed + $due, 2);
+                $rows->push([
+                    'date' => $doc->issue_date,
+                    'label' => $doc->invoice_number,
+                    'kind' => 'invoice',
+                    'billed' => (float) $doc->total,
+                    'credits' => $credits,
+                    'paid' => $paid,
+                    'due' => $due,
+                ]);
+            } elseif ($doc->type === 'rfp') {
+                $converted = (float) $doc->childDocuments->where('type', 'invoice')->sum('total');
+                $remaining = round(max(0, (float) $doc->total - $converted), 2);
+                $paid = (float) $doc->payments->where('is_transfer', false)->sum('amount');
+                $due = round($remaining - $paid, 2);
+                if ($due <= 0.009) {
+                    continue;
+                }
+                $rfpOwed = round($rfpOwed + $due, 2);
+                $rows->push([
+                    'date' => $doc->issue_date,
+                    'label' => $doc->invoice_number.' (RFP)',
+                    'kind' => 'rfp',
+                    'billed' => $remaining,
+                    'credits' => 0.0,
+                    'paid' => $paid,
+                    'due' => $due,
+                ]);
+            }
+        }
+
+        $rows = $rows->sortBy(fn ($row) => $row['date']->format('Y-m-d').'-'.$row['label'])->values();
+
+        return [
+            'rows' => $rows,
+            'official_owed' => $officialOwed,
+            'rfp_owed' => $rfpOwed,
+            'total_owed' => round($officialOwed + $rfpOwed, 2),
+        ];
     }
 
     // 5. Show the Edit Form
