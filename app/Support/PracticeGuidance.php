@@ -173,6 +173,14 @@ class PracticeGuidance
                 'done' => $hasProject,
             ];
             $items[] = [
+                'key' => 'eng_docs',
+                'label' => 'Upload a drawing or document (Rev 1)',
+                'href' => $hasProject
+                    ? '/pro/engineer/documents/create?project_id='.$firstProject->id
+                    : '/pro/engineer/documents/create',
+                'done' => \App\Models\EngineerDocument::where('user_id', $user->id)->exists(),
+            ];
+            $items[] = [
                 'key' => 'certificates',
                 'label' => 'Open the certificate register',
                 'href' => '/pro/certificates',

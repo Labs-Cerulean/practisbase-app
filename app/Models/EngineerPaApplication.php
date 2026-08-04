@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EngineerPaApplication extends Model
 {
@@ -40,6 +41,11 @@ class EngineerPaApplication extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(EngineerProject::class, 'engineer_project_id');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(EngineerDocument::class, 'engineer_pa_application_id');
     }
 
     public function displayLabel(): string

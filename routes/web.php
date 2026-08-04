@@ -30,6 +30,7 @@ use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
 use App\Http\Controllers\Pro\Engineer\ClientController as EngineerClientController;
 use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
+use App\Http\Controllers\Pro\Engineer\DocumentController as EngineerDocumentController;
 use App\Http\Controllers\Company\DeskController as CompanyDeskController;
 use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
@@ -295,6 +296,14 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/pa/{pa}', [EngineerPaController::class, 'show']);
         Route::get('/pa/{pa}/edit', [EngineerPaController::class, 'edit']);
         Route::put('/pa/{pa}', [EngineerPaController::class, 'update']);
+
+        Route::get('/documents', [EngineerDocumentController::class, 'index']);
+        Route::get('/documents/create', [EngineerDocumentController::class, 'create']);
+        Route::post('/documents', [EngineerDocumentController::class, 'store']);
+        Route::get('/documents/{document}', [EngineerDocumentController::class, 'show']);
+        Route::put('/documents/{document}', [EngineerDocumentController::class, 'update']);
+        Route::post('/documents/{document}/revisions', [EngineerDocumentController::class, 'uploadRevision']);
+        Route::get('/documents/{document}/revisions/{revision}/download', [EngineerDocumentController::class, 'download']);
 
         Route::redirect('/certifications', '/pro/certificates');
         Route::redirect('/certifications/create', '/pro/certificates/create');
