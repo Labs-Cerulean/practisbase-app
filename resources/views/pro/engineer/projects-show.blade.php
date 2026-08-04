@@ -19,6 +19,7 @@
             <a href="/pro/engineer/projects/{{ $project->id }}/pa/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ PA</a>
             <a href="/pro/engineer/documents/create?project_id={{ $project->id }}" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Document</a>
             <a href="/pro/engineer/certificates/create?project_id={{ $project->id }}" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Certificate</a>
+            <a href="/pro/engineer/reports/create?project_id={{ $project->id }}" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Report</a>
         </div>
     </div>
 
@@ -117,10 +118,26 @@
             </section>
 
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
-                <h2 style="margin: 0 0 0.35rem; font-size: 1.05rem; color: var(--primary-navy);">Specialised reports</h2>
-                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-                    Fire, noise, ventilation, and lighting reports attach here next (roadmap E4). For inspection certificates use the builder above.
-                </p>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Specialised reports</h2>
+                    <a href="/pro/engineer/reports/create?project_id={{ $project->id }}" style="font-size: 0.82rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">+ Build report</a>
+                </div>
+                @if($project->reports->isEmpty())
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
+                        No specialised reports on this project yet. Use the generic builder for fire, noise, ventilation, lighting, and similar surveys.
+                    </p>
+                @else
+                    <div style="display: grid; gap: 0.5rem;">
+                        @foreach($project->reports as $rep)
+                            <a href="/pro/engineer/reports/{{ $rep->id }}" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; text-decoration: none;">
+                                <div style="font-weight: 650; color: var(--primary-navy);">{{ $rep->title }}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                                    {{ $rep->typeLabel() }} · {{ $rep->isStamped() ? $rep->issue_code : 'Draft' }}
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
             </section>
         </div>
 
@@ -131,6 +148,7 @@
                     <a href="/pro/engineer/projects/{{ $project->id }}/pa/create" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ PA (number optional)</a>
                     <a href="/pro/engineer/documents/create?project_id={{ $project->id }}" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ Drawing / document</a>
                     <a href="/pro/engineer/certificates/create?project_id={{ $project->id }}" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ Field certificate</a>
+                    <a href="/pro/engineer/reports/create?project_id={{ $project->id }}" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ Specialised report</a>
                     <a href="/pro/engineer/projects/create{{ $project->client ? '?client_id='.$project->client->id : '' }}" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ Another project</a>
                 </div>
             </section>

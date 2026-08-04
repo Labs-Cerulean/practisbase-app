@@ -181,10 +181,20 @@ class PracticeGuidance
                 'done' => \App\Models\EngineerDocument::where('user_id', $user->id)->exists(),
             ];
             $items[] = [
-                'key' => 'certificates',
-                'label' => 'Open the certificate register',
-                'href' => '/pro/certificates',
-                'done' => $hasProject,
+                'key' => 'eng_field_cert',
+                'label' => 'Build a field certificate',
+                'href' => $hasProject
+                    ? '/pro/engineer/certificates/create?project_id='.$firstProject->id
+                    : '/pro/engineer/certificates/create',
+                'done' => \App\Models\EngineerCertificate::where('user_id', $user->id)->exists(),
+            ];
+            $items[] = [
+                'key' => 'eng_report',
+                'label' => 'Draft a specialised report',
+                'href' => $hasProject
+                    ? '/pro/engineer/reports/create?project_id='.$firstProject->id
+                    : '/pro/engineer/reports/create',
+                'done' => \App\Models\EngineerReport::where('user_id', $user->id)->exists(),
             ];
         }
 

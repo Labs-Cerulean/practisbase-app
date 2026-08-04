@@ -33,22 +33,23 @@ Engineer is the thinnest Practice package today. Soft launch cannot pretend othe
 | Surface | Medical | Architect | Engineer |
 |---|---|---|---|
 | Project / case workspace | Patients + journals | Client → Project → PA (deep) | **Projects list + create only** |
-| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA template fill | **None beyond generic cert photo** |
+| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA template fill | Field certs + specialised reports (generic builders) |
 | Stamp / warrant PDFs | Stampables under patient | Stamper + certs | Shared Certificates only |
 | Mobile-first site workflow | N/A (clinic) | Not yet (neighbor reports planned) | **Not started** |
 | BOQ / Spec library | N/A | **Pre soft launch (shared Arch/Eng)** | **Pre soft launch (shared Arch/Eng)** |
 | Team seats | Out of soft launch | Out of soft launch | Out of soft launch |
 
 ### Engineer — what actually exists today
-- `engineer_projects` table + create/list UI (`/pro/engineer/projects`)
-- Discipline / phase labels (EMS/BMS = **labels only**)
-- Shared `/pro/certificates` register (stamp & issue + PDF)
+- Client → Project → PA (optional number) + project show/edit/archive
+- Drawings & documents with revisions (`engineer_documents`)
+- Generic field certificate builder (equipment / scaffold / PA starters) — stamp → PDF
+- Generic specialised report builder (fire / noise / ventilation / lighting starters) — stamp → PDF
+- Shared `/pro/certificates` register (simple stamp & issue)
 - Nav + dashboard shortcuts
 
 ### Engineer — soft-launch gap (code)
-- Project show/edit/archive, journals, drawings VC
-- Project-linked field certs + specialised reports (fire / noise / ventilation / lighting)
-- Mobile field polish
+- Mobile field polish (E5)
+- BOQ / Spec library (shared Arch/Eng, SL-B)
 
 ### Shared Arch/Eng — soft-launch gap (library)
 - Master BOQ + Twin Block specs (seeded from your legacy docs — **pre launch**)
