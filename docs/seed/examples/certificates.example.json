@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "kind": "equipment",
+      "title_template": "Equipment certification — {{equipment_type}}",
+      "fields": [
+        {"key": "equipment_type", "label": "Equipment type", "type": "text", "required": true, "options": []},
+        {"key": "manufacturer", "label": "Manufacturer", "type": "text", "required": false, "options": []},
+        {"key": "serial_number", "label": "Serial number", "type": "text", "required": false, "options": []},
+        {"key": "location", "label": "Location / area", "type": "text", "required": true, "options": []},
+        {"key": "test_result", "label": "Result", "type": "select", "required": true, "options": ["Pass", "Fail", "Conditional"]},
+        {"key": "next_due_on", "label": "Next inspection due", "type": "date", "required": false, "options": []}
+      ],
+      "default_notes": null,
+      "example_filled": {
+        "equipment_type": "Fire alarm panel",
+        "manufacturer": "ExampleCo",
+        "serial_number": "REDACTED",
+        "location": "Ground floor plant room",
+        "test_result": "Pass"
+      }
+    }
+  ]
+}

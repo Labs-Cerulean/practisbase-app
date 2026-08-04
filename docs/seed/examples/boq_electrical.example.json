@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "trade": "electrical",
+  "package": "engineering",
+  "source_batch": "example-only-replace-me",
+  "categories": [
+    {
+      "code": "EL-LV",
+      "name": "LV Distribution",
+      "items": [
+        {
+          "item_code": "EL-LV-0010",
+          "description": "Supply and install 12-way TP&N distribution board complete with isolator and earthing",
+          "unit": "Nr",
+          "typical_rate_eur": null,
+          "rate_notes": null,
+          "keywords": ["DB", "distribution board", "TPN", "LV"],
+          "spec_block_code": "SPEC-EL-LV-DB-01"
+        }
+      ]
+    }
+  ],
+  "specification_blocks": [
+    {
+      "block_code": "SPEC-EL-LV-DB-01",
+      "title": "LV Distribution Boards",
+      "body": "Distribution boards shall be metalclad, TP&N, with adequate circuit capacity, labelled ways, and earthing arranged to the applicable wiring regulations. Exact clause text to be replaced from curated NotebookLM extraction.",
+      "related_item_codes": ["EL-LV-0010"]
+    }
+  ]
+}
