@@ -9,6 +9,42 @@ namespace App\Support;
 class EngineerCertificateBlueprint
 {
     /**
+     * @return array{id: string, item: string, outcome: string, comments: string}
+     */
+    public static function blankChecklistRow(): array
+    {
+        return [
+            'id' => PracticeDocumentContext::newRowId('c'),
+            'item' => '',
+            'outcome' => '',
+            'comments' => '',
+        ];
+    }
+
+    /**
+     * Optional helper items — not seeded into new certificates.
+     *
+     * @return list<string>
+     */
+    public static function commonChecklistItems(string $starterKey): array
+    {
+        return match ($starterKey) {
+            'equipment' => [
+                'Structural integrity / welds / lifting points',
+                'Labels and markings',
+            ],
+            'scaffold' => [
+                'Handrails / midrails',
+                'Toe-boards',
+                'Ladders / access',
+                'Anchoring',
+                'Decks / fittings',
+            ],
+            default => [],
+        };
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function emptyPayload(): array
@@ -23,9 +59,7 @@ class EngineerCertificateBlueprint
             'highlight_label' => '',
             'highlight_value' => '',
             'checklist_heading' => 'Inspection checklist',
-            'checklist' => [
-                ['item' => '', 'outcome' => '', 'comments' => ''],
-            ],
+            'checklist' => [self::blankChecklistRow()],
             'sections' => [
                 ['heading' => 'Findings / remarks', 'body' => ''],
                 ['heading' => 'Conditions of validity', 'body' => ''],
@@ -63,10 +97,7 @@ class EngineerCertificateBlueprint
                     'highlight_label' => 'Maximum certified safe working load',
                     'highlight_value' => '',
                     'checklist_heading' => 'Inspection items',
-                    'checklist' => [
-                        ['item' => 'Structural integrity / welds / lifting points', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Labels and markings', 'outcome' => '', 'comments' => ''],
-                    ],
+                    'checklist' => [self::blankChecklistRow()],
                     'sections' => [
                         ['heading' => 'Results', 'body' => ''],
                         ['heading' => 'Conditions of validity', 'body' => "This certificate is valid only if the equipment is operated by authorised competent persons, maintained in accordance with applicable regulations, and is not used if damaged or modified.\n\nIssued in accordance with Occupational Health & Safety Authority requirements and S.L.424.35 / L.N. 293 of 2016 as applicable."],
@@ -90,13 +121,7 @@ class EngineerCertificateBlueprint
                     'highlight_label' => 'Appraisal',
                     'highlight_value' => 'Safe for use',
                     'checklist_heading' => 'Inspection checklist',
-                    'checklist' => [
-                        ['item' => 'Handrails / midrails', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Toe-boards', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Ladders / access', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Anchoring', 'outcome' => '', 'comments' => ''],
-                        ['item' => 'Decks / fittings', 'outcome' => '', 'comments' => ''],
-                    ],
+                    'checklist' => [self::blankChecklistRow()],
                     'sections' => [
                         ['heading' => 'Additional details', 'body' => ''],
                         ['heading' => 'Other comments', 'body' => ''],
@@ -119,7 +144,7 @@ class EngineerCertificateBlueprint
                     'highlight_label' => 'Declaration',
                     'highlight_value' => 'Requirements implemented / satisfied / operational',
                     'checklist_heading' => '',
-                    'checklist' => [],
+                    'checklist' => [self::blankChecklistRow()],
                     'sections' => [
                         ['heading' => 'Declaration', 'body' => "I, the undersigned engineer as prescribed by the relevant legislation, hereby declare, in terms of the requirements of the condition of the permission and in relation to the premises cited above, that the requirements of the approved document(s) cited above have been implemented on site, are found to be fully satisfied, and are fully operational as verified through an inspection.\n\n(Alternatively state: not applicable to the premises cited above.)"],
                     ],
@@ -168,12 +193,13 @@ class EngineerCertificateBlueprint
             $item = trim((string) ($row['item'] ?? ''));
             $outcome = trim((string) ($row['outcome'] ?? ''));
             $comments = trim((string) ($row['comments'] ?? ''));
-            if ($item === '' && $outcome === '' && $comments === '') {
-                continue;
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '' || ! preg_match('/^[A-Za-z0-9_\-]{2,32}$/', $id)) {
+                $id = PracticeDocumentContext::newRowId('c');
             }
-            $checklist[] = ['item' => $item, 'outcome' => $outcome, 'comments' => $comments];
+            $checklist[] = ['id' => $id, 'item' => $item, 'outcome' => $outcome, 'comments' => $comments];
         }
-        $base['checklist'] = $checklist;
+        $base['checklist'] = $checklist !== [] ? $checklist : [self::blankChecklistRow()];
 
         $sections = [];
         foreach (($raw['sections'] ?? []) as $row) {
@@ -190,5 +216,30 @@ class EngineerCertificateBlueprint
         $base['sections'] = $sections;
 
         return $base;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<array{id: string, label: string}>
+     */
+    public static function photoLinkOptions(array $payload): array
+    {
+        $options = [];
+        foreach (($payload['checklist'] ?? []) as $i => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '') {
+                continue;
+            }
+            $item = trim((string) ($row['item'] ?? ''));
+            $options[] = [
+                'id' => $id,
+                'label' => 'Checklist '.($i + 1).($item !== '' ? ' — '.$item : ''),
+            ];
+        }
+
+        return $options;
     }
 }

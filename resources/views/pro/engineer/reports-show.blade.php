@@ -4,9 +4,13 @@
 
 @section('content')
     @include('pro.shared.field-styles')
+    @php
+        $photoRowLabels = collect(\App\Support\EngineerReportBlueprint::photoLinkOptions($payload))
+            ->pluck('label', 'id');
+    @endphp
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
-            <a href="/pro/engineer/reports" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Reports</a>
+            <a href="{{ $report->project ? '/pro/engineer/projects/'.$report->project->id : '/pro/engineer/reports' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $report->project ? $report->project->name : 'Reports' }}</a>
             <h1 style="margin: 0.4rem 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">{{ $report->title }}</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
                 {{ $report->typeLabel() }}
@@ -147,7 +151,13 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.65rem;">
                     @foreach($report->photos as $photo)
                         <a href="/pro/engineer/reports/{{ $report->id }}/photos/{{ $photo->id }}" target="_blank" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.5rem; text-decoration: none; font-size: 0.78rem; color: var(--primary-cerulean); font-weight: 600;">
-                            Photo {{ $loop->iteration }}@if($photo->caption) — {{ $photo->caption }}@endif
+                            <div>Photo {{ $loop->iteration }}</div>
+                            @if($photo->linked_row_id)
+                                <div style="color: var(--text-muted); font-weight: 500;">{{ $photoRowLabels->get($photo->linked_row_id, 'Row '.$photo->linked_row_id) }}</div>
+                            @endif
+                            @if($photo->caption)
+                                <div style="color: var(--primary-navy); font-weight: 500;">{{ $photo->caption }}</div>
+                            @endif
                         </a>
                     @endforeach
                 </div>

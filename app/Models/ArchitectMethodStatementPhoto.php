@@ -12,6 +12,7 @@ class ArchitectMethodStatementPhoto extends Model
         'architect_method_statement_id',
         'file_path',
         'caption',
+        'linked_row_id',
         'sort_order',
     ];
 

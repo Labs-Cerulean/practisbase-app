@@ -9,6 +9,7 @@ use App\Models\EngineerReport;
 use App\Models\EngineerReportPhoto;
 use App\Support\EngineerReportBlueprint;
 use App\Support\IssueCode;
+use App\Support\PracticeDocumentContext;
 use App\Support\TenantStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -34,25 +35,57 @@ class ReportController extends Controller
 
     public function create(Request $request)
     {
+        $projects = EngineerProject::where('user_id', Auth::id())
+            ->where('status', '!=', 'archived')
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+
+        $projectId = (int) $request->query('project_id');
+        if ($projectId <= 0 || ! $projects->contains('id', $projectId)) {
+            return view('pro.shared.pick-project', [
+                'projects' => $projects,
+                'heading' => 'Choose a project for this specialised report',
+                'lead' => 'Specialised reports sit under a project so client, premises, contact, and filing refs auto-fill.',
+                'backHref' => '/pro/engineer/reports',
+                'createProjectHref' => '/pro/engineer/projects/create',
+                'continueBase' => '/pro/engineer/reports/create?starter='.urlencode((string) $request->query('starter', 'blank')),
+                'accent' => 'var(--primary-cerulean)',
+            ]);
+        }
+
+        $project = $projects->firstWhere('id', $projectId);
         $starterKey = (string) $request->query('starter', 'blank');
         $starters = EngineerReportBlueprint::starters();
         if (! isset($starters[$starterKey])) {
             $starterKey = 'blank';
         }
         $starter = $starters[$starterKey];
+        $paId = (int) $request->query('pa_id');
+        $pas = EngineerPaApplication::where('user_id', Auth::id())
+            ->where('engineer_project_id', $projectId)
+            ->orderByDesc('updated_at')
+            ->get();
+        $pa = $paId > 0 ? $pas->firstWhere('id', $paId) : null;
+        $context = PracticeDocumentContext::engineerPrefill($project, $pa, 'ER');
+        $payload = $this->prefillPermissionAttributes($starter['payload'], $context);
 
         return view('pro.engineer.reports-form', [
             'report' => null,
-            'projects' => EngineerProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => EngineerPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
-            'payload' => $starter['payload'],
+            'projects' => $projects,
+            'pas' => $pas,
+            'payload' => $payload,
             'starters' => $starters,
             'starterKey' => $starterKey,
             'defaultTitle' => $starter['title'],
             'prefill' => [
-                'project_id' => $request->query('project_id'),
-                'pa_id' => $request->query('pa_id'),
+                'project_id' => $projectId,
+                'pa_id' => $pa?->id,
             ],
+            'context' => $context,
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'eng', 'ER'),
+            'commonChecklistItems' => EngineerReportBlueprint::commonChecklistItems($starterKey),
+            'photoLinkOptions' => EngineerReportBlueprint::photoLinkOptions($payload),
         ]);
     }
 
@@ -60,6 +93,13 @@ class ReportController extends Controller
     {
         $validated = $this->validateReport($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = EngineerProject::where('user_id', Auth::id())
+            ->where('id', $scope['engineer_project_id'])
+            ->firstOrFail();
+        $reportNumber = trim((string) ($validated['report_number'] ?? ''));
+        if ($reportNumber === '') {
+            $reportNumber = PracticeDocumentContext::nextEngineerReportRef(Auth::id(), $project);
+        }
 
         $report = EngineerReport::create([
             'user_id' => Auth::id(),
@@ -67,7 +107,7 @@ class ReportController extends Controller
             'engineer_pa_application_id' => $scope['engineer_pa_application_id'],
             'title' => $validated['title'],
             'report_type' => $validated['report_type'] ?? null,
-            'report_number' => $validated['report_number'] ?? null,
+            'report_number' => $reportNumber,
             'surveyed_on' => $validated['surveyed_on'] ?? null,
             'issued_on' => $validated['issued_on'],
             'conclusion' => $validated['conclusion'] ?? null,
@@ -104,11 +144,25 @@ class ReportController extends Controller
                 ->withErrors(['report' => 'This report was stamped and issued. It can no longer be edited.']);
         }
 
+        $projects = EngineerProject::where('user_id', Auth::id())
+            ->where(function ($q) use ($report) {
+                $q->where('status', '!=', 'archived')
+                    ->orWhere('id', $report->engineer_project_id);
+            })
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+        $pas = EngineerPaApplication::where('user_id', Auth::id())
+            ->where('engineer_project_id', $report->engineer_project_id)
+            ->orderByDesc('updated_at')
+            ->get();
+        $payload = $report->normalizedPayload();
+
         return view('pro.engineer.reports-form', [
             'report' => $report,
-            'projects' => EngineerProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => EngineerPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
-            'payload' => $report->normalizedPayload(),
+            'projects' => $projects,
+            'pas' => $pas,
+            'payload' => $payload,
             'starters' => EngineerReportBlueprint::starters(),
             'starterKey' => $report->report_type,
             'defaultTitle' => $report->title,
@@ -116,6 +170,18 @@ class ReportController extends Controller
                 'project_id' => $report->engineer_project_id,
                 'pa_id' => $report->engineer_pa_application_id,
             ],
+            'context' => [
+                'client_name' => $report->client_name,
+                'client_address' => $report->client_address,
+                'contact_person' => $report->contact_person,
+                'contact_phone' => $report->contact_phone,
+                'site_address' => $report->site_address,
+                'suggested_ref' => $report->report_number,
+                'pa_number' => $report->paApplication?->pa_number ?? '',
+            ],
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'eng', 'ER'),
+            'commonChecklistItems' => EngineerReportBlueprint::commonChecklistItems((string) $report->report_type),
+            'photoLinkOptions' => EngineerReportBlueprint::photoLinkOptions($payload),
         ]);
     }
 
@@ -129,13 +195,21 @@ class ReportController extends Controller
 
         $validated = $this->validateReport($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = EngineerProject::where('user_id', Auth::id())
+            ->where('id', $scope['engineer_project_id'])
+            ->firstOrFail();
+        $reportNumber = trim((string) ($validated['report_number'] ?? ''));
+        if ($reportNumber === '') {
+            $reportNumber = $report->report_number
+                ?: PracticeDocumentContext::nextEngineerReportRef(Auth::id(), $project);
+        }
 
         $report->update([
             'engineer_project_id' => $scope['engineer_project_id'],
             'engineer_pa_application_id' => $scope['engineer_pa_application_id'],
             'title' => $validated['title'],
             'report_type' => $validated['report_type'] ?? $report->report_type,
-            'report_number' => $validated['report_number'] ?? null,
+            'report_number' => $reportNumber,
             'surveyed_on' => $validated['surveyed_on'] ?? null,
             'issued_on' => $validated['issued_on'],
             'conclusion' => $validated['conclusion'] ?? null,
@@ -158,6 +232,9 @@ class ReportController extends Controller
         $this->assertOwned($report);
         if ($report->isStamped()) {
             return back()->withErrors(['report' => 'Already stamped and issued.']);
+        }
+        if (! $report->engineer_project_id) {
+            return back()->withErrors(['report' => 'Link this report to a project before stamping.']);
         }
 
         $report->stamped_at = now();
@@ -224,7 +301,7 @@ class ReportController extends Controller
             'contact_person' => 'nullable|string|max:255',
             'contact_phone' => 'nullable|string|max:64',
             'site_address' => 'nullable|string|max:2000',
-            'engineer_project_id' => 'nullable|integer',
+            'engineer_project_id' => 'required|integer',
             'engineer_pa_application_id' => 'nullable|integer',
             'payload' => 'nullable|array',
             'payload.subject_heading' => 'nullable|string|max:255',
@@ -237,10 +314,12 @@ class ReportController extends Controller
             'payload.attributes.*.label' => 'nullable|string|max:255',
             'payload.attributes.*.value' => 'nullable|string|max:2000',
             'payload.checklist' => 'nullable|array|max:60',
+            'payload.checklist.*.id' => 'nullable|string|max:32',
             'payload.checklist.*.item' => 'nullable|string|max:500',
             'payload.checklist.*.outcome' => 'nullable|string|max:120',
             'payload.checklist.*.comments' => 'nullable|string|max:1000',
             'payload.measurements' => 'nullable|array|max:80',
+            'payload.measurements.*.id' => 'nullable|string|max:32',
             'payload.measurements.*.location' => 'nullable|string|max:255',
             'payload.measurements.*.parameter' => 'nullable|string|max:255',
             'payload.measurements.*.reading' => 'nullable|string|max:120',
@@ -254,24 +333,23 @@ class ReportController extends Controller
             'photos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'photo_captions' => 'nullable|array',
             'photo_captions.*' => 'nullable|string|max:255',
+            'photo_linked_row_ids' => 'nullable|array',
+            'photo_linked_row_ids.*' => 'nullable|string|max:64',
         ]);
     }
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{engineer_project_id: ?int, engineer_pa_application_id: ?int}
+     * @return array{engineer_project_id: int, engineer_pa_application_id: ?int}
      */
     private function resolveScope(int $userId, array $validated): array
     {
         $projectId = (int) ($validated['engineer_project_id'] ?? 0);
         $paId = (int) ($validated['engineer_pa_application_id'] ?? 0);
 
-        $project = null;
-        if ($projectId > 0) {
-            $project = EngineerProject::where('user_id', $userId)->where('id', $projectId)->first();
-            if (! $project) {
-                abort(403);
-            }
+        $project = EngineerProject::where('user_id', $userId)->where('id', $projectId)->first();
+        if (! $project) {
+            abort(403);
         }
 
         $pa = null;
@@ -280,16 +358,13 @@ class ReportController extends Controller
             if (! $pa) {
                 abort(403);
             }
-            if ($project && $pa->engineer_project_id !== $project->id) {
+            if ($pa->engineer_project_id !== $project->id) {
                 abort(403);
-            }
-            if (! $project) {
-                $project = EngineerProject::where('user_id', $userId)->where('id', $pa->engineer_project_id)->first();
             }
         }
 
         return [
-            'engineer_project_id' => $project?->id,
+            'engineer_project_id' => $project->id,
             'engineer_pa_application_id' => $pa?->id,
         ];
     }
@@ -301,6 +376,7 @@ class ReportController extends Controller
         }
 
         $captions = $request->input('photo_captions', []);
+        $linked = $request->input('photo_linked_row_ids', []);
         $sort = (int) $report->photos()->max('sort_order');
 
         foreach ($request->file('photos') as $i => $file) {
@@ -317,9 +393,30 @@ class ReportController extends Controller
                 'engineer_report_id' => $report->id,
                 'file_path' => $path,
                 'caption' => is_array($captions) ? trim((string) ($captions[$i] ?? '')) ?: null : null,
+                'linked_row_id' => is_array($linked) ? trim((string) ($linked[$i] ?? '')) ?: null : null,
                 'sort_order' => $sort,
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private function prefillPermissionAttributes(array $payload, array $context): array
+    {
+        foreach (($payload['attributes'] ?? []) as $i => $row) {
+            $label = strtolower(trim((string) ($row['label'] ?? '')));
+            if ($label === 'pa / permission reference' && trim((string) ($row['value'] ?? '')) === '') {
+                $payload['attributes'][$i]['value'] = (string) ($context['pa_number'] ?? '');
+            }
+            if ($label === 'full address of premises' && trim((string) ($row['value'] ?? '')) === '') {
+                $payload['attributes'][$i]['value'] = (string) ($context['site_address'] ?? '');
+            }
+        }
+
+        return $payload;
     }
 
     private function assertOwned(EngineerReport $report): void

@@ -12,6 +12,7 @@ class ArchitectConditionReportPhoto extends Model
         'architect_condition_report_id',
         'file_path',
         'caption',
+        'linked_row_id',
         'sort_order',
     ];
 

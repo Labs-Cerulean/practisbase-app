@@ -91,19 +91,31 @@
     @endif
 
     @if(count($payload['defects']))
+        @php
+            $photosByRow = $report->photos->groupBy(fn ($p) => (string) ($p->linked_row_id ?? ''));
+        @endphp
         <h2>{{ $payload['defects_heading'] ?: '7. List of observed defects' }}</h2>
         <table class="defects">
             <tr>
-                <th style="width: 22%;">Location</th>
-                <th style="width: 32%;">Defect</th>
+                <th style="width: 12%;">Id</th>
+                <th style="width: 20%;">Location</th>
+                <th style="width: 28%;">Defect</th>
                 <th style="width: 14%;">Photo</th>
                 <th>Notes</th>
             </tr>
             @foreach($payload['defects'] as $row)
+                @php
+                    $linked = $photosByRow->get((string) ($row['id'] ?? ''), collect());
+                    $photoLabels = $linked->map(function ($photo) use ($report) {
+                        $n = $report->photos->search(fn ($p) => $p->id === $photo->id);
+                        return 'P'.(($n === false ? 0 : $n) + 1);
+                    })->implode(', ');
+                @endphp
                 <tr>
+                    <td>{{ $row['id'] ?? '' }}</td>
                     <td>{{ $row['location'] }}</td>
                     <td>{{ $row['defect'] }}</td>
-                    <td>{{ $row['photo_ref'] }}</td>
+                    <td>{{ $photoLabels ?: ($row['photo_ref'] ?? '') }}</td>
                     <td>{{ $row['notes'] }}</td>
                 </tr>
             @endforeach

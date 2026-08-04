@@ -4,10 +4,43 @@ namespace App\Support;
 
 /**
  * Generic architect condition / neighbour report body.
- * One builder; Seventh Schedule starter seeds the same flexible form.
+ * One builder; Seventh Schedule starter seeds schedule sections.
+ * Defect rows start blank — optional common-defect helper is separate.
  */
 class ArchitectConditionReportBlueprint
 {
+    /**
+     * @return array{id: string, location: string, defect: string, photo_ref: string, notes: string}
+     */
+    public static function blankDefect(): array
+    {
+        return [
+            'id' => PracticeDocumentContext::newRowId('d'),
+            'location' => '',
+            'defect' => '',
+            'photo_ref' => '',
+            'notes' => '',
+        ];
+    }
+
+    /**
+     * Optional helper list — not seeded into new reports by default.
+     *
+     * @return list<string>
+     */
+    public static function commonDefectLabels(): array
+    {
+        return [
+            'Flaking / peeling of paint',
+            'Rising damp / humidity / water stains',
+            'Settlement cracks',
+            'Other cracks',
+            'Corrosion of steel / spalling',
+            'Poor tile / skirting bonding',
+            'Bulging / peeling of membrane',
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -25,9 +58,7 @@ class ArchitectConditionReportBlueprint
                 ['heading' => '10. Declaration regarding foundations / bearing pressure', 'body' => ''],
             ],
             'defects_heading' => '7. List of observed defects (cross-referenced to photos)',
-            'defects' => [
-                ['location' => '', 'defect' => '', 'photo_ref' => '', 'notes' => ''],
-            ],
+            'defects' => [self::blankDefect()],
             'sketch_ref' => '',
             'legal_footer' => '',
         ];
@@ -59,16 +90,8 @@ class ArchitectConditionReportBlueprint
                         ['heading' => '10. Declaration that information about the foundations of the building is not readily available and including assumptions made in calculating bearing pressure', 'body' => ''],
                     ],
                     'defects_heading' => '7. List of observed defects, by room, cross-referenced to photos',
-                    'defects' => [
-                        ['location' => '', 'defect' => 'Flaking / peeling of paint', 'photo_ref' => '', 'notes' => ''],
-                        ['location' => '', 'defect' => 'Rising damp / humidity / water stains', 'photo_ref' => '', 'notes' => ''],
-                        ['location' => '', 'defect' => 'Settlement cracks', 'photo_ref' => '', 'notes' => ''],
-                        ['location' => '', 'defect' => 'Other cracks', 'photo_ref' => '', 'notes' => ''],
-                        ['location' => '', 'defect' => 'Corrosion of steel / spalling', 'photo_ref' => '', 'notes' => ''],
-                        ['location' => '', 'defect' => 'Poor tile / skirting bonding', 'photo_ref' => '', 'notes' => ''],
-                        ['location' => '', 'defect' => 'Bulging / peeling of membrane', 'photo_ref' => '', 'notes' => ''],
-                    ],
-                    'sketch_ref' => 'Refer to Appendix A / sketch plan attached.',
+                    'defects' => [self::blankDefect()],
+                    'sketch_ref' => '',
                     'legal_footer' => "Condition Report as per Seventh Schedule (regulation 7) of the Avoidance of Damage to Third Party Properties Regulations, 2019.\n\nPrepared for the exclusive use of the client in relation to the cited development. Third parties shall not rely upon this document without the author's written consent. Formulated on information available at the time of inspection.",
                 ],
             ],
@@ -113,18 +136,51 @@ class ArchitectConditionReportBlueprint
             $defect = trim((string) ($row['defect'] ?? ''));
             $photoRef = trim((string) ($row['photo_ref'] ?? ''));
             $notes = trim((string) ($row['notes'] ?? ''));
+            $id = trim((string) ($row['id'] ?? ''));
             if ($location === '' && $defect === '' && $photoRef === '' && $notes === '') {
                 continue;
             }
+            if ($id === '' || ! preg_match('/^[A-Za-z0-9_\-]{2,32}$/', $id)) {
+                $id = PracticeDocumentContext::newRowId('d');
+            }
             $defects[] = [
+                'id' => $id,
                 'location' => $location,
                 'defect' => $defect,
                 'photo_ref' => $photoRef,
                 'notes' => $notes,
             ];
         }
-        $base['defects'] = $defects;
+        $base['defects'] = $defects !== [] ? $defects : [self::blankDefect()];
 
         return $base;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<array{id: string, label: string}>
+     */
+    public static function photoLinkOptions(array $payload): array
+    {
+        $options = [];
+        foreach (($payload['defects'] ?? []) as $i => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $id = trim((string) ($row['id'] ?? ''));
+            if ($id === '') {
+                continue;
+            }
+            $label = trim((string) ($row['defect'] ?? ''));
+            $location = trim((string) ($row['location'] ?? ''));
+            $n = $i + 1;
+            $parts = array_filter(["Issue {$n}", $location, $label]);
+            $options[] = [
+                'id' => $id,
+                'label' => implode(' — ', $parts),
+            ];
+        }
+
+        return $options;
     }
 }

@@ -7,17 +7,24 @@
     @php
         $isEdit = $statement !== null;
         $action = $isEdit ? '/pro/architect/method-statements/'.$statement->id : '/pro/architect/method-statements';
+        $context = $context ?? [];
+        $projectOptions = $projectOptions ?? [];
+        $oldPayload = old('payload');
+        $p = is_array($oldPayload) ? \App\Support\ArchitectMethodStatementBlueprint::normalize($oldPayload) : $payload;
+        if (count($p['sections']) === 0) {
+            $p['sections'] = [['heading' => '', 'body' => '']];
+        }
     @endphp
     <div style="margin-bottom: 1.25rem;">
-        <a href="{{ $isEdit ? '/pro/architect/method-statements/'.$statement->id : '/pro/architect/method-statements' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Back</a>
+        <a href="{{ $isEdit ? '/pro/architect/method-statements/'.$statement->id : ($prefill['project_id'] ? '/pro/architect/projects/'.$prefill['project_id'] : '/pro/architect/method-statements') }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Back</a>
         <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">{{ $isEdit ? 'Edit method statement' : 'Method statement builder' }}</h1>
-        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Demolition, excavation (Fifth Schedule), and building works (Sixth Schedule) — same form, starters seed the sections. Mobile-friendly with camera photos for annexes.</p>
+        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Lives under a project — client, site, and filing ref auto-fill. Schedule starters seed section structure only.</p>
     </div>
 
     @unless($isEdit)
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
             @foreach($starters as $key => $starter)
-                <a href="/pro/architect/method-statements/create?starter={{ $key }}{{ ($prefill['project_id'] ?? null) ? '&project_id='.$prefill['project_id'] : '' }}{{ ($prefill['pa_id'] ?? null) ? '&pa_id='.$prefill['pa_id'] : '' }}"
+                <a href="/pro/architect/method-statements/create?starter={{ $key }}&amp;project_id={{ $prefill['project_id'] }}{{ ($prefill['pa_id'] ?? null) ? '&pa_id='.$prefill['pa_id'] : '' }}"
                    style="padding: 0.45rem 0.75rem; border-radius: var(--radius-md); text-decoration: none; font-size: 0.82rem; font-weight: 600; {{ $starterKey === $key ? 'background: #3f6212; color: white;' : 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' }}">
                     {{ $starter['label'] }}
                 </a>
@@ -34,40 +41,21 @@
     <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="eng-field-form" style="display: grid; gap: 1.1rem; max-width: 920px;">
         @csrf
         @if($isEdit) @method('PUT') @endif
-        <input type="hidden" name="statement_type" value="{{ old('statement_type', $starterKey ?? $statement->statement_type ?? 'demolition') }}">
+        <input type="hidden" name="statement_type" value="{{ old('statement_type', $starterKey ?? $statement->statement_type ?? 'excavation') }}">
 
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
-            <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Header</h2>
-            <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Title *</label>
-                <input type="text" name="title" value="{{ old('title', $statement->title ?? $defaultTitle) }}" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Your ref. no.</label>
-                    <input type="text" name="statement_number" value="{{ old('statement_number', $statement->statement_number ?? '') }}" placeholder="e.g. MA.MSD.DMS.01" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Issue date *</label>
-                    <input type="date" name="issued_on" max="{{ date('Y-m-d') }}" value="{{ old('issued_on', optional($statement->issued_on ?? null)->format('Y-m-d') ?: date('Y-m-d')) }}" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Commencement note</label>
-                    <input type="text" name="commencement_note" value="{{ old('commencement_note', $statement->commencement_note ?? '') }}" placeholder="e.g. After BCA clearance" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-            </div>
+            <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Project &amp; header</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Link project</label>
-                    <select name="architect_project_id" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                        <option value="">None</option>
-                        @foreach($projects as $p)
-                            <option value="{{ $p->id }}" @selected(old('architect_project_id', $prefill['project_id'] ?? '') == $p->id)>{{ $p->name }}@if($p->client) ({{ $p->client->name }})@endif</option>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Project *</label>
+                    <select name="architect_project_id" id="archProjectSelect" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        @foreach($projects as $pRow)
+                            <option value="{{ $pRow->id }}" @selected(old('architect_project_id', $prefill['project_id'] ?? '') == $pRow->id)>{{ $pRow->name }}@if($pRow->client) ({{ $pRow->client->name }})@endif</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Link PA (optional)</label>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">PA (optional)</label>
                     <select name="architect_pa_application_id" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         <option value="">None</option>
                         @foreach($pas as $pa)
@@ -76,37 +64,49 @@
                     </select>
                 </div>
             </div>
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Title *</label>
+                <input type="text" name="title" value="{{ old('title', $statement->title ?? $defaultTitle) }}" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem;">
+                <div>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Filing ref</label>
+                    <input type="text" name="statement_number" id="docRefField" value="{{ old('statement_number', $statement->statement_number ?? ($context['suggested_ref'] ?? '')) }}" placeholder="Auto from project" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Generated from project reference + DMS/EMS/CMS sequence.</div>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Issue date *</label>
+                    <input type="date" name="issued_on" max="{{ date('Y-m-d') }}" value="{{ old('issued_on', optional($statement->issued_on ?? null)->format('Y-m-d') ?: date('Y-m-d')) }}" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Commencement note</label>
+                    <input type="text" name="commencement_note" id="fieldCommencement" value="{{ old('commencement_note', $statement->commencement_note ?? ($context['commencement_note'] ?? '')) }}" placeholder="Optional" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+            </div>
         </section>
 
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
-            <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Client & site</h2>
+            <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Client &amp; site</h2>
+            <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Pulled from the project/client — adjust if needed.</p>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Client</label>
-                    <input type="text" name="client_name" value="{{ old('client_name', $statement->client_name ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="text" name="client_name" id="fieldClientName" value="{{ old('client_name', $statement->client_name ?? ($context['client_name'] ?? '')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Client address</label>
-                    <input type="text" name="client_address" value="{{ old('client_address', $statement->client_address ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <input type="text" name="client_address" id="fieldClientAddress" value="{{ old('client_address', $statement->client_address ?? ($context['client_address'] ?? '')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
             </div>
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Project description</label>
-                <textarea name="project_description" rows="2" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('project_description', $statement->project_description ?? '') }}</textarea>
+                <textarea name="project_description" id="fieldProjectDescription" rows="2" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('project_description', $statement->project_description ?? ($context['project_description'] ?? '')) }}</textarea>
             </div>
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Site address</label>
-                <input type="text" name="site_address" value="{{ old('site_address', $statement->site_address ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <input type="text" name="site_address" id="fieldSiteAddress" value="{{ old('site_address', $statement->site_address ?? ($context['site_address'] ?? '')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
         </section>
-
-        @php
-            $oldPayload = old('payload');
-            $p = is_array($oldPayload) ? \App\Support\ArchitectMethodStatementBlueprint::normalize($oldPayload) : $payload;
-            if (count($p['sections']) === 0) {
-                $p['sections'] = [['heading' => '', 'body' => '']];
-            }
-        @endphp
 
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
@@ -126,7 +126,7 @@
             </div>
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Appendix / annex references</label>
-                <input type="text" name="payload[appendix_ref]" value="{{ $p['appendix_ref'] }}" placeholder="e.g. Refer to Annex 1–4" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <input type="text" name="payload[appendix_ref]" value="{{ $p['appendix_ref'] }}" placeholder="Optional annex note" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Legal / disclaimer footer</label>
@@ -134,17 +134,53 @@
             </div>
         </section>
 
-        @include('pro.shared.field-photos')
+        @include('pro.shared.field-photos', [
+            'photoLinkOptions' => [],
+            'existingPhotos' => $statement->photos ?? collect(),
+            'existingPhotoBase' => $isEdit ? '/pro/architect/method-statements/'.$statement->id.'/photos' : null,
+        ])
 
         <div class="eng-field-savebar">
             <button type="submit" style="background: #3f6212;">{{ $isEdit ? 'Save draft' : 'Save draft method statement' }}</button>
-            <div class="eng-field-hint">Draft stays editable until you Stamp &amp; issue. Download the official BCA blank from Templates if e-Apps needs the paper form.</div>
+            <div class="eng-field-hint">Draft stays editable until you Stamp &amp; issue. Photo notes can annotate annexes.</div>
         </div>
     </form>
 
     <script>
         (function () {
+            var projectOptions = @json($projectOptions);
+            var projectSelect = document.getElementById('archProjectSelect');
+            var refField = document.getElementById('docRefField');
             var sectionBox = document.getElementById('sectionRows');
+            var refDirty = {{ $isEdit ? 'true' : 'false' }};
+
+            function applyProject(id, forceRef) {
+                var data = projectOptions[String(id)];
+                if (!data) return;
+                var map = {
+                    fieldClientName: data.client_name,
+                    fieldClientAddress: data.client_address,
+                    fieldProjectDescription: data.project_description,
+                    fieldSiteAddress: data.site_address,
+                    fieldCommencement: data.commencement_note
+                };
+                Object.keys(map).forEach(function (fid) {
+                    var el = document.getElementById(fid);
+                    if (el) el.value = map[fid] || '';
+                });
+                if (refField && (forceRef || !refDirty)) {
+                    refField.value = data.suggested_ref || '';
+                }
+            }
+
+            if (refField) refField.addEventListener('input', function () { refDirty = true; });
+            if (projectSelect) {
+                projectSelect.addEventListener('change', function () {
+                    applyProject(projectSelect.value, true);
+                    refDirty = false;
+                });
+            }
+
             sectionBox.addEventListener('click', function (e) {
                 if (!e.target.classList.contains('rm')) return;
                 var row = e.target.closest('.section-row');

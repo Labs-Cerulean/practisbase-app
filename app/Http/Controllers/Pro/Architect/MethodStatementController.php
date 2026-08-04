@@ -9,6 +9,7 @@ use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
 use App\Support\ArchitectMethodStatementBlueprint;
 use App\Support\IssueCode;
+use App\Support\PracticeDocumentContext;
 use App\Support\TenantStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -34,25 +35,55 @@ class MethodStatementController extends Controller
 
     public function create(Request $request)
     {
+        $projects = ArchitectProject::where('user_id', Auth::id())
+            ->where('status', '!=', 'archived')
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+
         $starterKey = (string) $request->query('starter', 'excavation');
         $starters = ArchitectMethodStatementBlueprint::starters();
         if (! isset($starters[$starterKey])) {
             $starterKey = 'excavation';
         }
+
+        $projectId = (int) $request->query('project_id');
+        if ($projectId <= 0 || ! $projects->contains('id', $projectId)) {
+            return view('pro.shared.pick-project', [
+                'projects' => $projects,
+                'heading' => 'Choose a project for this method statement',
+                'lead' => 'Method statements sit under a project so client, site, and filing refs auto-fill.',
+                'backHref' => '/pro/architect/method-statements',
+                'createProjectHref' => '/pro/architect/projects/create',
+                'continueBase' => '/pro/architect/method-statements/create?starter='.urlencode($starterKey),
+                'accent' => '#3f6212',
+            ]);
+        }
+
+        $project = $projects->firstWhere('id', $projectId);
         $starter = $starters[$starterKey];
+        $paId = (int) $request->query('pa_id');
+        $pas = ArchitectPaApplication::where('user_id', Auth::id())
+            ->where('architect_project_id', $projectId)
+            ->orderByDesc('updated_at')
+            ->get();
+        $pa = $paId > 0 ? $pas->firstWhere('id', $paId) : null;
+        $context = PracticeDocumentContext::architectPrefill($project, $pa, 'MS', $starterKey);
 
         return view('pro.architect.method-statements-form', [
             'statement' => null,
-            'projects' => ArchitectProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => ArchitectPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
+            'projects' => $projects,
+            'pas' => $pas,
             'payload' => $starter['payload'],
             'starters' => $starters,
             'starterKey' => $starterKey,
             'defaultTitle' => $starter['title'],
             'prefill' => [
-                'project_id' => $request->query('project_id'),
-                'pa_id' => $request->query('pa_id'),
+                'project_id' => $projectId,
+                'pa_id' => $pa?->id,
             ],
+            'context' => $context,
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'arch', 'MS', $starterKey),
         ]);
     }
 
@@ -60,6 +91,18 @@ class MethodStatementController extends Controller
     {
         $validated = $this->validateStatement($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = ArchitectProject::where('user_id', Auth::id())
+            ->where('id', $scope['architect_project_id'])
+            ->firstOrFail();
+
+        $statementNumber = trim((string) ($validated['statement_number'] ?? ''));
+        if ($statementNumber === '') {
+            $statementNumber = PracticeDocumentContext::nextArchitectMethodRef(
+                Auth::id(),
+                $project,
+                $validated['statement_type'] ?? null
+            );
+        }
 
         $statement = ArchitectMethodStatement::create([
             'user_id' => Auth::id(),
@@ -67,7 +110,7 @@ class MethodStatementController extends Controller
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
             'title' => $validated['title'],
             'statement_type' => $validated['statement_type'] ?? null,
-            'statement_number' => $validated['statement_number'] ?? null,
+            'statement_number' => $statementNumber,
             'issued_on' => $validated['issued_on'],
             'commencement_note' => $validated['commencement_note'] ?? null,
             'client_name' => $validated['client_name'] ?? null,
@@ -102,10 +145,24 @@ class MethodStatementController extends Controller
                 ->withErrors(['statement' => 'This method statement was stamped and issued. It can no longer be edited.']);
         }
 
+        $projects = ArchitectProject::where('user_id', Auth::id())
+            ->where(function ($q) use ($statement) {
+                $q->where('status', '!=', 'archived')
+                    ->orWhere('id', $statement->architect_project_id);
+            })
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+
+        $pas = ArchitectPaApplication::where('user_id', Auth::id())
+            ->when($statement->architect_project_id, fn ($q) => $q->where('architect_project_id', $statement->architect_project_id))
+            ->orderByDesc('updated_at')
+            ->get();
+
         return view('pro.architect.method-statements-form', [
             'statement' => $statement,
-            'projects' => ArchitectProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => ArchitectPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
+            'projects' => $projects,
+            'pas' => $pas,
             'payload' => $statement->normalizedPayload(),
             'starters' => ArchitectMethodStatementBlueprint::starters(),
             'starterKey' => $statement->statement_type,
@@ -114,6 +171,20 @@ class MethodStatementController extends Controller
                 'project_id' => $statement->architect_project_id,
                 'pa_id' => $statement->architect_pa_application_id,
             ],
+            'context' => [
+                'client_name' => $statement->client_name,
+                'client_address' => $statement->client_address,
+                'project_description' => $statement->project_description,
+                'site_address' => $statement->site_address,
+                'commencement_note' => $statement->commencement_note,
+                'suggested_ref' => $statement->statement_number,
+            ],
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload(
+                $projects,
+                'arch',
+                'MS',
+                $statement->statement_type
+            ),
         ]);
     }
 
@@ -127,13 +198,26 @@ class MethodStatementController extends Controller
 
         $validated = $this->validateStatement($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = ArchitectProject::where('user_id', Auth::id())
+            ->where('id', $scope['architect_project_id'])
+            ->firstOrFail();
+
+        $statementNumber = trim((string) ($validated['statement_number'] ?? ''));
+        if ($statementNumber === '') {
+            $statementNumber = $statement->statement_number
+                ?: PracticeDocumentContext::nextArchitectMethodRef(
+                    Auth::id(),
+                    $project,
+                    $validated['statement_type'] ?? $statement->statement_type
+                );
+        }
 
         $statement->update([
             'architect_project_id' => $scope['architect_project_id'],
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
             'title' => $validated['title'],
             'statement_type' => $validated['statement_type'] ?? $statement->statement_type,
-            'statement_number' => $validated['statement_number'] ?? null,
+            'statement_number' => $statementNumber,
             'issued_on' => $validated['issued_on'],
             'commencement_note' => $validated['commencement_note'] ?? null,
             'client_name' => $validated['client_name'] ?? null,
@@ -154,6 +238,9 @@ class MethodStatementController extends Controller
         $this->assertOwned($statement);
         if ($statement->isStamped()) {
             return back()->withErrors(['statement' => 'Already stamped and issued.']);
+        }
+        if (! $statement->architect_project_id) {
+            return back()->withErrors(['statement' => 'Link this method statement to a project before stamping.']);
         }
 
         $statement->stamped_at = now();
@@ -218,7 +305,7 @@ class MethodStatementController extends Controller
             'client_address' => 'nullable|string|max:2000',
             'project_description' => 'nullable|string|max:5000',
             'site_address' => 'nullable|string|max:2000',
-            'architect_project_id' => 'nullable|integer',
+            'architect_project_id' => 'required|integer',
             'architect_pa_application_id' => 'nullable|integer',
             'payload' => 'nullable|array',
             'payload.appendix_ref' => 'nullable|string|max:1000',
@@ -230,42 +317,35 @@ class MethodStatementController extends Controller
             'photos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'photo_captions' => 'nullable|array',
             'photo_captions.*' => 'nullable|string|max:255',
+            'photo_linked_row_ids' => 'nullable|array',
+            'photo_linked_row_ids.*' => 'nullable|string|max:64',
         ]);
     }
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{architect_project_id: ?int, architect_pa_application_id: ?int}
+     * @return array{architect_project_id: int, architect_pa_application_id: ?int}
      */
     private function resolveScope(int $userId, array $validated): array
     {
         $projectId = (int) ($validated['architect_project_id'] ?? 0);
         $paId = (int) ($validated['architect_pa_application_id'] ?? 0);
 
-        $project = null;
-        if ($projectId > 0) {
-            $project = ArchitectProject::where('user_id', $userId)->where('id', $projectId)->first();
-            if (! $project) {
-                abort(403);
-            }
+        $project = ArchitectProject::where('user_id', $userId)->where('id', $projectId)->first();
+        if (! $project) {
+            abort(403);
         }
 
         $pa = null;
         if ($paId > 0) {
             $pa = ArchitectPaApplication::where('user_id', $userId)->where('id', $paId)->first();
-            if (! $pa) {
+            if (! $pa || $pa->architect_project_id !== $project->id) {
                 abort(403);
-            }
-            if ($project && $pa->architect_project_id !== $project->id) {
-                abort(403);
-            }
-            if (! $project) {
-                $project = ArchitectProject::where('user_id', $userId)->where('id', $pa->architect_project_id)->first();
             }
         }
 
         return [
-            'architect_project_id' => $project?->id,
+            'architect_project_id' => $project->id,
             'architect_pa_application_id' => $pa?->id,
         ];
     }
@@ -277,6 +357,7 @@ class MethodStatementController extends Controller
         }
 
         $captions = $request->input('photo_captions', []);
+        $linked = $request->input('photo_linked_row_ids', []);
         $sort = (int) $statement->photos()->max('sort_order');
 
         foreach ($request->file('photos') as $i => $file) {
@@ -293,6 +374,7 @@ class MethodStatementController extends Controller
                 'architect_method_statement_id' => $statement->id,
                 'file_path' => $path,
                 'caption' => is_array($captions) ? trim((string) ($captions[$i] ?? '')) ?: null : null,
+                'linked_row_id' => is_array($linked) ? trim((string) ($linked[$i] ?? '')) ?: null : null,
                 'sort_order' => $sort,
             ]);
         }

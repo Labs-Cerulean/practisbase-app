@@ -9,6 +9,7 @@ use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
 use App\Support\ArchitectConditionReportBlueprint;
 use App\Support\IssueCode;
+use App\Support\PracticeDocumentContext;
 use App\Support\TenantStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -34,6 +35,26 @@ class ConditionReportController extends Controller
 
     public function create(Request $request)
     {
+        $projects = ArchitectProject::where('user_id', Auth::id())
+            ->where('status', '!=', 'archived')
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+
+        $projectId = (int) $request->query('project_id');
+        if ($projectId <= 0 || ! $projects->contains('id', $projectId)) {
+            return view('pro.shared.pick-project', [
+                'projects' => $projects,
+                'heading' => 'Choose a project for this condition report',
+                'lead' => 'Condition reports sit under a project so client, site, and filing refs auto-fill.',
+                'backHref' => '/pro/architect/condition-reports',
+                'createProjectHref' => '/pro/architect/projects/create',
+                'continueBase' => '/pro/architect/condition-reports/create?starter='.urlencode((string) $request->query('starter', 'seventh_schedule')),
+                'accent' => '#3f6212',
+            ]);
+        }
+
+        $project = $projects->firstWhere('id', $projectId);
         $starterKey = (string) $request->query('starter', 'seventh_schedule');
         $starters = ArchitectConditionReportBlueprint::starters();
         if (! isset($starters[$starterKey])) {
@@ -41,18 +62,31 @@ class ConditionReportController extends Controller
         }
         $starter = $starters[$starterKey];
 
+        $paId = (int) $request->query('pa_id');
+        $pas = ArchitectPaApplication::where('user_id', Auth::id())
+            ->where('architect_project_id', $projectId)
+            ->orderByDesc('updated_at')
+            ->get();
+        $pa = $paId > 0 ? $pas->firstWhere('id', $paId) : null;
+
+        $context = PracticeDocumentContext::architectPrefill($project, $pa, 'CR');
+
         return view('pro.architect.condition-reports-form', [
             'report' => null,
-            'projects' => ArchitectProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => ArchitectPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
+            'projects' => $projects,
+            'pas' => $pas,
             'payload' => $starter['payload'],
             'starters' => $starters,
             'starterKey' => $starterKey,
             'defaultTitle' => $starter['title'],
             'prefill' => [
-                'project_id' => $request->query('project_id'),
-                'pa_id' => $request->query('pa_id'),
+                'project_id' => $projectId,
+                'pa_id' => $pa?->id,
             ],
+            'context' => $context,
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'arch', 'CR'),
+            'commonDefects' => ArchitectConditionReportBlueprint::commonDefectLabels(),
+            'photoLinkOptions' => ArchitectConditionReportBlueprint::photoLinkOptions($starter['payload']),
         ]);
     }
 
@@ -60,6 +94,14 @@ class ConditionReportController extends Controller
     {
         $validated = $this->validateReport($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = ArchitectProject::where('user_id', Auth::id())
+            ->where('id', $scope['architect_project_id'])
+            ->firstOrFail();
+
+        $reportNumber = trim((string) ($validated['report_number'] ?? ''));
+        if ($reportNumber === '') {
+            $reportNumber = PracticeDocumentContext::nextArchitectConditionRef(Auth::id(), $project);
+        }
 
         $report = ArchitectConditionReport::create([
             'user_id' => Auth::id(),
@@ -67,7 +109,7 @@ class ConditionReportController extends Controller
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
             'title' => $validated['title'],
             'report_type' => $validated['report_type'] ?? null,
-            'report_number' => $validated['report_number'] ?? null,
+            'report_number' => $reportNumber,
             'inspected_on' => $validated['inspected_on'] ?? null,
             'issued_on' => $validated['issued_on'],
             'client_name' => $validated['client_name'] ?? null,
@@ -103,11 +145,27 @@ class ConditionReportController extends Controller
                 ->withErrors(['report' => 'This report was stamped and issued. It can no longer be edited.']);
         }
 
+        $projects = ArchitectProject::where('user_id', Auth::id())
+            ->where(function ($q) use ($report) {
+                $q->where('status', '!=', 'archived')
+                    ->orWhere('id', $report->architect_project_id);
+            })
+            ->with('client')
+            ->orderBy('name')
+            ->get();
+
+        $pas = ArchitectPaApplication::where('user_id', Auth::id())
+            ->when($report->architect_project_id, fn ($q) => $q->where('architect_project_id', $report->architect_project_id))
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $payload = $report->normalizedPayload();
+
         return view('pro.architect.condition-reports-form', [
             'report' => $report,
-            'projects' => ArchitectProject::where('user_id', Auth::id())->with('client')->orderBy('name')->get(),
-            'pas' => ArchitectPaApplication::where('user_id', Auth::id())->with('project')->orderByDesc('updated_at')->get(),
-            'payload' => $report->normalizedPayload(),
+            'projects' => $projects,
+            'pas' => $pas,
+            'payload' => $payload,
             'starters' => ArchitectConditionReportBlueprint::starters(),
             'starterKey' => $report->report_type,
             'defaultTitle' => $report->title,
@@ -115,6 +173,17 @@ class ConditionReportController extends Controller
                 'project_id' => $report->architect_project_id,
                 'pa_id' => $report->architect_pa_application_id,
             ],
+            'context' => [
+                'client_name' => $report->client_name,
+                'client_address' => $report->client_address,
+                'project_description' => $report->project_description,
+                'development_address' => $report->development_address,
+                'inspected_address' => $report->inspected_address,
+                'suggested_ref' => $report->report_number,
+            ],
+            'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'arch', 'CR'),
+            'commonDefects' => ArchitectConditionReportBlueprint::commonDefectLabels(),
+            'photoLinkOptions' => ArchitectConditionReportBlueprint::photoLinkOptions($payload),
         ]);
     }
 
@@ -128,13 +197,22 @@ class ConditionReportController extends Controller
 
         $validated = $this->validateReport($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
+        $project = ArchitectProject::where('user_id', Auth::id())
+            ->where('id', $scope['architect_project_id'])
+            ->firstOrFail();
+
+        $reportNumber = trim((string) ($validated['report_number'] ?? ''));
+        if ($reportNumber === '') {
+            $reportNumber = $report->report_number
+                ?: PracticeDocumentContext::nextArchitectConditionRef(Auth::id(), $project);
+        }
 
         $report->update([
             'architect_project_id' => $scope['architect_project_id'],
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
             'title' => $validated['title'],
             'report_type' => $validated['report_type'] ?? $report->report_type,
-            'report_number' => $validated['report_number'] ?? null,
+            'report_number' => $reportNumber,
             'inspected_on' => $validated['inspected_on'] ?? null,
             'issued_on' => $validated['issued_on'],
             'client_name' => $validated['client_name'] ?? null,
@@ -156,6 +234,9 @@ class ConditionReportController extends Controller
         $this->assertOwned($report);
         if ($report->isStamped()) {
             return back()->withErrors(['report' => 'Already stamped and issued.']);
+        }
+        if (! $report->architect_project_id) {
+            return back()->withErrors(['report' => 'Link this report to a project before stamping.']);
         }
 
         $report->stamped_at = now();
@@ -221,7 +302,7 @@ class ConditionReportController extends Controller
             'project_description' => 'nullable|string|max:5000',
             'inspected_address' => 'nullable|string|max:2000',
             'development_address' => 'nullable|string|max:2000',
-            'architect_project_id' => 'nullable|integer',
+            'architect_project_id' => 'required|integer',
             'architect_pa_application_id' => 'nullable|integer',
             'payload' => 'nullable|array',
             'payload.sketch_ref' => 'nullable|string|max:1000',
@@ -231,6 +312,7 @@ class ConditionReportController extends Controller
             'payload.sections.*.heading' => 'nullable|string|max:500',
             'payload.sections.*.body' => 'nullable|string|max:15000',
             'payload.defects' => 'nullable|array|max:80',
+            'payload.defects.*.id' => 'nullable|string|max:32',
             'payload.defects.*.location' => 'nullable|string|max:255',
             'payload.defects.*.defect' => 'nullable|string|max:500',
             'payload.defects.*.photo_ref' => 'nullable|string|max:120',
@@ -239,42 +321,35 @@ class ConditionReportController extends Controller
             'photos.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'photo_captions' => 'nullable|array',
             'photo_captions.*' => 'nullable|string|max:255',
+            'photo_linked_row_ids' => 'nullable|array',
+            'photo_linked_row_ids.*' => 'nullable|string|max:64',
         ]);
     }
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{architect_project_id: ?int, architect_pa_application_id: ?int}
+     * @return array{architect_project_id: int, architect_pa_application_id: ?int}
      */
     private function resolveScope(int $userId, array $validated): array
     {
         $projectId = (int) ($validated['architect_project_id'] ?? 0);
         $paId = (int) ($validated['architect_pa_application_id'] ?? 0);
 
-        $project = null;
-        if ($projectId > 0) {
-            $project = ArchitectProject::where('user_id', $userId)->where('id', $projectId)->first();
-            if (! $project) {
-                abort(403);
-            }
+        $project = ArchitectProject::where('user_id', $userId)->where('id', $projectId)->first();
+        if (! $project) {
+            abort(403);
         }
 
         $pa = null;
         if ($paId > 0) {
             $pa = ArchitectPaApplication::where('user_id', $userId)->where('id', $paId)->first();
-            if (! $pa) {
+            if (! $pa || $pa->architect_project_id !== $project->id) {
                 abort(403);
-            }
-            if ($project && $pa->architect_project_id !== $project->id) {
-                abort(403);
-            }
-            if (! $project) {
-                $project = ArchitectProject::where('user_id', $userId)->where('id', $pa->architect_project_id)->first();
             }
         }
 
         return [
-            'architect_project_id' => $project?->id,
+            'architect_project_id' => $project->id,
             'architect_pa_application_id' => $pa?->id,
         ];
     }
@@ -286,6 +361,7 @@ class ConditionReportController extends Controller
         }
 
         $captions = $request->input('photo_captions', []);
+        $linked = $request->input('photo_linked_row_ids', []);
         $sort = (int) $report->photos()->max('sort_order');
 
         foreach ($request->file('photos') as $i => $file) {
@@ -302,6 +378,7 @@ class ConditionReportController extends Controller
                 'architect_condition_report_id' => $report->id,
                 'file_path' => $path,
                 'caption' => is_array($captions) ? trim((string) ($captions[$i] ?? '')) ?: null : null,
+                'linked_row_id' => is_array($linked) ? trim((string) ($linked[$i] ?? '')) ?: null : null,
                 'sort_order' => $sort,
             ]);
         }
