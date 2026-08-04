@@ -31,7 +31,7 @@
                 Uses Face ID, fingerprint, Touch ID, or Windows Hello when available.
             </p>
             <button type="button" id="device-unlock-btn" style="width: 100%; padding: 0.85rem; background: #1d4ed8; color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
-                Unlock with this device
+                Unlock with Face ID / fingerprint
             </button>
             <div id="device-unlock-error" style="display: none; margin-top: 0.65rem; color: #991b1b; font-size: 0.85rem;"></div>
         </div>
@@ -95,6 +95,9 @@
                     if (hasKey) {
                         panel.style.display = 'block';
                         if (input) input.removeAttribute('autofocus');
+                        // Keep a fresh challenge ready so Face ID can start in the same tap
+                        // (Safari drops user-activation if we fetch options first).
+                        PractisVaultDevice.startUnlockPrefetchKeepAlive();
                     }
                 });
             });
@@ -102,14 +105,15 @@
             unlockBtn.addEventListener('click', function () {
                 err.style.display = 'none';
                 unlockBtn.disabled = true;
-                unlockBtn.textContent = 'Waiting for device…';
+                unlockBtn.textContent = 'Waiting for fingerprint / Face ID…';
                 PractisVaultDevice.unlockWithDevice().then(function (result) {
                     window.location.href = (result && result.redirect) ? result.redirect : '/pro/medical/patients';
                 }).catch(function (e) {
                     err.textContent = e.message || 'Device unlock failed.';
                     err.style.display = 'block';
                     unlockBtn.disabled = false;
-                    unlockBtn.textContent = 'Unlock with this device';
+                    unlockBtn.textContent = 'Unlock with Face ID / fingerprint';
+                    PractisVaultDevice.prefetchUnlockOptions();
                 });
             });
         })();

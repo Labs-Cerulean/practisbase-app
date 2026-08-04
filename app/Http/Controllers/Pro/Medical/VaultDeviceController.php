@@ -19,7 +19,7 @@ use lbuchs\WebAuthn\WebAuthnException;
 class VaultDeviceController extends Controller
 {
     /** Short-lived tickets; biometric UI must finish within this window. */
-    private const TICKET_TTL_MINUTES = 3;
+    private const TICKET_TTL_MINUTES = 5;
 
     /** Registration options — vault must already be unlocked (session still valid). */
     public function registerOptions(Request $request)
@@ -56,7 +56,8 @@ class VaultDeviceController extends Controller
 
         // Android biometric UI often drops the browser session cookie mid-ceremony.
         // Cache everything needed to finish registration without the session.
-        // DEK is Laravel-encrypted and ticket-bound to IP + UA for a few minutes only.
+        // DEK is Laravel-encrypted; ticket secret + UA soft-check (no IP — mobile
+        // Wi‑Fi/cellular/Private Relay IP changes were breaking fingerprint unlock).
         Cache::put($this->ticketKey('register', $ticket), array_merge($fp, [
             'user_id' => $user->id,
             'vault_id' => $vault->id,
@@ -69,6 +70,7 @@ class VaultDeviceController extends Controller
             'publicKey' => $createArgs->publicKey,
             'rpId' => VaultWebAuthn::relyingPartyId($request),
             'registration_ticket' => $ticket,
+            'expires_in' => self::TICKET_TTL_MINUTES * 60,
         ]);
     }
 
@@ -85,7 +87,7 @@ class VaultDeviceController extends Controller
             'device_label' => 'nullable|string|max:255',
         ]);
 
-        $payload = Cache::pull($this->ticketKey('register', $validated['registration_ticket']));
+        $payload = Cache::get($this->ticketKey('register', $validated['registration_ticket']));
         if (! is_array($payload)) {
             return response()->json(['message' => 'Registration ticket expired. Unlock the vault and try Enable quick unlock again.'], 422);
         }
@@ -115,8 +117,6 @@ class VaultDeviceController extends Controller
                 $challenge = base64_decode($payload['challenge_b64'], true);
             } catch (\Throwable) {
                 return response()->json(['message' => 'Registration ticket is invalid.'], 422);
-            } finally {
-                unset($payload['dek_enc'], $payload['challenge_b64']);
             }
 
             if ($dek === false || strlen($dek) !== 32 || $challenge === false || $challenge === '') {
@@ -137,6 +137,9 @@ class VaultDeviceController extends Controller
             } catch (WebAuthnException $e) {
                 return response()->json(['message' => 'Device registration failed: '.$e->getMessage()], 422);
             }
+
+            // Consume ticket only after the authenticator ceremony verified.
+            Cache::forget($this->ticketKey('register', $validated['registration_ticket']));
 
             $credentialIdB64 = VaultWebAuthn::base64UrlFromBinary($data->credentialId);
             $existing = MedicalVaultDevice::where('credential_id', $credentialIdB64)->first();
@@ -229,6 +232,7 @@ class VaultDeviceController extends Controller
             'publicKey' => $getArgs->publicKey,
             'credential_ids' => $devices->pluck('credential_id')->values(),
             'unlock_ticket' => $ticket,
+            'expires_in' => self::TICKET_TTL_MINUTES * 60,
         ]);
     }
 
@@ -244,9 +248,9 @@ class VaultDeviceController extends Controller
             'wrap_key' => 'required|string',
         ]);
 
-        $payload = Cache::pull($this->ticketKey('unlock', $validated['unlock_ticket']));
+        $payload = Cache::get($this->ticketKey('unlock', $validated['unlock_ticket']));
         if (! is_array($payload)) {
-            return response()->json(['message' => 'Unlock ticket expired. Refresh and try again, or use your recovery code.'], 422);
+            return response()->json(['message' => 'Unlock ticket expired. Tap Unlock again, or use your recovery code.'], 422);
         }
 
         if ($mismatch = $this->assertTicketClient($request, $payload, 'Unlock')) {
@@ -268,7 +272,6 @@ class VaultDeviceController extends Controller
         }
 
         $challenge = base64_decode($payload['challenge_b64'], true);
-        unset($payload['challenge_b64']);
         if ($challenge === false || $challenge === '') {
             return response()->json(['message' => 'Unlock ticket is invalid.'], 422);
         }
@@ -284,13 +287,15 @@ class VaultDeviceController extends Controller
 
         try {
             $webAuthn = VaultWebAuthn::make($request);
+            // Do not enforce signature counters — iCloud/Google synced platform
+            // credentials often reset or desync counters and reject valid unlocks.
             $webAuthn->processGet(
                 VaultWebAuthn::decodeClientBinary($validated['clientDataJSON']),
                 VaultWebAuthn::decodeClientBinary($validated['authenticatorData']),
                 VaultWebAuthn::decodeClientBinary($validated['signature']),
                 $device->public_key,
                 $challenge,
-                $device->signature_counter > 0 ? $device->signature_counter : null,
+                null,
                 true,
                 true
             );
@@ -312,7 +317,11 @@ class VaultDeviceController extends Controller
                 return response()->json(['message' => 'Could not unwrap the vault key for this device. Unlock with your recovery code and re-enable quick unlock.'], 422);
             }
 
-            $device->signature_counter = is_int($counter) ? $counter : $device->signature_counter;
+            Cache::forget($this->ticketKey('unlock', $validated['unlock_ticket']));
+
+            if (is_int($counter) && $counter > 0) {
+                $device->signature_counter = $counter;
+            }
             $device->last_used_at = now();
             $device->save();
 
@@ -384,27 +393,31 @@ class VaultDeviceController extends Controller
         return "webauthn_{$kind}_ticket:{$ticket}";
     }
 
-    /** @return array{ip_hash: string, ua_hash: string} */
+    /** @return array{ua_hash: string} */
     private function ticketClientFingerprint(Request $request): array
     {
         return [
-            'ip_hash' => hash('sha256', (string) $request->ip()),
             'ua_hash' => hash('sha256', strtolower(trim((string) $request->userAgent()))),
         ];
     }
 
     private function assertTicketClient(Request $request, array $payload, string $kind): ?JsonResponse
     {
+        // Soft UA check only. Exact IP binding was the main mobile failure mode
+        // (Wi‑Fi ↔ cellular, Private Relay, carrier CGNAT). The ticket secret is
+        // enough binding for a 5-minute ceremony.
         $fp = $this->ticketClientFingerprint($request);
-        $ipOk = hash_equals((string) ($payload['ip_hash'] ?? ''), $fp['ip_hash']);
-        $uaOk = hash_equals((string) ($payload['ua_hash'] ?? ''), $fp['ua_hash']);
+        $storedUa = (string) ($payload['ua_hash'] ?? '');
+        if ($storedUa === '') {
+            return null;
+        }
 
-        if ($ipOk && $uaOk) {
+        if (hash_equals($storedUa, $fp['ua_hash'])) {
             return null;
         }
 
         return response()->json([
-            'message' => $kind.' ticket is not valid for this network or browser. Refresh and try again.',
+            'message' => $kind.' ticket is not valid for this browser. Refresh the page and try again.',
         ], 422);
     }
 
