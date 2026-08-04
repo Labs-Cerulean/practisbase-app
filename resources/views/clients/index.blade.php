@@ -125,7 +125,8 @@
                         @if(!$showArchived && $client->phone)
                             <a href="tel:{{ $client->phone }}" style="flex: 1; text-align: center; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); color: #059669; border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">Call</a>
                         @endif
-                        <a href="/clients/{{ $client->id }}" style="flex: 1; text-align: center; padding: 0.5rem; background: rgba(2, 132, 199, 0.1); color: var(--primary-cerulean); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">Statement</a>
+                        <a href="/clients/{{ $client->id }}?tab=statement" style="flex: 1; text-align: center; padding: 0.5rem; background: rgba(2, 132, 199, 0.1); color: var(--primary-cerulean); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">Statement</a>
+                        <a href="/clients/{{ $client->id }}?tab=history" style="flex: 1; text-align: center; padding: 0.5rem; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">History</a>
                     </div>
                 </div>
             @endforeach
