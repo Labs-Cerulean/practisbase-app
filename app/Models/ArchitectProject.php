@@ -70,6 +70,11 @@ class ArchitectProject extends Model
         return $this->hasMany(ArchitectSiteParty::class, 'architect_project_id');
     }
 
+    public function conditionReports(): HasMany
+    {
+        return $this->hasMany(ArchitectConditionReport::class, 'architect_project_id');
+    }
+
     public function siteAddressLine(): string
     {
         if (filled($this->site_address)) {

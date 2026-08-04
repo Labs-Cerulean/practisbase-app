@@ -26,6 +26,7 @@ use App\Http\Controllers\Pro\Architect\PaApplicationController as ArchitectPaCon
 use App\Http\Controllers\Pro\Architect\DocumentController as ArchitectDocumentController;
 use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateController;
 use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
+use App\Http\Controllers\Pro\Architect\ConditionReportController as ArchitectConditionReportController;
 use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
 use App\Http\Controllers\Pro\Engineer\ClientController as EngineerClientController;
@@ -253,6 +254,16 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::put('/documents/{document}', [ArchitectDocumentController::class, 'update']);
         Route::post('/documents/{document}/revisions', [ArchitectDocumentController::class, 'uploadRevision']);
         Route::get('/documents/{document}/revisions/{revision}/download', [ArchitectDocumentController::class, 'download']);
+
+        Route::get('/condition-reports', [ArchitectConditionReportController::class, 'index']);
+        Route::get('/condition-reports/create', [ArchitectConditionReportController::class, 'create']);
+        Route::post('/condition-reports', [ArchitectConditionReportController::class, 'store']);
+        Route::get('/condition-reports/{report}', [ArchitectConditionReportController::class, 'show']);
+        Route::get('/condition-reports/{report}/edit', [ArchitectConditionReportController::class, 'edit']);
+        Route::put('/condition-reports/{report}', [ArchitectConditionReportController::class, 'update']);
+        Route::post('/condition-reports/{report}/stamp', [ArchitectConditionReportController::class, 'stamp']);
+        Route::get('/condition-reports/{report}/pdf', [ArchitectConditionReportController::class, 'downloadPdf']);
+        Route::get('/condition-reports/{report}/photos/{photo}', [ArchitectConditionReportController::class, 'downloadPhoto']);
 
         Route::get('/templates', [ArchitectTemplateController::class, 'index']);
         Route::get('/templates/{key}/fill', [ArchitectTemplateController::class, 'fill']);

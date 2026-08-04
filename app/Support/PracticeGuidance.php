@@ -145,6 +145,18 @@ class PracticeGuidance
                 'href' => '/pro/architect/templates',
                 'done' => $hasProject,
             ];
+            $firstArchProject = ArchitectProject::where('user_id', $user->id)
+                ->where('status', '!=', 'archived')
+                ->orderByDesc('updated_at')
+                ->first();
+            $items[] = [
+                'key' => 'arch_condition',
+                'label' => 'Draft a neighbour condition report',
+                'href' => $firstArchProject
+                    ? '/pro/architect/condition-reports/create?project_id='.$firstArchProject->id.'&starter=seventh_schedule'
+                    : '/pro/architect/condition-reports/create?starter=seventh_schedule',
+                'done' => \App\Models\ArchitectConditionReport::where('user_id', $user->id)->exists(),
+            ];
         } elseif ($user->canAccessProPackage('eng')) {
             $hasClient = \App\Models\EngineerClient::where('user_id', $user->id)->exists();
             $firstProject = EngineerProject::where('user_id', $user->id)
