@@ -150,12 +150,13 @@ class AccountantDownloadController extends Controller
                 $invoice->invoice_number ?? '',
                 $invoice->type ?? '',
                 ($invoice && $invoice->type === 'rfp') ? 'non-fiscal' : 'fiscal',
+                $payment->is_transfer ? 'internal_transfer' : 'client_cash',
                 $invoice->client_id ?? '',
             ];
         }
 
         return $this->csv([
-            'payment_date', 'amount', 'document_number', 'document_type', 'fiscal_weight', 'client_id',
+            'payment_date', 'amount', 'document_number', 'document_type', 'fiscal_weight', 'cash_kind', 'client_id',
         ], $rows);
     }
 

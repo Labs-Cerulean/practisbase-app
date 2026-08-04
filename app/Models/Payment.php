@@ -13,6 +13,7 @@ class Payment extends Model
         'payment_date',
         'payment_method',
         'notes',
+        'is_transfer',
     ];
 
     protected function casts(): array
@@ -20,11 +21,20 @@ class Payment extends Model
         return [
             'payment_date' => 'date',
             'amount' => 'decimal:2',
+            'is_transfer' => 'boolean',
         ];
     }
 
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * Client cash only — excludes internal bank/adjustment moves.
+     */
+    public function scopeClientCash($query)
+    {
+        return $query->where('is_transfer', false);
     }
 }

@@ -104,4 +104,63 @@
             @endunless
         </div>
     </div>
+
+    <div style="background: white; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+            <div>
+                <h3 style="color: var(--primary-navy); margin: 0 0 0.35rem; font-size: 1.1rem;">What they owe</h3>
+                <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                    Tax invoices affect official balance. RFP amounts are tracked separately until converted.
+                </p>
+            </div>
+            <div style="display: flex; gap: 1.25rem; flex-wrap: wrap;">
+                <div>
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">On tax invoices</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: {{ $statement['official_owed'] > 0 ? '#dc2626' : '#059669' }};">€{{ number_format($statement['official_owed'], 2) }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">On RFPs</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: #4338ca;">€{{ number_format($statement['rfp_owed'], 2) }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($statement['total_owed'], 2) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 2px solid var(--border-light); color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em;">
+                        <th style="padding: 0.5rem 0.35rem;">Date</th>
+                        <th style="padding: 0.5rem 0.35rem;">Item</th>
+                        <th style="padding: 0.5rem 0.35rem; text-align: right;">Billed</th>
+                        <th style="padding: 0.5rem 0.35rem; text-align: right;">Paid</th>
+                        <th style="padding: 0.5rem 0.35rem; text-align: right;">Invoice bal.</th>
+                        <th style="padding: 0.5rem 0.35rem; text-align: right;">RFP bal.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($statement['rows'] as $row)
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 0.45rem 0.35rem; white-space: nowrap;">{{ $row['date']->format('d M Y') }}</td>
+                            <td style="padding: 0.45rem 0.35rem; color: var(--primary-navy);">{{ $row['label'] }}</td>
+                            <td style="padding: 0.45rem 0.35rem; text-align: right; font-variant-numeric: tabular-nums;">{{ $row['debit'] > 0 ? '€'.number_format($row['debit'], 2) : '' }}</td>
+                            <td style="padding: 0.45rem 0.35rem; text-align: right; font-variant-numeric: tabular-nums;">{{ $row['credit'] > 0 ? '€'.number_format($row['credit'], 2) : '' }}</td>
+                            <td style="padding: 0.45rem 0.35rem; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600;">€{{ number_format($row['official_balance'], 2) }}</td>
+                            <td style="padding: 0.45rem 0.35rem; text-align: right; font-variant-numeric: tabular-nums; color: #4338ca;">€{{ number_format($row['rfp_balance'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No documents yet for this client.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 1rem;">
+            <a href="/ledger?client_id={{ $client->id }}" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Open in ledger →</a>
+        </div>
+    </div>
 @endsection

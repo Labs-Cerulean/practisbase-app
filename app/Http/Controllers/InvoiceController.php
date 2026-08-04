@@ -34,10 +34,10 @@ class InvoiceController extends Controller
         // Unbilled Pipeline (What is locked in RFPs but not yet invoiced)
         $unbilledPipeline = max(0, $totalPipeline - $netInvoiced);
 
-        // Cash Analysis 
-        $totalCollected = Payment::where('user_id', $userId)->sum('amount');
-        $rfpCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'rfp'))->sum('amount');
-        $invoiceCash = Payment::where('user_id', $userId)->whereHas('invoice', fn($q) => $q->where('type', 'invoice'))->sum('amount');
+        // Cash Analysis — client cash only (internal transfers excluded)
+        $totalCollected = Payment::where('user_id', $userId)->clientCash()->sum('amount');
+        $rfpCash = Payment::where('user_id', $userId)->clientCash()->whereHas('invoice', fn ($q) => $q->where('type', 'rfp'))->sum('amount');
+        $invoiceCash = Payment::where('user_id', $userId)->clientCash()->whereHas('invoice', fn ($q) => $q->where('type', 'invoice'))->sum('amount');
 
         // NEW: Dues Analysis (Fixed: max(0, $cash) prevents refunds from creating fake debt)
         $officialDues = max(0, $netInvoiced - max(0, $invoiceCash));
@@ -330,17 +330,19 @@ class InvoiceController extends Controller
 
         $request->validate([
             'payment_amount' => 'required|numeric|min:0.01',
-            'payment_date' => 'required|date|before_or_equal:today'
+            'payment_date' => 'required|date|before_or_equal:today',
+            'is_transfer' => 'sometimes|boolean',
         ]);
 
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($request->payment_date))) {
-            return back()->withErrors(['fiscal_error' => $lockError]);
-        }
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
+        if ($lockError = FiscalYearGuard::ensureOpenForDates($user->id, [
+            $request->payment_date,
+            $document->issue_date,
+        ])) {
             return back()->withErrors(['fiscal_error' => $lockError]);
         }
 
         $paymentAmount = (float) $request->payment_amount;
+        $isTransfer = $request->boolean('is_transfer');
         
         // --- CALCULATE THE FAMILY BALANCE ---
         $familyPaid = $document->amount_paid;
@@ -368,12 +370,14 @@ class InvoiceController extends Controller
         $newTotalPaid = $document->amount_paid + $paymentAmount;
         $newStatus = ($newTotalPaid >= $document->total) ? 'paid' : 'partially_paid';
 
-        DB::transaction(function () use ($user, $document, $paymentAmount, $newTotalPaid, $newStatus, $request) {
+        DB::transaction(function () use ($user, $document, $paymentAmount, $newTotalPaid, $newStatus, $request, $isTransfer) {
             Payment::create([
                 'user_id' => $user->id,
                 'invoice_id' => $document->id,
                 'amount' => $paymentAmount,
-                'payment_date' => $request->payment_date,                
+                'payment_date' => $request->payment_date,
+                'is_transfer' => $isTransfer,
+                'notes' => $isTransfer ? 'Internal transfer (excluded from cash collected)' : null,
             ]);
 
             $document->update([
@@ -382,7 +386,12 @@ class InvoiceController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Payment of €' . number_format($paymentAmount, 2) . ' applied successfully.');
+        $msg = 'Payment of €' . number_format($paymentAmount, 2) . ' applied successfully.';
+        if ($isTransfer) {
+            $msg .= ' Marked as internal transfer — not counted in Cash Collected.';
+        }
+
+        return back()->with('success', $msg);
     }
 
     // 8. Download Payment Receipt (PDF)
@@ -423,15 +432,15 @@ class InvoiceController extends Controller
         if ($document->type !== 'invoice') abort(400, 'Credit notes can only be issued against official Tax Invoices.');
         if ($document->status === 'cancelled') abort(400, 'This invoice is already fully cancelled.');
 
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
-            return back()->withErrors(['fiscal_error' => $lockError]);
-        }
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, (int) date('Y'))) {
+        if ($lockError = FiscalYearGuard::ensureOpenForDates($user->id, [
+            $document->issue_date,
+            now()->toDateString(),
+        ])) {
             return back()->withErrors(['fiscal_error' => $lockError]);
         }
 
         $request->validate([
-            'credit_amount' => 'required|numeric|min:0.01'
+            'credit_amount' => 'required|numeric|min:0.01',
         ]);
 
         $creditTotal = (float) $request->credit_amount;
@@ -501,115 +510,154 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
 
-        // Security Checks
-        if ($document->user_id !== $user->id) abort(403);
-        if ($document->type !== 'rfp') abort(400, 'Only RFPs can be converted to Invoices.');
-
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
-            return back()->withErrors(['fiscal_error' => $lockError]);
+        if ($document->user_id !== $user->id) {
+            abort(403);
         }
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, (int) date('Y'))) {
-            return back()->withErrors(['fiscal_error' => $lockError]);
+        if ($document->type !== 'rfp') {
+            abort(400, 'Only RFPs can be converted to Invoices.');
         }
 
         $request->validate([
-            'conversion_amount' => 'required|numeric|min:0.01'
+            'conversion_amount' => 'required|numeric|min:0.01',
         ]);
 
-        $conversionAmount = (float) $request->conversion_amount;
+        $conversionAmount = round((float) $request->conversion_amount, 2);
+        $today = now()->toDateString();
 
-        // 1. Calculate Allowable Conversion
-        $existingConversions = $document->childDocuments()->where('type', 'invoice')->sum('total');
-        $maxAllowable = $document->total - $existingConversions;
-
-        if ($conversionAmount > $maxAllowable) {
-            return back()->withErrors(['payment_error' => 'Conversion cannot exceed the remaining RFP value of €' . number_format($maxAllowable, 2)]);
+        if ($lockError = FiscalYearGuard::ensureOpenForDates($user->id, [
+            $document->issue_date,
+            $today,
+        ])) {
+            return back()->withErrors(['fiscal_error' => $lockError]);
         }
 
-        $partialRegime = RegimeHistory::forDate($user, date('Y-m-d'));
-        if (($partialRegime['vat_status'] ?? $user->vat_status) === 'article_11') {
-            $year = (int) date('Y', strtotime((string) $document->issue_date));
-            $ytdNet = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
+        $invNumber = null;
 
-            if (($ytdNet + $conversionAmount) > 35000) {
-                session()->flash('revenue_warning', 'Legal alert: Converting this RFP pushed your annual billed revenue over €35,000 (Article 11). You must apply for Article 10 VAT registration within 30 days.');
-            }
-        }
+        try {
+            DB::transaction(function () use ($user, $document, $conversionAmount, $today, &$invNumber) {
+                $rfp = Invoice::where('user_id', $user->id)
+                    ->where('id', $document->id)
+                    ->where('type', 'rfp')
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-        // 2. Pro-Rata VAT Math
-        $vatRate = $document->vat_total > 0 ? 0.18 : 0;
-        if ($vatRate > 0) {
-            $subtotal = $conversionAmount / 1.18;
-            $vat = $conversionAmount - $subtotal;
-        } else {
-            $subtotal = $conversionAmount;
-            $vat = 0;
-        }
+                $existingConversions = (float) $rfp->childDocuments()->where('type', 'invoice')->sum('total');
+                $maxAllowable = round((float) $rfp->total - $existingConversions, 2);
 
-        // 3. Generate Sequential Invoice Number (per-user per-year)
-        $invNumber = DocumentNumber::next($user->id, 'invoice');
-
-        DB::transaction(function () use ($user, $document, $conversionAmount, $subtotal, $vat, $maxAllowable, $invNumber) {
-            
-            // 4. Create the Child Tax Invoice
-            $newInvoice = Invoice::create([
-                'user_id' => $user->id,
-                'client_id' => $document->client_id,
-                'parent_document_id' => $document->id, 
-                'type' => 'invoice',
-                'invoice_number' => $invNumber,
-                'issue_date' => now(),
-                'due_date' => now()->addDays(14),
-                'subtotal' => $subtotal,
-                'vat_total' => $vat,
-                'total' => $conversionAmount,
-                'amount_paid' => 0,
-                'status' => 'unpaid',
-                // NEW: Provide a summary line item for the milestone
-                'items' => [
-                    [
-                        'description' => 'Milestone Billing for ' . $document->invoice_number,
-                        'quantity' => 1,
-                        'price' => $subtotal,
-                        'amount' => $subtotal
-                    ]
-                ]
-            ]);
-
-            // 5. Intelligent Payment Transfer 
-            // If they already logged a €10k payment on the RFP, move it to this new Invoice!
-            $remainingToTransfer = $conversionAmount;
-            $totalTransferred = 0;
-            
-            foreach ($document->payments as $payment) {
-                // If the payment fits inside this new invoice, transfer it over
-                if ($remainingToTransfer >= $payment->amount) {
-                    $payment->update(['invoice_id' => $newInvoice->id]);
-                    $remainingToTransfer -= $payment->amount;
-                    $totalTransferred += $payment->amount;
+                if ($conversionAmount > $maxAllowable + 0.001) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'payment_error' => 'Conversion cannot exceed the remaining RFP value of €'.number_format($maxAllowable, 2),
+                    ]);
                 }
-            }
 
-            // 6. Update document statuses based on the transferred cash
-            if ($totalTransferred > 0) {
-                $newInvoice->update([
-                    'amount_paid' => $totalTransferred,
-                    'status' => ($totalTransferred >= $conversionAmount) ? 'paid' : 'partially_paid'
+                $partialRegime = RegimeHistory::forDate($user, $today);
+                if (($partialRegime['vat_status'] ?? $user->vat_status) === 'article_11') {
+                    $year = FiscalYearGuard::yearFromDate($today);
+                    $ytdNet = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
+                    if (($ytdNet + $conversionAmount) > 35000) {
+                        session()->flash('revenue_warning', 'Legal alert: Converting this RFP pushed your annual billed revenue over €35,000 (Article 11). You must apply for Article 10 VAT registration within 30 days.');
+                    }
+                }
+
+                $vatRate = (float) $rfp->vat_total > 0 ? 0.18 : 0;
+                if ($vatRate > 0) {
+                    $subtotal = round($conversionAmount / 1.18, 2);
+                    $vat = round($conversionAmount - $subtotal, 2);
+                } else {
+                    $subtotal = $conversionAmount;
+                    $vat = 0.0;
+                }
+
+                $invNumber = DocumentNumber::next($user->id, 'invoice', FiscalYearGuard::yearFromDate($today));
+
+                $newInvoice = Invoice::create([
+                    'user_id' => $user->id,
+                    'client_id' => $rfp->client_id,
+                    'parent_document_id' => $rfp->id,
+                    'type' => 'invoice',
+                    'invoice_number' => $invNumber,
+                    'issue_date' => $today,
+                    'due_date' => now()->addDays(14)->toDateString(),
+                    'subtotal' => $subtotal,
+                    'vat_total' => $vat,
+                    'total' => $conversionAmount,
+                    'amount_paid' => 0,
+                    'status' => 'unpaid',
+                    'items' => [
+                        [
+                            'description' => 'Milestone Billing for '.$rfp->invoice_number,
+                            'quantity' => 1,
+                            'price' => $subtotal,
+                            'amount' => $subtotal,
+                        ],
+                    ],
                 ]);
-                
-                // Reduce parent RFP's amount_paid to reflect that the cash has moved to the official invoice
-                $document->update([
-                    'amount_paid' => max(0, $document->amount_paid - $totalTransferred)
-                ]);
-            }
 
-            // 7. Auto-Close the RFP if it has been fully drawn down!
-            if ($conversionAmount == $maxAllowable) {
-                $document->update(['status' => 'converted']);
-            }
-        });
+                // Reassign existing client cash — never create a second cash receipt.
+                // Split oversized payments so leftover stays on the RFP.
+                $remainingToTransfer = $conversionAmount;
+                $totalTransferred = 0.0;
 
-        return back()->with('success', 'Tax Invoice ' . $invNumber . ' generated for €' . number_format($conversionAmount, 2) . '. Payments transferred where applicable.');
+                $cashPayments = Payment::where('user_id', $user->id)
+                    ->where('invoice_id', $rfp->id)
+                    ->where('is_transfer', false)
+                    ->where('amount', '>', 0)
+                    ->orderBy('payment_date')
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($cashPayments as $payment) {
+                    if ($remainingToTransfer <= 0.009) {
+                        break;
+                    }
+
+                    $payAmount = round((float) $payment->amount, 2);
+                    $take = round(min($payAmount, $remainingToTransfer), 2);
+                    if ($take <= 0) {
+                        continue;
+                    }
+
+                    if (abs($take - $payAmount) < 0.009) {
+                        $payment->update(['invoice_id' => $newInvoice->id]);
+                    } else {
+                        $payment->update(['amount' => round($payAmount - $take, 2)]);
+                        Payment::create([
+                            'user_id' => $user->id,
+                            'invoice_id' => $newInvoice->id,
+                            'amount' => $take,
+                            'payment_date' => $payment->payment_date,
+                            'payment_method' => $payment->payment_method,
+                            'notes' => trim(($payment->notes ? $payment->notes.' · ' : '').'Split from '.$rfp->invoice_number.' on convert'),
+                            'is_transfer' => false,
+                        ]);
+                    }
+
+                    $totalTransferred = round($totalTransferred + $take, 2);
+                    $remainingToTransfer = round($remainingToTransfer - $take, 2);
+                }
+
+                if ($totalTransferred > 0) {
+                    $newInvoice->update([
+                        'amount_paid' => $totalTransferred,
+                        'status' => ($totalTransferred >= $conversionAmount) ? 'paid' : 'partially_paid',
+                    ]);
+
+                    $rfpRemainingCash = (float) Payment::where('invoice_id', $rfp->id)->sum('amount');
+                    $rfp->update([
+                        'amount_paid' => max(0, $rfpRemainingCash),
+                    ]);
+                }
+
+                if (abs($conversionAmount - $maxAllowable) < 0.009) {
+                    $rfp->update(['status' => 'converted']);
+                }
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('success', 'Tax Invoice '.$invNumber.' generated for €'.number_format($conversionAmount, 2).'. Existing RFP cash was moved across (no double-count).');
     }
 
     // 11. Reverse/Delete a Payment
@@ -621,10 +669,10 @@ class InvoiceController extends Controller
         // Security Check
         if ($payment->user_id !== $user->id) abort(403);
 
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($payment->payment_date))) {
-            return back()->withErrors(['fiscal_error' => $lockError]);
-        }
-        if ($invoice && ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($invoice->issue_date)))) {
+        if ($lockError = FiscalYearGuard::ensureOpenForDates($user->id, [
+            $payment->payment_date,
+            optional($invoice)->issue_date,
+        ])) {
             return back()->withErrors(['fiscal_error' => $lockError]);
         }
 
@@ -651,36 +699,53 @@ class InvoiceController extends Controller
     public function transferPayment(Request $request, \App\Models\Payment $payment)
     {
         $user = Auth::user();
-        if ($payment->user_id !== $user->id) abort(403);
+        if ($payment->user_id !== $user->id) {
+            abort(403);
+        }
 
         $request->validate([
-            'target_invoice_id' => 'required|exists:invoices,id,user_id,' . $user->id,
+            'target_invoice_id' => 'required|exists:invoices,id,user_id,'.$user->id,
         ]);
-        
+
         $targetInvoice = Invoice::where('id', $request->target_invoice_id)->where('user_id', $user->id)->firstOrFail();
         $oldInvoice = $payment->invoice;
 
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($payment->payment_date))) {
+        if (! $oldInvoice || $oldInvoice->type !== 'rfp') {
+            return back()->withErrors(['payment_error' => 'Only payments on an RFP can be moved to a tax invoice.']);
+        }
+        if ($targetInvoice->type !== 'invoice' || (int) $targetInvoice->parent_document_id !== (int) $oldInvoice->id) {
+            return back()->withErrors(['payment_error' => 'Target must be a tax invoice converted from this RFP.']);
+        }
+
+        if ($lockError = FiscalYearGuard::ensureOpenForDates($user->id, [
+            $payment->payment_date,
+            $oldInvoice->issue_date,
+            $targetInvoice->issue_date,
+        ])) {
             return back()->withErrors(['fiscal_error' => $lockError]);
         }
 
+        $room = round((float) $targetInvoice->total - (float) $targetInvoice->amount_paid, 2);
+        if (round((float) $payment->amount, 2) > $room + 0.001) {
+            return back()->withErrors([
+                'payment_error' => 'Payment (€'.number_format((float) $payment->amount, 2).') exceeds the invoice balance due (€'.number_format($room, 2).'). Convert a larger amount or split first.',
+            ]);
+        }
+
         DB::transaction(function () use ($payment, $oldInvoice, $targetInvoice) {
-            // 1. Deduct from Parent RFP
             $oldPaid = max(0, $oldInvoice->amount_paid - $payment->amount);
             $oldInvoice->update(['amount_paid' => $oldPaid]);
 
-            // 2. Add to Child Invoice
             $newPaid = $targetInvoice->amount_paid + $payment->amount;
             $targetInvoice->update([
                 'amount_paid' => $newPaid,
-                'status' => ($newPaid >= $targetInvoice->total) ? 'paid' : 'partially_paid'
+                'status' => ($newPaid >= $targetInvoice->total) ? 'paid' : 'partially_paid',
             ]);
 
-            // 3. Move the physical payment record
             $payment->update(['invoice_id' => $targetInvoice->id]);
         });
 
-        return back()->with('success', 'Payment successfully moved to Invoice ' . $targetInvoice->invoice_number);
+        return back()->with('success', 'Payment successfully moved to Invoice '.$targetInvoice->invoice_number);
     }
 
     // 13. Process a Refund (For Overpaid Documents)
@@ -694,10 +759,10 @@ class InvoiceController extends Controller
             'refund_date' => 'required|date|before_or_equal:today'
         ]);
 
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($request->refund_date))) {
-            return back()->withErrors(['fiscal_error' => $lockError]);
-        }
-        if ($lockError = FiscalYearGuard::ensureOpen($user->id, FiscalYearGuard::yearFromDate($document->issue_date))) {
+        if ($lockError = FiscalYearGuard::ensureOpenForDates($user->id, [
+            $request->refund_date,
+            $document->issue_date,
+        ])) {
             return back()->withErrors(['fiscal_error' => $lockError]);
         }
 

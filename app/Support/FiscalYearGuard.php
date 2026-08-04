@@ -23,6 +23,26 @@ class FiscalYearGuard
         return null;
     }
 
+    /**
+     * Block if any of the given dates fall in a closed fiscal year.
+     *
+     * @param  list<string|\DateTimeInterface|null>  $dates
+     */
+    public static function ensureOpenForDates(int $userId, array $dates): ?string
+    {
+        foreach ($dates as $date) {
+            if ($date === null || $date === '') {
+                continue;
+            }
+            $error = self::ensureOpen($userId, self::yearFromDate($date));
+            if ($error !== null) {
+                return $error;
+            }
+        }
+
+        return null;
+    }
+
     public static function yearFromDate(string|\DateTimeInterface $date): int
     {
         if ($date instanceof \DateTimeInterface) {
