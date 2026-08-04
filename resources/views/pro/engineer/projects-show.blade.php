@@ -3,7 +3,9 @@
 @section('page_title', $project->name)
 
 @section('content')
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+    @include('pro.engineer._field-styles')
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <div>
             <a href="{{ $project->client ? '/pro/engineer/clients/'.$project->client->id : '/pro/engineer/projects' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->client->name ?? 'Projects' }}</a>
             <h1 style="margin: 0.4rem 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">{{ $project->name }}</h1>
@@ -14,14 +16,31 @@
                 @if($project->siteAddressLine()) · {{ $project->siteAddressLine() }} @endif
             </p>
         </div>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="eng-desktop-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/engineer/projects/{{ $project->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit</a>
             <a href="/pro/engineer/projects/{{ $project->id }}/pa/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ PA</a>
-            <a href="/pro/engineer/documents/create?project_id={{ $project->id }}" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Document</a>
-            <a href="/pro/engineer/certificates/create?project_id={{ $project->id }}" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Certificate</a>
-            <a href="/pro/engineer/reports/create?project_id={{ $project->id }}" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Report</a>
         </div>
     </div>
+
+    <nav class="eng-field-strip" aria-label="On-site field actions">
+        <div class="eng-field-strip-label">Field strip · on site</div>
+        <a class="eng-field-primary" href="/pro/engineer/certificates/create?project_id={{ $project->id }}#photos">
+            Certificate
+            <span>Inspect + photo</span>
+        </a>
+        <a href="/pro/engineer/reports/create?project_id={{ $project->id }}#photos">
+            Report
+            <span>Fire / noise / vent / light</span>
+        </a>
+        <a href="/pro/engineer/documents/create?project_id={{ $project->id }}">
+            Document
+            <span>Drawing / upload</span>
+        </a>
+        <a href="/pro/engineer/projects/{{ $project->id }}/edit">
+            Edit project
+            <span>Site / status</span>
+        </a>
+    </nav>
 
     @if(session('success'))
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>

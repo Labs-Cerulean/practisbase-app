@@ -3,6 +3,7 @@
 @section('page_title', $report ? 'Edit report' : 'New report')
 
 @section('content')
+    @include('pro.engineer._field-styles')
     @php
         $isEdit = $report !== null;
         $action = $isEdit ? '/pro/engineer/reports/'.$report->id : '/pro/engineer/reports';
@@ -10,7 +11,7 @@
     <div style="margin-bottom: 1.25rem;">
         <a href="{{ $isEdit ? '/pro/engineer/reports/'.$report->id : '/pro/engineer/reports' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Back</a>
         <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">{{ $isEdit ? 'Edit report' : 'Report builder' }}</h1>
-        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Same form for any specialised survey — add attributes, checklist rows, measurements, and narrative sections as needed.</p>
+        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Same form for any specialised survey — attributes, checklist, measurements, and narrative. Built for phone on site.</p>
     </div>
 
     @unless($isEdit)
@@ -30,7 +31,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ $action }}" enctype="multipart/form-data" style="display: grid; gap: 1.1rem; max-width: 920px;">
+    <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="eng-field-form" style="display: grid; gap: 1.1rem; max-width: 920px;">
         @csrf
         @if($isEdit) @method('PUT') @endif
         <input type="hidden" name="report_type" value="{{ old('report_type', $starterKey ?? $report->report_type ?? 'blank') }}">
@@ -128,7 +129,7 @@
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Subject attributes</h2>
-                <button type="button" id="addAttr" style="background: white; border: 1px solid var(--border-light); padding: 0.4rem 0.7rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; font-size: 0.82rem;">+ Row</button>
+                <button type="button" id="addAttr" class="eng-touch-btn" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">+ Row</button>
             </div>
             <input type="text" name="payload[subject_heading]" value="{{ $p['subject_heading'] }}" placeholder="Section heading (e.g. Premises / scope)" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             <div id="attrRows" style="display: grid; gap: 0.5rem;">
@@ -155,7 +156,7 @@
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Checklist</h2>
-                <button type="button" id="addCheck" style="background: white; border: 1px solid var(--border-light); padding: 0.4rem 0.7rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; font-size: 0.82rem;">+ Row</button>
+                <button type="button" id="addCheck" class="eng-touch-btn" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">+ Row</button>
             </div>
             <input type="text" name="payload[checklist_heading]" value="{{ $p['checklist_heading'] }}" placeholder="Checklist heading (leave blank to hide on PDF if empty)" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             <div id="checkRows" style="display: grid; gap: 0.5rem;">
@@ -173,7 +174,7 @@
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Measurements</h2>
-                <button type="button" id="addMeas" style="background: white; border: 1px solid var(--border-light); padding: 0.4rem 0.7rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; font-size: 0.82rem;">+ Row</button>
+                <button type="button" id="addMeas" class="eng-touch-btn" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">+ Row</button>
             </div>
             <input type="text" name="payload[measurements_heading]" value="{{ $p['measurements_heading'] }}" placeholder="Measurements heading (optional — leave blank if not used)" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             <div id="measRows" style="display: grid; gap: 0.5rem; overflow-x: auto;">
@@ -195,7 +196,7 @@
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Narrative sections</h2>
-                <button type="button" id="addSection" style="background: white; border: 1px solid var(--border-light); padding: 0.4rem 0.7rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; font-size: 0.82rem;">+ Section</button>
+                <button type="button" id="addSection" class="eng-touch-btn" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">+ Section</button>
             </div>
             <div id="sectionRows" style="display: grid; gap: 0.75rem;">
                 @foreach($p['sections'] as $i => $row)
@@ -214,13 +215,12 @@
             </div>
         </section>
 
-        <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
-            <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Photos</h2>
-            <input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple capture="environment">
-            <div style="font-size: 0.78rem; color: var(--text-muted);">Optional. Up to 12 images, 5 MB each. Existing photos are kept when you upload more.</div>
-        </section>
+        @include('pro.engineer._field-photos')
 
-        <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.85rem 1.2rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; width: fit-content;">{{ $isEdit ? 'Save draft' : 'Save draft report' }}</button>
+        <div class="eng-field-savebar">
+            <button type="submit">{{ $isEdit ? 'Save draft' : 'Save draft report' }}</button>
+            <div class="eng-field-hint">Draft stays editable until you Stamp &amp; issue.</div>
+        </div>
     </form>
 
     <script>

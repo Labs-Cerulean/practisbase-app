@@ -33,7 +33,7 @@ Engineer is the thinnest Practice package today. Soft launch cannot pretend othe
 | Surface | Medical | Architect | Engineer |
 |---|---|---|---|
 | Project / case workspace | Patients + journals | Client → Project → PA (deep) | **Projects list + create only** |
-| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA template fill | Field certs + specialised reports (generic builders) |
+| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA template fill | Field certs + specialised reports; mobile Field strip + camera capture |
 | Stamp / warrant PDFs | Stampables under patient | Stamper + certs | Shared Certificates only |
 | Mobile-first site workflow | N/A (clinic) | Not yet (neighbor reports planned) | **Not started** |
 | BOQ / Spec library | N/A | **Pre soft launch (shared Arch/Eng)** | **Pre soft launch (shared Arch/Eng)** |
@@ -44,11 +44,11 @@ Engineer is the thinnest Practice package today. Soft launch cannot pretend othe
 - Drawings & documents with revisions (`engineer_documents`)
 - Generic field certificate builder (equipment / scaffold / PA starters) — stamp → PDF
 - Generic specialised report builder (fire / noise / ventilation / lighting starters) — stamp → PDF
+- Mobile field polish: project Field strip, camera-first photos, sticky save / stamp actions
 - Shared `/pro/certificates` register (simple stamp & issue)
 - Nav + dashboard shortcuts
 
 ### Engineer — soft-launch gap (code)
-- Mobile field polish (E5)
 - BOQ / Spec library (shared Arch/Eng, SL-B)
 
 ### Shared Arch/Eng — soft-launch gap (library)
