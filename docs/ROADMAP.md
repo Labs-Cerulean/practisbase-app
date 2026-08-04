@@ -33,9 +33,9 @@ Engineer is the thinnest Practice package today. Soft launch cannot pretend othe
 | Surface | Medical | Architect | Engineer |
 |---|---|---|---|
 | Project / case workspace | Patients + journals | Client → Project → PA (deep) | **Projects list + create only** |
-| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA template fill | Field certs + specialised reports; mobile Field strip + camera capture |
-| Stamp / warrant PDFs | Stampables under patient | Stamper + certs | Shared Certificates only |
-| Mobile-first site workflow | N/A (clinic) | Not yet (neighbor reports planned) | **Not started** |
+| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA, **condition reports** (Seventh Schedule) + Field strip | Field certs + specialised reports; mobile Field strip + camera capture |
+| Stamp / warrant PDFs | Stampables under patient | Stamper + certs + condition report stamp | Shared Certificates + Eng field certs/reports |
+| Mobile-first site workflow | N/A (clinic) | Field strip + camera condition reports | Field strip + camera cert/report forms |
 | BOQ / Spec library | N/A | **Pre soft launch (shared Arch/Eng)** | **Pre soft launch (shared Arch/Eng)** |
 | Team seats | Out of soft launch | Out of soft launch | Out of soft launch |
 
@@ -207,7 +207,7 @@ Soft launch does **not** need every line from every legacy job — it needs a **
 
 ### SL-A / SL-M / SL-G
 
-- **SL-A:** Keep Arch green; neighbor reports optional stretch.  
+- **SL-A:** Keep Arch green; neighbour condition reports (Seventh Schedule) shipped.  
 - **SL-M:** WebAuthn reliability only; recovery code sacred.  
 - **SL-G checklist:** SL-E + SL-B met; fiscal / Med / Arch smokes green; Eng smoke includes BOQ add + Spec export; pricing matches reality; Stripe still optional.
 

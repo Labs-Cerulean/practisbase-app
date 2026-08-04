@@ -79,6 +79,7 @@ class ProjectController extends Controller
             'paApplications' => fn ($q) => $q->orderByDesc('updated_at'),
             'documents' => fn ($q) => $q->whereNull('architect_pa_application_id')->orderByDesc('updated_at'),
             'siteParties' => fn ($q) => $q->orderBy('role_key'),
+            'conditionReports' => fn ($q) => $q->orderByDesc('updated_at'),
         ]);
 
         return view('pro.architect.projects-show', [
