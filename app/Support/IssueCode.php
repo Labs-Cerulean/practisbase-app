@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Certificate;
 use App\Models\ClinicalEntry;
+use App\Models\EngineerCertificate;
 
 /**
  * Opaque authenticity codes for stamped professional documents.
@@ -54,9 +55,14 @@ class IssueCode
         return self::allocateUnique(self::prefixForClinicalType($entryType));
     }
 
-    public static function allocateForCertificate(): string
+    public static function prefixForEngineerCertificate(): string
     {
-        return self::allocateUnique(self::prefixForCertificate());
+        return 'EC';
+    }
+
+    public static function allocateForEngineerCertificate(): string
+    {
+        return self::allocateUnique(self::prefixForEngineerCertificate());
     }
 
     public static function exists(string $code): bool
@@ -64,7 +70,8 @@ class IssueCode
         $normalized = strtoupper(trim($code));
 
         return ClinicalEntry::where('issue_code', $normalized)->exists()
-            || Certificate::where('issue_code', $normalized)->exists();
+            || Certificate::where('issue_code', $normalized)->exists()
+            || EngineerCertificate::where('issue_code', $normalized)->exists();
     }
 
     public static function normalize(?string $code): ?string

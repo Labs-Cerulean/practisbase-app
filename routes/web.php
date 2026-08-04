@@ -31,6 +31,7 @@ use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectContro
 use App\Http\Controllers\Pro\Engineer\ClientController as EngineerClientController;
 use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
 use App\Http\Controllers\Pro\Engineer\DocumentController as EngineerDocumentController;
+use App\Http\Controllers\Pro\Engineer\CertificateController as EngineerCertificateController;
 use App\Http\Controllers\Company\DeskController as CompanyDeskController;
 use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
@@ -305,8 +306,18 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/documents/{document}/revisions', [EngineerDocumentController::class, 'uploadRevision']);
         Route::get('/documents/{document}/revisions/{revision}/download', [EngineerDocumentController::class, 'download']);
 
-        Route::redirect('/certifications', '/pro/certificates');
-        Route::redirect('/certifications/create', '/pro/certificates/create');
+        Route::get('/certificates', [EngineerCertificateController::class, 'index']);
+        Route::get('/certificates/create', [EngineerCertificateController::class, 'create']);
+        Route::post('/certificates', [EngineerCertificateController::class, 'store']);
+        Route::get('/certificates/{certificate}', [EngineerCertificateController::class, 'show']);
+        Route::get('/certificates/{certificate}/edit', [EngineerCertificateController::class, 'edit']);
+        Route::put('/certificates/{certificate}', [EngineerCertificateController::class, 'update']);
+        Route::post('/certificates/{certificate}/stamp', [EngineerCertificateController::class, 'stamp']);
+        Route::get('/certificates/{certificate}/pdf', [EngineerCertificateController::class, 'downloadPdf']);
+        Route::get('/certificates/{certificate}/photos/{photo}', [EngineerCertificateController::class, 'downloadPhoto']);
+
+        Route::redirect('/certifications', '/pro/engineer/certificates');
+        Route::redirect('/certifications/create', '/pro/engineer/certificates/create');
     });
 
     Route::middleware('company_books')->prefix('company')->group(function () {
