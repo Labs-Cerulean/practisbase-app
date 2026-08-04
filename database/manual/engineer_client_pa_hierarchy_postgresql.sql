@@ -41,16 +41,12 @@ ALTER TABLE engineer_projects
 ALTER TABLE engineer_projects
     ADD COLUMN IF NOT EXISTS commencement_date DATE NULL;
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'engineer_projects_engineer_client_id_fkey'
-    ) THEN
-        ALTER TABLE engineer_projects
-            ADD CONSTRAINT engineer_projects_engineer_client_id_fkey
-            FOREIGN KEY (engineer_client_id) REFERENCES engineer_clients (id) ON DELETE CASCADE;
-    END IF;
-END $$;
+ALTER TABLE engineer_projects
+    DROP CONSTRAINT IF EXISTS engineer_projects_engineer_client_id_fkey;
+
+ALTER TABLE engineer_projects
+    ADD CONSTRAINT engineer_projects_engineer_client_id_fkey
+    FOREIGN KEY (engineer_client_id) REFERENCES engineer_clients (id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS engineer_projects_client_id_idx
     ON engineer_projects (engineer_client_id);
@@ -72,9 +68,10 @@ CREATE TABLE IF NOT EXISTS engineer_pa_applications (
         FOREIGN KEY (engineer_project_id) REFERENCES engineer_projects (id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS engineer_pa_applications_user_pa_unique
-    ON engineer_pa_applications (user_id, LOWER(pa_number))
-    WHERE pa_number IS NOT NULL;
+DROP INDEX IF EXISTS engineer_pa_applications_user_pa_unique;
+
+CREATE UNIQUE INDEX engineer_pa_applications_user_pa_unique
+    ON engineer_pa_applications (user_id, (LOWER(pa_number)));
 
 CREATE INDEX IF NOT EXISTS engineer_pa_applications_project_idx
     ON engineer_pa_applications (engineer_project_id);
@@ -84,6 +81,5 @@ ALTER TABLE architect_pa_applications
 
 DROP INDEX IF EXISTS architect_pa_applications_user_pa_unique;
 
-CREATE UNIQUE INDEX IF NOT EXISTS architect_pa_applications_user_pa_unique
-    ON architect_pa_applications (user_id, LOWER(pa_number))
-    WHERE pa_number IS NOT NULL;
+CREATE UNIQUE INDEX architect_pa_applications_user_pa_unique
+    ON architect_pa_applications (user_id, (LOWER(pa_number)));
