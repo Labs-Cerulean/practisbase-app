@@ -27,6 +27,7 @@ use App\Http\Controllers\Pro\Architect\DocumentController as ArchitectDocumentCo
 use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateController;
 use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
 use App\Http\Controllers\Pro\Architect\ConditionReportController as ArchitectConditionReportController;
+use App\Http\Controllers\Pro\Architect\MethodStatementController as ArchitectMethodStatementController;
 use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
 use App\Http\Controllers\Pro\Engineer\ClientController as EngineerClientController;
@@ -264,6 +265,16 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/condition-reports/{report}/stamp', [ArchitectConditionReportController::class, 'stamp']);
         Route::get('/condition-reports/{report}/pdf', [ArchitectConditionReportController::class, 'downloadPdf']);
         Route::get('/condition-reports/{report}/photos/{photo}', [ArchitectConditionReportController::class, 'downloadPhoto']);
+
+        Route::get('/method-statements', [ArchitectMethodStatementController::class, 'index']);
+        Route::get('/method-statements/create', [ArchitectMethodStatementController::class, 'create']);
+        Route::post('/method-statements', [ArchitectMethodStatementController::class, 'store']);
+        Route::get('/method-statements/{statement}', [ArchitectMethodStatementController::class, 'show']);
+        Route::get('/method-statements/{statement}/edit', [ArchitectMethodStatementController::class, 'edit']);
+        Route::put('/method-statements/{statement}', [ArchitectMethodStatementController::class, 'update']);
+        Route::post('/method-statements/{statement}/stamp', [ArchitectMethodStatementController::class, 'stamp']);
+        Route::get('/method-statements/{statement}/pdf', [ArchitectMethodStatementController::class, 'downloadPdf']);
+        Route::get('/method-statements/{statement}/photos/{photo}', [ArchitectMethodStatementController::class, 'downloadPhoto']);
 
         Route::get('/templates', [ArchitectTemplateController::class, 'index']);
         Route::get('/templates/{key}/fill', [ArchitectTemplateController::class, 'fill']);

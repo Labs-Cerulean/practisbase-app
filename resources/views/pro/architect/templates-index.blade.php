@@ -33,7 +33,9 @@
                             @if($tpl['blank_file'])
                                 <a href="/pro/architect/templates/{{ $tpl['key'] }}/blank" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; font-size: 0.85rem;">Download blank</a>
                             @endif
-                            @if($tpl['fillable'])
+                            @if(!empty($tpl['builder_path']))
+                                <a href="{{ $tpl['builder_path'] }}" style="background: #3f6212; color: white; padding: 0.5rem 0.85rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none; font-size: 0.85rem;">Open builder</a>
+                            @elseif($tpl['fillable'])
                                 <a href="/pro/architect/templates/{{ $tpl['key'] }}/fill" style="background: #3f6212; color: white; padding: 0.5rem 0.85rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none; font-size: 0.85rem;">Fill this template</a>
                             @endif
                         </div>

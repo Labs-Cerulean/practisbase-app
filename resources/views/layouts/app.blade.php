@@ -75,6 +75,7 @@
                                 <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>
                                 <li><a href="/pro/architect/documents" class="nav-link {{ request()->is('pro/architect/documents*') ? 'active' : '' }}">Documents</a></li>
                                 <li><a href="/pro/architect/condition-reports" class="nav-link {{ request()->is('pro/architect/condition-reports*') ? 'active' : '' }}">Condition reports</a></li>
+                                <li><a href="/pro/architect/method-statements" class="nav-link {{ request()->is('pro/architect/method-statements*') ? 'active' : '' }}">Method statements</a></li>
                                 <li><a href="/pro/architect/templates" class="nav-link {{ request()->is('pro/architect/templates*') ? 'active' : '' }}">BCA templates</a></li>
                                 <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>

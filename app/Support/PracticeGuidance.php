@@ -157,6 +157,14 @@ class PracticeGuidance
                     : '/pro/architect/condition-reports/create?starter=seventh_schedule',
                 'done' => \App\Models\ArchitectConditionReport::where('user_id', $user->id)->exists(),
             ];
+            $items[] = [
+                'key' => 'arch_method',
+                'label' => 'Draft a method statement (DMS/EMS/CMS)',
+                'href' => $firstArchProject
+                    ? '/pro/architect/method-statements/create?project_id='.$firstArchProject->id.'&starter=excavation'
+                    : '/pro/architect/method-statements/create?starter=excavation',
+                'done' => \App\Models\ArchitectMethodStatement::where('user_id', $user->id)->exists(),
+            ];
         } elseif ($user->canAccessProPackage('eng')) {
             $hasClient = \App\Models\EngineerClient::where('user_id', $user->id)->exists();
             $firstProject = EngineerProject::where('user_id', $user->id)

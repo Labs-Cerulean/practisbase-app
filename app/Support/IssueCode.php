@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Certificate;
 use App\Models\ClinicalEntry;
 use App\Models\ArchitectConditionReport;
+use App\Models\ArchitectMethodStatement;
 use App\Models\EngineerCertificate;
 use App\Models\EngineerReport;
 
@@ -87,6 +88,16 @@ class IssueCode
         return self::allocateUnique(self::prefixForArchitectConditionReport());
     }
 
+    public static function prefixForArchitectMethodStatement(): string
+    {
+        return 'MS';
+    }
+
+    public static function allocateForArchitectMethodStatement(): string
+    {
+        return self::allocateUnique(self::prefixForArchitectMethodStatement());
+    }
+
     public static function exists(string $code): bool
     {
         $normalized = strtoupper(trim($code));
@@ -95,7 +106,8 @@ class IssueCode
             || Certificate::where('issue_code', $normalized)->exists()
             || EngineerCertificate::where('issue_code', $normalized)->exists()
             || EngineerReport::where('issue_code', $normalized)->exists()
-            || ArchitectConditionReport::where('issue_code', $normalized)->exists();
+            || ArchitectConditionReport::where('issue_code', $normalized)->exists()
+            || ArchitectMethodStatement::where('issue_code', $normalized)->exists();
     }
 
     public static function normalize(?string $code): ?string
