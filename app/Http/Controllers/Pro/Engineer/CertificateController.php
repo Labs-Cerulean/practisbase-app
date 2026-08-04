@@ -218,7 +218,7 @@ class CertificateController extends Controller
             'inspected_on' => 'nullable|date|before_or_equal:today',
             'issued_on' => 'required|date|before_or_equal:today',
             'expires_on' => 'nullable|date|after_or_equal:issued_on',
-            'next_inspection_on' => 'nullable|date|after_or_equal:inspected_on',
+            'next_inspection_on' => 'nullable|date',
             'outcome' => 'nullable|string|max:120',
             'holder_name' => 'nullable|string|max:255',
             'holder_address' => 'nullable|string|max:2000',
