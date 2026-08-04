@@ -49,8 +49,8 @@ class ClientController extends Controller
             $totalPipeline = $topLevelTotal - $totalCredits;
             $unbilledPipeline = max(0, $totalPipeline - $netInvoiced);
 
-            $rfpCash = $allInvoices->where('type', 'rfp')->flatMap->payments->sum('amount');
-            $invoiceCash = $allInvoices->where('type', 'invoice')->flatMap->payments->sum('amount');
+            $rfpCash = $allInvoices->where('type', 'rfp')->flatMap->payments->where('is_transfer', false)->sum('amount');
+            $invoiceCash = $allInvoices->where('type', 'invoice')->flatMap->payments->where('is_transfer', false)->sum('amount');
             $totalPaid = $rfpCash + $invoiceCash;
 
             $officialDues = max(0, $netInvoiced - max(0, $invoiceCash));
@@ -145,12 +145,107 @@ class ClientController extends Controller
         return redirect('/clients')->with('success', 'Client added successfully!');
     }
 
-    // 4. View a Specific Client Profile
+    // 4. View a Specific Client Profile + statement of what they owe
     public function show(Client $client)
     {
         $this->authorizeClient($client);
 
-        return view('clients.show', compact('client'));
+        $documents = $client->invoices()
+            ->with([
+                'payments' => fn ($q) => $q->orderBy('payment_date')->orderBy('id'),
+                'childDocuments' => fn ($q) => $q->where('type', 'invoice'),
+            ])
+            ->orderBy('issue_date')
+            ->orderBy('id')
+            ->get();
+
+        $rows = collect();
+        $runningOfficial = 0.0;
+        $runningRfp = 0.0;
+
+        foreach ($documents as $doc) {
+            if ($doc->type === 'credit_note') {
+                $runningOfficial = round($runningOfficial - (float) $doc->total, 2);
+                $rows->push([
+                    'date' => $doc->issue_date,
+                    'label' => 'Credit '.$doc->invoice_number,
+                    'kind' => 'credit',
+                    'debit' => 0.0,
+                    'credit' => (float) $doc->total,
+                    'official_balance' => $runningOfficial,
+                    'rfp_balance' => $runningRfp,
+                ]);
+                continue;
+            }
+
+            if ($doc->type === 'invoice') {
+                $runningOfficial = round($runningOfficial + (float) $doc->total, 2);
+                $rows->push([
+                    'date' => $doc->issue_date,
+                    'label' => 'Invoice '.$doc->invoice_number,
+                    'kind' => 'invoice',
+                    'debit' => (float) $doc->total,
+                    'credit' => 0.0,
+                    'official_balance' => $runningOfficial,
+                    'rfp_balance' => $runningRfp,
+                ]);
+            } elseif ($doc->type === 'rfp') {
+                $converted = (float) $doc->childDocuments->sum('total');
+                $remaining = round(max(0, (float) $doc->total - $converted), 2);
+                if ($remaining >= 0.009) {
+                    $runningRfp = round($runningRfp + $remaining, 2);
+                    $rows->push([
+                        'date' => $doc->issue_date,
+                        'label' => 'RFP '.$doc->invoice_number.' (not yet tax-invoiced)',
+                        'kind' => 'rfp',
+                        'debit' => $remaining,
+                        'credit' => 0.0,
+                        'official_balance' => $runningOfficial,
+                        'rfp_balance' => $runningRfp,
+                    ]);
+                } elseif ($doc->status === 'converted') {
+                    $rows->push([
+                        'date' => $doc->issue_date,
+                        'label' => 'RFP '.$doc->invoice_number.' (fully converted)',
+                        'kind' => 'rfp',
+                        'debit' => 0.0,
+                        'credit' => 0.0,
+                        'official_balance' => $runningOfficial,
+                        'rfp_balance' => $runningRfp,
+                    ]);
+                }
+            }
+
+            foreach ($doc->payments as $payment) {
+                if ($payment->is_transfer) {
+                    continue;
+                }
+                $amount = (float) $payment->amount;
+                if ($doc->type === 'invoice') {
+                    $runningOfficial = round($runningOfficial - $amount, 2);
+                } elseif ($doc->type === 'rfp') {
+                    $runningRfp = round($runningRfp - $amount, 2);
+                }
+                $rows->push([
+                    'date' => $payment->payment_date,
+                    'label' => ($amount < 0 ? 'Refund on ' : 'Payment on ').$doc->invoice_number,
+                    'kind' => 'payment',
+                    'debit' => $amount < 0 ? abs($amount) : 0.0,
+                    'credit' => $amount > 0 ? $amount : 0.0,
+                    'official_balance' => $runningOfficial,
+                    'rfp_balance' => $runningRfp,
+                ]);
+            }
+        }
+
+        $statement = [
+            'rows' => $rows,
+            'official_owed' => max(0, $runningOfficial),
+            'rfp_owed' => max(0, $runningRfp),
+            'total_owed' => max(0, $runningOfficial) + max(0, $runningRfp),
+        ];
+
+        return view('clients.show', compact('client', 'statement'));
     }
 
     // 5. Show the Edit Form

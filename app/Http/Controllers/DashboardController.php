@@ -122,10 +122,12 @@ class DashboardController extends Controller
         $ytdNetInvoiced = $ytdInvoices - $ytdCredits;
 
         $ytdInvoiceCash = Payment::where('user_id', $userId)
+            ->clientCash()
             ->whereYear('payment_date', $year)
             ->whereHas('invoice', fn ($q) => $q->where('type', 'invoice'))
             ->sum('amount');
         $ytdRfpCash = Payment::where('user_id', $userId)
+            ->clientCash()
             ->whereYear('payment_date', $year)
             ->whereHas('invoice', fn ($q) => $q->where('type', 'rfp'))
             ->sum('amount');

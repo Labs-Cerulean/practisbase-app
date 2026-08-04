@@ -28,6 +28,7 @@ class FiscalReportEngine
         $invoicedRevenue = $totals['net_total'];
 
         $collectedRevenue = (float) Payment::where('user_id', $user->id)
+            ->clientCash()
             ->whereYear('payment_date', $year)
             ->whereHas('invoice', fn ($q) => $q->where('type', 'invoice'))
             ->sum('amount');

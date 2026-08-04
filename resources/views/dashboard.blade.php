@@ -315,11 +315,11 @@
                     <div style="font-size: 1.45rem; font-weight: 700; color: #0369a1;">€{{ number_format($billing['ytdNetInvoiced'], 2) }}</div>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
-                    <span>Cash received</span>
+                    <span>Cash on tax invoices</span>
                     <span style="font-weight: 600; color: #059669;">€{{ number_format($billing['ytdInvoiceCash'], 2) }}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
-                    <span>Still owed to you</span>
+                    <span>Still owed on tax invoices</span>
                     <span style="font-weight: 600; color: #dc2626;">€{{ number_format($billing['ytdOfficialDues'], 2) }}</span>
                 </div>
             </div>
@@ -344,10 +344,10 @@
                     <div style="font-size: 1.45rem; font-weight: 700; color: #4338ca;">€{{ number_format($billing['unbilledPipeline'], 2) }}</div>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                    <span>RFP cash {{ $year }}</span>
+                    <span>Cash sitting on RFPs {{ $year }}</span>
                     <span style="font-weight: 600;">€{{ number_format($billing['ytdRfpCash'], 2) }}</span>
                 </div>
-                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">RFPs do not count for tax until you convert them to an official invoice.</p>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">RFP cash is real money received, but it does <strong>not</strong> count for tax until you convert the RFP into a tax invoice.</p>
             </div>
         </div>
     @endif

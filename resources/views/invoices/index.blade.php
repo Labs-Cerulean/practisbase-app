@@ -7,8 +7,10 @@
         <div>
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">Financial Ledger</h1>
             <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">Manage RFPs, invoices, and payments.</p>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.4rem 0 0; line-height: 1.4;">
-                RFP cash is <strong style="color: var(--text-main);">non-fiscal</strong> (€0.00 official weight) until converted to a tax invoice.
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.4rem 0 0; line-height: 1.45; max-width: 42rem;">
+                <strong style="color: var(--text-main);">Tax invoices</strong> count toward income tax and VAT.
+                <strong style="color: var(--text-main);">RFP cash</strong> is money in the bank but <strong style="color: var(--text-main);">€0 for tax</strong> until you convert the RFP to a tax invoice.
+                Internal transfers are excluded from Cash Collected.
             </p>
         </div>
         <a href="/ledger/create" style="background: var(--primary-cerulean); color: white; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: 0.2s;">
@@ -54,18 +56,18 @@
         </div>
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
-            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Cash Collected</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Cash from clients</div>
             
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;">
-                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Total Received</div>
+                <div style="font-size: 0.85rem; color: var(--text-main); font-weight: 600;">Total received</div>
                 <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;">€{{ number_format($totalCollected, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Official (Invoices)</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">On tax invoices</div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: #059669;">€{{ number_format($invoiceCash, 2) }}</div>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Unofficial (RFPs · €0 fiscal)</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">On RFPs (not tax yet)</div>
                 <div style="font-size: 0.95rem; font-weight: 600; color: #64748b;">€{{ number_format($rfpCash, 2) }}</div>
             </div>
         </div>
