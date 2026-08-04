@@ -83,6 +83,7 @@ class ProjectController extends Controller
             'paApplications' => fn ($q) => $q->orderByDesc('updated_at'),
             'documents' => fn ($q) => $q->whereNull('engineer_pa_application_id')->orderByDesc('updated_at'),
             'certificates' => fn ($q) => $q->orderByDesc('updated_at'),
+            'reports' => fn ($q) => $q->orderByDesc('updated_at'),
         ]);
 
         return view('pro.engineer.projects-show', [

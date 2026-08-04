@@ -83,6 +83,7 @@
                                 <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') || request()->is('pro/engineer/pa*') ? 'active' : '' }}">Projects</a></li>
                                 <li><a href="/pro/engineer/documents" class="nav-link {{ request()->is('pro/engineer/documents*') ? 'active' : '' }}">Documents</a></li>
                                 <li><a href="/pro/engineer/certificates" class="nav-link {{ request()->is('pro/engineer/certificates*') ? 'active' : '' }}">Field certificates</a></li>
+                                <li><a href="/pro/engineer/reports" class="nav-link {{ request()->is('pro/engineer/reports*') ? 'active' : '' }}">Specialised reports</a></li>
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Simple certificates</a></li>
                             @endif
                         @endif

@@ -32,6 +32,7 @@ use App\Http\Controllers\Pro\Engineer\ClientController as EngineerClientControll
 use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
 use App\Http\Controllers\Pro\Engineer\DocumentController as EngineerDocumentController;
 use App\Http\Controllers\Pro\Engineer\CertificateController as EngineerCertificateController;
+use App\Http\Controllers\Pro\Engineer\ReportController as EngineerReportController;
 use App\Http\Controllers\Company\DeskController as CompanyDeskController;
 use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
@@ -315,6 +316,16 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/certificates/{certificate}/stamp', [EngineerCertificateController::class, 'stamp']);
         Route::get('/certificates/{certificate}/pdf', [EngineerCertificateController::class, 'downloadPdf']);
         Route::get('/certificates/{certificate}/photos/{photo}', [EngineerCertificateController::class, 'downloadPhoto']);
+
+        Route::get('/reports', [EngineerReportController::class, 'index']);
+        Route::get('/reports/create', [EngineerReportController::class, 'create']);
+        Route::post('/reports', [EngineerReportController::class, 'store']);
+        Route::get('/reports/{report}', [EngineerReportController::class, 'show']);
+        Route::get('/reports/{report}/edit', [EngineerReportController::class, 'edit']);
+        Route::put('/reports/{report}', [EngineerReportController::class, 'update']);
+        Route::post('/reports/{report}/stamp', [EngineerReportController::class, 'stamp']);
+        Route::get('/reports/{report}/pdf', [EngineerReportController::class, 'downloadPdf']);
+        Route::get('/reports/{report}/photos/{photo}', [EngineerReportController::class, 'downloadPhoto']);
 
         Route::redirect('/certifications', '/pro/engineer/certificates');
         Route::redirect('/certifications/create', '/pro/engineer/certificates/create');
