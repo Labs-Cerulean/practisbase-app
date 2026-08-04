@@ -84,7 +84,7 @@ Pricing copy today oversells Eng. Soft launch must ship Eng depth **and** a usab
 ├─────────────────────────────────────────────────────────────────┤
 │ 4. Specialised Profession Tooling                               │
 │    Medical ⚕️ soft-launch ready (+ unlock polish)                │
-│    Architect 📐 soft-launch ready (+ optional neighbor)         │
+│    Architect 📐 soft-launch ready (+ condition reports)         │
 │    Engineer ⚙️ CRITICAL PATH (shell → docs → certs → reports)   │
 ├─────────────────────────────────────────────────────────────────┤
 │ 5. BOQ & Specification Suite                                    │
@@ -128,7 +128,7 @@ SL-B  BOQ & Spec core library          ← PRE LAUNCH (parallel with SL-E once E
   │     B2 Twin Block linking + project BOQ builder UI
   │     B3 Spec export + clone project
   │
-SL-A  Architect optional stretch       [neighbor reports — not blocking]
+SL-A  Architect                          [condition reports shipped]
 SL-M  Medical WebAuthn polish          [parallel]
   │
 SL-G  Soft-launch gate
