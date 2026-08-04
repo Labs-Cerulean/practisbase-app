@@ -305,24 +305,26 @@ class InvoiceController extends Controller
             return back()->withErrors(['amount' => 'Payment exceeds open balance of €'.number_format($balance, 2).'.']);
         }
 
-        $payment = CompanyPayment::create([
-            'user_id' => $user->id,
-            'company_invoice_id' => $invoice->id,
-            'amount' => $validated['amount'],
-            'payment_date' => $validated['payment_date'],
-            'payment_method' => $validated['payment_method'],
-            'notes' => $validated['notes'] ?? null,
-            'is_transfer' => false,
-        ]);
+        DB::transaction(function () use ($user, $invoice, $validated) {
+            $payment = CompanyPayment::create([
+                'user_id' => $user->id,
+                'company_invoice_id' => $invoice->id,
+                'amount' => $validated['amount'],
+                'payment_date' => $validated['payment_date'],
+                'payment_method' => $validated['payment_method'],
+                'notes' => $validated['notes'] ?? null,
+                'is_transfer' => false,
+            ]);
 
-        CompanyLedger::ensureChart($user);
-        CompanyLedger::postPayment($payment, $invoice);
+            CompanyLedger::ensureChart($user);
+            CompanyLedger::postPayment($payment, $invoice);
 
-        $paid = (float) $invoice->payments()->sum('amount');
-        $invoice->update([
-            'amount_paid' => $paid,
-            'status' => $paid >= (float) $invoice->total ? 'paid' : 'partial',
-        ]);
+            $paid = (float) $invoice->payments()->sum('amount');
+            $invoice->update([
+                'amount_paid' => $paid,
+                'status' => $paid >= (float) $invoice->total ? 'paid' : 'partial',
+            ]);
+        });
 
         return back()->with('success', 'Payment recorded and posted to the ledger.');
     }
