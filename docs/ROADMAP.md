@@ -175,7 +175,7 @@ Fire / noise / ventilation / lighting — draft → stampable PDF; `engineer_rep
 #### E5 — Mobile field polish
 Camera-first cert/report forms; project Field strip.
 
-**SL-E exit:** Project shell + docs/versions + project-linked certs + four report types draft→PDF + mobile-usable forms. Fiscal/Medical/Arch freezes untouched.
+**SL-E exit:** Project shell + docs/versions + project-linked certs + four report types draft→PDF + mobile-usable forms. Fiscal/Medical/Arch freezes untouched. **Shipped (E1–E5).**
 
 ---
 
