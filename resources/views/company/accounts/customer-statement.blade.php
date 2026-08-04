@@ -38,6 +38,11 @@
                 <div>
                     <div style="font-weight: 700; color: var(--primary-navy); font-size: 1.05rem;">{{ $client->name }}</div>
                     <div style="font-size: 0.8rem; color: var(--text-muted);">{{ \Carbon\Carbon::parse($from)->format('d M Y') }} – {{ \Carbon\Carbon::parse($to)->format('d M Y') }}</div>
+                    <div style="margin-top: 0.35rem;">
+                        <a href="/company/clients/{{ $client->id }}?tab=statement" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Open statement</a>
+                        <span style="color: var(--text-muted);"> · </span>
+                        <a href="/company/clients/{{ $client->id }}?tab=history" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Transaction history</a>
+                    </div>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Closing balance</div>
