@@ -121,13 +121,13 @@
                                 <li>Prescriptions &amp; referrals</li>
                                 <li>Clinical stampables</li>
                             @elseif($pkg === 'arch')
-                                <li>Architect DMS</li>
-                                <li>Document stamper</li>
-                                <li>Project phase tracking</li>
+                                <li>Condition reports &amp; method statements</li>
+                                <li>BCA catalog + Architect DMS</li>
+                                <li>Document stamper + project phases</li>
                             @else
-                                <li>Engineering projects</li>
-                                <li>Certificates</li>
-                                <li>Technical exports</li>
+                                <li>Field certificates &amp; specialised reports</li>
+                                <li>Client → Project → PA hierarchy</li>
+                                <li>Site photos + technical exports</li>
                             @endif
                         </ul>
                         <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
@@ -154,9 +154,9 @@
                             @if($pkg === 'med')
                                 <li>Patients, prescriptions, referrals</li>
                             @elseif($pkg === 'arch')
-                                <li>DMS, stamper, projects</li>
+                                <li>Condition reports, method statements, DMS</li>
                             @else
-                                <li>Projects &amp; certificates</li>
+                                <li>Field certificates, reports &amp; projects</li>
                             @endif
                         </ul>
                         <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">

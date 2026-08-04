@@ -34,10 +34,10 @@ class MethodStatementController extends Controller
 
     public function create(Request $request)
     {
-        $starterKey = (string) $request->query('starter', 'demolition');
+        $starterKey = (string) $request->query('starter', 'excavation');
         $starters = ArchitectMethodStatementBlueprint::starters();
         if (! isset($starters[$starterKey])) {
-            $starterKey = 'demolition';
+            $starterKey = 'excavation';
         }
         $starter = $starters[$starterKey];
 

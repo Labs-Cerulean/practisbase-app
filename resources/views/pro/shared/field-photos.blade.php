@@ -1,5 +1,5 @@
 {{--
-  Camera-first photo capture for Eng cert/report forms.
+  Camera-first photo capture for Arch/Eng field forms.
   Expects no Blade vars; wires itself via ids.
 --}}
 <section id="photos" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">

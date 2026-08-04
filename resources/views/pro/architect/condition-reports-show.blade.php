@@ -3,7 +3,7 @@
 @section('page_title', $report->title)
 
 @section('content')
-    @include('pro.engineer._field-styles')
+    @include('pro.shared.field-styles')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
             <a href="/pro/architect/condition-reports" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Condition reports</a>

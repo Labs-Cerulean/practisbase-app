@@ -3,7 +3,7 @@
 @section('page_title', $statement ? 'Edit method statement' : 'New method statement')
 
 @section('content')
-    @include('pro.engineer._field-styles')
+    @include('pro.shared.field-styles')
     @php
         $isEdit = $statement !== null;
         $action = $isEdit ? '/pro/architect/method-statements/'.$statement->id : '/pro/architect/method-statements';
@@ -134,7 +134,7 @@
             </div>
         </section>
 
-        @include('pro.engineer._field-photos')
+        @include('pro.shared.field-photos')
 
         <div class="eng-field-savebar">
             <button type="submit" style="background: #3f6212;">{{ $isEdit ? 'Save draft' : 'Save draft method statement' }}</button>
