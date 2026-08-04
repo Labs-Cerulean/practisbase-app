@@ -68,7 +68,7 @@ class ProjectController extends Controller
         ]);
 
         return redirect('/pro/architect/projects/'.$project->id)
-            ->with('success', 'Project created.');
+            ->with('success', 'Project created. Add a PA number later when it is issued.');
     }
 
     public function show(ArchitectProject $project)
