@@ -17,6 +17,7 @@
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/engineer/projects/{{ $project->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit</a>
             <a href="/pro/engineer/projects/{{ $project->id }}/pa/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ PA</a>
+            <a href="/pro/engineer/documents/create?project_id={{ $project->id }}" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Document</a>
             <a href="/pro/certificates/create" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Certificate</a>
         </div>
     </div>
@@ -70,10 +71,24 @@
             </section>
 
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
-                <h2 style="margin: 0 0 0.35rem; font-size: 1.05rem; color: var(--primary-navy);">Drawings & documents</h2>
-                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-                    Versioned uploads land here next (roadmap E2).
-                </p>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Drawings & documents</h2>
+                    <a href="/pro/engineer/documents/create?project_id={{ $project->id }}" style="font-size: 0.82rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">+ Upload</a>
+                </div>
+                @if($project->documents->isEmpty())
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
+                        No project-level documents yet. PA-level docs appear under each PA. Upload drawings, calcs, or reports with version history.
+                    </p>
+                @else
+                    <div style="display: grid; gap: 0.5rem;">
+                        @foreach($project->documents as $doc)
+                            <a href="/pro/engineer/documents/{{ $doc->id }}" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; text-decoration: none;">
+                                <div style="font-weight: 650; color: var(--primary-navy);">{{ $doc->title }}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Rev {{ $doc->current_revision }} · {{ $doc->category }} · {{ $doc->status }}</div>
+                            </a>
+                        @endforeach
+                    </div>
+                @endif
             </section>
 
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
@@ -97,6 +112,7 @@
                 <h2 style="margin: 0 0 0.5rem; font-size: 1.05rem; color: var(--primary-navy);">Quick links</h2>
                 <div style="display: grid; gap: 0.5rem;">
                     <a href="/pro/engineer/projects/{{ $project->id }}/pa/create" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ PA (number optional)</a>
+                    <a href="/pro/engineer/documents/create?project_id={{ $project->id }}" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ Drawing / document</a>
                     <a href="/pro/certificates/create" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ New certificate</a>
                     <a href="/pro/engineer/projects/create{{ $project->client ? '?client_id='.$project->client->id : '' }}" style="padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.88rem;">+ Another project</a>
                 </div>

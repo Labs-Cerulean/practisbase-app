@@ -14,6 +14,7 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/engineer/pa/{{ $pa->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit</a>
+            <a href="/pro/engineer/documents/create?pa_id={{ $pa->id }}" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Document</a>
         </div>
     </div>
 
@@ -27,7 +28,7 @@
         </div>
     @endif
 
-    <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
+    <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem;">
         <div style="font-size: 0.8rem; color: var(--text-muted);">
             Site: {{ $project->siteAddressLine() ?: 'Not set' }}
             @if($pa->works_commencement_date) · Works from {{ $pa->works_commencement_date->format('d M Y') }} @endif
@@ -36,4 +37,18 @@
             <div style="margin-top: 0.85rem; font-size: 0.92rem; white-space: pre-wrap; color: var(--primary-navy);">{{ $pa->notes }}</div>
         @endif
     </div>
+
+    <h2 style="margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--primary-navy);">PA documents</h2>
+    @if($pa->documents->isEmpty())
+        <div style="background: white; border: 1px dashed var(--border-light); border-radius: var(--radius-md); padding: 1.25rem; color: var(--text-muted);">No documents on this PA yet.</div>
+    @else
+        <div style="display: grid; gap: 0.55rem;">
+            @foreach($pa->documents as $doc)
+                <a href="/pro/engineer/documents/{{ $doc->id }}" style="display: block; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+                    <div style="font-weight: 700; color: var(--primary-navy);">{{ $doc->title }}</div>
+                    <div style="font-size: 0.78rem; color: var(--text-muted);">Rev {{ $doc->current_revision }} · {{ $doc->category }} · {{ $doc->status }}</div>
+                </a>
+            @endforeach
+        </div>
+    @endif
 @endsection

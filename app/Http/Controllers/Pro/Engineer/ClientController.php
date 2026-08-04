@@ -70,6 +70,7 @@ class ClientController extends Controller
 
         $client->load([
             'projects' => fn ($q) => $q->orderByDesc('updated_at')->withCount('paApplications'),
+            'documents' => fn ($q) => $q->orderByDesc('updated_at')->limit(20),
         ]);
 
         return view('pro.engineer.clients-show', [

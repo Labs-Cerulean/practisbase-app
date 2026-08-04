@@ -35,6 +35,11 @@ class EngineerClient extends Model
         return $this->hasMany(EngineerProject::class, 'engineer_client_id');
     }
 
+    public function documents(): HasMany
+    {
+        return $this->hasMany(EngineerDocument::class, 'engineer_client_id');
+    }
+
     public function displayAddress(): string
     {
         $parts = array_filter([

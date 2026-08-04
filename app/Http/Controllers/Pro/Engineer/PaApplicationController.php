@@ -40,7 +40,10 @@ class PaApplicationController extends Controller
     public function show(EngineerPaApplication $pa)
     {
         $this->assertPaOwned($pa);
-        $pa->load(['project.client']);
+        $pa->load([
+            'project.client',
+            'documents' => fn ($q) => $q->orderByDesc('updated_at'),
+        ]);
 
         return view('pro.engineer.pa-show', [
             'pa' => $pa,
