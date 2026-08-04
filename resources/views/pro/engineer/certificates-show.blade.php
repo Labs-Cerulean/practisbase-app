@@ -3,6 +3,7 @@
 @section('page_title', $certificate->title)
 
 @section('content')
+    @include('pro.engineer._field-styles')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
             <a href="/pro/engineer/certificates" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Certificates</a>
@@ -13,7 +14,7 @@
                 @if($certificate->project) · {{ $certificate->project->name }} @endif
             </p>
         </div>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="eng-desktop-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             @if($certificate->isEditable())
                 <a href="/pro/engineer/certificates/{{ $certificate->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit</a>
                 <form method="POST" action="/pro/engineer/certificates/{{ $certificate->id }}/stamp" onsubmit="return confirm('Stamp & issue this certificate? It will lock and cannot be edited.');">
@@ -24,6 +25,18 @@
                 <a href="/pro/engineer/certificates/{{ $certificate->id }}/pdf" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Download PDF</a>
             @endif
         </div>
+    </div>
+
+    <div class="eng-sticky-actions eng-mobile-actions">
+        @if($certificate->isEditable())
+            <a href="/pro/engineer/certificates/{{ $certificate->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit</a>
+            <form method="POST" action="/pro/engineer/certificates/{{ $certificate->id }}/stamp" onsubmit="return confirm('Stamp & issue this certificate? It will lock and cannot be edited.');" style="flex: 1 1 auto; display: flex;">
+                @csrf
+                <button type="submit" style="flex: 1; background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Stamp & issue</button>
+            </form>
+        @else
+            <a href="/pro/engineer/certificates/{{ $certificate->id }}/pdf" style="flex: 1; background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Download PDF</a>
+        @endif
     </div>
 
     @if(session('success'))
