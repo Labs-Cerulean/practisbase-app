@@ -42,6 +42,9 @@ use App\Http\Controllers\Company\AccountsController as CompanyAccountsController
 use App\Http\Controllers\Company\BankController as CompanyBankController;
 use App\Http\Controllers\Company\DividendController as CompanyDividendController;
 use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringInvoiceController;
+use App\Http\Controllers\CommunityFeedbackController;
+use App\Http\Controllers\CommunityFeedbackOperatorController;
+use App\Http\Controllers\LegalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +55,9 @@ use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringI
 Route::get('/', function () {
     return view('pricing');
 });
+
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('privacy');
+Route::get('/msa', [LegalController::class, 'msa'])->name('msa');
 
 Route::get('/login', function () {
     return view('login');
@@ -151,6 +157,18 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     Route::put('/settings/profile', [ProfileController::class, 'updateProfile']);
     Route::put('/settings/password', [ProfileController::class, 'updatePassword']);
     Route::put('/settings/plan', [ProfileController::class, 'updatePlan']);
+
+    Route::get('/community/feedback', [CommunityFeedbackController::class, 'index']);
+    Route::get('/community/feedback/create', [CommunityFeedbackController::class, 'create']);
+    Route::post('/community/feedback', [CommunityFeedbackController::class, 'store']);
+    Route::middleware('company_books')->group(function () {
+        Route::get('/community/feedback/inbox', [CommunityFeedbackOperatorController::class, 'index']);
+        Route::get('/community/feedback/inbox/{id}', [CommunityFeedbackOperatorController::class, 'show'])->whereNumber('id');
+        Route::post('/community/feedback/inbox/{id}/reply', [CommunityFeedbackOperatorController::class, 'reply'])->whereNumber('id');
+        Route::put('/community/feedback/inbox/{id}/status', [CommunityFeedbackOperatorController::class, 'updateStatus'])->whereNumber('id');
+    });
+    Route::get('/community/feedback/{id}', [CommunityFeedbackController::class, 'show'])->whereNumber('id');
+    Route::post('/community/feedback/{id}/reply', [CommunityFeedbackController::class, 'reply'])->whereNumber('id');
 
     Route::get('/ledger', [InvoiceController::class, 'index']);
     Route::get('/ledger/create', [InvoiceController::class, 'create']);

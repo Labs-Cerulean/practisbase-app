@@ -88,8 +88,13 @@
                 <input type="password" name="password" required>
             </div>
 
-            <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem;">Master Service Agreement & Privacy Policy</label>
-            
+            <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem;">Master Service Agreement &amp; Privacy Policy</label>
+            <p style="margin: 0 0 0.75rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+                Full documents:
+                <a href="/msa" target="_blank" rel="noopener" style="color: var(--primary-cerulean); font-weight: 600;">MSA</a>
+                ·
+                <a href="/privacy" target="_blank" rel="noopener" style="color: var(--primary-cerulean); font-weight: 600;">Privacy Policy</a>
+            </p>
             <div class="scroll-instruction">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
                 Please scroll to the bottom of the agreement to enable the accept button.

@@ -693,6 +693,10 @@
 
     <footer class="site-footer">
         PractisBase models self employed sole traders in Malta. Sole trader scope only, not Ltd company accounts.
+        <div style="margin-top: 0.65rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="/privacy" style="color: var(--pb-sea); font-weight: 600; text-decoration: none;">Privacy Policy</a>
+            <a href="/msa" style="color: var(--pb-sea); font-weight: 600; text-decoration: none;">Master Service Agreement</a>
+        </div>
     </footer>
 </body>
 </html>
