@@ -27,9 +27,11 @@ class AuthController extends Controller
             ],
             'accept_terms' => 'accepted',
             'confirm_sole_trader' => 'accepted',
+            'confirm_age_adult' => 'accepted',
             'read_duration_seconds' => 'required|integer'
         ], [
             'confirm_sole_trader.accepted' => 'You must confirm you are registering as a self-employed sole trader, not a limited company.',
+            'confirm_age_adult.accepted' => 'You must confirm you are 18 years of age or older. PractisBase does not allow registration by minors.',
         ]);
 
         // 2. Generate a unique referral code
