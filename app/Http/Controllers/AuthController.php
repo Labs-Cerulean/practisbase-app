@@ -27,9 +27,11 @@ class AuthController extends Controller
             ],
             'accept_terms' => 'accepted',
             'confirm_sole_trader' => 'accepted',
+            'confirm_age_adult' => 'accepted',
             'read_duration_seconds' => 'required|integer'
         ], [
             'confirm_sole_trader.accepted' => 'You must confirm you are registering as a self-employed sole trader, not a limited company.',
+            'confirm_age_adult.accepted' => 'You must confirm you are 18 years of age or older to register for PractisBase.',
         ]);
 
         // 2. Generate a unique referral code
@@ -85,9 +87,21 @@ class AuthController extends Controller
         // If they are a medical professional, the law dictates they are VAT Exempt (Fifth Schedule).
         $isMedical = $user->profession === 'Medical Professional';
 
+        $adultCutoff = now()->subYears(18)->startOfDay();
+
         $request->validate([
             'employment_type' => 'required|in:full_time,part_time',
-            'date_of_birth' => 'required_if:employment_type,full_time|nullable|date',
+            'date_of_birth' => [
+                'required_if:employment_type,full_time',
+                'nullable',
+                'date',
+                'before_or_equal:today',
+                function (string $attribute, mixed $value, \Closure $fail) use ($adultCutoff) {
+                    if ($value && \Illuminate\Support\Carbon::parse($value)->gt($adultCutoff)) {
+                        $fail('You must be 18 years of age or older to use PractisBase.');
+                    }
+                },
+            ],
             // If medical, we ignore their VAT input and force exempt. Otherwise, they must pick one.
             'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
             // Optional at onboarding — many starters do not have an MT number yet.

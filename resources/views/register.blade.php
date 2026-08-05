@@ -149,6 +149,13 @@
                 </label>
             </div>
 
+            <div class="checkbox-group" style="margin-bottom: 1rem;">
+                <input type="checkbox" id="confirmAgeAdult" name="confirm_age_adult" value="1" {{ old('confirm_age_adult') ? 'checked' : '' }} required>
+                <label for="confirmAgeAdult" style="font-size: 0.9rem; color: var(--text-main); font-weight: 500; line-height: 1.4;">
+                    I confirm that I am <strong>18 years of age or older</strong>. PractisBase is for adult professionals only.
+                </label>
+            </div>
+
             <div class="checkbox-group">
                 <input type="checkbox" id="acceptTerms" name="accept_terms" disabled>
                 <label for="acceptTerms" style="font-size: 0.9rem; color: var(--text-main); font-weight: 500; line-height: 1.4;">
