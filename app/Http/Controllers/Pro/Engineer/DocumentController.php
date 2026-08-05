@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Pro\Engineer;
 
 use App\Http\Controllers\Controller;
-use App\Models\EngineerClient;
+use App\Models\Client;
 use App\Models\EngineerDocument;
 use App\Models\EngineerDocumentRevision;
 use App\Models\EngineerPaApplication;
@@ -34,7 +34,7 @@ class DocumentController extends Controller
                         ->orWhere('notes', 'ilike', $like);
                 });
             })
-            ->when($scope === 'client', fn ($query) => $query->whereNotNull('engineer_client_id')->whereNull('engineer_project_id'))
+            ->when($scope === 'client', fn ($query) => $query->whereNotNull('client_id')->whereNull('engineer_project_id'))
             ->when($scope === 'project', fn ($query) => $query->whereNotNull('engineer_project_id')->whereNull('engineer_pa_application_id'))
             ->when($scope === 'pa', fn ($query) => $query->whereNotNull('engineer_pa_application_id'))
             ->orderByDesc('updated_at')
@@ -56,7 +56,7 @@ class DocumentController extends Controller
 
         return view('pro.engineer.documents-form', [
             'document' => null,
-            'clients' => EngineerClient::where('user_id', $user->id)->orderBy('name')->get(),
+            'clients' => Client::where('user_id', $user->id)->orderBy('name')->get(),
             'projects' => EngineerProject::where('user_id', $user->id)->with('client')->orderBy('name')->get(),
             'pas' => EngineerPaApplication::where('user_id', $user->id)->with('project')->orderByDesc('updated_at')->get(),
             'categories' => EngineerDocument::CATEGORIES,
@@ -82,7 +82,7 @@ class DocumentController extends Controller
 
         $document = EngineerDocument::create([
             'user_id' => $user->id,
-            'engineer_client_id' => $scope['engineer_client_id'],
+            'client_id' => $scope['client_id'],
             'engineer_project_id' => $scope['engineer_project_id'],
             'engineer_pa_application_id' => $scope['engineer_pa_application_id'],
             'title' => $validated['title'],
@@ -207,7 +207,7 @@ class DocumentController extends Controller
             'doc_code' => 'nullable|string|max:80',
             'notes' => 'nullable|string|max:5000',
             'scope_level' => 'required|in:client,project,pa',
-            'engineer_client_id' => 'nullable|integer',
+            'client_id' => 'nullable|integer',
             'engineer_project_id' => 'nullable|integer',
             'engineer_pa_application_id' => 'nullable|integer',
         ]);
@@ -215,18 +215,18 @@ class DocumentController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{engineer_client_id: ?int, engineer_project_id: ?int, engineer_pa_application_id: ?int}
+     * @return array{client_id: ?int, engineer_project_id: ?int, engineer_pa_application_id: ?int}
      */
     private function resolveScope(int $userId, array $validated): array
     {
         $level = $validated['scope_level'];
 
         if ($level === 'client') {
-            $clientId = (int) ($validated['engineer_client_id'] ?? 0);
-            $client = EngineerClient::where('user_id', $userId)->where('id', $clientId)->firstOrFail();
+            $clientId = (int) ($validated['client_id'] ?? 0);
+            $client = Client::where('user_id', $userId)->where('id', $clientId)->firstOrFail();
 
             return [
-                'engineer_client_id' => $client->id,
+                'client_id' => $client->id,
                 'engineer_project_id' => null,
                 'engineer_pa_application_id' => null,
             ];
@@ -237,7 +237,7 @@ class DocumentController extends Controller
             $project = EngineerProject::where('user_id', $userId)->where('id', $projectId)->firstOrFail();
 
             return [
-                'engineer_client_id' => $project->engineer_client_id,
+                'client_id' => $project->client_id,
                 'engineer_project_id' => $project->id,
                 'engineer_pa_application_id' => null,
             ];
@@ -247,7 +247,7 @@ class DocumentController extends Controller
         $pa = EngineerPaApplication::where('user_id', $userId)->where('id', $paId)->with('project')->firstOrFail();
 
         return [
-            'engineer_client_id' => $pa->project?->engineer_client_id,
+            'client_id' => $pa->project?->client_id,
             'engineer_project_id' => $pa->engineer_project_id,
             'engineer_pa_application_id' => $pa->id,
         ];
@@ -262,7 +262,7 @@ class DocumentController extends Controller
             return '/pro/engineer/projects/'.$document->engineer_project_id;
         }
 
-        return '/pro/engineer/clients/'.$document->engineer_client_id;
+        return '/clients/'.$document->client_id;
     }
 
     private function assertOwned(EngineerDocument $document): void

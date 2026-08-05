@@ -142,7 +142,6 @@ class ClientController extends Controller
             ]);
 
             $user->increment('clients_created_count');
-            \App\Support\PracticeClientBridge::syncFromBillingClient($user, $client);
         });
 
         return redirect('/clients')->with('success', 'Client added successfully!');
@@ -388,8 +387,6 @@ class ClientController extends Controller
             'billing_address' => $request->billing_address,
             'profile_data' => Client::billingProfileOnly($profileData),
         ]);
-
-        \App\Support\PracticeClientBridge::syncFromBillingClient(Auth::user(), $client);
 
         return redirect("/clients/{$client->id}")->with('success', 'Client updated successfully!');
     }

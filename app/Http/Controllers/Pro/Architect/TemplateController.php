@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Pro\Architect;
 
 use App\Http\Controllers\Controller;
-use App\Models\ArchitectClient;
 use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
+use App\Models\Client;
 use App\Support\Architect\BcaTemplateCatalog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -31,10 +31,10 @@ class TemplateController extends Controller
         abort_unless($tpl && $tpl['fillable'], 404);
 
         $userId = Auth::id();
-        $clients = ArchitectClient::where('user_id', $userId)->orderBy('name')->get(['id', 'name']);
+        $clients = Client::where('user_id', $userId)->orderBy('name')->get(['id', 'name']);
         $projects = ArchitectProject::where('user_id', $userId)
             ->orderBy('name')
-            ->get(['id', 'name', 'architect_client_id', 'site_locality', 'reference_code']);
+            ->get(['id', 'name', 'client_id', 'site_locality', 'reference_code']);
         $pas = ArchitectPaApplication::where('user_id', $userId)
             ->orderBy('pa_number')
             ->get(['id', 'pa_number', 'title', 'architect_project_id']);
@@ -51,7 +51,7 @@ class TemplateController extends Controller
             return [
                 'id' => $p->id,
                 'name' => $p->name,
-                'client_id' => $p->architect_client_id,
+                'client_id' => $p->client_id,
                 'label' => $label,
             ];
         })->values()->all();
@@ -125,15 +125,15 @@ class TemplateController extends Controller
                 ->with('client')
                 ->firstOrFail();
             $client = $project->client;
-        } elseif ($needsClient && ! empty($validated['architect_client_id'])) {
-            $client = ArchitectClient::where('user_id', $user->id)
-                ->where('id', $validated['architect_client_id'])
+        } elseif ($needsClient && ! empty($validated['client_id'])) {
+            $client = Client::where('user_id', $user->id)
+                ->where('id', $validated['client_id'])
                 ->firstOrFail();
         }
 
         $this->assertRequiredScope($fields, $client, $project, $pa);
 
-        if ($client && $project && (int) $project->architect_client_id !== (int) $client->id) {
+        if ($client && $project && (int) $project->client_id !== (int) $client->id) {
             throw ValidationException::withMessages([
                 'architect_project_id' => 'That project does not belong to the selected client.',
             ]);
@@ -175,7 +175,7 @@ class TemplateController extends Controller
     private function validationRulesFor(array $fields): array
     {
         $rules = [
-            'architect_client_id' => 'nullable|integer',
+            'client_id' => 'nullable|integer',
             'architect_project_id' => 'nullable|integer',
             'architect_pa_application_id' => 'nullable|integer',
             'extra_text' => 'nullable|string|max:5000',
@@ -193,7 +193,7 @@ class TemplateController extends Controller
         foreach ($fields as $field) {
             $name = $field['name'];
             $map = [
-                'client' => 'architect_client_id',
+                'client' => 'client_id',
                 'project' => 'architect_project_id',
                 'pa' => 'architect_pa_application_id',
             ];
@@ -247,7 +247,7 @@ class TemplateController extends Controller
     {
         $messages = [];
         if ($this->fieldRequired($fields, 'client') && ! $client) {
-            $messages['architect_client_id'] = 'Select a client.';
+            $messages['client_id'] = 'Select a client.';
         }
         if ($this->fieldRequired($fields, 'project') && ! $project) {
             $messages['architect_project_id'] = 'Select a project.';

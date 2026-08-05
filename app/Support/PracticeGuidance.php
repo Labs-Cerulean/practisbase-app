@@ -125,12 +125,12 @@ class PracticeGuidance
                 'done' => $hasStampable,
             ];
         } elseif ($user->canAccessProPackage('arch')) {
-            $hasClient = \App\Models\ArchitectClient::where('user_id', $user->id)->exists();
+            $hasClient = Client::where('user_id', $user->id)->exists();
             $hasProject = ArchitectProject::where('user_id', $user->id)->exists();
             $items[] = [
                 'key' => 'arch_client',
                 'label' => 'Add your first architect client',
-                'href' => '/pro/architect/clients/create',
+                'href' => '/clients/create',
                 'done' => $hasClient,
             ];
             $items[] = [
@@ -166,7 +166,7 @@ class PracticeGuidance
                 'done' => \App\Models\ArchitectMethodStatement::where('user_id', $user->id)->exists(),
             ];
         } elseif ($user->canAccessProPackage('eng')) {
-            $hasClient = \App\Models\EngineerClient::where('user_id', $user->id)->exists();
+            $hasClient = Client::where('user_id', $user->id)->exists();
             $firstProject = EngineerProject::where('user_id', $user->id)
                 ->where('status', '!=', 'archived')
                 ->orderByDesc('updated_at')
@@ -175,7 +175,7 @@ class PracticeGuidance
             $items[] = [
                 'key' => 'eng_client',
                 'label' => 'Add your first engineering client',
-                'href' => '/pro/engineer/clients/create',
+                'href' => '/clients/create',
                 'done' => $hasClient,
             ];
             $items[] = [

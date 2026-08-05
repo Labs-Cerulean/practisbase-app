@@ -29,9 +29,9 @@
             <div style="display: grid; gap: 0.85rem;">
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Client *</label>
-                    <select name="architect_client_id" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <select name="client_id" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         @foreach($clients as $c)
-                            <option value="{{ $c->id }}" @selected(old('architect_client_id', $preselectClientId) == $c->id)>{{ $c->name }}</option>
+                            <option value="{{ $c->id }}" @selected(old('client_id', $preselectClientId) == $c->id)>{{ $c->name }}</option>
                         @endforeach
                     </select>
                 </div>

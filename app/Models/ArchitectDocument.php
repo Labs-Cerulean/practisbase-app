@@ -10,7 +10,7 @@ class ArchitectDocument extends Model
 {
     protected $fillable = [
         'user_id',
-        'architect_client_id',
+        'client_id',
         'architect_project_id',
         'architect_pa_application_id',
         'title',
@@ -53,7 +53,7 @@ class ArchitectDocument extends Model
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(ArchitectClient::class, 'architect_client_id');
+        return $this->belongsTo(Client::class, 'client_id');
     }
 
     public function project(): BelongsTo

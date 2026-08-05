@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Pro\Architect;
 
 use App\Http\Controllers\Controller;
-use App\Models\ArchitectClient;
 use App\Models\ArchitectDocument;
 use App\Models\ArchitectDocumentRevision;
 use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
+use App\Models\Client;
 use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,7 +34,7 @@ class DocumentController extends Controller
                         ->orWhere('notes', 'ilike', $like);
                 });
             })
-            ->when($scope === 'client', fn ($q) => $q->whereNotNull('architect_client_id')->whereNull('architect_project_id'))
+            ->when($scope === 'client', fn ($q) => $q->whereNotNull('client_id')->whereNull('architect_project_id'))
             ->when($scope === 'project', fn ($q) => $q->whereNotNull('architect_project_id')->whereNull('architect_pa_application_id'))
             ->when($scope === 'pa', fn ($q) => $q->whereNotNull('architect_pa_application_id'))
             ->orderByDesc('updated_at')
@@ -56,7 +56,7 @@ class DocumentController extends Controller
 
         return view('pro.architect.documents-form', [
             'document' => null,
-            'clients' => ArchitectClient::where('user_id', $user->id)->orderBy('name')->get(),
+            'clients' => Client::where('user_id', $user->id)->orderBy('name')->get(),
             'projects' => ArchitectProject::where('user_id', $user->id)->with('client')->orderBy('name')->get(),
             'pas' => ArchitectPaApplication::where('user_id', $user->id)->orderBy('pa_number')->get(),
             'categories' => ArchitectDocument::CATEGORIES,
@@ -82,7 +82,7 @@ class DocumentController extends Controller
 
         $document = ArchitectDocument::create([
             'user_id' => $user->id,
-            'architect_client_id' => $scope['architect_client_id'],
+            'client_id' => $scope['client_id'],
             'architect_project_id' => $scope['architect_project_id'],
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
             'title' => $validated['title'],
@@ -204,7 +204,7 @@ class DocumentController extends Controller
             'doc_code' => 'nullable|string|max:80',
             'notes' => 'nullable|string|max:5000',
             'scope_level' => 'required|in:client,project,pa',
-            'architect_client_id' => 'nullable|integer',
+            'client_id' => 'nullable|integer',
             'architect_project_id' => 'nullable|integer',
             'architect_pa_application_id' => 'nullable|integer',
         ]);
@@ -212,18 +212,18 @@ class DocumentController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{architect_client_id: ?int, architect_project_id: ?int, architect_pa_application_id: ?int}
+     * @return array{client_id: ?int, architect_project_id: ?int, architect_pa_application_id: ?int}
      */
     private function resolveScope(int $userId, array $validated): array
     {
         $level = $validated['scope_level'];
 
         if ($level === 'client') {
-            $clientId = (int) ($validated['architect_client_id'] ?? 0);
-            $client = ArchitectClient::where('user_id', $userId)->where('id', $clientId)->firstOrFail();
+            $clientId = (int) ($validated['client_id'] ?? 0);
+            $client = Client::where('user_id', $userId)->where('id', $clientId)->firstOrFail();
 
             return [
-                'architect_client_id' => $client->id,
+                'client_id' => $client->id,
                 'architect_project_id' => null,
                 'architect_pa_application_id' => null,
             ];
@@ -234,7 +234,7 @@ class DocumentController extends Controller
             $project = ArchitectProject::where('user_id', $userId)->where('id', $projectId)->firstOrFail();
 
             return [
-                'architect_client_id' => $project->architect_client_id,
+                'client_id' => $project->client_id,
                 'architect_project_id' => $project->id,
                 'architect_pa_application_id' => null,
             ];
@@ -244,7 +244,7 @@ class DocumentController extends Controller
         $pa = ArchitectPaApplication::where('user_id', $userId)->where('id', $paId)->with('project')->firstOrFail();
 
         return [
-            'architect_client_id' => $pa->project?->architect_client_id,
+            'client_id' => $pa->project?->client_id,
             'architect_project_id' => $pa->architect_project_id,
             'architect_pa_application_id' => $pa->id,
         ];
@@ -259,7 +259,7 @@ class DocumentController extends Controller
             return '/pro/architect/projects/'.$document->architect_project_id;
         }
 
-        return '/pro/architect/clients/'.$document->architect_client_id;
+        return '/clients/'.$document->client_id;
     }
 
     private function assertOwned(ArchitectDocument $document): void

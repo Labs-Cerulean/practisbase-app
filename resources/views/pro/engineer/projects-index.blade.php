@@ -47,7 +47,7 @@
                 @endif
             </p>
             @unless($showArchived)
-                <a href="/pro/engineer/clients/create" style="display: inline-block; margin-right: 0.5rem; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Client</a>
+                <a href="/clients/create" style="display: inline-block; margin-right: 0.5rem; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Client</a>
                 <a href="/pro/engineer/projects/create" style="display: inline-block; background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Project</a>
             @endunless
         </div>

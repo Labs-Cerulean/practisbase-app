@@ -10,7 +10,7 @@ class ArchitectProject extends Model
 {
     protected $fillable = [
         'user_id',
-        'architect_client_id',
+        'client_id',
         'name',
         'reference_code',
         'engagement_type',
@@ -70,7 +70,7 @@ class ArchitectProject extends Model
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(ArchitectClient::class, 'architect_client_id');
+        return $this->belongsTo(Client::class, 'client_id');
     }
 
     public function paApplications(): HasMany

@@ -21,7 +21,6 @@ use App\Http\Controllers\Pro\Medical\StampableLedgerController;
 use App\Http\Controllers\Pro\Medical\VaultDeviceController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
 use App\Http\Controllers\Pro\Architect\StamperController;
-use App\Http\Controllers\Pro\Architect\ClientController as ArchitectClientController;
 use App\Http\Controllers\Pro\Architect\PaApplicationController as ArchitectPaController;
 use App\Http\Controllers\Pro\Architect\DocumentController as ArchitectDocumentController;
 use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateController;
@@ -30,7 +29,6 @@ use App\Http\Controllers\Pro\Architect\ConditionReportController as ArchitectCon
 use App\Http\Controllers\Pro\Architect\MethodStatementController as ArchitectMethodStatementController;
 use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
-use App\Http\Controllers\Pro\Engineer\ClientController as EngineerClientController;
 use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
 use App\Http\Controllers\Pro\Engineer\DocumentController as EngineerDocumentController;
 use App\Http\Controllers\Pro\Engineer\CertificateController as EngineerCertificateController;
@@ -230,13 +228,6 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     });
 
     Route::middleware('pro:arch')->prefix('pro/architect')->group(function () {
-        Route::get('/clients', [ArchitectClientController::class, 'index']);
-        Route::get('/clients/create', [ArchitectClientController::class, 'create']);
-        Route::post('/clients', [ArchitectClientController::class, 'store']);
-        Route::get('/clients/{client}', [ArchitectClientController::class, 'show']);
-        Route::get('/clients/{client}/edit', [ArchitectClientController::class, 'edit']);
-        Route::put('/clients/{client}', [ArchitectClientController::class, 'update']);
-
         Route::get('/projects', [ArchitectProjectController::class, 'index']);
         Route::get('/projects/create', [ArchitectProjectController::class, 'create']);
         Route::post('/projects', [ArchitectProjectController::class, 'store']);
@@ -305,13 +296,6 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     });
 
     Route::middleware('pro:eng')->prefix('pro/engineer')->group(function () {
-        Route::get('/clients', [EngineerClientController::class, 'index']);
-        Route::get('/clients/create', [EngineerClientController::class, 'create']);
-        Route::post('/clients', [EngineerClientController::class, 'store']);
-        Route::get('/clients/{client}', [EngineerClientController::class, 'show']);
-        Route::get('/clients/{client}/edit', [EngineerClientController::class, 'edit']);
-        Route::put('/clients/{client}', [EngineerClientController::class, 'update']);
-
         Route::get('/projects', [EngineerProjectController::class, 'index']);
         Route::get('/projects/create', [EngineerProjectController::class, 'create']);
         Route::post('/projects', [EngineerProjectController::class, 'store']);

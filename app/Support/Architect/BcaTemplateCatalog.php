@@ -2,10 +2,10 @@
 
 namespace App\Support\Architect;
 
-use App\Models\ArchitectClient;
 use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
 use App\Models\ArchitectSiteParty;
+use App\Models\Client;
 use App\Models\User;
 
 /**
@@ -402,7 +402,7 @@ class BcaTemplateCatalog
      */
     public static function prefillContext(
         User $user,
-        ?ArchitectClient $client = null,
+        ?Client $client = null,
         ?ArchitectProject $project = null,
         ?ArchitectPaApplication $pa = null
     ): array {
@@ -430,7 +430,7 @@ class BcaTemplateCatalog
             'perit_address' => $user->clinic_address,
             'client' => $client,
             'client_name' => $client?->name,
-            'client_id_card' => $client?->id_card,
+            'client_id_card' => $client?->idCardNumber(),
             'client_email' => $client?->email,
             'client_phone' => $client?->phone,
             'client_address' => $client?->displayAddress(),
