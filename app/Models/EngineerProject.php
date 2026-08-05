@@ -10,7 +10,7 @@ class EngineerProject extends Model
 {
     protected $fillable = [
         'user_id',
-        'engineer_client_id',
+        'client_id',
         'name',
         'reference_code',
         'discipline',
@@ -101,7 +101,7 @@ class EngineerProject extends Model
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(EngineerClient::class, 'engineer_client_id');
+        return $this->belongsTo(Client::class, 'client_id');
     }
 
     public function paApplications(): HasMany

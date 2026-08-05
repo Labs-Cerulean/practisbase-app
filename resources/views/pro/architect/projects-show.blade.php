@@ -6,7 +6,7 @@
     @include('pro.shared.field-styles')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <div>
-            <a href="{{ $project->client ? '/pro/architect/clients/'.$project->client->id : '/pro/architect/projects' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->client->name ?? 'Projects' }}</a>
+            <a href="{{ $project->client ? '/clients/'.$project->client->id : '/pro/architect/projects' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->client->name ?? 'Projects' }}</a>
             <h1 style="margin: 0.4rem 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">{{ $project->name }}</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
                 {{ \App\Models\ArchitectProject::engagementLabel($project->engagement_type) }}

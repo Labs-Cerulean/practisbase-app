@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Pro\Engineer;
 
 use App\Http\Controllers\Controller;
-use App\Models\EngineerClient;
+use App\Models\Client;
 use App\Models\EngineerProject;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -50,11 +50,7 @@ class ProjectController extends Controller
     public function create(Request $request)
     {
         $user = Auth::user();
-        foreach (\App\Models\Client::where('user_id', $user->id)->orderBy('name')->get() as $billing) {
-            \App\Support\PracticeClientBridge::upsertEngineer($user->id, $billing);
-        }
-
-        $clients = EngineerClient::where('user_id', $user->id)->orderBy('name')->get();
+        $clients = Client::where('user_id', $user->id)->orderBy('name')->get();
         $preselect = (int) $request->query('client_id');
 
         return view('pro.engineer.projects-form', [
@@ -102,7 +98,7 @@ class ProjectController extends Controller
     public function edit(EngineerProject $project)
     {
         $this->assertOwned($project);
-        $clients = EngineerClient::where('user_id', Auth::id())->orderBy('name')->get();
+        $clients = Client::where('user_id', Auth::id())->orderBy('name')->get();
 
         return view('pro.engineer.projects-form', [
             'project' => $project,
@@ -110,7 +106,7 @@ class ProjectController extends Controller
             'phases' => EngineerProject::PHASES,
             'disciplines' => EngineerProject::DISCIPLINES,
             'statuses' => EngineerProject::STATUSES,
-            'preselectClientId' => $project->engineer_client_id,
+            'preselectClientId' => $project->client_id,
         ]);
     }
 
@@ -130,7 +126,7 @@ class ProjectController extends Controller
     private function validateProject(Request $request, int $userId): array
     {
         $validated = $request->validate([
-            'engineer_client_id' => 'required|integer',
+            'client_id' => 'required|integer',
             'name' => 'required|string|max:255',
             'reference_code' => 'nullable|string|max:100',
             'discipline' => 'required|string|max:64',
@@ -146,8 +142,8 @@ class ProjectController extends Controller
 
         $validated['discipline'] = EngineerProject::normalizeDiscipline($validated['discipline'] ?? null);
 
-        $ownsClient = EngineerClient::where('user_id', $userId)
-            ->where('id', $validated['engineer_client_id'])
+        $ownsClient = Client::where('user_id', $userId)
+            ->where('id', $validated['client_id'])
             ->exists();
         if (! $ownsClient) {
             abort(403);

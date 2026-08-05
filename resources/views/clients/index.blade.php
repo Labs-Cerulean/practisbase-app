@@ -9,7 +9,7 @@
             <p style="color: var(--text-muted); font-size: 0.95rem;">
                 One client list for invoicing and practice projects.
                 @if(auth()->user()->canAccessProPackage('arch') || auth()->user()->canAccessProPackage('eng'))
-                    New clients are linked automatically for projects. Older practice-only contacts are brought in the first time you open this page.
+                    One list for invoicing and projects. Create clients here, then pick them on a project.
                 @else
                     Manage contacts and client finances.
                 @endif

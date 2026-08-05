@@ -48,7 +48,7 @@
                                 <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Overview</a>
                             </li>
                             <li>
-                                <a href="/clients" class="nav-link {{ request()->is('clients*') || request()->is('pro/architect/clients*') || request()->is('pro/engineer/clients*') ? 'active' : '' }}">Clients</a>
+                                <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
                             </li>
                             <li>
                                 <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>

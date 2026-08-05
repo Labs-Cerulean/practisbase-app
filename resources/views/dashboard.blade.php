@@ -40,10 +40,10 @@
                     <a href="/pro/medical/vault/setup" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Set up vault</a>
                 @endif
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'arch')
-                <a href="/pro/architect/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
+                <a href="/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
                 <a href="/pro/architect/templates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">BCA templates</a>
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
-                <a href="/pro/engineer/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
+                <a href="/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
                 <a href="/pro/engineer/certificates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Field certificates</a>
             @endif
 
@@ -92,9 +92,9 @@
                 @if(($practiceDesk['kind'] ?? null) === 'med')
                     <a href="/pro/medical/patients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open patients →</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'arch')
-                    <a href="/pro/architect/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
+                    <a href="/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
                 @else
-                    <a href="/pro/engineer/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
+                    <a href="/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
                 @endif
             </div>
 
@@ -401,11 +401,11 @@
                             <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
                             <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Stampables</a>
                         @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'arch')
-                            <a href="/pro/architect/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
+                            <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
                             <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>
                             <a href="/pro/architect/method-statements" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Method statements</a>
                         @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'eng')
-                            <a href="/pro/engineer/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering clients</a>
+                            <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering clients</a>
                             <a href="/pro/engineer/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering projects</a>
                             <a href="/pro/engineer/certificates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Field certificates</a>
                         @endif
@@ -428,11 +428,11 @@
                     <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
                     <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Stampables</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'arch')
-                    <a href="/pro/architect/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
+                    <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
                     <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>
                     <a href="/pro/architect/method-statements" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Method statements</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'eng')
-                    <a href="/pro/engineer/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering clients</a>
+                    <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering clients</a>
                     <a href="/pro/engineer/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering projects</a>
                     <a href="/pro/engineer/certificates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Field certificates</a>
                 @endif

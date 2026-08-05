@@ -228,7 +228,7 @@ class DashboardController extends Controller
         return [
             'kind' => 'arch',
             'title' => 'Studio desk',
-            'client_count' => \App\Models\ArchitectClient::where('user_id', $userId)->count(),
+            'client_count' => \App\Models\Client::where('user_id', $userId)->count(),
             'project_count' => ArchitectProject::where('user_id', $userId)->count(),
             'pa_count' => \App\Models\ArchitectPaApplication::where('user_id', $userId)->count(),
             'active_count' => ArchitectProject::where('user_id', $userId)->where('status', 'active')->count(),
@@ -251,7 +251,7 @@ class DashboardController extends Controller
         return [
             'kind' => 'eng',
             'title' => 'Technical desk',
-            'client_count' => \App\Models\EngineerClient::where('user_id', $userId)->count(),
+            'client_count' => \App\Models\Client::where('user_id', $userId)->count(),
             'project_count' => EngineerProject::where('user_id', $userId)->where('status', '!=', 'archived')->count(),
             'pa_count' => \App\Models\EngineerPaApplication::where('user_id', $userId)->count(),
             'active_count' => EngineerProject::where('user_id', $userId)->where('status', 'active')->count(),

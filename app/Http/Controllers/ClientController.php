@@ -15,14 +15,8 @@ class ClientController extends Controller
     // 1. Show the Client Directory (Intelligent Dashboard Edition)
     public function index(Request $request)
     {
-        $user = Auth::user();
-        $userId = $user->id;
+        $userId = Auth::id();
         $showArchived = $request->boolean('archived');
-
-        $importedPractice = 0;
-        if ($user->canAccessProPackage('arch') || $user->canAccessProPackage('eng')) {
-            $importedPractice = \App\Support\PracticeClientBridge::importOrphanPracticeClients($user);
-        }
 
         // Eager load invoices and their payments to prevent N+1 issues
         $query = Client::where('user_id', $userId)->with('invoices.payments');
@@ -88,15 +82,6 @@ class ClientController extends Controller
 
         $archivedCount = Client::onlyTrashed()->where('user_id', $userId)->count();
 
-        if ($importedPractice > 0 && ! session()->has('success')) {
-            session()->flash(
-                'success',
-                $importedPractice === 1
-                    ? 'Brought 1 existing practice contact into this Clients list so projects and billing stay in sync.'
-                    : 'Brought '.$importedPractice.' existing practice contacts into this Clients list so projects and billing stay in sync.'
-            );
-        }
-
         return view('clients.index', compact('clients', 'showArchived', 'archivedCount'));
     }
 
@@ -157,7 +142,6 @@ class ClientController extends Controller
             ]);
 
             $user->increment('clients_created_count');
-            \App\Support\PracticeClientBridge::syncFromBillingClient($user, $client);
         });
 
         return redirect('/clients')->with('success', 'Client added successfully!');
@@ -403,8 +387,6 @@ class ClientController extends Controller
             'billing_address' => $request->billing_address,
             'profile_data' => Client::billingProfileOnly($profileData),
         ]);
-
-        \App\Support\PracticeClientBridge::syncFromBillingClient(Auth::user(), $client);
 
         return redirect("/clients/{$client->id}")->with('success', 'Client updated successfully!');
     }

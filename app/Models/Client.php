@@ -64,4 +64,19 @@ class Client extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    public function displayAddress(): string
+    {
+        return trim((string) $this->billing_address);
+    }
+
+    public function idCardNumber(): ?string
+    {
+        $value = $this->profile_data['id_card_number'] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (string) $value;
+    }
 }
