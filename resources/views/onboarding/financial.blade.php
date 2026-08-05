@@ -44,7 +44,7 @@
 
             <div class="form-group" id="dobGroup" style="display: none;">
                 <label>Date of Birth (Required for SSC Caps)</label>
-                <input type="date" name="date_of_birth" id="dobInput" class="form-input">
+                <input type="date" name="date_of_birth" id="dobInput" class="form-input" max="{{ now()->subYears(18)->format('Y-m-d') }}">
             </div>
 
             <hr style="border: none; border-top: 1px solid var(--border-light); margin: 2rem 0;">

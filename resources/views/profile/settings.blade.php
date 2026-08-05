@@ -199,12 +199,12 @@
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Date of Birth (SSC)</label>
                         <input type="date" name="date_of_birth" id="dobSettingsInput" value="{{ $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '' }}"
                                {{ ($dobLocked ?? false) ? 'disabled' : '' }}
-                               max="{{ date('Y-m-d') }}"
+                               max="{{ now()->subYears(18)->format('Y-m-d') }}"
                                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); {{ ($dobLocked ?? false) ? 'background:#f1f5f9;color:#64748b;' : '' }}">
                         @if($dobLocked ?? false)
                             <div style="font-size: 0.75rem; color: #92400e; margin-top: 0.35rem;">Locked after a fiscal year was closed — closed-year SSC used this DOB.</div>
                         @else
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Used for under-18 SSC exemption and age notes. Becomes locked after your first year-end close.</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Used for Class 2 SSC age bands. Must be 18+. Becomes locked after your first year-end close.</div>
                         @endif
                     </div>
                 </div>

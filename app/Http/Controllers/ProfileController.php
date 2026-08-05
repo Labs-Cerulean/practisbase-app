@@ -154,6 +154,8 @@ class ProfileController extends Controller
             return back()->withErrors(['payment_error' => 'You must enable at least one payment method for your invoices.'])->withInput();
         }
 
+        $adultCutoff = now()->subYears(18)->startOfDay();
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
@@ -163,7 +165,17 @@ class ProfileController extends Controller
             'clinic_phone' => 'nullable|string|max:64',
             'clinic_address' => 'nullable|string|max:500',
             'employment_type' => 'required|in:full_time,part_time',
-            'date_of_birth' => ($dobLocked ? 'nullable' : 'required_if:employment_type,full_time').'|nullable|date|before_or_equal:today',
+            'date_of_birth' => array_values(array_filter([
+                $dobLocked ? 'nullable' : 'required_if:employment_type,full_time',
+                'nullable',
+                'date',
+                'before_or_equal:today',
+                $dobLocked ? null : function (string $attribute, mixed $value, \Closure $fail) use ($adultCutoff) {
+                    if ($value && \Illuminate\Support\Carbon::parse($value)->gt($adultCutoff)) {
+                        $fail('You must be 18 years of age or older to use PractisBase.');
+                    }
+                },
+            ])),
             'vat_status' => 'required|in:article_10,article_11,exempt',
             'vat_number' => 'nullable|string|max:50',
             'tax_computation' => 'required|in:single,married,parent',
