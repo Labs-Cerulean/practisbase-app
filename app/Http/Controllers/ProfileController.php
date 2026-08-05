@@ -83,6 +83,10 @@ class ProfileController extends Controller
             return redirect('/settings')->with('error', 'Plan changes are not used for the Cerulean Labs company desk.');
         }
 
+        if ($user->beta_invite_code_id) {
+            return redirect('/settings')->with('error', 'Your plan is locked to your beta invite. Contact Cerulean Labs if you need a change.');
+        }
+
         $currentTier = \App\Support\TierPolicy::normalize($user->tier);
 
         $request->validate([

@@ -97,7 +97,7 @@
             <img src="/images/logo.png" alt="PractisBase">
             <h2 style="color: var(--primary-navy); margin-bottom: 0.25rem;">Create Your Account</h2>
             <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">For Maltese <strong>self-employed sole traders</strong> and professional practices — not limited companies.</p>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.5rem 0 0; line-height: 1.4;">If you trade through a Ltd, partnership company, or VAT group, use a company accounting tool instead. PractisBase will not calculate corporate tax or company accounts.</p>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.5rem 0 0; line-height: 1.4;">Closed beta — you need a personal invite code. If you trade through a Ltd, partnership company, or VAT group, use a company accounting tool instead.</p>
         </div>
 
         @if ($errors->any())
@@ -123,6 +123,11 @@
             <div class="form-group">
                 <label>Password</label>
                 <input type="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label>Beta invite code</label>
+                <input type="text" name="invite_code" value="{{ old('invite_code', request('code')) }}" required maxlength="40" placeholder="e.g. ENG-AB12-CD34" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
+                <p style="margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Required. Each code unlocks one Pro account for Engineer, Architect, or Medical — and can be used only once.</p>
             </div>
 
             <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem;">Master Service Agreement &amp; Privacy Policy</label>

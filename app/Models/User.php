@@ -49,6 +49,7 @@ use Illuminate\Notifications\Notifiable;
     'clinic_address',
     'clinical_stamp_path',
     'company_books_enabled',
+    'beta_invite_code_id',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable

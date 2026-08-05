@@ -42,6 +42,8 @@
                             <li><a href="/company/dividends" class="nav-link {{ request()->is('company/dividends*') ? 'active' : '' }}">Dividends</a></li>
                             <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
                             <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>
+                            <li class="nav-section-label" aria-hidden="true">Beta</li>
+                            <li><a href="/company/beta-invites" class="nav-link {{ request()->is('company/beta-invites*') ? 'active' : '' }}">Invite codes</a></li>
                             <li class="nav-section-label" aria-hidden="true">Community</li>
                             <li><a href="/community/feedback/inbox" class="nav-link {{ request()->is('community/feedback/inbox*') ? 'active' : '' }}">Feedback inbox</a></li>
                             <li><a href="/community/feedback" class="nav-link {{ request()->is('community/feedback') || request()->is('community/feedback/create') || (request()->is('community/feedback/*') && ! request()->is('community/feedback/inbox*')) ? 'active' : '' }}">My feedback</a></li>
