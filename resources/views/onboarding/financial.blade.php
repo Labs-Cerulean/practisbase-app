@@ -26,8 +26,32 @@
             PractisBase models <strong>self-employed sole traders</strong> (full-time or part-time). It does <strong>not</strong> produce limited company (Ltd) accounts, corporate tax, or company VAT-group filings.
         </div>
 
+        @if($user->beta_invite_code_id)
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; color: #065f46; font-size: 0.88rem; line-height: 1.45;">
+                Beta invite active: <strong>{{ $user->profession }}</strong> · Full Pro unlocked. Profession is locked to your invite.
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; font-size: 0.85rem;">
+                @foreach ($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+            </div>
+        @endif
+
         <form action="/onboarding/financial" method="POST">
             @csrf
+
+            @if($user->beta_invite_code_id)
+                <div class="form-group">
+                    <label>Warrant type (optional)</label>
+                    <input type="text" name="warrant_type" class="form-input" value="{{ old('warrant_type', $user->warrant_type) }}" placeholder="e.g. Warrant of Perit / Inġinier">
+                </div>
+                <div class="form-group">
+                    <label>Warrant number (optional)</label>
+                    <input type="text" name="warrant_number" class="form-input" value="{{ old('warrant_number', $user->warrant_number) }}">
+                </div>
+                <hr style="border: none; border-top: 1px solid var(--border-light); margin: 1.5rem 0;">
+            @endif
 
             <div class="form-group">
                 <label>1. How do you work?</label>

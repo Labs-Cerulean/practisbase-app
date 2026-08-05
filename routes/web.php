@@ -43,6 +43,7 @@ use App\Http\Controllers\Company\AccountsController as CompanyAccountsController
 use App\Http\Controllers\Company\BankController as CompanyBankController;
 use App\Http\Controllers\Company\DividendController as CompanyDividendController;
 use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringInvoiceController;
+use App\Http\Controllers\Company\BetaInviteController as CompanyBetaInviteController;
 use App\Http\Controllers\CommunityFeedbackController;
 use App\Http\Controllers\CommunityFeedbackOperatorController;
 use App\Http\Controllers\LegalController;
@@ -100,6 +101,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth', 'terms'])->group(function () {
     Route::get('/onboarding/profession', function () {
+        if (auth()->user()->beta_invite_code_id) {
+            return redirect('/onboarding/financial');
+        }
+
         $customProfessions = \App\Models\User::whereNotIn('profession', [
             'Medical Professional', 'Architect / Perit', 'Engineer', 'Tutor / Lecturer', 'Other'
         ])->whereNotNull('profession')->distinct()->pluck('profession');
@@ -117,6 +122,11 @@ Route::middleware(['auth', 'terms'])->group(function () {
 
     Route::get('/onboarding/plans', function () {
         $user = auth()->user();
+        if ($user->beta_invite_code_id) {
+            $home = $user->canAccessCompanyBooks() ? '/company' : '/dashboard';
+
+            return redirect($home);
+        }
         $allowedTiers = \App\Support\TierPolicy::allowedTiersForProfession($user->profession);
 
         return view('onboarding.plans', compact('user', 'allowedTiers'));
@@ -420,5 +430,9 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/recurring', [CompanyRecurringInvoiceController::class, 'store']);
         Route::post('/recurring/generate', [CompanyRecurringInvoiceController::class, 'generateDue']);
         Route::post('/recurring/{schedule}/toggle', [CompanyRecurringInvoiceController::class, 'toggle']);
+
+        Route::get('/beta-invites', [CompanyBetaInviteController::class, 'index']);
+        Route::post('/beta-invites', [CompanyBetaInviteController::class, 'store']);
+        Route::post('/beta-invites/{id}/revoke', [CompanyBetaInviteController::class, 'revoke'])->whereNumber('id');
     });
 });
