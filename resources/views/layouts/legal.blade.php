@@ -52,6 +52,9 @@
         }
         .legal-card p { margin: 0 0 0.85rem; }
         .legal-card ul { margin: 0 0 0.85rem; padding-left: 1.25rem; }
+        .legal-card li { margin-bottom: 0.35rem; }
+        .legal-card a { color: var(--primary-cerulean); font-weight: 600; text-decoration: none; }
+        .legal-card a:hover { text-decoration: underline; }
         .legal-meta {
             color: var(--text-muted);
             font-size: 0.85rem;

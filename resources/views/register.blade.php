@@ -102,34 +102,35 @@
 
             <div class="legal-box" id="legalScrollBox">
                 <h4>1. Acceptance of Terms</h4>
-                <p>By registering for, accessing, or using PractisBase ("The Service"), you agree to be bound by these Terms of Service. You register as a natural person operating a professional practice (including under a trading name). You confirm that you are authorised to accept these Terms for that practice.</p>
+                <p>By registering for, accessing, or using PractisBase (&ldquo;The Service&rdquo;), you agree to be bound by this Master Service Agreement and the Privacy Policy. You register as a natural person operating a professional practice (including under a trading name). PractisBase records the IP address and timestamp of your acceptance at registration. Full text: <a href="/msa" target="_blank" rel="noopener">/msa</a> and <a href="/privacy" target="_blank" rel="noopener">/privacy</a>.</p>
 
                 <h4>2. Intended Users &amp; Entity Scope</h4>
-                <p><strong>PractisBase is built for Maltese self-employed sole traders and self-employed professionals</strong> (full-time or part-time), including medical, architectural, engineering, and similar practices that bill in their own name.</p>
-                <p><strong>The Service is not designed for limited liability companies (Ltd), public companies, corporate partnerships as separate legal persons, VAT groups, or employers running payroll/FSS for staff.</strong> Those entities should use dedicated company accounting software and professional advisors. Using PractisBase for company books, corporate income tax, or company VAT group reporting is outside the intended scope; any figures generated in that context are not a substitute for company accounts.</p>
-                <p>A “practice name” on your profile is a trading name for your sole-trader activity. It does not convert The Service into a company accounting system.</p>
+                <p><strong>PractisBase is built exclusively for Maltese self-employed sole traders and self-employed professionals</strong> (full-time or part-time), including medical, architectural, engineering, and similar practices that bill in their own name.</p>
+                <p><strong>The Service is strictly not designed for limited liability companies (Ltds), public companies, corporate partnerships as separate legal persons, VAT groups, or employers running payroll/FSS for staff.</strong> Using PractisBase for company books, corporate income tax, or company VAT group reporting is expressly outside the intended scope; any figures generated in that context are fundamentally invalid.</p>
 
                 <h4>3. No Professional Advice</h4>
-                <p>The Service provides administrative, templating, and data management tools only. <strong>PractisBase does not provide medical, architectural, engineering, financial, or legal advice.</strong> The User assumes full, exclusive liability for all clinical diagnoses, structural calculations, certifications, prescriptions, and professional actions facilitated through The Service. The Service is not a substitute for professional judgment.</p>
+                <p>The Service provides administrative, templating, and data management tools only. <strong>PractisBase does not provide medical, architectural, engineering, financial, or legal advice.</strong> The User assumes full, exclusive liability for all clinical diagnoses, structural calculations, certifications, prescriptions, and professional actions facilitated through The Service.</p>
 
-                <h4>4. Tax &amp; Accounting Disclaimers</h4>
-                <p>While The Service provides ledger management, VAT aids, and tax form automation for <strong>self-employed / sole-trader</strong> situations in Malta (such as progressive income tax, TA22 where applicable, Class 2 SSC estimates, and Article 10/11 VAT monitoring), <strong>PractisBase is not an accounting firm or a licensed tax advisor.</strong> The User assumes sole responsibility for the accuracy of all financial data, tax calculations, omissions, and submissions. The Service does not replace the need for professional financial counsel. You are strictly advised to consult a certified public accountant (CPA) or recognised tax advisor prior to submitting any tax or VAT returns to the Commissioner for Revenue.</p>
-                <p>Tax tools reflect common sole-trader permutations (including part-time self-employment with primary employment). Unusual mid-year regime changes, reduced VAT rates, EU/cross-border special schemes, and situations outside Maltese sole-trader rules may require manual adjustment and advisor review.</p>
+                <h4>4. Absolute Tax &amp; Accounting Disclaimers</h4>
+                <p>While The Service provides ledger management, VAT aids, and tax form automation for common sole-trader situations in Malta, <strong>PractisBase is a software tool, not an accounting firm or a licensed tax advisor.</strong> You assume sole and absolute responsibility for all financial data, tax calculations, omissions, and submissions to the Malta Tax and Customs Administration (MTCA). Consult a CPA or recognised tax advisor before filing.</p>
 
-                <h4>5. Data Processing &amp; GDPR Compliance</h4>
-                <p>In accordance with the EU General Data Protection Regulation (GDPR) and the Data Protection Act (Cap. 586 of the Laws of Malta), the User acts as the exclusive "Data Controller" for all client and patient information uploaded. PractisBase acts solely as the "Data Processor." We claim no ownership over your client data. You warrant that you have obtained all necessary legal consents from your clients/patients to store their sensitive data digitally within The Service.</p>
+                <h4>5. Medical Vault &amp; Profession Modules</h4>
+                <p><strong>Medical Vault:</strong> Client-side cryptography. PractisBase does not possess your decryption keys. If you lose your password and recovery codes, clinical data is irreversibly lost. <strong>Studio &amp; Technical desks:</strong> templates and stampables are aids only; you remain responsible for regulatory and warrant compliance (e.g. KTP, Chamber of Engineers).</p>
 
-                <h4>6. Limitation of Liability</h4>
-                <p>To the maximum extent permitted by applicable law, PractisBase, its founders, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation: loss of profits, loss of data, loss of goodwill, malpractice claims, tax penalties, or regulatory fines. <strong>In no event shall our aggregate liability exceed the total amounts paid by you to PractisBase in the twelve (12) months immediately preceding the event giving rise to the claim.</strong> If you are utilizing the "Free Tier", our total liability is limited to zero Euros (€0.00).</p>
+                <h4>6. Data Processing &amp; GDPR</h4>
+                <p>You are the exclusive Data Controller for client and patient information uploaded. PractisBase acts solely as Data Processor. You warrant you have obtained all necessary legal consents. See the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</p>
 
-                <h4>7. Indemnification</h4>
-                <p>You agree to defend, indemnify, and hold harmless PractisBase and its employees from and against any claims, damages, obligations, losses, liabilities, costs, or debt (including but not limited to attorney's fees) arising from: (a) your use of and access to The Service; (b) your violation of any term of this Agreement; (c) your violation of any third-party right, including without limitation any privacy or intellectual property right; or (d) any claim that your content, professional actions, or financial submissions caused damage to a third party or resulted in regulatory action.</p>
+                <h4>7. Limitation of Liability</h4>
+                <p>To the maximum extent permitted by law, Cerulean Labs Limited shall not be liable for indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, goodwill, malpractice claims, tax penalties, or regulatory fines. Aggregate liability shall not exceed amounts paid to PractisBase in the twelve (12) months preceding the claim. <strong>Free Tier or Beta Trial liability is strictly limited to €0.00.</strong></p>
 
-                <h4>8. Service Availability &amp; Data Backups</h4>
-                <p>The Service is provided on an "AS IS" and "AS AVAILABLE" basis. While we utilize enterprise-grade infrastructure, we do not guarantee absolute immunity from data loss. <strong>Users are provided with a "Data Export" tool and are strictly required to maintain their own independent backups of their client and financial records.</strong> Please note: The standard export tool downloads text and ledger data only; it does not include physical file uploads (e.g., PDFs, receipt images, or architectural documents) stored in the cloud.</p>
+                <h4>8. Indemnification</h4>
+                <p>You agree to defend and indemnify Cerulean Labs Limited against claims arising from your use of The Service, your breach of these Terms, third-party rights violations, or your professional / tax submissions.</p>
 
-                <h4>9. Governing Law &amp; Jurisdiction</h4>
-                <p>These Terms shall be governed and construed in accordance with the laws of the Republic of Malta, without regard to its conflict of law provisions. Any dispute arising out of or in connection with these Terms shall be subject to the exclusive jurisdiction of the Courts of Malta.</p>
+                <h4>9. Service Availability &amp; Data Backups</h4>
+                <p>The Service is provided &ldquo;AS IS&rdquo; and &ldquo;AS AVAILABLE&rdquo;. You must maintain independent backups. The standard export tool covers text and ledger data only — not physical file uploads stored in the cloud.</p>
+
+                <h4>10. Governing Law</h4>
+                <p>These Terms are governed by the laws of the Republic of Malta. Disputes are subject to the exclusive jurisdiction of the Courts of Malta.</p>
             </div>
 
             <div class="checkbox-group" style="margin-bottom: 1rem;">
