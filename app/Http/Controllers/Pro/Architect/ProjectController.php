@@ -45,12 +45,17 @@ class ProjectController extends Controller
     public function create(Request $request)
     {
         $user = Auth::user();
+        foreach (\App\Models\Client::where('user_id', $user->id)->orderBy('name')->get() as $billing) {
+            \App\Support\PracticeClientBridge::upsertArchitect($user->id, $billing);
+        }
+
         $clients = ArchitectClient::where('user_id', $user->id)->orderBy('name')->get();
         $preselect = (int) $request->query('client_id');
 
         return view('pro.architect.projects-form', [
             'project' => null,
             'clients' => $clients,
+            'engagementTypes' => ArchitectProject::ENGAGEMENT_TYPES,
             'phases' => ArchitectProject::PHASES,
             'statuses' => ArchitectProject::STATUSES,
             'preselectClientId' => $preselect ?: null,
@@ -100,6 +105,7 @@ class ProjectController extends Controller
         return view('pro.architect.projects-form', [
             'project' => $project,
             'clients' => $clients,
+            'engagementTypes' => ArchitectProject::ENGAGEMENT_TYPES,
             'phases' => ArchitectProject::PHASES,
             'statuses' => ArchitectProject::STATUSES,
             'preselectClientId' => $project->architect_client_id,
@@ -184,6 +190,7 @@ class ProjectController extends Controller
             'architect_client_id' => 'required|integer',
             'name' => 'required|string|max:255',
             'reference_code' => 'nullable|string|max:100',
+            'engagement_type' => 'required|in:'.implode(',', array_keys(ArchitectProject::ENGAGEMENT_TYPES)),
             'phase' => 'required|in:'.implode(',', array_keys(ArchitectProject::PHASES)),
             'status' => 'required|in:'.implode(',', array_keys(ArchitectProject::STATUSES)),
             'site_premises' => 'nullable|string|max:255',

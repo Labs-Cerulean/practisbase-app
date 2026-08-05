@@ -487,7 +487,6 @@
     $pro = \App\Support\TierPolicy::PRICE_PRO;
     $save = \App\Support\TierPolicy::bundleSavingsEuro();
     $vatSuffix = \App\Support\TierPolicy::priceVatSuffix();
-    $vatDisclaimer = \App\Support\TierPolicy::pricingVatDisclaimer();
 @endphp
 
     <header class="site-header">
@@ -512,8 +511,6 @@
     <section class="section" id="plans">
         <h2 class="section-title">The ladder</h2>
         <p class="section-sub">Four clear steps. Full Pro is priced as a bundle: about €{{ $save }}/mo less than buying Standard and Practice separately.</p>
-        <p class="vat-note">{{ $vatDisclaimer }} List prices below are ex-VAT.</p>
-
         <div class="ladder">
             <article class="plan">
                 <div class="plan-name">Free</div>

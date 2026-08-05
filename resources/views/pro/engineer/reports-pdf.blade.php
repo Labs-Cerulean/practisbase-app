@@ -98,7 +98,7 @@
         </div>
     @endif
 
-    @if(count($payload['checklist']))
+    @if(!empty($payload['include_checklist']) && count($payload['checklist'] ?? []))
         <h2>{{ $payload['checklist_heading'] ?: 'Inspection checklist' }}</h2>
         <table class="check">
             <tr>
@@ -116,7 +116,7 @@
         </table>
     @endif
 
-    @if(count($payload['measurements']))
+    @if(!empty($payload['include_measurements']) && count($payload['measurements'] ?? []))
         <h2>{{ $payload['measurements_heading'] ?: 'Measurements' }}</h2>
         <table class="meas">
             <tr>

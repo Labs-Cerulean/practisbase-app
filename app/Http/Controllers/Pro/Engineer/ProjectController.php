@@ -49,7 +49,12 @@ class ProjectController extends Controller
 
     public function create(Request $request)
     {
-        $clients = EngineerClient::where('user_id', Auth::id())->orderBy('name')->get();
+        $user = Auth::user();
+        foreach (\App\Models\Client::where('user_id', $user->id)->orderBy('name')->get() as $billing) {
+            \App\Support\PracticeClientBridge::upsertEngineer($user->id, $billing);
+        }
+
+        $clients = EngineerClient::where('user_id', $user->id)->orderBy('name')->get();
         $preselect = (int) $request->query('client_id');
 
         return view('pro.engineer.projects-form', [
@@ -128,7 +133,7 @@ class ProjectController extends Controller
             'engineer_client_id' => 'required|integer',
             'name' => 'required|string|max:255',
             'reference_code' => 'nullable|string|max:100',
-            'discipline' => 'required|in:'.implode(',', array_keys(EngineerProject::DISCIPLINES)),
+            'discipline' => 'required|string|max:64',
             'phase' => 'required|in:'.implode(',', array_keys(EngineerProject::PHASES)),
             'status' => 'required|in:'.implode(',', array_keys(EngineerProject::STATUSES)),
             'site_premises' => 'nullable|string|max:255',
@@ -138,6 +143,8 @@ class ProjectController extends Controller
             'commencement_date' => 'nullable|date|before_or_equal:today',
             'notes' => 'nullable|string|max:5000',
         ]);
+
+        $validated['discipline'] = EngineerProject::normalizeDiscipline($validated['discipline'] ?? null);
 
         $ownsClient = EngineerClient::where('user_id', $userId)
             ->where('id', $validated['engineer_client_id'])

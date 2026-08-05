@@ -13,55 +13,17 @@ class ClientController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
-        $q = trim((string) $request->query('q', ''));
-
-        $clients = EngineerClient::query()
-            ->where('user_id', $user->id)
-            ->withCount('projects')
-            ->when($q !== '', function ($query) use ($q) {
-                $like = '%'.$q.'%';
-                $query->where(function ($inner) use ($like) {
-                    $inner->where('name', 'ilike', $like)
-                        ->orWhere('locality', 'ilike', $like)
-                        ->orWhere('email', 'ilike', $like)
-                        ->orWhere('phone', 'ilike', $like)
-                        ->orWhere('id_card', 'ilike', $like);
-                });
-            })
-            ->orderBy('name')
-            ->get();
-
-        $orphanProjects = EngineerProject::query()
-            ->where('user_id', $user->id)
-            ->whereNull('engineer_client_id')
-            ->count();
-
-        return view('pro.engineer.clients-index', compact('clients', 'q', 'orphanProjects'));
+        return redirect('/clients')->with('success', 'Clients are managed in one place under General. Practice projects use the same contacts.');
     }
 
     public function create()
     {
-        $billingClients = Client::where('user_id', Auth::id())->orderBy('name')->get(['id', 'name']);
-
-        return view('pro.engineer.clients-form', [
-            'client' => null,
-            'billingClients' => $billingClients,
-        ]);
+        return redirect('/clients/create')->with('success', 'Add the client here — it will also be available for projects.');
     }
 
     public function store(Request $request)
     {
-        $user = Auth::user();
-        $validated = $this->validateClient($request, $user->id);
-
-        $client = EngineerClient::create([
-            'user_id' => $user->id,
-            ...$validated,
-        ]);
-
-        return redirect('/pro/engineer/clients/'.$client->id)
-            ->with('success', 'Client saved.');
+        return redirect('/clients/create');
     }
 
     public function show(EngineerClient $client)

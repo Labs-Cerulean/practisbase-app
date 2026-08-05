@@ -346,6 +346,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/reports', [EngineerReportController::class, 'index']);
         Route::get('/reports/create', [EngineerReportController::class, 'create']);
         Route::post('/reports', [EngineerReportController::class, 'store']);
+        Route::post('/reports/templates', [EngineerReportController::class, 'storeTemplate']);
         Route::get('/reports/{report}', [EngineerReportController::class, 'show']);
         Route::get('/reports/{report}/edit', [EngineerReportController::class, 'edit']);
         Route::put('/reports/{report}', [EngineerReportController::class, 'update']);

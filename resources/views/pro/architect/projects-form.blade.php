@@ -11,8 +11,8 @@
 
     @if($clients->isEmpty())
         <div style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 1rem; border-radius: var(--radius-md);">
-            Create a client first, then add a project.
-            <a href="/pro/architect/clients/create" style="font-weight: 700; color: #92400e;">Add client</a>
+            Create a client first under General → Clients, then add a project.
+            <a href="/clients/create" style="font-weight: 700; color: #92400e;">Add client</a>
         </div>
     @else
         @if($errors->any())
@@ -43,6 +43,15 @@
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Internal reference</label>
                         <input type="text" name="reference_code" value="{{ old('reference_code', $project->reference_code ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Engagement type</label>
+                        <select name="engagement_type" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            @foreach($engagementTypes as $key => $label)
+                                <option value="{{ $key }}" @selected(old('engagement_type', $project->engagement_type ?? 'full_project') === $key)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Choose Other if none fit — add detail in Notes.</div>
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Phase</label>

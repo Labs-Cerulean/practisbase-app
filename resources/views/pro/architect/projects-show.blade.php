@@ -9,7 +9,8 @@
             <a href="{{ $project->client ? '/pro/architect/clients/'.$project->client->id : '/pro/architect/projects' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $project->client->name ?? 'Projects' }}</a>
             <h1 style="margin: 0.4rem 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">{{ $project->name }}</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
-                {{ $phases[$project->phase] ?? $project->phase }} · {{ $statuses[$project->status] ?? $project->status }}
+                {{ \App\Models\ArchitectProject::engagementLabel($project->engagement_type) }}
+                · {{ $phases[$project->phase] ?? $project->phase }} · {{ $statuses[$project->status] ?? $project->status }}
                 @if($project->siteAddressLine()) · {{ $project->siteAddressLine() }} @endif
             </p>
         </div>

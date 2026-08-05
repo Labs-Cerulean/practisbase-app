@@ -61,7 +61,7 @@
                     </div>
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
                         {{ $project->client->name ?? 'No client linked' }}
-                        · {{ $disciplines[$project->discipline] ?? $project->discipline }}
+                        · {{ \App\Models\EngineerProject::disciplineLabel($project->discipline) }}
                         · {{ $phases[$project->phase] ?? $project->phase }}
                         · {{ $project->pa_applications_count }} PA
                         @if($project->reference_code) · {{ $project->reference_code }} @endif
