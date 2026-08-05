@@ -26,11 +26,22 @@
     <div style="margin-bottom: 1.25rem;">
         <a href="{{ $isEdit ? '/pro/engineer/reports/'.$report->id : '/pro/engineer/projects/'.$prefill['project_id'] }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Back</a>
         <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">{{ $isEdit ? 'Edit report' : 'Report builder' }}</h1>
-        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Same form for any specialised survey — attributes, checklist, measurements, and narrative. Built for phone on site.</p>
+        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Pick a starter (Fire, Noise, …) or one of your saved templates. Turn checklist / measurements on only when you need them.</p>
+    </div>
+
+    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.9rem 1rem; margin-bottom: 1rem; font-size: 0.84rem; color: var(--text-muted); line-height: 1.45; max-width: 920px;">
+        <strong style="color: var(--primary-navy);">How to use</strong>
+        <ul style="margin: 0.4rem 0 0; padding-left: 1.1rem;">
+            <li><strong>Project &amp; client</strong> pull site/contact from the project — you usually leave those as-is.</li>
+            <li><strong>Survey particulars</strong> are extra facts for <em>this</em> survey (use, standards, meter, occupancy) — not a second copy of the project address.</li>
+            <li><strong>Overall conclusion</strong> is the single result line on the PDF (Satisfactory / Conditional / High risk, etc.).</li>
+            <li>Enable <strong>Checklist</strong> or <strong>Measurements</strong> only if this report needs them; otherwise leave them off for a cleaner PDF.</li>
+        </ul>
     </div>
 
     @unless($isEdit)
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.65rem; align-items: center;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Starters</span>
             @foreach($starters as $key => $starter)
                 <a href="/pro/engineer/reports/create?starter={{ $key }}{{ ($prefill['project_id'] ?? null) ? '&project_id='.$prefill['project_id'] : '' }}{{ ($prefill['pa_id'] ?? null) ? '&pa_id='.$prefill['pa_id'] : '' }}"
                    style="padding: 0.45rem 0.75rem; border-radius: var(--radius-md); text-decoration: none; font-size: 0.82rem; font-weight: 600; {{ $starterKey === $key ? 'background: var(--primary-cerulean); color: white;' : 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' }}">
@@ -38,6 +49,17 @@
                 </a>
             @endforeach
         </div>
+        @if(!empty($userTemplates) && count($userTemplates))
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
+                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Your templates</span>
+                @foreach($userTemplates as $tpl)
+                    <a href="/pro/engineer/reports/create?template_id={{ $tpl->id }}{{ ($prefill['project_id'] ?? null) ? '&project_id='.$prefill['project_id'] : '' }}{{ ($prefill['pa_id'] ?? null) ? '&pa_id='.$prefill['pa_id'] : '' }}"
+                       style="padding: 0.45rem 0.75rem; border-radius: var(--radius-md); text-decoration: none; font-size: 0.82rem; font-weight: 600; {{ (int)($templateId ?? 0) === (int)$tpl->id ? 'background: #334155; color: white;' : 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' }}">
+                        {{ $tpl->name }}
+                    </a>
+                @endforeach
+            </div>
+        @endif
     @endunless
 
     @if($errors->any())
@@ -83,12 +105,6 @@
                     <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Generated from project reference + ER sequence. Editable.</div>
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Conclusion / result</label>
-                    <input type="text" name="conclusion" value="{{ old('conclusion', $report->conclusion ?? '') }}" placeholder="e.g. Satisfactory / Conditional / High risk" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
-                <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Surveyed on</label>
                     <input type="date" name="surveyed_on" max="{{ date('Y-m-d') }}" value="{{ old('surveyed_on', optional($report->surveyed_on ?? null)->format('Y-m-d')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
@@ -129,32 +145,41 @@
 
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Subject attributes</h2>
+                <div>
+                    <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Survey particulars</h2>
+                    <p style="margin: 0.25rem 0 0; font-size: 0.78rem; color: var(--text-muted);">Facts for this survey only (not the project address above). Example: premises use, occupancy, standards, meter/calibration.</p>
+                </div>
                 <button type="button" id="addAttr" class="eng-touch-btn" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">+ Row</button>
             </div>
-            <input type="text" name="payload[subject_heading]" value="{{ $p['subject_heading'] }}" placeholder="Section heading (e.g. Premises / scope)" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            <input type="hidden" name="payload[subject_heading]" value="{{ $p['subject_heading'] ?: 'Survey particulars' }}">
             <div id="attrRows" style="display: grid; gap: 0.5rem;">
-                @foreach($p['attributes'] as $i => $row)
+                @foreach(($p['attributes'] ?: [['label' => '', 'value' => '']]) as $i => $row)
                     <div class="attr-row" style="display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 0.45rem;">
-                        <input type="text" name="payload[attributes][{{ $i }}][label]" value="{{ $row['label'] }}" placeholder="Label" style="padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <input type="text" name="payload[attributes][{{ $i }}][label]" value="{{ $row['label'] }}" placeholder="Label (e.g. Premises use)" style="padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         <input type="text" name="payload[attributes][{{ $i }}][value]" value="{{ $row['value'] }}" placeholder="Value" style="padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         <button type="button" class="rm" style="background: none; border: none; color: #b91c1c; font-weight: 700; cursor: pointer;">×</button>
                     </div>
                 @endforeach
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.35rem;">
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Highlight label</label>
-                    <input type="text" name="payload[highlight_label]" value="{{ $p['highlight_label'] }}" placeholder="e.g. Overall risk" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Highlight value</label>
-                    <input type="text" name="payload[highlight_value]" value="{{ $p['highlight_value'] }}" placeholder="e.g. Medium" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
+            <div style="margin-top: 0.35rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Overall conclusion *</label>
+                <input type="hidden" name="payload[highlight_label]" value="Overall conclusion">
+                <input type="text" name="payload[highlight_value]" id="overallConclusion" value="{{ $p['highlight_value'] ?: old('conclusion', $report->conclusion ?? '') }}" placeholder="e.g. Satisfactory / Conditional / High risk" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600;">
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">This is the only conclusion line — shown prominently on the PDF.</div>
+            </div>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; padding-top: 0.35rem; border-top: 1px solid #e2e8f0;">
+                <label style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.88rem; font-weight: 600; color: var(--primary-navy); cursor: pointer;">
+                    <input type="checkbox" name="payload[include_checklist]" id="toggleChecklist" value="1" @checked(!empty($p['include_checklist']))>
+                    Include checklist section
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.88rem; font-weight: 600; color: var(--primary-navy); cursor: pointer;">
+                    <input type="checkbox" name="payload[include_measurements]" id="toggleMeasurements" value="1" @checked(!empty($p['include_measurements']))>
+                    Include measurements section
+                </label>
             </div>
         </section>
 
-        <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
+        <section id="checklistSection" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: {{ !empty($p['include_checklist']) ? 'grid' : 'none' }}; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Checklist</h2>
                 <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
@@ -164,9 +189,9 @@
                     <button type="button" id="addCheck" class="eng-touch-btn" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">+ Row</button>
                 </div>
             </div>
-            <input type="text" name="payload[checklist_heading]" value="{{ $p['checklist_heading'] }}" placeholder="Checklist heading (leave blank to hide on PDF if empty)" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            <input type="text" name="payload[checklist_heading]" value="{{ $p['checklist_heading'] }}" placeholder="Checklist heading" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             <div id="checkRows" style="display: grid; gap: 0.5rem;">
-                @foreach($p['checklist'] as $i => $row)
+                @foreach(($p['checklist'] ?: [\App\Support\EngineerReportBlueprint::blankChecklistRow()]) as $i => $row)
                     <div class="check-row" data-row-id="{{ $row['id'] }}" style="display: grid; grid-template-columns: 1.4fr 0.7fr 1fr auto; gap: 0.45rem;">
                         <input type="hidden" name="payload[checklist][{{ $i }}][id]" value="{{ $row['id'] }}">
                         <input type="text" name="payload[checklist][{{ $i }}][item]" class="check-label" value="{{ $row['item'] }}" placeholder="Item" style="padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
@@ -178,14 +203,14 @@
             </div>
         </section>
 
-        <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
+        <section id="measurementsSection" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: {{ !empty($p['include_measurements']) ? 'grid' : 'none' }}; gap: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Measurements</h2>
                 <button type="button" id="addMeas" class="eng-touch-btn" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">+ Row</button>
             </div>
-            <input type="text" name="payload[measurements_heading]" value="{{ $p['measurements_heading'] }}" placeholder="Measurements heading (optional — leave blank if not used)" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            <input type="text" name="payload[measurements_heading]" value="{{ $p['measurements_heading'] }}" placeholder="Measurements heading" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             <div id="measRows" style="display: grid; gap: 0.5rem; overflow-x: auto;">
-                @foreach($p['measurements'] as $i => $row)
+                @foreach(($p['measurements'] ?: [\App\Support\EngineerReportBlueprint::blankMeasurementRow()]) as $i => $row)
                     <div class="meas-row" data-row-id="{{ $row['id'] }}" style="display: grid; grid-template-columns: 1.1fr 0.9fr 0.7fr 0.55fr 0.7fr 0.7fr auto; gap: 0.35rem; min-width: 640px;">
                         <input type="hidden" name="payload[measurements][{{ $i }}][id]" value="{{ $row['id'] }}">
                         <input type="text" name="payload[measurements][{{ $i }}][location]" class="meas-location" value="{{ $row['location'] }}" placeholder="Location" style="padding: 0.5rem 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
@@ -198,7 +223,6 @@
                     </div>
                 @endforeach
             </div>
-            <div style="font-size: 0.78rem; color: var(--text-muted);">Useful for noise, lighting, and ventilation. Clear all rows or leave blank if the report is narrative-only.</div>
         </section>
 
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
@@ -231,7 +255,8 @@
 
         <div class="eng-field-savebar">
             <button type="submit">{{ $isEdit ? 'Save draft' : 'Save draft report' }}</button>
-            <div class="eng-field-hint">Draft stays editable until you Stamp &amp; issue.</div>
+            <button type="submit" name="save_as_template" value="1" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light);">Save layout as template</button>
+            <div class="eng-field-hint">Draft stays editable until you Stamp &amp; issue. Templates remember particulars, checklist/measurement toggles, and narrative headings.</div>
         </div>
     </form>
 
@@ -401,6 +426,17 @@
                     syncPhotoLinks();
                 });
             }
+
+            function bindSectionToggle(checkboxId, sectionId) {
+                var cb = document.getElementById(checkboxId);
+                var section = document.getElementById(sectionId);
+                if (!cb || !section) return;
+                cb.addEventListener('change', function () {
+                    section.style.display = cb.checked ? 'grid' : 'none';
+                });
+            }
+            bindSectionToggle('toggleChecklist', 'checklistSection');
+            bindSectionToggle('toggleMeasurements', 'measurementsSection');
         })();
     </script>
 @endsection

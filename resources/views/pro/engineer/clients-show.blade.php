@@ -34,7 +34,7 @@
                         <a href="/pro/engineer/projects/{{ $project->id }}" style="display: block; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.95rem 1.1rem; text-decoration: none; box-shadow: var(--shadow-sm);">
                             <div style="font-weight: 700; color: var(--primary-navy);">{{ $project->name }}</div>
                             <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem;">
-                                {{ $disciplines[$project->discipline] ?? $project->discipline }}
+                                {{ \App\Models\EngineerProject::disciplineLabel($project->discipline) }}
                                 · {{ $phases[$project->phase] ?? $project->phase }}
                                 · {{ $project->pa_applications_count }} PA
                                 @if($project->site_locality) · {{ $project->site_locality }} @endif

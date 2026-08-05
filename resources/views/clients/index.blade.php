@@ -6,7 +6,14 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <div>
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.25rem;">Clients</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem;">Manage your database and client finances.</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">
+                One client list for invoicing and practice projects.
+                @if(auth()->user()->canAccessProPackage('arch') || auth()->user()->canAccessProPackage('eng'))
+                    New clients are linked automatically so you can pick them when creating a project.
+                @else
+                    Manage contacts and client finances.
+                @endif
+            </p>
         </div>
         <a href="/clients/create" style="background: var(--primary-cerulean); color: white; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">
             + Add Client

@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/css/style.css?v=shell2">
+    <link rel="stylesheet" href="/css/style.css?v=shell3">
 </head>
 <body>
     @php
@@ -43,21 +43,19 @@
                             <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
                             <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>
                         @else
-                            <li class="nav-section-label">Home</li>
+                            <li class="nav-section-label" aria-hidden="true">General</li>
                             <li>
                                 <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Overview</a>
                             </li>
-
-                            <li class="nav-section-label">Practice</li>
                             <li>
-                                <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
+                                <a href="/clients" class="nav-link {{ request()->is('clients*') || request()->is('pro/architect/clients*') || request()->is('pro/engineer/clients*') ? 'active' : '' }}">Clients</a>
                             </li>
                             <li>
                                 <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
                             </li>
 
                             @if(auth()->user()->canAccessReports())
-                                <li class="nav-section-label">Money</li>
+                                <li class="nav-section-label" aria-hidden="true">Money</li>
                                 <li>
                                     <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Tax &amp; VAT</a>
                                 </li>
@@ -70,12 +68,11 @@
                             @endif
 
                             @if(auth()->user()->canAccessProPackage('med'))
-                                <li class="nav-section-label">Clinical</li>
+                                <li class="nav-section-label" aria-hidden="true">Clinical</li>
                                 <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
                                 <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Stampables</a></li>
                             @elseif(auth()->user()->canAccessProPackage('arch'))
-                                <li class="nav-section-label">Practice</li>
-                                <li><a href="/pro/architect/clients" class="nav-link {{ request()->is('pro/architect/clients*') ? 'active' : '' }}">Clients</a></li>
+                                <li class="nav-section-label" aria-hidden="true">Projects</li>
                                 <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>
                                 <li><a href="/pro/architect/documents" class="nav-link {{ request()->is('pro/architect/documents*') ? 'active' : '' }}">Documents</a></li>
                                 <li><a href="/pro/architect/condition-reports" class="nav-link {{ request()->is('pro/architect/condition-reports*') ? 'active' : '' }}">Condition reports</a></li>
@@ -84,13 +81,11 @@
                                 <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
                             @elseif(auth()->user()->canAccessProPackage('eng'))
-                                <li class="nav-section-label">Practice</li>
-                                <li><a href="/pro/engineer/clients" class="nav-link {{ request()->is('pro/engineer/clients*') ? 'active' : '' }}">Clients</a></li>
+                                <li class="nav-section-label" aria-hidden="true">Projects</li>
                                 <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') || request()->is('pro/engineer/pa*') ? 'active' : '' }}">Projects</a></li>
                                 <li><a href="/pro/engineer/documents" class="nav-link {{ request()->is('pro/engineer/documents*') ? 'active' : '' }}">Documents</a></li>
-                                <li><a href="/pro/engineer/certificates" class="nav-link {{ request()->is('pro/engineer/certificates*') ? 'active' : '' }}">Field certificates</a></li>
-                                <li><a href="/pro/engineer/reports" class="nav-link {{ request()->is('pro/engineer/reports*') ? 'active' : '' }}">Specialised reports</a></li>
-                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Simple certificates</a></li>
+                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') || request()->is('pro/engineer/certificates*') ? 'active' : '' }}">Certificates</a></li>
+                                <li><a href="/pro/engineer/reports" class="nav-link {{ request()->is('pro/engineer/reports*') ? 'active' : '' }}">Reports</a></li>
                             @endif
                         @endif
 

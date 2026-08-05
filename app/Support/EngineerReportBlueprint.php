@@ -82,13 +82,15 @@ class EngineerReportBlueprint
     public static function emptyPayload(): array
     {
         return [
-            'subject_heading' => 'Premises / scope',
+            'subject_heading' => 'Survey particulars',
             'attributes' => [
                 ['label' => 'Premises use', 'value' => ''],
                 ['label' => 'Standards / references', 'value' => ''],
             ],
             'highlight_label' => 'Overall conclusion',
             'highlight_value' => '',
+            'include_checklist' => false,
+            'include_measurements' => false,
             'checklist_heading' => 'Inspection checklist',
             'checklist' => [self::blankChecklistRow()],
             'measurements_heading' => 'Measurements / readings',
@@ -119,7 +121,7 @@ class EngineerReportBlueprint
                 'label' => 'Fire safety',
                 'title' => 'Fire safety report',
                 'payload' => [
-                    'subject_heading' => 'Premises / scope',
+                    'subject_heading' => 'Survey particulars',
                     'attributes' => [
                         ['label' => 'Premises use', 'value' => ''],
                         ['label' => 'Occupancy / capacity', 'value' => ''],
@@ -127,11 +129,13 @@ class EngineerReportBlueprint
                         ['label' => 'Standards referenced', 'value' => ''],
                         ['label' => 'PA / permission reference', 'value' => ''],
                     ],
-                    'highlight_label' => 'Overall risk',
+                    'highlight_label' => 'Overall conclusion',
                     'highlight_value' => '',
+                    'include_checklist' => true,
+                    'include_measurements' => false,
                     'checklist_heading' => 'Fire safety inspection items',
                     'checklist' => [self::blankChecklistRow()],
-                    'measurements_heading' => '',
+                    'measurements_heading' => 'Measurements / readings',
                     'measurements' => [self::blankMeasurementRow()],
                     'sections' => [
                         ['heading' => 'Scope of survey', 'body' => 'Means of escape and fire safety provisions inspected for the areas listed in scope.'],
@@ -154,8 +158,10 @@ class EngineerReportBlueprint
                         ['label' => 'Weather / wind', 'value' => ''],
                         ['label' => 'Standards / criteria referenced', 'value' => ''],
                     ],
-                    'highlight_label' => 'Overall assessment',
+                    'highlight_label' => 'Overall conclusion',
                     'highlight_value' => '',
+                    'include_checklist' => true,
+                    'include_measurements' => true,
                     'checklist_heading' => 'Assessment checks',
                     'checklist' => [self::blankChecklistRow()],
                     'measurements_heading' => 'Noise measurements',
@@ -172,7 +178,7 @@ class EngineerReportBlueprint
                 'label' => 'Ventilation',
                 'title' => 'Ventilation assessment report',
                 'payload' => [
-                    'subject_heading' => 'System / premises',
+                    'subject_heading' => 'Survey particulars',
                     'attributes' => [
                         ['label' => 'System type', 'value' => ''],
                         ['label' => 'Areas served', 'value' => ''],
@@ -182,6 +188,8 @@ class EngineerReportBlueprint
                     ],
                     'highlight_label' => 'Overall conclusion',
                     'highlight_value' => '',
+                    'include_checklist' => true,
+                    'include_measurements' => true,
                     'checklist_heading' => 'Ventilation inspection items',
                     'checklist' => [self::blankChecklistRow()],
                     'measurements_heading' => 'Airflow / ventilation readings',
@@ -208,6 +216,8 @@ class EngineerReportBlueprint
                     ],
                     'highlight_label' => 'Overall conclusion',
                     'highlight_value' => '',
+                    'include_checklist' => true,
+                    'include_measurements' => true,
                     'checklist_heading' => 'Lighting inspection items',
                     'checklist' => [self::blankChecklistRow()],
                     'measurements_heading' => 'Illuminance readings',
@@ -235,8 +245,10 @@ class EngineerReportBlueprint
         }
 
         $base['subject_heading'] = trim((string) ($raw['subject_heading'] ?? $base['subject_heading']));
-        $base['highlight_label'] = trim((string) ($raw['highlight_label'] ?? ''));
+        $base['highlight_label'] = trim((string) ($raw['highlight_label'] ?? 'Overall conclusion')) ?: 'Overall conclusion';
         $base['highlight_value'] = trim((string) ($raw['highlight_value'] ?? ''));
+        $base['include_checklist'] = filter_var($raw['include_checklist'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $base['include_measurements'] = filter_var($raw['include_measurements'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $base['checklist_heading'] = trim((string) ($raw['checklist_heading'] ?? $base['checklist_heading']));
         $base['measurements_heading'] = trim((string) ($raw['measurements_heading'] ?? $base['measurements_heading']));
         $base['legal_footer'] = trim((string) ($raw['legal_footer'] ?? ''));
@@ -270,6 +282,9 @@ class EngineerReportBlueprint
             $checklist[] = ['id' => $id, 'item' => $item, 'outcome' => $outcome, 'comments' => $comments];
         }
         $base['checklist'] = $checklist !== [] ? $checklist : [self::blankChecklistRow()];
+        if (! $base['include_checklist']) {
+            $base['checklist'] = [];
+        }
 
         $measurements = [];
         foreach (($raw['measurements'] ?? []) as $row) {
@@ -297,6 +312,9 @@ class EngineerReportBlueprint
             ];
         }
         $base['measurements'] = $measurements !== [] ? $measurements : [self::blankMeasurementRow()];
+        if (! $base['include_measurements']) {
+            $base['measurements'] = [];
+        }
 
         $sections = [];
         foreach (($raw['sections'] ?? []) as $row) {

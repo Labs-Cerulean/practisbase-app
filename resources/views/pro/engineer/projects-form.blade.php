@@ -16,8 +16,8 @@
 
     @if($clients->isEmpty())
         <div style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 1rem; border-radius: var(--radius-md);">
-            Create a client first, then add a project.
-            <a href="/pro/engineer/clients/create" style="font-weight: 700; color: #92400e;">Add client</a>
+            Create a client first under General → Clients, then add a project.
+            <a href="/clients/create" style="font-weight: 700; color: #92400e;">Add client</a>
         </div>
     @else
         @if($errors->any())
@@ -53,9 +53,10 @@
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Discipline</label>
                         <select name="discipline" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                             @foreach($disciplines as $key => $label)
-                                <option value="{{ $key }}" @selected(old('discipline', $project->discipline ?? 'general') === $key)>{{ $label }}</option>
+                                <option value="{{ $key }}" @selected(old('discipline', \App\Models\EngineerProject::normalizeDiscipline($project->discipline ?? 'multi_discipline')) === $key)>{{ $label }}</option>
                             @endforeach
                         </select>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Choose Other if none fit — add detail in Notes.</div>
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Phase</label>

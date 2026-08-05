@@ -7,6 +7,7 @@ use App\Models\EngineerPaApplication;
 use App\Models\EngineerProject;
 use App\Models\EngineerReport;
 use App\Models\EngineerReportPhoto;
+use App\Models\PracticeDocumentTemplate;
 use App\Support\EngineerReportBlueprint;
 use App\Support\IssueCode;
 use App\Support\PracticeDocumentContext;
@@ -61,6 +62,20 @@ class ReportController extends Controller
             $starterKey = 'blank';
         }
         $starter = $starters[$starterKey];
+        $templateId = (int) $request->query('template_id');
+        $userTemplates = PracticeDocumentTemplate::where('user_id', Auth::id())
+            ->where('kind', PracticeDocumentTemplate::KIND_REPORT)
+            ->orderBy('name')
+            ->get();
+        $template = $templateId > 0 ? $userTemplates->firstWhere('id', $templateId) : null;
+        if ($template) {
+            $starter = [
+                'label' => $template->name,
+                'title' => $template->title_default ?: $template->name,
+                'payload' => EngineerReportBlueprint::normalize($template->payload ?? []),
+            ];
+            $starterKey = $template->starter_key ?: 'blank';
+        }
         $paId = (int) $request->query('pa_id');
         $pas = EngineerPaApplication::where('user_id', Auth::id())
             ->where('engineer_project_id', $projectId)
@@ -77,6 +92,8 @@ class ReportController extends Controller
             'payload' => $payload,
             'starters' => $starters,
             'starterKey' => $starterKey,
+            'userTemplates' => $userTemplates,
+            'templateId' => $template?->id,
             'defaultTitle' => $starter['title'],
             'prefill' => [
                 'project_id' => $projectId,
@@ -91,6 +108,10 @@ class ReportController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->boolean('save_as_template')) {
+            return $this->storeTemplate($request);
+        }
+
         $validated = $this->validateReport($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
         $project = EngineerProject::where('user_id', Auth::id())
@@ -101,6 +122,9 @@ class ReportController extends Controller
             $reportNumber = PracticeDocumentContext::nextEngineerReportRef(Auth::id(), $project);
         }
 
+        $payload = EngineerReportBlueprint::normalize($validated['payload'] ?? []);
+        $conclusion = trim((string) ($payload['highlight_value'] ?? '')) ?: ($validated['conclusion'] ?? null);
+
         $report = EngineerReport::create([
             'user_id' => Auth::id(),
             'engineer_project_id' => $scope['engineer_project_id'],
@@ -110,13 +134,13 @@ class ReportController extends Controller
             'report_number' => $reportNumber,
             'surveyed_on' => $validated['surveyed_on'] ?? null,
             'issued_on' => $validated['issued_on'],
-            'conclusion' => $validated['conclusion'] ?? null,
+            'conclusion' => $conclusion,
             'client_name' => $validated['client_name'] ?? null,
             'client_address' => $validated['client_address'] ?? null,
             'contact_person' => $validated['contact_person'] ?? null,
             'contact_phone' => $validated['contact_phone'] ?? null,
             'site_address' => $validated['site_address'] ?? null,
-            'payload' => EngineerReportBlueprint::normalize($validated['payload'] ?? []),
+            'payload' => $payload,
         ]);
 
         $this->storePhotos($request, $report);
@@ -182,6 +206,8 @@ class ReportController extends Controller
             'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'eng', 'ER'),
             'commonChecklistItems' => EngineerReportBlueprint::commonChecklistItems((string) $report->report_type),
             'photoLinkOptions' => EngineerReportBlueprint::photoLinkOptions($payload),
+            'userTemplates' => collect(),
+            'templateId' => null,
         ]);
     }
 
@@ -191,6 +217,10 @@ class ReportController extends Controller
         if (! $report->isEditable()) {
             return redirect('/pro/engineer/reports/'.$report->id)
                 ->withErrors(['report' => 'This report was stamped and issued. It can no longer be edited.']);
+        }
+
+        if ($request->boolean('save_as_template')) {
+            return $this->storeTemplate($request);
         }
 
         $validated = $this->validateReport($request);
@@ -204,6 +234,9 @@ class ReportController extends Controller
                 ?: PracticeDocumentContext::nextEngineerReportRef(Auth::id(), $project);
         }
 
+        $payload = EngineerReportBlueprint::normalize($validated['payload'] ?? []);
+        $conclusion = trim((string) ($payload['highlight_value'] ?? '')) ?: ($validated['conclusion'] ?? null);
+
         $report->update([
             'engineer_project_id' => $scope['engineer_project_id'],
             'engineer_pa_application_id' => $scope['engineer_pa_application_id'],
@@ -212,13 +245,13 @@ class ReportController extends Controller
             'report_number' => $reportNumber,
             'surveyed_on' => $validated['surveyed_on'] ?? null,
             'issued_on' => $validated['issued_on'],
-            'conclusion' => $validated['conclusion'] ?? null,
+            'conclusion' => $conclusion,
             'client_name' => $validated['client_name'] ?? null,
             'client_address' => $validated['client_address'] ?? null,
             'contact_person' => $validated['contact_person'] ?? null,
             'contact_phone' => $validated['contact_phone'] ?? null,
             'site_address' => $validated['site_address'] ?? null,
-            'payload' => EngineerReportBlueprint::normalize($validated['payload'] ?? []),
+            'payload' => $payload,
         ]);
 
         $this->storePhotos($request, $report);
@@ -282,6 +315,35 @@ class ReportController extends Controller
         return $disk->response($photo->file_path);
     }
 
+    public function storeTemplate(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'report_type' => 'nullable|string|max:64',
+            'payload' => 'nullable|array',
+            'template_name' => 'nullable|string|max:120',
+        ]);
+
+        $name = trim((string) ($validated['template_name'] ?? ''));
+        if ($name === '') {
+            $name = trim((string) $validated['title']).' template';
+        }
+
+        PracticeDocumentTemplate::create([
+            'user_id' => Auth::id(),
+            'kind' => PracticeDocumentTemplate::KIND_REPORT,
+            'name' => $name,
+            'title_default' => $validated['title'],
+            'starter_key' => $validated['report_type'] ?? 'blank',
+            'payload' => EngineerReportBlueprint::normalize($validated['payload'] ?? []),
+        ]);
+
+        $projectId = (int) $request->input('engineer_project_id');
+
+        return redirect('/pro/engineer/reports/create'.($projectId > 0 ? '?project_id='.$projectId : ''))
+            ->with('success', 'Template saved. You can reuse it from “Your templates” on the next report.');
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -307,6 +369,8 @@ class ReportController extends Controller
             'payload.subject_heading' => 'nullable|string|max:255',
             'payload.highlight_label' => 'nullable|string|max:255',
             'payload.highlight_value' => 'nullable|string|max:255',
+            'payload.include_checklist' => 'nullable',
+            'payload.include_measurements' => 'nullable',
             'payload.checklist_heading' => 'nullable|string|max:255',
             'payload.measurements_heading' => 'nullable|string|max:255',
             'payload.legal_footer' => 'nullable|string|max:5000',

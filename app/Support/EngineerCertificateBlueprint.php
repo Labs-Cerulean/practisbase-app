@@ -40,6 +40,20 @@ class EngineerCertificateBlueprint
                 'Anchoring',
                 'Decks / fittings',
             ],
+            'fire' => [
+                'Means of escape / travel distances',
+                'Fire detection / alarm provision',
+                'Emergency lighting',
+                'Fire-fighting equipment / access',
+                'Compartmentation / fire doors',
+                'Signage',
+            ],
+            'ventilation' => [
+                'Supply / extract operation',
+                'Filters / coils condition',
+                'Controls / interlocks',
+                'Fresh air provision vs design',
+            ],
             default => [],
         };
     }
@@ -149,6 +163,50 @@ class EngineerCertificateBlueprint
                         ['heading' => 'Declaration', 'body' => "I, the undersigned engineer as prescribed by the relevant legislation, hereby declare, in terms of the requirements of the condition of the permission and in relation to the premises cited above, that the requirements of the approved document(s) cited above have been implemented on site, are found to be fully satisfied, and are fully operational as verified through an inspection.\n\n(Alternatively state: not applicable to the premises cited above.)"],
                     ],
                     'legal_footer' => '',
+                ],
+            ],
+            'fire' => [
+                'label' => 'Fire',
+                'title' => 'Fire safety certificate',
+                'payload' => [
+                    'subject_heading' => 'Premises / system',
+                    'attributes' => [
+                        ['label' => 'Premises use', 'value' => ''],
+                        ['label' => 'System / equipment', 'value' => ''],
+                        ['label' => 'Standards referenced', 'value' => ''],
+                        ['label' => 'PA / permission reference', 'value' => ''],
+                    ],
+                    'highlight_label' => 'Outcome',
+                    'highlight_value' => '',
+                    'checklist_heading' => 'Fire safety checks',
+                    'checklist' => [self::blankChecklistRow()],
+                    'sections' => [
+                        ['heading' => 'Findings', 'body' => ''],
+                        ['heading' => 'Conditions of validity', 'body' => ''],
+                    ],
+                    'legal_footer' => 'Prepared for the exclusive use of the client. Inspection reflects conditions at the time of survey only.',
+                ],
+            ],
+            'ventilation' => [
+                'label' => 'Ventilation',
+                'title' => 'Ventilation certificate',
+                'payload' => [
+                    'subject_heading' => 'System details',
+                    'attributes' => [
+                        ['label' => 'System type', 'value' => ''],
+                        ['label' => 'Areas served', 'value' => ''],
+                        ['label' => 'Standards referenced', 'value' => ''],
+                        ['label' => 'Instrument / method', 'value' => ''],
+                    ],
+                    'highlight_label' => 'Outcome',
+                    'highlight_value' => '',
+                    'checklist_heading' => 'Ventilation checks',
+                    'checklist' => [self::blankChecklistRow()],
+                    'sections' => [
+                        ['heading' => 'Findings', 'body' => ''],
+                        ['heading' => 'Conditions of validity', 'body' => ''],
+                    ],
+                    'legal_footer' => 'Prepared for the exclusive use of the client. Readings reflect conditions at the time of survey only.',
                 ],
             ],
         ];

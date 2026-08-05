@@ -32,13 +32,51 @@ class EngineerProject extends Model
     }
 
     public const DISCIPLINES = [
-        'general' => 'General',
+        'multi_discipline' => 'Multi-discipline',
         'electrical' => 'Electrical',
         'mechanical' => 'Mechanical',
-        'civil' => 'Civil / structural',
-        'ems' => 'EMS',
-        'bms' => 'BMS',
+        'fire' => 'Fire',
+        'hvac' => 'HVAC',
+        'other' => 'Other',
     ];
+
+    /** Old keys kept for display / edit of existing projects. */
+    public const DISCIPLINE_LEGACY = [
+        'general' => 'Multi-discipline',
+        'civil' => 'Other',
+        'ems' => 'Other',
+        'bms' => 'Other',
+    ];
+
+    public static function disciplineOptions(): array
+    {
+        return self::DISCIPLINES;
+    }
+
+    public static function disciplineLabel(?string $key): string
+    {
+        if ($key === null || $key === '') {
+            return '—';
+        }
+
+        return self::DISCIPLINES[$key]
+            ?? self::DISCIPLINE_LEGACY[$key]
+            ?? $key;
+    }
+
+    public static function normalizeDiscipline(?string $key): string
+    {
+        $key = trim((string) $key);
+        if (isset(self::DISCIPLINES[$key])) {
+            return $key;
+        }
+
+        return match ($key) {
+            'general' => 'multi_discipline',
+            'civil', 'ems', 'bms' => 'other',
+            default => 'other',
+        };
+    }
 
     public const PHASES = [
         'design' => 'Design',

@@ -3,13 +3,38 @@
 @section('page_title', 'Certificates')
 
 @section('content')
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; gap: 1rem;">
+    @php
+        $isEngineer = auth()->user()->canAccessProPackage('eng');
+        $mode = $isEngineer ? request('mode', 'simple') : 'simple';
+        if (! in_array($mode, ['simple', 'detailed'], true)) {
+            $mode = 'simple';
+        }
+    @endphp
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap;">
         <div>
             <h1 style="margin: 0 0 0.25rem; color: var(--primary-navy); font-size: 1.35rem;">Certificates</h1>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Shared across Pro packages. Drafts stay editable until Stamp &amp; issue. Issued copies get a unique code + date on the PDF.</p>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
+                @if($isEngineer)
+                    Start with a simple certificate. Switch to detailed mode for field certificates with checklists (equipment, scaffold, fire, ventilation, or your templates).
+                @else
+                    Drafts stay editable until Stamp &amp; issue. Issued copies get a unique code + date on the PDF.
+                @endif
+            </p>
         </div>
-        <a href="/pro/certificates/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Add</a>
+        @if($mode === 'simple')
+            <a href="/pro/certificates/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Add</a>
+        @endif
     </div>
+
+    @if($isEngineer)
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
+            <a href="/pro/certificates?mode=simple" style="padding: 0.45rem 0.85rem; border-radius: var(--radius-md); text-decoration: none; font-size: 0.85rem; font-weight: 700; {{ $mode === 'simple' ? 'background: var(--primary-navy); color: white;' : 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' }}">Simple</a>
+            <a href="/pro/engineer/certificates" style="padding: 0.45rem 0.85rem; border-radius: var(--radius-md); text-decoration: none; font-size: 0.85rem; font-weight: 700; {{ $mode === 'detailed' || request()->is('pro/engineer/certificates*') ? 'background: var(--primary-navy); color: white;' : 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' }}">Detailed mode</a>
+            <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.25rem;">Detailed: Fire, Ventilation, equipment, scaffold, and saved templates</span>
+        </div>
+    @endif
+
     @if(session('success'))
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>
     @endif
@@ -31,7 +56,10 @@
 
     @if($certs->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
-            <p style="color: var(--text-muted);">No certificates or declarations logged yet.</p>
+            <p style="color: var(--text-muted);">No simple certificates or declarations logged yet.</p>
+            @if($isEngineer)
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.75rem;">Need a field inspection certificate? <a href="/pro/engineer/certificates" style="color: var(--primary-cerulean); font-weight: 700;">Switch to detailed mode</a>.</p>
+            @endif
         </div>
     @else
         <div style="display: grid; gap: 0.75rem;">

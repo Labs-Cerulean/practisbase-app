@@ -13,6 +13,7 @@ class ArchitectProject extends Model
         'architect_client_id',
         'name',
         'reference_code',
+        'engagement_type',
         'phase',
         'status',
         'notes',
@@ -30,6 +31,14 @@ class ArchitectProject extends Model
         ];
     }
 
+    public const ENGAGEMENT_TYPES = [
+        'full_project' => 'Full project',
+        'design_only' => 'Design only',
+        'architecture_only' => 'Architecture only',
+        'structural_only' => 'Structural only',
+        'other' => 'Other',
+    ];
+
     public const PHASES = [
         'concept' => 'Concept',
         'permit' => 'Permit / PA',
@@ -37,6 +46,15 @@ class ArchitectProject extends Model
         'completion' => 'Completion',
         'bca' => 'BCA / Method Statement',
     ];
+
+    public static function engagementLabel(?string $key): string
+    {
+        if ($key === null || $key === '') {
+            return '—';
+        }
+
+        return self::ENGAGEMENT_TYPES[$key] ?? $key;
+    }
 
     public const STATUSES = [
         'active' => 'Active',

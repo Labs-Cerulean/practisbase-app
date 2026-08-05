@@ -23,7 +23,7 @@
     <div style="margin-bottom: 1.25rem;">
         <a href="{{ $isEdit ? '/pro/engineer/certificates/'.$certificate->id : '/pro/engineer/projects/'.$prefill['project_id'] }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Back</a>
         <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">{{ $isEdit ? 'Edit certificate' : 'Certificate builder' }}</h1>
-        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Same form for any inspection certificate — add attributes, checklist rows, and narrative sections as needed. Built for phone on site.</p>
+        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Same form for any inspection certificate — add attributes and checklist rows as needed. Pick Fire / Ventilation starters or save your own layout as a template from Reports (field certificates share the same pattern).</p>
     </div>
 
     @unless($isEdit)

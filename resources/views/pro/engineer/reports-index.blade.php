@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('page_title', 'Specialised reports')
+@section('page_title', 'Reports')
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
-            <h1 style="margin: 0 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">Specialised reports</h1>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Cross-project register for fire, noise, ventilation, lighting, and similar specialised reports.</p>
+            <h1 style="margin: 0 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">Reports</h1>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Fire, noise, ventilation, lighting, and your saved templates. Start blank or pick a starter — checklist and measurements are optional.</p>
         </div>
         <a href="/pro/engineer/reports/create{{ $projectId ? '?project_id='.$projectId : '' }}" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Report</a>
     </div>
