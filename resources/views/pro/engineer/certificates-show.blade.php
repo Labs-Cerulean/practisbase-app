@@ -10,11 +10,12 @@
     @endphp
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
-            <a href="{{ $certificate->project ? '/pro/engineer/projects/'.$certificate->project->id : '/pro/engineer/certificates' }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $certificate->project ? $certificate->project->name : 'Certificates' }}</a>
+            <a href="{{ $certificate->equipment ? '/pro/engineer/equipment/'.$certificate->equipment->id : ($certificate->project ? '/pro/engineer/projects/'.$certificate->project->id : '/pro/engineer/certificates') }}" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← {{ $certificate->equipment->name ?? ($certificate->project->name ?? 'Certificates') }}</a>
             <h1 style="margin: 0.4rem 0 0.25rem; color: var(--primary-navy); font-size: 1.5rem;">{{ $certificate->title }}</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
                 @if($certificate->certificate_number) {{ $certificate->certificate_number }} · @endif
                 {{ $certificate->isStamped() ? 'Issued '.$certificate->issue_code : 'Draft' }}
+                @if($certificate->equipment) · {{ $certificate->equipment->asset_code }} @endif
                 @if($certificate->project) · {{ $certificate->project->name }} @endif
             </p>
         </div>

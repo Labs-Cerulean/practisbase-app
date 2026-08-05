@@ -89,6 +89,9 @@
                                 <li><a href="/pro/engineer/documents" class="nav-link {{ request()->is('pro/engineer/documents*') ? 'active' : '' }}">Documents</a></li>
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') || request()->is('pro/engineer/certificates*') ? 'active' : '' }}">Certificates</a></li>
                                 <li><a href="/pro/engineer/reports" class="nav-link {{ request()->is('pro/engineer/reports*') ? 'active' : '' }}">Reports</a></li>
+                                <li class="nav-section-label" aria-hidden="true">Equipment</li>
+                                <li><a href="/pro/engineer/equipment" class="nav-link {{ request()->is('pro/engineer/equipment') || request()->is('pro/engineer/equipment/create') || (request()->is('pro/engineer/equipment/*') && ! request()->is('pro/engineer/equipment/due')) ? 'active' : '' }}">Register</a></li>
+                                <li><a href="/pro/engineer/equipment/due" class="nav-link {{ request()->is('pro/engineer/equipment/due') ? 'active' : '' }}">Due board</a></li>
                             @endif
 
                             <li class="nav-section-label" aria-hidden="true">Community</li>

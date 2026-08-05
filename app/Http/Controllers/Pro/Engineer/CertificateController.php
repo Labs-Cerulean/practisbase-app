@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pro\Engineer;
 use App\Http\Controllers\Controller;
 use App\Models\EngineerCertificate;
 use App\Models\EngineerCertificatePhoto;
+use App\Models\EngineerEquipment;
 use App\Models\EngineerPaApplication;
 use App\Models\EngineerProject;
 use App\Support\EngineerCertificateBlueprint;
@@ -129,7 +130,7 @@ class CertificateController extends Controller
     public function show(EngineerCertificate $certificate)
     {
         $this->assertOwned($certificate);
-        $certificate->load(['project.client', 'paApplication', 'photos']);
+        $certificate->load(['project.client', 'paApplication', 'photos', 'equipment.client']);
 
         return view('pro.engineer.certificates-show', [
             'certificate' => $certificate,
@@ -143,6 +144,21 @@ class CertificateController extends Controller
         if (! $certificate->isEditable()) {
             return redirect('/pro/engineer/certificates/'.$certificate->id)
                 ->withErrors(['certificate' => 'This certificate was stamped and issued. It can no longer be edited.']);
+        }
+
+        if ($certificate->equipment_id && ! $certificate->engineer_project_id) {
+            $equipment = EngineerEquipment::where('user_id', Auth::id())
+                ->where('id', $certificate->equipment_id)
+                ->with('client')
+                ->firstOrFail();
+
+            return view('pro.engineer.equipment-cert-form', [
+                'equipment' => $equipment,
+                'certificate' => $certificate,
+                'payload' => $certificate->normalizedPayload(),
+                'defaultTitle' => $certificate->title,
+                'commonChecklistItems' => EngineerCertificateBlueprint::commonChecklistItems('equipment'),
+            ]);
         }
 
         $projects = EngineerProject::where('user_id', Auth::id())
@@ -194,6 +210,69 @@ class CertificateController extends Controller
                 ->withErrors(['certificate' => 'This certificate was stamped and issued. It can no longer be edited.']);
         }
 
+        if ($certificate->equipment_id && ! $certificate->engineer_project_id) {
+            $equipment = EngineerEquipment::where('user_id', Auth::id())
+                ->where('id', $certificate->equipment_id)
+                ->firstOrFail();
+
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'certificate_number' => 'nullable|string|max:120',
+                'inspected_on' => 'nullable|date|before_or_equal:today',
+                'issued_on' => 'required|date|before_or_equal:today',
+                'expires_on' => 'nullable|date|after_or_equal:issued_on',
+                'next_inspection_on' => 'nullable|date',
+                'outcome' => 'nullable|string|max:120',
+                'holder_name' => 'nullable|string|max:255',
+                'holder_address' => 'nullable|string|max:2000',
+                'contact_person' => 'nullable|string|max:255',
+                'contact_phone' => 'nullable|string|max:64',
+                'site_address' => 'nullable|string|max:2000',
+                'payload' => 'nullable|array',
+                'payload.subject_heading' => 'nullable|string|max:255',
+                'payload.highlight_label' => 'nullable|string|max:255',
+                'payload.highlight_value' => 'nullable|string|max:255',
+                'payload.checklist_heading' => 'nullable|string|max:255',
+                'payload.legal_footer' => 'nullable|string|max:5000',
+                'payload.attributes' => 'nullable|array|max:40',
+                'payload.attributes.*.label' => 'nullable|string|max:255',
+                'payload.attributes.*.value' => 'nullable|string|max:2000',
+                'payload.checklist' => 'nullable|array|max:60',
+                'payload.checklist.*.id' => 'nullable|string|max:32',
+                'payload.checklist.*.item' => 'nullable|string|max:500',
+                'payload.checklist.*.outcome' => 'nullable|string|max:120',
+                'payload.checklist.*.comments' => 'nullable|string|max:2000',
+                'payload.sections' => 'nullable|array|max:20',
+                'payload.sections.*.heading' => 'nullable|string|max:255',
+                'payload.sections.*.body' => 'nullable|string|max:10000',
+            ]);
+
+            $certificateNumber = trim((string) ($validated['certificate_number'] ?? ''));
+            if ($certificateNumber === '') {
+                $certificateNumber = $certificate->certificate_number
+                    ?: ($equipment->asset_code.'-'.now()->format('Ymd'));
+            }
+
+            $certificate->update([
+                'title' => $validated['title'],
+                'certificate_number' => $certificateNumber,
+                'inspected_on' => $validated['inspected_on'] ?? null,
+                'issued_on' => $validated['issued_on'],
+                'expires_on' => $validated['expires_on'] ?? null,
+                'next_inspection_on' => $validated['next_inspection_on'] ?? null,
+                'outcome' => $validated['outcome'] ?? null,
+                'holder_name' => $validated['holder_name'] ?? null,
+                'holder_address' => $validated['holder_address'] ?? null,
+                'contact_person' => $validated['contact_person'] ?? null,
+                'contact_phone' => $validated['contact_phone'] ?? null,
+                'site_address' => $validated['site_address'] ?? null,
+                'payload' => EngineerCertificateBlueprint::normalize($validated['payload'] ?? []),
+            ]);
+
+            return redirect('/pro/engineer/certificates/'.$certificate->id)
+                ->with('success', 'Certificate updated.');
+        }
+
         $validated = $this->validateCertificate($request);
         $scope = $this->resolveScope(Auth::id(), $validated);
         $project = EngineerProject::where('user_id', Auth::id())
@@ -235,13 +314,22 @@ class CertificateController extends Controller
         if ($certificate->isStamped()) {
             return back()->withErrors(['certificate' => 'Already stamped and issued.']);
         }
-        if (! $certificate->engineer_project_id) {
-            return back()->withErrors(['certificate' => 'Link this certificate to a project before stamping.']);
+        if (! $certificate->engineer_project_id && ! $certificate->equipment_id) {
+            return back()->withErrors(['certificate' => 'Link this certificate to a project or equipment record before stamping.']);
         }
 
         $certificate->stamped_at = now();
         $certificate->issue_code = IssueCode::allocateForEngineerCertificate();
         $certificate->save();
+
+        if ($certificate->equipment_id) {
+            $equipment = EngineerEquipment::where('user_id', Auth::id())
+                ->where('id', $certificate->equipment_id)
+                ->first();
+            if ($equipment) {
+                EquipmentController::syncDueDates($equipment, $certificate);
+            }
+        }
 
         return redirect('/pro/engineer/certificates/'.$certificate->id)
             ->with('success', 'Certificate stamped and issued as '.$certificate->issue_code.'. It is now locked.');

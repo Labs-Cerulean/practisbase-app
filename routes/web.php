@@ -33,6 +33,7 @@ use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaContr
 use App\Http\Controllers\Pro\Engineer\DocumentController as EngineerDocumentController;
 use App\Http\Controllers\Pro\Engineer\CertificateController as EngineerCertificateController;
 use App\Http\Controllers\Pro\Engineer\ReportController as EngineerReportController;
+use App\Http\Controllers\Pro\Engineer\EquipmentController as EngineerEquipmentController;
 use App\Http\Controllers\Company\DeskController as CompanyDeskController;
 use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
@@ -344,6 +345,18 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/certificates/{certificate}/stamp', [EngineerCertificateController::class, 'stamp']);
         Route::get('/certificates/{certificate}/pdf', [EngineerCertificateController::class, 'downloadPdf']);
         Route::get('/certificates/{certificate}/photos/{photo}', [EngineerCertificateController::class, 'downloadPhoto']);
+
+        Route::get('/equipment', [EngineerEquipmentController::class, 'index']);
+        Route::get('/equipment/due', [EngineerEquipmentController::class, 'due']);
+        Route::get('/equipment/create', [EngineerEquipmentController::class, 'create']);
+        Route::post('/equipment', [EngineerEquipmentController::class, 'store']);
+        Route::get('/equipment/{id}', [EngineerEquipmentController::class, 'show'])->whereNumber('id');
+        Route::get('/equipment/{id}/edit', [EngineerEquipmentController::class, 'edit'])->whereNumber('id');
+        Route::put('/equipment/{id}', [EngineerEquipmentController::class, 'update'])->whereNumber('id');
+        Route::get('/equipment/{id}/certificates/create', [EngineerEquipmentController::class, 'createCertificate'])->whereNumber('id');
+        Route::post('/equipment/{id}/certificates', [EngineerEquipmentController::class, 'storeCertificate'])->whereNumber('id');
+        Route::post('/equipment/{id}/renew', [EngineerEquipmentController::class, 'renew'])->whereNumber('id');
+        Route::post('/equipment/{id}/rfp', [EngineerEquipmentController::class, 'createRfp'])->whereNumber('id');
 
         Route::get('/reports', [EngineerReportController::class, 'index']);
         Route::get('/reports/create', [EngineerReportController::class, 'create']);

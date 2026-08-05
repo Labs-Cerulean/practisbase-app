@@ -13,6 +13,7 @@ class EngineerCertificate extends Model
         'user_id',
         'engineer_project_id',
         'engineer_pa_application_id',
+        'equipment_id',
         'title',
         'certificate_number',
         'inspected_on',
@@ -55,6 +56,11 @@ class EngineerCertificate extends Model
     public function paApplication(): BelongsTo
     {
         return $this->belongsTo(EngineerPaApplication::class, 'engineer_pa_application_id');
+    }
+
+    public function equipment(): BelongsTo
+    {
+        return $this->belongsTo(EngineerEquipment::class, 'equipment_id');
     }
 
     public function photos(): HasMany
