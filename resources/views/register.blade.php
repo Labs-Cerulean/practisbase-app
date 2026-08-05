@@ -131,6 +131,15 @@
 
                 <h4>10. Governing Law</h4>
                 <p>These Terms are governed by the laws of the Republic of Malta. Disputes are subject to the exclusive jurisdiction of the Courts of Malta.</p>
+
+                <h4>11. Subscriptions, Fees &amp; Taxes</h4>
+                <p>Plans (e.g. Free, Standard, Pro) are billed in advance. Malta VAT may apply to Cerulean Labs Limited&rsquo;s fees. Pricing may change with thirty (30) days&rsquo; notice. Non-payment may lead to suspension. Payments are non-refundable except where Maltese or EU consumer law requires. Closed-beta or complimentary access may end or convert to paid with notice.</p>
+
+                <h4>12. Term &amp; Termination</h4>
+                <p>You may close your account anytime. We may suspend or terminate for material breach, non-payment, abuse, legal risk, or prolonged inactivity. Customer Content is handled per the Privacy Policy. Export windows, where offered, do not make Medical Vault data recoverable without your decryption keys.</p>
+
+                <h4>13&ndash;17. Force Majeure, Acceptable Use, IP &amp; Feedback, Changes, Miscellaneous</h4>
+                <p>Full clauses on force majeure, acceptable use, intellectual property and community feedback licence, changes to these Terms, severability, entire agreement, assignment, and notices are in the <a href="/msa" target="_blank" rel="noopener">Master Service Agreement</a>.</p>
             </div>
 
             <div class="checkbox-group" style="margin-bottom: 1rem;">
