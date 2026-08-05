@@ -42,6 +42,9 @@
                             <li><a href="/company/dividends" class="nav-link {{ request()->is('company/dividends*') ? 'active' : '' }}">Dividends</a></li>
                             <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
                             <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>
+                            <li class="nav-section-label" aria-hidden="true">Community</li>
+                            <li><a href="/community/feedback/inbox" class="nav-link {{ request()->is('community/feedback/inbox*') ? 'active' : '' }}">Feedback inbox</a></li>
+                            <li><a href="/community/feedback" class="nav-link {{ request()->is('community/feedback') || request()->is('community/feedback/create') || (request()->is('community/feedback/*') && ! request()->is('community/feedback/inbox*')) ? 'active' : '' }}">My feedback</a></li>
                         @else
                             <li class="nav-section-label" aria-hidden="true">General</li>
                             <li>
@@ -87,6 +90,11 @@
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') || request()->is('pro/engineer/certificates*') ? 'active' : '' }}">Certificates</a></li>
                                 <li><a href="/pro/engineer/reports" class="nav-link {{ request()->is('pro/engineer/reports*') ? 'active' : '' }}">Reports</a></li>
                             @endif
+
+                            <li class="nav-section-label" aria-hidden="true">Community</li>
+                            <li>
+                                <a href="/community/feedback" class="nav-link {{ request()->is('community/feedback*') ? 'active' : '' }}">Feedback</a>
+                            </li>
                         @endif
 
                         <li class="nav-mobile-only nav-section-label">Account</li>
@@ -169,9 +177,9 @@
                     <div>&copy; {{ date('Y') }} PractisBase. All rights reserved. For Maltese sole traders only — not for Ltd companies.</div>
                 @endif
                 <div class="app-footer-links">
-                    <a href="#">Privacy Policy</a>
-                    <a href="#">Master Service Agreement</a>
-                    <a href="#">Security &amp; GDPR</a>
+                    <a href="/privacy">Privacy Policy</a>
+                    <a href="/msa">Master Service Agreement</a>
+                    <a href="/community/feedback">Community feedback</a>
                 </div>
                 <div class="app-footer-build">
                     <strong>Build {{ env('APP_VERSION', '1.0') }}.{{ substr(env('RAILWAY_GIT_COMMIT_SHA', 'dev'), 0, 7) }}</strong>
