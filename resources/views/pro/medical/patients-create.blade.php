@@ -3,7 +3,7 @@
 @section('page_title', 'New patient')
 
 @section('content')
-    <div style="max-width: 640px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+    <div style="max-width: {{ ($isOg ?? false) ? '760px' : '640px' }}; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
             <h2 style="margin: 0; color: var(--primary-navy);">New patient</h2>
             <a href="/pro/medical/patients" style="color: var(--text-muted); font-weight: 600; text-decoration: none;">Cancel</a>
@@ -11,6 +11,9 @@
 
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
             Prefer linking an existing <strong>billing Client</strong> when you already invoice this person — we prefill the display name. Clinical notes stay encrypted in the vault; invoices stay on the Client. One person, one create path.
+            @if($isOg ?? false)
+                <div style="margin-top: 0.55rem;">Your specialty is Obstetrics &amp; Gynaecology, so this chart includes Gynae Hx, Obs Hx, and LMP. Other doctors on General do not see those fields.</div>
+            @endif
         </div>
 
         @if($errors->any())
@@ -56,6 +59,22 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date of birth <span style="font-weight: 500; color: var(--text-muted);">(optional, clinical)</span></label>
                 <input type="date" name="date_of_birth" value="{{ old('date_of_birth') }}" max="{{ date('Y-m-d') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
+            @include('pro.medical._patient-chart-fields', [
+                'payload' => [
+                    'id_number' => old('id_number'),
+                    'phone' => old('phone'),
+                    'address' => old('address'),
+                    'approx_age' => old('approx_age'),
+                    'lmp' => old('lmp'),
+                    'pmhx' => old('pmhx'),
+                    'pshx' => old('pshx'),
+                    'dhx' => old('dhx'),
+                    'shx' => old('shx'),
+                    'gynae_hx' => old('gynae_hx'),
+                    'obs_hx' => old('obs_hx'),
+                ],
+                'isOg' => $isOg ?? false,
+            ])
             <div style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Private notes <span style="font-weight: 500; color: var(--text-muted);">(encrypted)</span></label>
                 <textarea name="notes" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('notes') }}</textarea>

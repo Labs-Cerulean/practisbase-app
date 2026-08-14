@@ -57,6 +57,12 @@ class PatientController extends Controller
                 'display_name' => $payload['display_name'] ?? 'Patient',
                 'date_of_birth' => $payload['date_of_birth'] ?? null,
                 'notes' => $payload['notes'] ?? '',
+                'id_number' => $payload['id_number'] ?? '',
+                'phone' => $payload['phone'] ?? '',
+                'age_label' => \App\Support\MedicalSpecialty::ageLabel(
+                    $payload['date_of_birth'] ?? null,
+                    $payload['approx_age'] ?? null
+                ),
                 'public_ref' => $patient->public_ref,
                 'linked' => (bool) $patient->billing_client_id,
                 'client_name' => $patient->billingClient?->name,
@@ -93,6 +99,7 @@ class PatientController extends Controller
         return view('pro.medical.patients-create', [
             'clients' => $clients,
             'linkedClientIds' => $linkedClientIds,
+            'isOg' => $user->isOgClinician(),
         ]);
     }
 
@@ -106,16 +113,7 @@ class PatientController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
-        $validated = $request->validate([
-            'display_name' => 'required|string|max:255',
-            'date_of_birth' => 'nullable|date|before_or_equal:today',
-            'notes' => 'nullable|string|max:2000',
-            'billing_client_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('clients', 'id')->where(fn ($q) => $q->where('user_id', $user->id)->whereNull('deleted_at')),
-            ],
-        ]);
+        $validated = $request->validate($this->patientChartRules($user->isOgClinician(), includeBilling: true));
 
         $billingClientId = $validated['billing_client_id'] ?? null;
 
@@ -131,11 +129,10 @@ class PatientController extends Controller
             }
         }
 
-        $encrypted = MedicalVaultCrypto::encrypt([
-            'display_name' => $validated['display_name'],
-            'date_of_birth' => $validated['date_of_birth'] ?? null,
-            'notes' => $validated['notes'] ?? null,
-        ], $key);
+        $encrypted = MedicalVaultCrypto::encrypt(
+            \App\Support\MedicalSpecialty::mergePatientPayload([], $validated, $user->isOgClinician()),
+            $key
+        );
 
         $patient = Patient::create([
             'user_id' => $user->id,
@@ -324,6 +321,12 @@ class PatientController extends Controller
                     'subject_name' => $data['subject_name'] ?? null,
                     'expires_on' => $data['expires_on'] ?? null,
                     'referred_to' => $data['referred_to'] ?? null,
+                    'consult_kind' => $data['consult_kind'] ?? null,
+                    'consult_kind_label' => \App\Support\MedicalSpecialty::hasStructuredConsult($data)
+                        ? \App\Support\MedicalSpecialty::consultKindLabel($data['consult_kind'] ?? null)
+                        : null,
+                    'consult_rows' => \App\Support\MedicalSpecialty::filledConsultRows($data),
+                    'has_structured_consult' => \App\Support\MedicalSpecialty::hasStructuredConsult($data),
                     'attachments' => $attachments,
                     'is_stampable' => $entry->isStampable(),
                     'is_issued' => $entry->isIssued(),
@@ -333,6 +336,8 @@ class PatientController extends Controller
                 ];
             });
 
+        $isOg = $user->isOgClinician();
+
         return view('pro.medical.patients-show', [
             'patient' => $patient,
             'payload' => $payload,
@@ -341,6 +346,12 @@ class PatientController extends Controller
             'linkedClientIds' => $linkedClientIds,
             'canAddClient' => $user->canAddClient(),
             'entryTypes' => ClinicalEntry::TYPES,
+            'isOg' => $isOg,
+            'ageLabel' => \App\Support\MedicalSpecialty::ageLabel(
+                $payload['date_of_birth'] ?? null,
+                $payload['approx_age'] ?? null
+            ),
+            'historyRows' => \App\Support\MedicalSpecialty::filledHistoryRows($payload, $isOg),
         ]);
     }
 
@@ -361,6 +372,7 @@ class PatientController extends Controller
         return view('pro.medical.patients-edit', [
             'patient' => $patient,
             'payload' => $payload,
+            'isOg' => $user->isOgClinician(),
         ]);
     }
 
@@ -378,17 +390,19 @@ class PatientController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
-        $validated = $request->validate([
-            'display_name' => 'required|string|max:255',
-            'date_of_birth' => 'nullable|date|before_or_equal:today',
-            'notes' => 'nullable|string|max:2000',
-        ]);
+        $validated = $request->validate($this->patientChartRules($user->isOgClinician()));
 
-        $encrypted = MedicalVaultCrypto::encrypt([
-            'display_name' => $validated['display_name'],
-            'date_of_birth' => $validated['date_of_birth'] ?? null,
-            'notes' => $validated['notes'] ?? null,
-        ], $key);
+        $existing = [];
+        try {
+            $existing = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+        } catch (\Throwable) {
+            $existing = [];
+        }
+
+        $encrypted = MedicalVaultCrypto::encrypt(
+            \App\Support\MedicalSpecialty::mergePatientPayload($existing, $validated, $user->isOgClinician()),
+            $key
+        );
 
         $patient->payload_ciphertext = $encrypted['ciphertext'];
         $patient->payload_nonce = $encrypted['nonce'];
@@ -396,5 +410,43 @@ class PatientController extends Controller
 
         return redirect('/pro/medical/patients/' . $patient->id)
             ->with('success', 'Patient record updated.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function patientChartRules(bool $isOg, bool $includeBilling = false): array
+    {
+        $userId = Auth::id();
+
+        $rules = [
+            'display_name' => 'required|string|max:255',
+            'date_of_birth' => 'nullable|date|before_or_equal:today',
+            'notes' => 'nullable|string|max:2000',
+            'id_number' => 'nullable|string|max:100',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:2000',
+            'approx_age' => 'nullable|string|max:40',
+            'pmhx' => 'nullable|string|max:8000',
+            'pshx' => 'nullable|string|max:8000',
+            'dhx' => 'nullable|string|max:8000',
+            'shx' => 'nullable|string|max:8000',
+        ];
+
+        if ($isOg) {
+            $rules['gynae_hx'] = 'nullable|string|max:8000';
+            $rules['obs_hx'] = 'nullable|string|max:8000';
+            $rules['lmp'] = 'nullable|string|max:255';
+        }
+
+        if ($includeBilling) {
+            $rules['billing_client_id'] = [
+                'nullable',
+                'integer',
+                Rule::exists('clients', 'id')->where(fn ($q) => $q->where('user_id', $userId)->whereNull('deleted_at')),
+            ];
+        }
+
+        return $rules;
     }
 }

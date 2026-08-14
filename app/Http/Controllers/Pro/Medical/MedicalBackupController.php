@@ -129,6 +129,7 @@ class MedicalBackupController extends Controller
                     'entry_date' => $entry->entry_date?->format('Y-m-d'),
                     'title' => $entryPayload['title'] ?? null,
                     'body' => $entryPayload['body'] ?? null,
+                    'payload' => $entryPayload,
                     'attachments' => $attachmentMeta,
                 ];
             }

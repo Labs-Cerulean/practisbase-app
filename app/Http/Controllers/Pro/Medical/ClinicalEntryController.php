@@ -36,12 +36,22 @@ class ClinicalEntryController extends Controller
             $defaultType = 'journal';
         }
 
+        $isOg = $user->isOgClinician();
+        $hasPriorJournals = ClinicalEntry::where('user_id', $user->id)
+            ->where('patient_id', $patient->id)
+            ->where('entry_type', 'journal')
+            ->exists();
+
         return view('pro.medical.entries-create', [
             'patient' => $patient,
             'patientPayload' => $patientPayload,
             'types' => ClinicalEntry::TYPES,
             'certificateKinds' => ClinicalEntry::CERTIFICATE_KINDS,
             'defaultType' => old('entry_type', $defaultType),
+            'isOg' => $isOg,
+            'defaultConsultKind' => $hasPriorJournals
+                ? \App\Support\MedicalSpecialty::CONSULT_FOLLOW_UP
+                : \App\Support\MedicalSpecialty::CONSULT_CLERKING,
         ]);
     }
 
@@ -59,8 +69,8 @@ class ClinicalEntryController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
-        $validated = $this->validateEntryPayload($request);
-        $payload = $this->buildEncryptedPayload($validated);
+        $validated = $this->validateEntryPayload($request, $user->isOgClinician());
+        $payload = $this->buildEncryptedPayload($validated, $user->isOgClinician());
 
         $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
 
@@ -77,6 +87,10 @@ class ClinicalEntryController extends Controller
             'issue_code' => null,
         ]);
 
+        if ($validated['entry_type'] === 'journal' && $user->isOgClinician()) {
+            $this->syncStandingHistoryFromConsult($patient, $validated, $key, $user->isOgClinician());
+        }
+
         if ($request->hasFile('attachment')) {
             $this->storeAttachmentFile($request, $user->id, $vault->id, $patient->id, $entry->id, $key);
         }
@@ -87,7 +101,9 @@ class ClinicalEntryController extends Controller
 
         $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
             ? 'Draft ' . (ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document') . ' saved. Edit until Stamp & issue — then it locks and gets an issue code on the PDF.'
-            : 'Journal note saved encrypted in your vault.';
+            : (($user->isOgClinician() && $validated['entry_type'] === 'journal')
+                ? 'Consult saved encrypted in your vault.'
+                : 'Journal note saved encrypted in your vault.');
 
         return redirect('/pro/medical/patients/' . $patient->id)->with('success', $msg);
     }
@@ -109,6 +125,13 @@ class ClinicalEntryController extends Controller
 
         $payload = MedicalVaultCrypto::decrypt($entry->payload_ciphertext, $entry->payload_nonce, $key);
         $patientPayload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+        $isOg = $user->isOgClinician();
+
+        if ($isOg && $entry->entry_type === 'journal'
+            && ! \App\Support\MedicalSpecialty::hasStructuredConsult($payload)
+            && trim((string) ($payload['body'] ?? '')) !== '') {
+            $payload['consult_notes'] = $payload['body'];
+        }
 
         return view('pro.medical.entries-edit', [
             'patient' => $patient,
@@ -117,6 +140,7 @@ class ClinicalEntryController extends Controller
             'payload' => $payload,
             'types' => ClinicalEntry::TYPES,
             'certificateKinds' => ClinicalEntry::CERTIFICATE_KINDS,
+            'isOg' => $isOg,
         ]);
     }
 
@@ -136,8 +160,8 @@ class ClinicalEntryController extends Controller
         }
 
         $request->merge(['entry_type' => $entry->entry_type]);
-        $validated = $this->validateEntryPayload($request, updating: true);
-        $payload = $this->buildEncryptedPayload($validated);
+        $validated = $this->validateEntryPayload($request, $user->isOgClinician(), updating: true);
+        $payload = $this->buildEncryptedPayload($validated, $user->isOgClinician());
 
         $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
 
@@ -145,6 +169,10 @@ class ClinicalEntryController extends Controller
         $entry->payload_ciphertext = $encrypted['ciphertext'];
         $entry->payload_nonce = $encrypted['nonce'];
         $entry->save();
+
+        if ($validated['entry_type'] === 'journal' && $user->isOgClinician()) {
+            $this->syncStandingHistoryFromConsult($patient, $validated, $key, $user->isOgClinician());
+        }
 
         if ($request->hasFile('attachment')) {
             $vault = MedicalVault::activeForUser($user->id);
@@ -192,9 +220,10 @@ class ClinicalEntryController extends Controller
             ->with('success', 'Document stamped and issued as ' . $entry->issue_code . '. Code and issue date are printed on the PDF. It is now locked.');
     }
 
-    private function validateEntryPayload(Request $request, bool $updating = false): array
+    private function validateEntryPayload(Request $request, bool $isOg = false, bool $updating = false): array
     {
         $type = $request->input('entry_type');
+        $ogJournal = $isOg && $type === 'journal';
 
         $rules = [
             'entry_type' => 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES)),
@@ -204,9 +233,25 @@ class ClinicalEntryController extends Controller
             'attachment' => 'nullable|file|max:' . ClinicalAttachment::MAX_KILOBYTES . '|mimetypes:' . implode(',', ClinicalAttachment::ALLOWED_MIMES),
         ];
 
-        if ($type !== 'prescription') {
+        if ($type !== 'prescription' && ! $ogJournal) {
             $rules['title'] = 'required|string|max:255';
             $rules['body'] = 'required|string|max:20000';
+        }
+
+        if ($ogJournal) {
+            $rules['consult_kind'] = 'required|in:clerking,follow_up';
+            $rules['lmp'] = 'nullable|string|max:255';
+            $rules['presenting_complaint'] = 'nullable|string|max:8000';
+            $rules['exam'] = 'nullable|string|max:8000';
+            $rules['ultrasound'] = 'nullable|string|max:8000';
+            $rules['plan'] = 'nullable|string|max:8000';
+            $rules['consult_notes'] = 'nullable|string|max:20000';
+            $rules['pmhx'] = 'nullable|string|max:8000';
+            $rules['pshx'] = 'nullable|string|max:8000';
+            $rules['dhx'] = 'nullable|string|max:8000';
+            $rules['shx'] = 'nullable|string|max:8000';
+            $rules['gynae_hx'] = 'nullable|string|max:8000';
+            $rules['obs_hx'] = 'nullable|string|max:8000';
         }
 
         if ($type === 'certificate') {
@@ -232,6 +277,12 @@ class ClinicalEntryController extends Controller
         }
 
         $validated = $request->validate($rules);
+
+        if ($ogJournal && ! \App\Support\MedicalSpecialty::journalHasContent($validated, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'presenting_complaint' => 'Add a presenting complaint, exam, US, plan, or progress note for this consult.',
+            ]);
+        }
 
         if ($type === 'prescription') {
             $medicines = [];
@@ -266,8 +317,12 @@ class ClinicalEntryController extends Controller
         return $validated;
     }
 
-    private function buildEncryptedPayload(array $validated): array
+    private function buildEncryptedPayload(array $validated, bool $isOg = false): array
     {
+        if (($validated['entry_type'] ?? '') === 'journal' && $isOg) {
+            return \App\Support\MedicalSpecialty::buildJournalPayload($validated, true);
+        }
+
         $payload = [
             'title' => $validated['title'],
             'body' => $validated['body'] ?? '',
@@ -289,6 +344,39 @@ class ClinicalEntryController extends Controller
         }
 
         return $payload;
+    }
+
+    /**
+     * Full clerking copies standing history onto the patient chart. Follow-up may still refresh LMP.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function syncStandingHistoryFromConsult(Patient $patient, array $validated, string $key, bool $isOg): void
+    {
+        $kind = $validated['consult_kind'] ?? \App\Support\MedicalSpecialty::CONSULT_FOLLOW_UP;
+        $incoming = [];
+
+        if ($kind === \App\Support\MedicalSpecialty::CONSULT_CLERKING) {
+            $incoming = \App\Support\MedicalSpecialty::standingHistoryFromConsult($validated, $isOg);
+        } elseif ($isOg && trim((string) ($validated['lmp'] ?? '')) !== '') {
+            $incoming['lmp'] = $validated['lmp'];
+        }
+
+        if ($incoming === []) {
+            return;
+        }
+
+        try {
+            $existing = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+        } catch (\Throwable) {
+            return;
+        }
+
+        $merged = \App\Support\MedicalSpecialty::mergePatientPayload($existing, $incoming, $isOg);
+        $encrypted = MedicalVaultCrypto::encrypt($merged, $key);
+        $patient->payload_ciphertext = $encrypted['ciphertext'];
+        $patient->payload_nonce = $encrypted['nonce'];
+        $patient->save();
     }
 
     private function storeAttachmentFile(Request $request, int $userId, int $vaultId, int $patientId, int $entryId, string $key): void

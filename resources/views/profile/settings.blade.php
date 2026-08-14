@@ -178,6 +178,18 @@
                         </div>
                     </div>
                     <div style="font-size: 0.75rem; color: var(--text-muted); margin: -0.5rem 0 1.25rem;">Shown on prescription / referral / certificate letterheads.</div>
+                    <div class="form-group" style="margin-bottom: 0.35rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinical specialty</label>
+                        <select name="medical_specialty" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                            @foreach(\App\Support\MedicalSpecialty::OPTIONS as $specKey => $specLabel)
+                                <option value="{{ $specKey }}" {{ $user->medicalSpecialty() === $specKey ? 'selected' : '' }}>{{ $specLabel }}</option>
+                            @endforeach
+                        </select>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
+                            Obstetrics &amp; Gynaecology adds LMP, Gynae Hx, Obs Hx, and ultrasound to the patient chart and consult notes.
+                            Leave as General to keep the standard journal (title + body) used by other doctors.
+                        </div>
+                    </div>
                 @endif
             </div>
 

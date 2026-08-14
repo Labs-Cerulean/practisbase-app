@@ -168,6 +168,7 @@ class ProfileController extends Controller
             'warrant_number' => 'nullable|string|max:255',
             'clinic_phone' => 'nullable|string|max:64',
             'clinic_address' => 'nullable|string|max:500',
+            'medical_specialty' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(\App\Support\MedicalSpecialty::OPTIONS))],
             'employment_type' => 'required|in:full_time,part_time',
             'date_of_birth' => array_values(array_filter([
                 $dobLocked ? 'nullable' : 'required_if:employment_type,full_time',
@@ -270,6 +271,9 @@ class ProfileController extends Controller
             'warrant_number' => filled($request->warrant_number) ? trim($request->warrant_number) : null,
             'clinic_phone' => filled($request->clinic_phone) ? trim($request->clinic_phone) : null,
             'clinic_address' => filled($request->clinic_address) ? trim($request->clinic_address) : null,
+            'medical_specialty' => $user->canAccessProPackage('med')
+                ? \App\Support\MedicalSpecialty::normalize($request->input('medical_specialty'))
+                : ($user->medical_specialty ?? null),
             'employment_type' => $request->employment_type,
             'date_of_birth' => $dateOfBirth,
             'vat_status' => $vatStatus,

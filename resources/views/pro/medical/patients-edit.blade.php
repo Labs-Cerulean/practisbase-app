@@ -3,7 +3,7 @@
 @section('page_title', 'Edit patient')
 
 @section('content')
-    <div style="max-width: 640px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+    <div style="max-width: {{ ($isOg ?? false) ? '760px' : '640px' }}; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
             <h2 style="margin: 0; color: var(--primary-navy);">Edit patient</h2>
             <a href="/pro/medical/patients/{{ $patient->id }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none;">Cancel</a>
@@ -25,6 +25,10 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date of birth <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
                 <input type="date" name="date_of_birth" value="{{ old('date_of_birth', $payload['date_of_birth'] ?? '') }}" max="{{ date('Y-m-d') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
+            @include('pro.medical._patient-chart-fields', [
+                'payload' => $payload,
+                'isOg' => $isOg ?? false,
+            ])
             <div style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Private notes <span style="font-weight: 500; color: var(--text-muted);">(encrypted)</span></label>
                 <textarea name="notes" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('notes', $payload['notes'] ?? '') }}</textarea>

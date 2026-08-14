@@ -48,6 +48,7 @@ use Illuminate\Notifications\Notifiable;
     'clinic_phone',
     'clinic_address',
     'clinical_stamp_path',
+    'medical_specialty',
     'company_books_enabled',
     'beta_invite_code_id',
 ])]
@@ -187,6 +188,17 @@ class User extends Authenticatable
         $value = trim((string) ($this->postnominals ?? ''));
 
         return $value !== '' ? $value : null;
+    }
+
+    /** Opt-in clinical specialty for Medical Practice charts (empty = general). */
+    public function medicalSpecialty(): string
+    {
+        return \App\Support\MedicalSpecialty::normalize($this->medical_specialty ?? null);
+    }
+
+    public function isOgClinician(): bool
+    {
+        return \App\Support\MedicalSpecialty::userIsOg($this);
     }
 
     public function lifetimeClientCount(): int

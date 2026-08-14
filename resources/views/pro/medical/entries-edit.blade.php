@@ -14,8 +14,9 @@
         }
         $rxTitle = $hasStructuredMeds ? ($payload['title'] ?? '') : '';
         $rxNotes = $hasStructuredMeds ? ($payload['body'] ?? '') : '';
+        $ogJournal = ($isOg ?? false) && $entry->entry_type === 'journal';
     @endphp
-    <div style="max-width: {{ $isRx ? '820px' : '720px' }}; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+    <div style="max-width: {{ ($isRx || $ogJournal) ? '820px' : '720px' }}; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
             <h2 style="margin: 0; color: var(--primary-navy);">Edit {{ $types[$entry->entry_type] ?? 'entry' }}</h2>
             <a href="/pro/medical/patients/{{ $patient->id }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none;">Cancel</a>
@@ -90,20 +91,34 @@
                 ])
             @endif
 
+            @if(($isOg ?? false) && $entry->entry_type === 'journal')
+                @include('pro.medical._og-consult-fields', [
+                    'payload' => $payload,
+                    'patientPayload' => $patientPayload ?? [],
+                    'defaultConsultKind' => $payload['consult_kind'] ?? 'follow_up',
+                    'showHistoryPrefill' => true,
+                    'visible' => true,
+                ])
+            @endif
+
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Certificate title
                     @elseif($isRx) Prescription label (optional)
                     @elseif($entry->entry_type === 'referral') Referral title
+                    @elseif($ogJournal) Label (optional)
                     @else Title
                     @endif
                 </label>
-                <input type="text" name="title" value="{{ old('title', $isRx ? $rxTitle : ($payload['title'] ?? '')) }}" {{ $isRx ? '' : 'required' }}
+                <input type="text" name="title" value="{{ old('title', $isRx ? $rxTitle : ($payload['title'] ?? '')) }}" {{ ($isRx || $ogJournal) ? '' : 'required' }}
                        style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 @if($isRx)
                     <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Defaults to the first medicine or “Prescription (N medicines)”.</div>
+                @elseif($ogJournal)
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Defaults to the presenting complaint, or “Consult” / “Follow-up”.</div>
                 @endif
             </div>
+            @unless($ogJournal)
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Details / clinical statement (encrypted)
@@ -114,6 +129,7 @@
                 <textarea name="body" rows="{{ $isRx ? 3 : 8 }}" {{ $isRx ? '' : 'required' }}
                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($payload['body'] ?? '')) }}</textarea>
             </div>
+            @endunless
 
             <div style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Add photo / scan <span style="font-weight: 500; color: var(--text-muted);">(optional, encrypted)</span></label>
@@ -123,4 +139,31 @@
             <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save changes</button>
         </form>
     </div>
+    @if($ogJournal)
+    <script>
+        (function () {
+            function syncOgKind() {
+                var hist = document.getElementById('og-standing-history');
+                var clerking = document.getElementById('consult_kind_clerking');
+                var notesLabel = document.getElementById('og-notes-label');
+                var guideEl = document.getElementById('consult-kind-guide');
+                if (hist) {
+                    hist.style.display = (clerking && clerking.checked) ? 'block' : 'none';
+                }
+                if (notesLabel) {
+                    notesLabel.textContent = (clerking && clerking.checked) ? 'Extra notes' : 'Progress note';
+                }
+                if (guideEl) {
+                    guideEl.textContent = (clerking && clerking.checked)
+                        ? 'First-visit clerking: standing history + LMP, complaint, exam, US, and plan.'
+                        : 'Later visit: dated note. Exam, US, and plan are optional.';
+                }
+            }
+            document.querySelectorAll('input[name="consult_kind"]').forEach(function (el) {
+                el.addEventListener('change', syncOgKind);
+            });
+            syncOgKind();
+        })();
+    </script>
+    @endif
 @endsection

@@ -17,7 +17,7 @@
                 $refChrome = \App\Models\ClinicalEntry::typeChrome('referral');
                 $certChrome = \App\Models\ClinicalEntry::typeChrome('certificate');
             @endphp
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: {{ $journalChrome['soft'] }}; border: 1px solid {{ $journalChrome['border'] }}; color: {{ $journalChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Journal</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: {{ $journalChrome['soft'] }}; border: 1px solid {{ $journalChrome['border'] }}; color: {{ $journalChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">{{ ($isOg ?? false) ? '+ Consult' : '+ Journal' }}</a>
             <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=prescription" style="background: {{ $rxChrome['badge_bg'] }}; color: {{ $rxChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Prescription</a>
             <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=referral" style="background: {{ $refChrome['badge_bg'] }}; color: {{ $refChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Referral</a>
             <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=certificate" style="background: {{ $certChrome['badge_bg'] }}; color: {{ $certChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Certificate</a>
@@ -34,10 +34,46 @@
     @endif
 
     <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);">
-        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Date of birth</div>
-        <div style="margin-bottom: 0.75rem;">{{ !empty($payload['date_of_birth']) ? \Illuminate\Support\Carbon::parse($payload['date_of_birth'])->format('d M Y') : '—' }}</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem 1.25rem; margin-bottom: 1rem;">
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Date of birth</div>
+                <div>{{ !empty($payload['date_of_birth']) ? \Illuminate\Support\Carbon::parse($payload['date_of_birth'])->format('d M Y') : '—' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Age</div>
+                <div>{{ $ageLabel ?? '—' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">ID</div>
+                <div>{{ !empty($payload['id_number']) ? $payload['id_number'] : '—' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Tel no.</div>
+                <div>{{ !empty($payload['phone']) ? $payload['phone'] : '—' }}</div>
+            </div>
+        </div>
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Address</div>
+        <div style="white-space: pre-wrap; margin-bottom: 0.85rem;">{{ !empty($payload['address']) ? $payload['address'] : '—' }}</div>
+        @if(($isOg ?? false) && !empty($payload['lmp']))
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">LMP</div>
+            <div style="margin-bottom: 0.85rem;">{{ $payload['lmp'] }}</div>
+        @endif
         <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Notes</div>
         <div style="white-space: pre-wrap; margin-bottom: 1rem;">{{ $payload['notes'] ?: '—' }}</div>
+
+        @if(!empty($historyRows))
+            <div style="border-top: 1px solid var(--border-light); padding-top: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.65rem;">Standing history</div>
+                <div style="display: grid; gap: 0.75rem;">
+                    @foreach($historyRows as $hist)
+                        <div>
+                            <div style="font-size: 0.72rem; font-weight: 700; color: var(--primary-navy); text-transform: uppercase;">{{ $hist['label'] }}</div>
+                            <div style="white-space: pre-wrap; font-size: 0.9rem;">{{ $hist['value'] }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         <div style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
             <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">Billing Client link</div>
@@ -177,6 +213,9 @@
     <h3 style="color: var(--primary-navy);">Clinical entries</h3>
     <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0;">
         Prescriptions, referrals, and certificates stay editable until you press <strong>Stamp &amp; issue</strong> — then they lock. Journal notes stay editable.
+        @if($isOg ?? false)
+            Obstetrics &amp; Gynaecology consults use the clerking sheet (LMP, Hx, exam, US, plan); follow-ups are dated progress notes.
+        @endif
         Find all stampables across patients in
         <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Stampables</a>.
     </p>
@@ -226,7 +265,7 @@
                 @endphp
                 <div class="entry-row"
                      data-title="{{ strtolower($entry['title']) }}"
-                     data-body="{{ strtolower($entry['body'] . ' ' . collect($entry['medicines'] ?? [])->pluck('name')->implode(' ')) }}"
+                     data-body="{{ strtolower($entry['body'] . ' ' . collect($entry['medicines'] ?? [])->pluck('name')->implode(' ') . ' ' . collect($entry['consult_rows'] ?? [])->pluck('value')->implode(' ')) }}"
                      data-type="{{ $type }}"
                      data-code="{{ strtolower($entry['issue_code'] ?? '') }}"
                      data-status="{{ $entry['is_stampable'] ? ($entry['is_issued'] ? 'issued' : 'draft') : 'journal' }}"
@@ -253,6 +292,9 @@
                                 @endif
                                 @if($type === 'certificate' && !empty($entry['subject_name']))
                                     · Subject: {{ $entry['subject_name'] }}
+                                @endif
+                                @if($type === 'journal' && !empty($entry['consult_kind_label']))
+                                    · {{ $entry['consult_kind_label'] }}
                                 @endif
                                 @if($type === 'referral' && !empty($entry['referred_to']))
                                     · To: {{ $entry['referred_to'] }}
@@ -299,6 +341,15 @@
                                 {{ $entry['body'] }}
                             </div>
                         @endif
+                    @elseif($type === 'journal' && !empty($entry['has_structured_consult']) && !empty($entry['consult_rows']))
+                        <div style="margin-top: 0.75rem; display: grid; gap: 0.65rem;">
+                            @foreach($entry['consult_rows'] as $row)
+                                <div>
+                                    <div style="font-size: 0.72rem; font-weight: 700; color: var(--primary-navy); text-transform: uppercase;">{{ $row['label'] }}</div>
+                                    <div style="white-space: pre-wrap; font-size: 0.9rem; color: var(--text-main);">{{ $row['value'] }}</div>
+                                </div>
+                            @endforeach
+                        </div>
                     @else
                         <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
                     @endif

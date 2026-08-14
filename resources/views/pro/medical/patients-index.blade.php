@@ -62,7 +62,7 @@
             <div style="display: grid; gap: 0.75rem;">
                 <div>
                     <label for="patient-search" style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">Search</label>
-                    <input id="patient-search" type="search" placeholder="Name, patient ref, linked client, notes…"
+                    <input id="patient-search" type="search" placeholder="Name, patient ref, ID, phone, linked client, notes…"
                            style="width: 100%; padding: 0.75rem 0.9rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.95rem;">
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.65rem;">
@@ -112,6 +112,8 @@
                    data-ref="{{ strtolower($row['public_ref']) }}"
                    data-client="{{ strtolower($row['client_name'] ?? '') }}"
                    data-notes="{{ strtolower($row['notes'] ?? '') }}"
+                   data-idnum="{{ strtolower($row['id_number'] ?? '') }}"
+                   data-phone="{{ strtolower($row['phone'] ?? '') }}"
                    data-linked="{{ $row['linked'] ? '1' : '0' }}"
                    data-journal="{{ $row['journal_count'] }}"
                    data-prescription="{{ $row['prescription_count'] }}"
@@ -127,6 +129,9 @@
                             Patient ref {{ $row['public_ref'] }}
                             @if($row['date_of_birth'])
                                 · DOB {{ \Illuminate\Support\Carbon::parse($row['date_of_birth'])->format('d M Y') }}
+                            @endif
+                            @if($row['age_label'] ?? null)
+                                · Age {{ $row['age_label'] }}
                             @endif
                             @if($row['linked'])
                                 · Linked: {{ $row['client_name'] }}
@@ -170,7 +175,7 @@
                 var visible = 0;
 
                 items.forEach(function (el) {
-                    var hay = [el.dataset.name, el.dataset.ref, el.dataset.client, el.dataset.notes].join(' ');
+                    var hay = [el.dataset.name, el.dataset.ref, el.dataset.client, el.dataset.notes, el.dataset.idnum || '', el.dataset.phone || ''].join(' ');
                     var matchQ = !q || hay.indexOf(q) !== -1;
                     var matchLink = linkMode === 'all'
                         || (linkMode === 'linked' && el.dataset.linked === '1')
