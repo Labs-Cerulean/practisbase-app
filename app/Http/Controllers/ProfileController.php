@@ -168,6 +168,7 @@ class ProfileController extends Controller
             'warrant_number' => 'nullable|string|max:255',
             'clinic_phone' => 'nullable|string|max:64',
             'clinic_address' => 'nullable|string|max:500',
+            'clinical_note_template' => 'nullable|in:' . implode(',', array_keys(\App\Support\ClinicalNoteTemplates::options())),
             'employment_type' => 'required|in:full_time,part_time',
             'date_of_birth' => array_values(array_filter([
                 $dobLocked ? 'nullable' : 'required_if:employment_type,full_time',
@@ -270,6 +271,9 @@ class ProfileController extends Controller
             'warrant_number' => filled($request->warrant_number) ? trim($request->warrant_number) : null,
             'clinic_phone' => filled($request->clinic_phone) ? trim($request->clinic_phone) : null,
             'clinic_address' => filled($request->clinic_address) ? trim($request->clinic_address) : null,
+            'clinical_note_template' => $isMedical
+                ? \App\Support\ClinicalNoteTemplates::normalize($request->input('clinical_note_template'))
+                : ($user->clinical_note_template ?? 'general'),
             'employment_type' => $request->employment_type,
             'date_of_birth' => $dateOfBirth,
             'vat_status' => $vatStatus,

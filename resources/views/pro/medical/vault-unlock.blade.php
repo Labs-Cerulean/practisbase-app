@@ -42,7 +42,7 @@
             <div style="flex: 1; height: 1px; background: var(--border-light);"></div>
         </div>
 
-        <form action="/pro/medical/vault/unlock" method="POST" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
+        <form action="/pro/medical/vault/unlock" method="POST" id="vault-unlock-form" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
             @csrf
             <label for="recovery_code" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Medical vault recovery code</label>
             <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -71,8 +71,14 @@
     </div>
 
     @include('pro.medical._vault-device-js')
+    <script src="/js/medical/nacl-fast.min.js"></script>
+    <script src="/js/medical/vault-crypto.js"></script>
     <script>
         (function () {
+            if (window.PractisBaseVaultCrypto) {
+                window.PractisBaseVaultCrypto.bindUnlockForm(document.getElementById('vault-unlock-form'));
+            }
+
             var input = document.getElementById('recovery_code');
             var btn = document.getElementById('toggle-recovery-visibility');
             if (input && btn) {
@@ -107,6 +113,22 @@
                 unlockBtn.disabled = true;
                 unlockBtn.textContent = 'Waiting for fingerprint / Face ID…';
                 PractisVaultDevice.unlockWithDevice().then(function (result) {
+                    // Pull session DEK into this browser for later client-side import encryption.
+                    if (window.PractisBaseVaultCrypto) {
+                        return fetch('/pro/medical/vault/client-dek', {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin'
+                        }).then(function (res) {
+                            return res.ok ? res.json() : null;
+                        }).then(function (data) {
+                            if (data && data.dek_b64) {
+                                window.PractisBaseVaultCrypto.storeDek(window.PractisBaseVaultCrypto.base64ToBytes(data.dek_b64));
+                            }
+                            return result;
+                        }).catch(function () { return result; });
+                    }
+                    return result;
+                }).then(function (result) {
                     window.location.href = (result && result.redirect) ? result.redirect : '/pro/medical/patients';
                 }).catch(function (e) {
                     err.textContent = e.message || 'Device unlock failed.';

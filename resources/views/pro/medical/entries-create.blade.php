@@ -66,6 +66,12 @@
                 'visible' => false,
             ])
 
+            @include('pro.medical._journal-template-fields', [
+                'noteTemplate' => $noteTemplate ?? \App\Support\ClinicalNoteTemplates::GENERAL,
+                'fieldValues' => old('fields', []),
+                'visible' => ($defaultType ?? 'journal') === 'journal',
+            ])
+
             <div id="title-wrap" style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;" id="title-label">Title</label>
                 <input type="text" name="title" id="title" value="{{ old('title') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
@@ -74,6 +80,7 @@
             <div id="body-wrap" style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;" id="body-label">Body (encrypted at rest)</label>
                 <textarea name="body" id="body" rows="8" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body') }}</textarea>
+                <div id="journal-body-hint" style="display: none; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Optional free-text in addition to the structured consult fields above.</div>
             </div>
 
             <div id="attachment-fields" style="display: none; margin-bottom: 1.25rem;">
@@ -95,6 +102,9 @@
             var cert = document.getElementById('certificate-fields');
             var referral = document.getElementById('referral-fields');
             var rxFields = document.getElementById('prescription-fields');
+            var journalFields = document.getElementById('journal-template-fields');
+            var journalBodyHint = document.getElementById('journal-body-hint');
+            var noteTemplate = document.getElementById('note_template');
             var attach = document.getElementById('attachment-fields');
             var guide = document.getElementById('type-guide');
             var dateLabel = document.getElementById('date-label');
@@ -108,25 +118,39 @@
             var kindEl = document.getElementById('certificate_kind');
 
             var guides = {
-                journal: 'Private clinical note. Stays editable. Not stamped and not exported as an official PDF.',
+                journal: 'Private clinical note with optional specialty template (e.g. Gynae/Obs). Stays editable. Not stamped.',
                 prescription: 'Add one or more medicines below. Stamp & issue locks the prescription and prints a unique RX code + date on the PDF.',
                 referral: 'Referral letter for a receiving clinician. Stamp & issue locks it and prints a unique RF code + date.',
                 certificate: 'Certificate, declaration, attestation, or fitness clearance. Stamp & issue locks it and prints a unique MC code + date.'
             };
+
+            var templateFieldMap = @json(collect(\App\Support\ClinicalNoteTemplates::options())->mapWithKeys(fn ($label, $key) => [$key => array_keys(\App\Support\ClinicalNoteTemplates::fields($key))])->all());
+
+            function syncTemplateFields() {
+                if (!noteTemplate || !journalFields) return;
+                var selected = noteTemplate.value;
+                var allowed = templateFieldMap[selected] || [];
+                journalFields.querySelectorAll('[data-template-field]').forEach(function (row) {
+                    var key = row.getAttribute('data-template-field');
+                    row.style.display = allowed.indexOf(key) === -1 ? 'none' : 'block';
+                });
+            }
 
             function sync() {
                 var t = typeEl.value;
                 cert.style.display = t === 'certificate' ? 'block' : 'none';
                 referral.style.display = t === 'referral' ? 'block' : 'none';
                 rxFields.style.display = t === 'prescription' ? 'block' : 'none';
+                if (journalFields) journalFields.style.display = t === 'journal' ? 'block' : 'none';
+                if (journalBodyHint) journalBodyHint.style.display = t === 'journal' ? 'block' : 'none';
                 attach.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription' || t === 'journal') ? 'block' : 'none';
                 stampNote.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription') ? 'block' : 'none';
                 guide.textContent = guides[t] || '';
                 kindEl.required = t === 'certificate';
                 titleInput.required = t !== 'prescription';
-                bodyInput.required = t !== 'prescription';
+                bodyInput.required = (t !== 'prescription' && t !== 'journal');
                 titleHint.style.display = t === 'prescription' ? 'block' : 'none';
-                bodyInput.rows = t === 'prescription' ? 3 : 8;
+                bodyInput.rows = t === 'prescription' || t === 'journal' ? 3 : 8;
 
                 if (t === 'certificate') {
                     dateLabel.textContent = 'Document / issued date';
@@ -146,12 +170,14 @@
                 } else {
                     dateLabel.textContent = 'Date';
                     titleLabel.textContent = 'Title';
-                    bodyLabel.textContent = 'Body (encrypted at rest)';
+                    bodyLabel.textContent = 'Additional notes (optional, encrypted)';
                     submitBtn.textContent = 'Save encrypted journal note';
                 }
+                syncTemplateFields();
             }
 
             typeEl.addEventListener('change', sync);
+            if (noteTemplate) noteTemplate.addEventListener('change', syncTemplateFields);
             sync();
         })();
     </script>

@@ -15,6 +15,7 @@ use App\Http\Controllers\Pro\Medical\PatientController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
 use App\Http\Controllers\Pro\Medical\ClinicalAttachmentController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryPdfController;
+use App\Http\Controllers\Pro\Medical\ClinicalImportController;
 use App\Http\Controllers\Pro\Medical\MedicalBackupController;
 use App\Http\Controllers\Pro\Medical\PrescriptionCatalogController;
 use App\Http\Controllers\Pro\Medical\StampableLedgerController;
@@ -226,6 +227,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/vault/lock', [MedicalVaultController::class, 'lock']);
         Route::get('/vault/backup', [MedicalBackupController::class, 'form'])->middleware('vault');
         Route::post('/vault/backup', [MedicalBackupController::class, 'download'])->middleware(['vault', 'throttle:5,1']);
+        Route::get('/vault/client-dek', [MedicalVaultController::class, 'clientDek'])->middleware(['vault', 'throttle:30,1']);
 
         Route::get('/vault/devices', [VaultDeviceController::class, 'index']);
         Route::post('/vault/devices/unlock-options', [VaultDeviceController::class, 'unlockOptions'])->middleware('throttle:20,1');
@@ -239,6 +241,8 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
             Route::get('/patients', [PatientController::class, 'index']);
             Route::get('/patients/create', [PatientController::class, 'create']);
             Route::post('/patients', [PatientController::class, 'store']);
+            Route::get('/import', [ClinicalImportController::class, 'form']);
+            Route::post('/import/commit', [ClinicalImportController::class, 'commit'])->middleware('throttle:20,1');
             Route::get('/patients/{patient}', [PatientController::class, 'show']);
             Route::get('/patients/{patient}/edit', [PatientController::class, 'edit']);
             Route::put('/patients/{patient}', [PatientController::class, 'update']);

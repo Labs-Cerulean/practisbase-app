@@ -90,6 +90,14 @@
                 ])
             @endif
 
+            @if($entry->entry_type === 'journal')
+                @include('pro.medical._journal-template-fields', [
+                    'noteTemplate' => $noteTemplate ?? \App\Support\ClinicalNoteTemplates::GENERAL,
+                    'fieldValues' => old('fields', $fieldValues ?? []),
+                    'visible' => true,
+                ])
+            @endif
+
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Certificate title
@@ -108,11 +116,12 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Details / clinical statement (encrypted)
                     @elseif($isRx) General notes for pharmacist / patient (optional, encrypted)
+                    @elseif($entry->entry_type === 'journal') Additional notes (optional, encrypted)
                     @else Body (encrypted at rest)
                     @endif
                 </label>
-                <textarea name="body" rows="{{ $isRx ? 3 : 8 }}" {{ $isRx ? '' : 'required' }}
-                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($payload['body'] ?? '')) }}</textarea>
+                <textarea name="body" rows="{{ ($isRx || $entry->entry_type === 'journal') ? 3 : 8 }}" {{ ($isRx || $entry->entry_type === 'journal') ? '' : 'required' }}
+                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($entry->entry_type === 'journal' ? ($payload['extra'] ?? '') : ($payload['body'] ?? ''))) }}</textarea>
             </div>
 
             <div style="margin-bottom: 1.25rem;">
@@ -123,4 +132,24 @@
             <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save changes</button>
         </form>
     </div>
+
+    @if($entry->entry_type === 'journal')
+    <script>
+        (function () {
+            var noteTemplate = document.getElementById('note_template');
+            var templateFieldMap = @json(collect(\App\Support\ClinicalNoteTemplates::options())->mapWithKeys(fn ($label, $key) => [$key => array_keys(\App\Support\ClinicalNoteTemplates::fields($key))])->all());
+            function syncTemplateFields() {
+                if (!noteTemplate) return;
+                var allowed = templateFieldMap[noteTemplate.value] || [];
+                document.querySelectorAll('#journal-template-fields [data-template-field]').forEach(function (row) {
+                    row.style.display = allowed.indexOf(row.getAttribute('data-template-field')) === -1 ? 'none' : 'block';
+                });
+            }
+            if (noteTemplate) {
+                noteTemplate.addEventListener('change', syncTemplateFields);
+                syncTemplateFields();
+            }
+        })();
+    </script>
+    @endif
 @endsection

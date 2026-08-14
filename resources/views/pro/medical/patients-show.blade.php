@@ -34,8 +34,26 @@
     @endif
 
     <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);">
-        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Date of birth</div>
-        <div style="margin-bottom: 0.75rem;">{{ !empty($payload['date_of_birth']) ? \Illuminate\Support\Carbon::parse($payload['date_of_birth'])->format('d M Y') : '—' }}</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem; margin-bottom: 0.85rem;">
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Date of birth</div>
+                <div>{{ !empty($payload['date_of_birth']) ? \Illuminate\Support\Carbon::parse($payload['date_of_birth'])->format('d M Y') : '—' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Age</div>
+                <div>{{ $payload['age'] ?? '—' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">ID card</div>
+                <div>{{ $payload['id_card'] ?? '—' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Tel</div>
+                <div>{{ $payload['tel'] ?? '—' }}</div>
+            </div>
+        </div>
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Address</div>
+        <div style="white-space: pre-wrap; margin-bottom: 0.75rem;">{{ $payload['address'] ?? '—' }}</div>
         <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Notes</div>
         <div style="white-space: pre-wrap; margin-bottom: 1rem;">{{ $payload['notes'] ?: '—' }}</div>
 
@@ -299,6 +317,22 @@
                                 {{ $entry['body'] }}
                             </div>
                         @endif
+                    @elseif(!empty($entry['fields']) && is_array($entry['fields']))
+                        <div style="margin-top: 0.65rem; display: grid; gap: 0.55rem;">
+                            @if(!empty($entry['template']))
+                                <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                                    {{ \App\Support\ClinicalNoteTemplates::options()[$entry['template']] ?? 'Consult' }}
+                                </div>
+                            @endif
+                            @foreach(\App\Support\ClinicalNoteTemplates::fields($entry['template'] ?? 'general') as $fieldKey => $meta)
+                                @if(trim((string) ($entry['fields'][$fieldKey] ?? '')) !== '')
+                                    <div>
+                                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ $meta['label'] }}</div>
+                                        <div style="white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['fields'][$fieldKey] }}</div>
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
                     @else
                         <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
                     @endif

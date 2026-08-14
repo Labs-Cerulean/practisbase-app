@@ -167,6 +167,15 @@
                 </div>
 
                 @if($user->canAccessProPackage('med'))
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Default clinical note template</label>
+                        <select name="clinical_note_template" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                            @foreach(\App\Support\ClinicalNoteTemplates::options() as $key => $label)
+                                <option value="{{ $key }}" {{ old('clinical_note_template', $user->clinical_note_template ?? 'general') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Used when creating journal notes. Specialty fields stay inside the encrypted vault payload.</div>
+                    </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                         <div>
                             <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinic phone</label>
