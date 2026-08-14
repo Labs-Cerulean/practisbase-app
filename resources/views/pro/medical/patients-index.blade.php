@@ -56,7 +56,10 @@
     @if($rows->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
             <p style="color: var(--text-muted);">No patients in this vault yet.</p>
-            <a href="/pro/medical/patients/create" style="color: var(--primary-cerulean); font-weight: 600;">Add first patient &rarr;</a>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="/pro/medical/patients/create" style="color: var(--primary-cerulean); font-weight: 600;">Add first patient &rarr;</a>
+                <a href="/pro/medical/import" style="color: var(--primary-navy); font-weight: 600;">Import gynae Word batch &rarr;</a>
+            </div>
         </div>
     @else
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
