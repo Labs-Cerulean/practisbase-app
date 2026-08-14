@@ -109,6 +109,10 @@ class PatientController extends Controller
         $validated = $request->validate([
             'display_name' => 'required|string|max:255',
             'date_of_birth' => 'nullable|date|before_or_equal:today',
+            'age' => 'nullable|string|max:20',
+            'id_card' => 'nullable|string|max:64',
+            'tel' => 'nullable|string|max:64',
+            'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string|max:2000',
             'billing_client_id' => [
                 'nullable',
@@ -134,6 +138,10 @@ class PatientController extends Controller
         $encrypted = MedicalVaultCrypto::encrypt([
             'display_name' => $validated['display_name'],
             'date_of_birth' => $validated['date_of_birth'] ?? null,
+            'age' => $validated['age'] ?? null,
+            'id_card' => $validated['id_card'] ?? null,
+            'tel' => $validated['tel'] ?? null,
+            'address' => $validated['address'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ], $key);
 
@@ -310,6 +318,10 @@ class PatientController extends Controller
                     'model' => $entry,
                     'title' => $data['title'] ?? 'Entry',
                     'body' => $data['body'] ?? '',
+                    'template' => $data['template'] ?? null,
+                    'template_name' => $data['template_name'] ?? null,
+                    'fields' => is_array($data['fields'] ?? null) ? $data['fields'] : [],
+                    'field_defs' => is_array($data['field_defs'] ?? null) ? $data['field_defs'] : [],
                     'medicines' => $entry->entry_type === 'prescription'
                         ? ClinicalEntry::medicinesFromPayload($data)
                         : [],
@@ -381,12 +393,20 @@ class PatientController extends Controller
         $validated = $request->validate([
             'display_name' => 'required|string|max:255',
             'date_of_birth' => 'nullable|date|before_or_equal:today',
+            'age' => 'nullable|string|max:20',
+            'id_card' => 'nullable|string|max:64',
+            'tel' => 'nullable|string|max:64',
+            'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string|max:2000',
         ]);
 
         $encrypted = MedicalVaultCrypto::encrypt([
             'display_name' => $validated['display_name'],
             'date_of_birth' => $validated['date_of_birth'] ?? null,
+            'age' => $validated['age'] ?? null,
+            'id_card' => $validated['id_card'] ?? null,
+            'tel' => $validated['tel'] ?? null,
+            'address' => $validated['address'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ], $key);
 

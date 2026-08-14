@@ -48,6 +48,7 @@ use Illuminate\Notifications\Notifiable;
     'clinic_phone',
     'clinic_address',
     'clinical_stamp_path',
+    'clinical_note_template',
     'company_books_enabled',
     'beta_invite_code_id',
 ])]

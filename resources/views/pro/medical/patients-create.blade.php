@@ -52,9 +52,29 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Display name</label>
                 <input type="text" name="display_name" id="display_name" value="{{ old('display_name') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">ID card <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <input type="text" name="id_card" value="{{ old('id_card') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Tel <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <input type="text" name="tel" value="{{ old('tel') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+            </div>
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date of birth <span style="font-weight: 500; color: var(--text-muted);">(optional, clinical)</span></label>
-                <input type="date" name="date_of_birth" value="{{ old('date_of_birth') }}" max="{{ date('Y-m-d') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Address <span style="font-weight: 500; color: var(--text-muted);">(optional, encrypted)</span></label>
+                <textarea name="address" rows="2" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('address') }}</textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date of birth <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <input type="date" name="date_of_birth" value="{{ old('date_of_birth') }}" max="{{ date('Y-m-d') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Age <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <input type="text" name="age" value="{{ old('age') }}" placeholder="e.g. 34" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
             </div>
             <div style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Private notes <span style="font-weight: 500; color: var(--text-muted);">(encrypted)</span></label>

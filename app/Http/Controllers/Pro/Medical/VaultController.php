@@ -185,6 +185,24 @@ class VaultController extends Controller
             ->with('offer_device_trust', true);
     }
 
+    /**
+     * Return the unlocked session DEK to the same browser for client-side
+     * import encryption. Plaintext clinical content still never leaves the device.
+     */
+    public function clientDek(Request $request)
+    {
+        $b64 = $request->session()->get('medical_vault_key');
+        $key = MedicalVaultCrypto::keyFromSession(is_string($b64) ? $b64 : null);
+
+        if (! $key || ! is_string($b64)) {
+            return response()->json(['message' => 'Vault is locked.'], 403);
+        }
+
+        return response()->json([
+            'dek_b64' => $b64,
+        ]);
+    }
+
     public function lock(Request $request)
     {
         $request->session()->forget('medical_vault_key');

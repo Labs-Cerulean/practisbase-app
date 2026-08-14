@@ -90,6 +90,15 @@
                 ])
             @endif
 
+            @if($entry->entry_type === 'journal')
+                @include('pro.medical._journal-template-fields', [
+                    'noteTemplate' => $noteTemplate ?? 'general',
+                    'fieldValues' => old('fields', $fieldValues ?? []),
+                    'templateCatalogue' => $templateCatalogue ?? [],
+                    'visible' => true,
+                ])
+            @endif
+
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Certificate title
@@ -108,11 +117,12 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Details / clinical statement (encrypted)
                     @elseif($isRx) General notes for pharmacist / patient (optional, encrypted)
+                    @elseif($entry->entry_type === 'journal') Additional notes (optional, encrypted)
                     @else Body (encrypted at rest)
                     @endif
                 </label>
-                <textarea name="body" rows="{{ $isRx ? 3 : 8 }}" {{ $isRx ? '' : 'required' }}
-                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($payload['body'] ?? '')) }}</textarea>
+                <textarea name="body" rows="{{ ($isRx || $entry->entry_type === 'journal') ? 3 : 8 }}" {{ ($isRx || $entry->entry_type === 'journal') ? '' : 'required' }}
+                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($entry->entry_type === 'journal' ? ($payload['extra'] ?? '') : ($payload['body'] ?? ''))) }}</textarea>
             </div>
 
             <div style="margin-bottom: 1.25rem;">
@@ -123,4 +133,59 @@
             <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save changes</button>
         </form>
     </div>
+
+    @if($entry->entry_type === 'journal')
+    <script>
+        (function () {
+            var noteTemplate = document.getElementById('note_template');
+            var fieldsHost = document.getElementById('journal-structured-fields');
+            if (!noteTemplate || !fieldsHost) return;
+
+            var catalogue = [];
+            var valueStore = {};
+            try {
+                catalogue = JSON.parse(fieldsHost.getAttribute('data-catalogue') || '[]');
+                valueStore = JSON.parse(fieldsHost.getAttribute('data-initial-values') || '{}');
+            } catch (e) {}
+
+            function escapeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function captureValues() {
+                fieldsHost.querySelectorAll('textarea[data-field-key]').forEach(function (el) {
+                    valueStore[el.getAttribute('data-field-key')] = el.value;
+                });
+            }
+
+            function findTemplate(key) {
+                for (var i = 0; i < catalogue.length; i++) {
+                    if (catalogue[i].key === key) return catalogue[i];
+                }
+                return catalogue[0] || null;
+            }
+
+            function syncTemplateFields() {
+                captureValues();
+                var tpl = findTemplate(noteTemplate.value);
+                var fields = (tpl && tpl.fields) ? tpl.fields : [];
+                fieldsHost.innerHTML = fields.map(function (field) {
+                    var val = valueStore[field.key] || '';
+                    return '<div data-template-field="' + escapeHtml(field.key) + '">' +
+                        '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.9rem;">' + escapeHtml(field.label) + '</label>' +
+                        '<textarea name="fields[' + escapeHtml(field.key) + ']" data-field-key="' + escapeHtml(field.key) + '" rows="' + (field.rows || 2) + '" ' +
+                        'style="width:100%;padding:0.65rem;border:1px solid var(--border-light);border-radius:var(--radius-md);">' +
+                        escapeHtml(val) + '</textarea></div>';
+                }).join('');
+            }
+
+            noteTemplate.addEventListener('change', syncTemplateFields);
+            syncTemplateFields();
+        })();
+    </script>
+    @endif
 @endsection

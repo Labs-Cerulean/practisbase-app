@@ -13,6 +13,8 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
             <a href="/pro/medical/vault/backup" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Backup</a>
+            <a href="/pro/medical/templates" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Templates</a>
+            <a href="/pro/medical/import" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Import Word</a>
             <form action="/pro/medical/vault/lock" method="POST" style="margin: 0;">
                 @csrf
                 <button type="submit" title="Lock medical vault"
@@ -55,7 +57,10 @@
     @if($rows->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
             <p style="color: var(--text-muted);">No patients in this vault yet.</p>
-            <a href="/pro/medical/patients/create" style="color: var(--primary-cerulean); font-weight: 600;">Add first patient &rarr;</a>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="/pro/medical/patients/create" style="color: var(--primary-cerulean); font-weight: 600;">Add first patient &rarr;</a>
+                <a href="/pro/medical/import" style="color: var(--primary-navy); font-weight: 600;">Import gynae Word batch &rarr;</a>
+            </div>
         </div>
     @else
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">

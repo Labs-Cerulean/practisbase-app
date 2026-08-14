@@ -8,6 +8,7 @@ use App\Models\ClinicalEntry;
 use App\Models\MedicalVault;
 use App\Models\Patient;
 use App\Models\PrescriptionCatalogItem;
+use App\Support\ClinicalNoteTemplates;
 use App\Support\IssueCode;
 use App\Support\MedicalVaultCrypto;
 use App\Support\TenantStorage;
@@ -36,12 +37,20 @@ class ClinicalEntryController extends Controller
             $defaultType = 'journal';
         }
 
+        $catalogue = ClinicalNoteTemplates::catalogueForUser($user);
+        $defaultTemplate = ClinicalNoteTemplates::normalizeForUser(
+            $user,
+            old('note_template', $user->clinical_note_template ?? ClinicalNoteTemplates::GENERAL)
+        );
+
         return view('pro.medical.entries-create', [
             'patient' => $patient,
             'patientPayload' => $patientPayload,
             'types' => ClinicalEntry::TYPES,
             'certificateKinds' => ClinicalEntry::CERTIFICATE_KINDS,
             'defaultType' => old('entry_type', $defaultType),
+            'noteTemplate' => $defaultTemplate,
+            'templateCatalogue' => $catalogue,
         ]);
     }
 
@@ -59,7 +68,7 @@ class ClinicalEntryController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
-        $validated = $this->validateEntryPayload($request);
+        $validated = $this->validateEntryPayload($request, $user);
         $payload = $this->buildEncryptedPayload($validated);
 
         $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
@@ -110,6 +119,12 @@ class ClinicalEntryController extends Controller
         $payload = MedicalVaultCrypto::decrypt($entry->payload_ciphertext, $entry->payload_nonce, $key);
         $patientPayload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
 
+        $catalogue = ClinicalNoteTemplates::catalogueForUser($user);
+        $noteTemplate = ClinicalNoteTemplates::normalizeForUser(
+            $user,
+            old('note_template', $payload['template'] ?? ($user->clinical_note_template ?? ClinicalNoteTemplates::GENERAL))
+        );
+
         return view('pro.medical.entries-edit', [
             'patient' => $patient,
             'patientPayload' => $patientPayload,
@@ -117,6 +132,9 @@ class ClinicalEntryController extends Controller
             'payload' => $payload,
             'types' => ClinicalEntry::TYPES,
             'certificateKinds' => ClinicalEntry::CERTIFICATE_KINDS,
+            'noteTemplate' => $noteTemplate,
+            'fieldValues' => is_array($payload['fields'] ?? null) ? $payload['fields'] : [],
+            'templateCatalogue' => $catalogue,
         ]);
     }
 
@@ -136,7 +154,7 @@ class ClinicalEntryController extends Controller
         }
 
         $request->merge(['entry_type' => $entry->entry_type]);
-        $validated = $this->validateEntryPayload($request, updating: true);
+        $validated = $this->validateEntryPayload($request, $user, updating: true);
         $payload = $this->buildEncryptedPayload($validated);
 
         $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
@@ -192,19 +210,26 @@ class ClinicalEntryController extends Controller
             ->with('success', 'Document stamped and issued as ' . $entry->issue_code . '. Code and issue date are printed on the PDF. It is now locked.');
     }
 
-    private function validateEntryPayload(Request $request, bool $updating = false): array
+    private function validateEntryPayload(Request $request, \App\Models\User $user, bool $updating = false): array
     {
         $type = $request->input('entry_type');
+        $allowedTemplates = array_keys(ClinicalNoteTemplates::optionsForUser($user));
 
         $rules = [
             'entry_type' => 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES)),
             'entry_date' => 'required|date|before_or_equal:today',
             'title' => 'nullable|string|max:255',
             'body' => 'nullable|string|max:20000',
+            'note_template' => ['nullable', Rule::in($allowedTemplates)],
+            'fields' => 'nullable|array',
+            'fields.*' => 'nullable|string|max:10000',
             'attachment' => 'nullable|file|max:' . ClinicalAttachment::MAX_KILOBYTES . '|mimetypes:' . implode(',', ClinicalAttachment::ALLOWED_MIMES),
         ];
 
-        if ($type !== 'prescription') {
+        if ($type === 'journal') {
+            $rules['title'] = 'required|string|max:255';
+            $rules['body'] = 'nullable|string|max:20000';
+        } elseif ($type !== 'prescription') {
             $rules['title'] = 'required|string|max:255';
             $rules['body'] = 'required|string|max:20000';
         }
@@ -263,11 +288,39 @@ class ClinicalEntryController extends Controller
             $validated['body'] = trim((string) ($validated['body'] ?? ''));
         }
 
+        if ($type === 'journal') {
+            $resolved = ClinicalNoteTemplates::resolveForUser($user, $validated['note_template'] ?? null);
+            $fields = ClinicalNoteTemplates::extractFieldsFromDefs($resolved['fields'], $validated['fields'] ?? []);
+            $extraBody = trim((string) ($validated['body'] ?? ''));
+            $composed = ClinicalNoteTemplates::composeBodyFromDefs($resolved['fields'], $fields, $extraBody !== '' ? $extraBody : null);
+
+            if ($composed === '') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'body' => 'Add at least one consult field or a free-text note for this journal entry.',
+                ]);
+            }
+
+            $validated['resolved_template'] = $resolved;
+            $validated['note_template'] = $resolved['key'];
+            $validated['fields'] = $fields;
+            $validated['extra_body'] = $extraBody;
+            $validated['body'] = $composed;
+        }
+
         return $validated;
     }
 
     private function buildEncryptedPayload(array $validated): array
     {
+        if ($validated['entry_type'] === 'journal') {
+            return ClinicalNoteTemplates::buildPayloadFromResolved(
+                $validated['resolved_template'],
+                $validated['title'],
+                $validated['fields'] ?? [],
+                $validated['extra_body'] ?? null
+            );
+        }
+
         $payload = [
             'title' => $validated['title'],
             'body' => $validated['body'] ?? '',
