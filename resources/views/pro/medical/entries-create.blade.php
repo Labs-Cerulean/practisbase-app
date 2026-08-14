@@ -67,8 +67,9 @@
             ])
 
             @include('pro.medical._journal-template-fields', [
-                'noteTemplate' => $noteTemplate ?? \App\Support\ClinicalNoteTemplates::GENERAL,
+                'noteTemplate' => $noteTemplate ?? 'general',
                 'fieldValues' => old('fields', []),
+                'templateCatalogue' => $templateCatalogue ?? [],
                 'visible' => ($defaultType ?? 'journal') === 'journal',
             ])
 
@@ -105,6 +106,7 @@
             var journalFields = document.getElementById('journal-template-fields');
             var journalBodyHint = document.getElementById('journal-body-hint');
             var noteTemplate = document.getElementById('note_template');
+            var fieldsHost = document.getElementById('journal-structured-fields');
             var attach = document.getElementById('attachment-fields');
             var guide = document.getElementById('type-guide');
             var dateLabel = document.getElementById('date-label');
@@ -118,22 +120,57 @@
             var kindEl = document.getElementById('certificate_kind');
 
             var guides = {
-                journal: 'Private clinical note with optional specialty template (e.g. Gynae/Obs). Stays editable. Not stamped.',
+                journal: 'Private clinical note using your chosen template. Stays editable. Not stamped.',
                 prescription: 'Add one or more medicines below. Stamp & issue locks the prescription and prints a unique RX code + date on the PDF.',
                 referral: 'Referral letter for a receiving clinician. Stamp & issue locks it and prints a unique RF code + date.',
                 certificate: 'Certificate, declaration, attestation, or fitness clearance. Stamp & issue locks it and prints a unique MC code + date.'
             };
 
-            var templateFieldMap = @json(collect(\App\Support\ClinicalNoteTemplates::options())->mapWithKeys(fn ($label, $key) => [$key => array_keys(\App\Support\ClinicalNoteTemplates::fields($key))])->all());
+            var catalogue = [];
+            var valueStore = {};
+            try {
+                catalogue = fieldsHost ? JSON.parse(fieldsHost.getAttribute('data-catalogue') || '[]') : [];
+                valueStore = fieldsHost ? JSON.parse(fieldsHost.getAttribute('data-initial-values') || '{}') : {};
+            } catch (e) {
+                catalogue = [];
+                valueStore = {};
+            }
+
+            function escapeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function captureValues() {
+                if (!fieldsHost) return;
+                fieldsHost.querySelectorAll('textarea[data-field-key]').forEach(function (el) {
+                    valueStore[el.getAttribute('data-field-key')] = el.value;
+                });
+            }
+
+            function findTemplate(key) {
+                for (var i = 0; i < catalogue.length; i++) {
+                    if (catalogue[i].key === key) return catalogue[i];
+                }
+                return catalogue[0] || null;
+            }
 
             function syncTemplateFields() {
-                if (!noteTemplate || !journalFields) return;
-                var selected = noteTemplate.value;
-                var allowed = templateFieldMap[selected] || [];
-                journalFields.querySelectorAll('[data-template-field]').forEach(function (row) {
-                    var key = row.getAttribute('data-template-field');
-                    row.style.display = allowed.indexOf(key) === -1 ? 'none' : 'block';
-                });
+                if (!noteTemplate || !fieldsHost) return;
+                captureValues();
+                var tpl = findTemplate(noteTemplate.value);
+                var fields = (tpl && tpl.fields) ? tpl.fields : [];
+                fieldsHost.innerHTML = fields.map(function (field) {
+                    var val = valueStore[field.key] || '';
+                    return '<div data-template-field="' + escapeHtml(field.key) + '">' +
+                        '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.9rem;">' + escapeHtml(field.label) + '</label>' +
+                        '<textarea name="fields[' + escapeHtml(field.key) + ']" data-field-key="' + escapeHtml(field.key) + '" rows="' + (field.rows || 2) + '" ' +
+                        'style="width:100%;padding:0.65rem;border:1px solid var(--border-light);border-radius:var(--radius-md);">' +
+                        escapeHtml(val) + '</textarea></div>';
+                }).join('');
             }
 
             function sync() {

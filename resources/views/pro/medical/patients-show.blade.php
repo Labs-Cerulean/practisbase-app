@@ -318,16 +318,27 @@
                             </div>
                         @endif
                     @elseif(!empty($entry['fields']) && is_array($entry['fields']))
+                        @php
+                            $fieldDefs = [];
+                            if (!empty($entry['field_defs']) && is_array($entry['field_defs'])) {
+                                $fieldDefs = $entry['field_defs'];
+                            } else {
+                                $fieldDefs = \App\Support\ClinicalNoteTemplates::fieldsListFromMap(
+                                    \App\Support\ClinicalNoteTemplates::fields($entry['template'] ?? 'general')
+                                );
+                            }
+                            $templateLabel = $entry['template_name']
+                                ?? (\App\Support\ClinicalNoteTemplates::builtinOptions()[$entry['template'] ?? ''] ?? 'Consult');
+                        @endphp
                         <div style="margin-top: 0.65rem; display: grid; gap: 0.55rem;">
-                            @if(!empty($entry['template']))
-                                <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-                                    {{ \App\Support\ClinicalNoteTemplates::options()[$entry['template']] ?? 'Consult' }}
-                                </div>
-                            @endif
-                            @foreach(\App\Support\ClinicalNoteTemplates::fields($entry['template'] ?? 'general') as $fieldKey => $meta)
-                                @if(trim((string) ($entry['fields'][$fieldKey] ?? '')) !== '')
+                            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                                {{ $templateLabel }}
+                            </div>
+                            @foreach($fieldDefs as $def)
+                                @php $fieldKey = is_array($def) ? ($def['key'] ?? '') : ''; @endphp
+                                @if($fieldKey !== '' && trim((string) ($entry['fields'][$fieldKey] ?? '')) !== '')
                                     <div>
-                                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ $meta['label'] }}</div>
+                                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ $def['label'] ?? $fieldKey }}</div>
                                         <div style="white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['fields'][$fieldKey] }}</div>
                                     </div>
                                 @endif

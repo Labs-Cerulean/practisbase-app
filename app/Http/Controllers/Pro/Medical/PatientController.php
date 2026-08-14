@@ -319,7 +319,9 @@ class PatientController extends Controller
                     'title' => $data['title'] ?? 'Entry',
                     'body' => $data['body'] ?? '',
                     'template' => $data['template'] ?? null,
+                    'template_name' => $data['template_name'] ?? null,
                     'fields' => is_array($data['fields'] ?? null) ? $data['fields'] : [],
+                    'field_defs' => is_array($data['field_defs'] ?? null) ? $data['field_defs'] : [],
                     'medicines' => $entry->entry_type === 'prescription'
                         ? ClinicalEntry::medicinesFromPayload($data)
                         : [],

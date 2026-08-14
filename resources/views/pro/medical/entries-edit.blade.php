@@ -92,8 +92,9 @@
 
             @if($entry->entry_type === 'journal')
                 @include('pro.medical._journal-template-fields', [
-                    'noteTemplate' => $noteTemplate ?? \App\Support\ClinicalNoteTemplates::GENERAL,
+                    'noteTemplate' => $noteTemplate ?? 'general',
                     'fieldValues' => old('fields', $fieldValues ?? []),
+                    'templateCatalogue' => $templateCatalogue ?? [],
                     'visible' => true,
                 ])
             @endif
@@ -137,18 +138,53 @@
     <script>
         (function () {
             var noteTemplate = document.getElementById('note_template');
-            var templateFieldMap = @json(collect(\App\Support\ClinicalNoteTemplates::options())->mapWithKeys(fn ($label, $key) => [$key => array_keys(\App\Support\ClinicalNoteTemplates::fields($key))])->all());
-            function syncTemplateFields() {
-                if (!noteTemplate) return;
-                var allowed = templateFieldMap[noteTemplate.value] || [];
-                document.querySelectorAll('#journal-template-fields [data-template-field]').forEach(function (row) {
-                    row.style.display = allowed.indexOf(row.getAttribute('data-template-field')) === -1 ? 'none' : 'block';
+            var fieldsHost = document.getElementById('journal-structured-fields');
+            if (!noteTemplate || !fieldsHost) return;
+
+            var catalogue = [];
+            var valueStore = {};
+            try {
+                catalogue = JSON.parse(fieldsHost.getAttribute('data-catalogue') || '[]');
+                valueStore = JSON.parse(fieldsHost.getAttribute('data-initial-values') || '{}');
+            } catch (e) {}
+
+            function escapeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function captureValues() {
+                fieldsHost.querySelectorAll('textarea[data-field-key]').forEach(function (el) {
+                    valueStore[el.getAttribute('data-field-key')] = el.value;
                 });
             }
-            if (noteTemplate) {
-                noteTemplate.addEventListener('change', syncTemplateFields);
-                syncTemplateFields();
+
+            function findTemplate(key) {
+                for (var i = 0; i < catalogue.length; i++) {
+                    if (catalogue[i].key === key) return catalogue[i];
+                }
+                return catalogue[0] || null;
             }
+
+            function syncTemplateFields() {
+                captureValues();
+                var tpl = findTemplate(noteTemplate.value);
+                var fields = (tpl && tpl.fields) ? tpl.fields : [];
+                fieldsHost.innerHTML = fields.map(function (field) {
+                    var val = valueStore[field.key] || '';
+                    return '<div data-template-field="' + escapeHtml(field.key) + '">' +
+                        '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.9rem;">' + escapeHtml(field.label) + '</label>' +
+                        '<textarea name="fields[' + escapeHtml(field.key) + ']" data-field-key="' + escapeHtml(field.key) + '" rows="' + (field.rows || 2) + '" ' +
+                        'style="width:100%;padding:0.65rem;border:1px solid var(--border-light);border-radius:var(--radius-md);">' +
+                        escapeHtml(val) + '</textarea></div>';
+                }).join('');
+            }
+
+            noteTemplate.addEventListener('change', syncTemplateFields);
+            syncTemplateFields();
         })();
     </script>
     @endif
