@@ -539,6 +539,7 @@
                     <li>Tax and VAT report</li>
                     <li>Expenses and accountant pack</li>
                     <li>Custom branding</li>
+                    <li>Document Stamper (PDF)</li>
                 </ul>
                 <a href="/register" class="btn btn-primary">Choose Standard</a>
             </article>
@@ -553,6 +554,7 @@
                     <li>Free financial layer (5 clients)</li>
                     <li>Medical, Architect, or Engineer tools</li>
                     <li>Stampables and certificates</li>
+                    <li>Document Stamper (PDF)</li>
                     <li>Upgrade path to Full Pro</li>
                 </ul>
                 <a href="#paths" class="btn btn-ghost">See practice paths</a>
@@ -642,7 +644,8 @@
                     <li>Condition reports and method statements</li>
                     <li>BCA template catalog + blank downloads</li>
                     <li>Architect document management (DMS)</li>
-                    <li>Project records, phase tracking, and stamper</li>
+                    <li>Project records and phase tracking</li>
+                    <li>Document Stamper for PDF overlays</li>
                     <li>Practice branding on exports</li>
                 </ul>
                 <div class="prof-prices">
@@ -673,6 +676,7 @@
                     <li>Field certificates and specialised reports</li>
                     <li>Site photos + drawings / document version control</li>
                     <li>Shared simple certificate register</li>
+                    <li>Document Stamper for PDF overlays</li>
                     <li>Practice branding on stampable PDFs</li>
                 </ul>
                 <div class="prof-prices">

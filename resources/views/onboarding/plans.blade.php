@@ -136,6 +136,7 @@
                     <li>Expenses &amp; receipts</li>
                     <li>Accountant pack</li>
                     <li>Custom branding</li>
+                    <li>Document Stamper (PDF)</li>
                 </ul>
                 @if($canPaid)
                     <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
@@ -170,14 +171,16 @@
                                 <li>Secure patient journals</li>
                                 <li>Prescriptions &amp; referrals</li>
                                 <li>Clinical stampables</li>
+                                <li>Document Stamper (PDF)</li>
                             @elseif($pkg === 'arch')
                                 <li>Condition reports &amp; method statements</li>
                                 <li>BCA catalog + Architect DMS</li>
-                                <li>Document stamper + project phases</li>
+                                <li>Document Stamper + project phases</li>
                             @else
                                 <li>Field certificates &amp; specialised reports</li>
                                 <li>Client → Project → PA hierarchy</li>
                                 <li>Equipment certificate management</li>
+                                <li>Document Stamper (PDF)</li>
                             @endif
                         </ul>
                         @if($canPaid)

@@ -65,6 +65,11 @@
                             <li>
                                 <a href="/exports/backup" class="nav-link {{ request()->is('exports/backup*') ? 'active' : '' }}">Data backup</a>
                             </li>
+                            @if(auth()->user()->canAccessDocumentStamper())
+                                <li>
+                                    <a href="/stamper" class="nav-link {{ request()->is('stamper*') ? 'active' : '' }}">Document Stamper</a>
+                                </li>
+                            @endif
 
                             @if(auth()->user()->canAccessReports())
                                 <li class="nav-section-label" aria-hidden="true">Money</li>
@@ -90,7 +95,6 @@
                                 <li><a href="/pro/architect/condition-reports" class="nav-link {{ request()->is('pro/architect/condition-reports*') ? 'active' : '' }}">Condition reports</a></li>
                                 <li><a href="/pro/architect/method-statements" class="nav-link {{ request()->is('pro/architect/method-statements*') ? 'active' : '' }}">Method statements</a></li>
                                 <li><a href="/pro/architect/templates" class="nav-link {{ request()->is('pro/architect/templates*') ? 'active' : '' }}">BCA templates</a></li>
-                                <li><a href="/pro/architect/stamper" class="nav-link {{ request()->is('pro/architect/stamper*') ? 'active' : '' }}">Stamper</a></li>
                                 <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
                             @elseif(auth()->user()->canAccessProPackage('eng'))
                                 <li class="nav-section-label" aria-hidden="true">Projects</li>

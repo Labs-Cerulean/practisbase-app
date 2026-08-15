@@ -23,7 +23,6 @@ use App\Http\Controllers\Pro\Medical\PrescriptionCatalogController;
 use App\Http\Controllers\Pro\Medical\StampableLedgerController;
 use App\Http\Controllers\Pro\Medical\VaultDeviceController;
 use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
-use App\Http\Controllers\Pro\Architect\StamperController;
 use App\Http\Controllers\Pro\Architect\PaApplicationController as ArchitectPaController;
 use App\Http\Controllers\Pro\Architect\DocumentController as ArchitectDocumentController;
 use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateController;
@@ -51,6 +50,8 @@ use App\Http\Controllers\Company\ContentStudioController as CompanyContentStudio
 use App\Http\Controllers\Admin\PromotionController as AdminPromotionController;
 use App\Http\Controllers\CommunityFeedbackController;
 use App\Http\Controllers\CommunityFeedbackOperatorController;
+use App\Http\Controllers\DocumentStampController;
+use App\Http\Controllers\DocumentStamperController;
 use App\Http\Controllers\LegalController;
 
 /*
@@ -194,6 +195,17 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     Route::get('/exports/backup', [DataBackupController::class, 'form']);
     Route::post('/exports/backup', [DataBackupController::class, 'download'])->middleware('throttle:5,1');
 
+    Route::middleware('stamper')->prefix('stamper')->group(function () {
+        Route::get('/', [DocumentStamperController::class, 'index']);
+        Route::get('/stamps', [DocumentStampController::class, 'index']);
+        Route::get('/stamps/create', [DocumentStampController::class, 'create']);
+        Route::post('/stamps', [DocumentStampController::class, 'store']);
+        Route::get('/stamps/{id}/edit', [DocumentStampController::class, 'edit'])->whereNumber('id');
+        Route::put('/stamps/{id}', [DocumentStampController::class, 'update'])->whereNumber('id');
+        Route::delete('/stamps/{id}', [DocumentStampController::class, 'destroy'])->whereNumber('id');
+        Route::post('/stamps/{id}/default', [DocumentStampController::class, 'makeDefault'])->whereNumber('id');
+    });
+
     Route::get('/ledger', [InvoiceController::class, 'index']);
     Route::get('/ledger/create', [InvoiceController::class, 'create']);
     Route::post('/ledger', [InvoiceController::class, 'store']);
@@ -330,8 +342,12 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/licences/search', [ArchitectLicenceController::class, 'search']);
         Route::post('/licences', [ArchitectLicenceController::class, 'store']);
 
-        Route::get('/stamper', [StamperController::class, 'form']);
-        Route::post('/stamper', [StamperController::class, 'generate']);
+        Route::get('/stamper', function () {
+            return redirect('/stamper');
+        });
+        Route::post('/stamper', function () {
+            return redirect('/stamper');
+        });
     });
 
     Route::middleware('pro:med,arch,eng')->prefix('pro/certificates')->group(function () {
