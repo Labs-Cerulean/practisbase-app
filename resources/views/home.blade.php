@@ -550,17 +550,17 @@
                     <div class="hero-row">
                         <div class="hero-block med">
                             <strong>Medical</strong>
-                            <em>Vault · journals · Rx</em>
+                            <em>Journals · Rx · referrals</em>
                         </div>
                         <div class="hero-block arch">
                             <strong>Architect</strong>
-                            <em>Reports · stamps</em>
+                            <em>BCA · declarations</em>
                         </div>
                     </div>
                     <div class="hero-row">
                         <div class="hero-block eng">
                             <strong>Engineer</strong>
-                            <em>Certificates · PA</em>
+                            <em>Equipment · certificates</em>
                         </div>
                         <div class="hero-block accent">
                             <strong>Accounts</strong>
@@ -590,19 +590,19 @@
         <div class="made-for">
             <div class="made-row">
                 <h3>Made for your books</h3>
-                <p>Raise invoices and RFPs, track expenses, and open a live fiscal report that mirrors how Malta taxes sole traders — including TA22 spillover and year locking when you close a year.</p>
+                <p>Raise invoices and RFPs, track expenses, and open a live fiscal report that mirrors how Malta taxes sole traders. Auto complete your Tax forms (TA22) and export to your accountant, with year locking when you close a year.</p>
             </div>
             <div class="made-row">
                 <h3>Made for your practice</h3>
-                <p>Profession tools sit beside the ledger. Vaulted clinical notes for doctors, condition reports and stamps for architects, field certificates and project files for engineers.</p>
+                <p>Profession tools sit beside the ledger. Doctors get secured and private patient journals, prescriptions, certificates, and referrals. Architects get condition reports, BCA templates, and declarations. Engineers get equipment certificate management alongside field certificates and project files. Every practice gets a document manager.</p>
             </div>
             <div class="made-row">
                 <h3>Made for calm compliance</h3>
-                <p>Audit-friendly breakdowns instead of black-box totals. Accountant packs when you need to hand work over. No Ltd company accounting — sole traders only.</p>
+                <p>Audit friendly breakdowns instead of black box totals. Accountant packs when you need to hand work over.</p>
             </div>
             <div class="made-row">
                 <h3>Made with the community</h3>
-                <p>Request features, send feedback, and watch the toolkit upgrade. Built by Maltese professionals, for Maltese professionals — not a foreign template with Malta painted on.</p>
+                <p>Request features, send feedback, and watch the toolkit upgrade. Built by Maltese professionals, for Maltese professionals, not a foreign template with Malta painted on.</p>
             </div>
         </div>
     </section>
@@ -616,22 +616,22 @@
             <article class="path">
                 <span class="path-label">Medical</span>
                 <h3>Clinical desk</h3>
-                <p>Patient work that stays under your recovery key.</p>
+                <p>Secured and private patient work under your recovery key.</p>
                 <ul>
-                    <li>Encrypted patient vault and journals</li>
+                    <li>Secured and private patient journals</li>
                     <li>Prescriptions with issue codes</li>
                     <li>Referrals and medical certificates</li>
-                    <li>Clinical stamp and trusted devices</li>
+                    <li>Document manager and trusted devices</li>
                 </ul>
             </article>
             <article class="path">
                 <span class="path-label">Architect</span>
                 <h3>Studio desk</h3>
-                <p>Project files, stamps, and site paperwork in one place.</p>
+                <p>Project files, BCA templates, and declarations in one place.</p>
                 <ul>
                     <li>Condition reports and method statements</li>
-                    <li>BCA templates and document management</li>
-                    <li>Phase tracking and practice stamper</li>
+                    <li>BCA templates and declarations</li>
+                    <li>Phase tracking and document manager</li>
                     <li>Branded exports for the studio</li>
                 </ul>
             </article>
@@ -641,9 +641,9 @@
                 <p>Field work tied back to the client and the PA.</p>
                 <ul>
                     <li>Client → project → PA workspace</li>
+                    <li>Equipment certificate management</li>
                     <li>Field certificates and specialised reports</li>
-                    <li>Site photos and drawing versions</li>
-                    <li>Shared certificate register</li>
+                    <li>Document manager and site photos</li>
                 </ul>
             </article>
         </div>
@@ -651,7 +651,7 @@
 
     <section class="community" id="join">
         <h2>Register and start building.</h2>
-        <p>Open registration for Maltese sole traders. Bring an access or promo code if you have one — profession codes unlock Full Pro for free. No card charge yet.</p>
+        <p>Open registration for Maltese sole traders. Bring an access or promo code if you have one. Profession codes unlock Full Pro for free. No card charge yet.</p>
         <div class="community-actions">
             <a href="/register" class="btn btn-sea">Register</a>
             <button type="button" class="btn btn-ghost" id="openJoinForm">Have a promo code?</button>
