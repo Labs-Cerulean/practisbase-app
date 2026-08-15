@@ -43,6 +43,8 @@
                             <li><a href="/company/dividends" class="nav-link {{ request()->is('company/dividends*') ? 'active' : '' }}">Dividends</a></li>
                             <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
                             <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>
+                            <li class="nav-section-label" aria-hidden="true">Marketing</li>
+                            <li><a href="/company/content" class="nav-link {{ request()->is('company/content*') ? 'active' : '' }}">Content studio</a></li>
                             <li class="nav-section-label" aria-hidden="true">Beta</li>
                             <li><a href="/company/beta-invites" class="nav-link {{ request()->is('company/beta-invites*') ? 'active' : '' }}">Access codes</a></li>
                             <li><a href="/company/promotions" class="nav-link {{ request()->is('company/promotions*') ? 'active' : '' }}">Promotions</a></li>

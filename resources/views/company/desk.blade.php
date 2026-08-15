@@ -127,6 +127,10 @@
             <div style="font-weight: 700; color: var(--primary-navy);">Company profile</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">VAT number · IBAN · letterhead details</div>
         </a>
+        <a href="/company/content" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Content studio</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">LinkedIn-ready posts · Founding launch graphics</div>
+        </a>
         <a href="/company/promotions" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Promotions</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Mint Founding codes · toggle capacity · discounts</div>
