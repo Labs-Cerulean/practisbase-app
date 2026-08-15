@@ -71,6 +71,20 @@
             <p style="margin: 0.85rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.45;">
                 Status changes mark the thread unread for the member. Replying from Open auto-moves to Acknowledged.
             </p>
+
+            <div style="margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border-light);">
+                <h2 style="font-size: 0.95rem; color: #991b1b; margin: 0 0 0.5rem;">Delete thread</h2>
+                <p style="margin: 0 0 0.85rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.45;">
+                    Permanently removes this feedback and all replies. Use when a note is spam, test noise, or clearly wrong.
+                </p>
+                <form method="POST" action="/community/feedback/inbox/{{ $feedback->id }}" onsubmit="return confirm('Delete this feedback thread permanently? This cannot be undone.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" style="width: 100%; background: white; color: #991b1b; border: 1px solid #fecaca; padding: 0.65rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                        Delete feedback
+                    </button>
+                </form>
+            </div>
         </aside>
     </div>
 

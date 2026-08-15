@@ -110,4 +110,16 @@ class CommunityFeedbackOperatorController extends Controller
         return redirect('/community/feedback/inbox/'.$feedback->id)
             ->with('success', 'Status updated to '.$feedback->statusLabel().'.');
     }
+
+    public function destroy(int $id): RedirectResponse
+    {
+        $feedback = CommunityFeedback::query()->where('id', $id)->firstOrFail();
+        $subject = $feedback->subject;
+
+        $feedback->messages()->delete();
+        $feedback->delete();
+
+        return redirect('/community/feedback/inbox')
+            ->with('success', 'Feedback deleted: '.$subject);
+    }
 }
