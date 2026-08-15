@@ -107,48 +107,6 @@
             line-height: 1.55;
         }
         .hero-cta { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
-        .hero-join {
-            margin: 1.35rem auto 0;
-            max-width: 26rem;
-            text-align: left;
-            background: rgba(255, 255, 255, 0.82);
-            border: 1px solid var(--pb-line);
-            border-radius: 14px;
-            padding: 1rem 1.1rem 1.1rem;
-            display: none;
-        }
-        .hero-join.is-open { display: block; }
-        .hero-join label {
-            display: block;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: var(--pb-ink);
-            margin: 0 0 0.35rem;
-        }
-        .hero-join input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 0.7rem 0.8rem;
-            border: 1px solid var(--pb-line);
-            border-radius: 10px;
-            font: inherit;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            background: #fff;
-        }
-        .hero-join .join-hint {
-            margin: -0.35rem 0 0.85rem;
-            font-size: 0.75rem;
-            color: var(--pb-mute);
-            line-height: 1.4;
-        }
-        .hero-join .join-actions {
-            display: flex;
-            gap: 0.55rem;
-            flex-wrap: wrap;
-        }
         .beta-chip {
             display: inline-block;
             margin-top: 1.25rem;
@@ -498,13 +456,12 @@
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .hero-brand, .hero h1, .hero p, .hero-cta, .hero-join, .beta-chip {
+            .hero-brand, .hero h1, .hero p, .hero-cta, .beta-chip {
                 animation: rise 0.7s ease both;
             }
             .hero h1 { animation-delay: 0.08s; }
             .hero p { animation-delay: 0.14s; }
             .hero-cta { animation-delay: 0.2s; }
-            .hero-join { animation-delay: 0.22s; }
             .beta-chip { animation-delay: 0.26s; }
             .ladder .plan, .prof-path, .accounts-path {
                 animation: rise 0.65s ease both;
