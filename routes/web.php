@@ -101,6 +101,11 @@ Route::get('/reset-password/{token}', [PasswordResetController::class, 'showRese
 Route::post('/reset-password', [PasswordResetController::class, 'reset'])
     ->middleware(['guest', 'throttle:5,1']);
 
+// Accidental GET (bookmark, refresh, mobile navigate) must not 405 — stay on POST for real logout
+Route::get('/logout', function () {
+    return auth()->check() ? redirect('/dashboard') : redirect('/login');
+});
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /*
