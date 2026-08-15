@@ -86,6 +86,7 @@
         .btn-submit:disabled { background: var(--border-light); color: var(--text-muted); cursor: not-allowed; }
         .btn-submit:not(:disabled):hover { background: var(--primary-cerulean-hover); }
     </style>
+    @include('partials.pwa-head')
 </head>
 <body>
 

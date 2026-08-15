@@ -78,6 +78,7 @@
         .btn-submit:hover { background: var(--primary-cerulean-hover); }
         .resume-note { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin: 0 0 1.25rem; }
     </style>
+    @include('partials.pwa-head')
 </head>
 <body>
 @php
@@ -165,7 +166,7 @@
         </form>
 
         <p style="margin: 1.35rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; text-align: center;">
-            PractisBase is for self-employed sole traders only, not Ltd company accounts or VAT group filings.
+            PractisBase is for Maltese sole traders, not Ltd companies.
         </p>
     </div>
 

@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/css/style.css?v=shell3">
+    @include('partials.pwa-head')
 </head>
 <body>
     @php
@@ -59,6 +60,9 @@
                             <li>
                                 <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
                             </li>
+                            <li>
+                                <a href="/exports/backup" class="nav-link {{ request()->is('exports/backup*') ? 'active' : '' }}">Data backup</a>
+                            </li>
 
                             @if(auth()->user()->canAccessReports())
                                 <li class="nav-section-label" aria-hidden="true">Money</li>
@@ -69,7 +73,7 @@
                                     <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">Expenses</a>
                                 </li>
                                 <li>
-                                    <a href="/exports/accountant" class="nav-link {{ request()->is('exports*') ? 'active' : '' }}">For accountant</a>
+                                    <a href="/exports/accountant" class="nav-link {{ request()->is('exports/accountant*') ? 'active' : '' }}">For accountant</a>
                                 </li>
                             @endif
 
@@ -159,7 +163,7 @@
                     @if($companyMode)
                         <strong>Cerulean Labs Ltd desk</strong> — internal company books (Art 10). Sole-trader tax tools are disabled on this account.
                     @else
-                        <strong>Early access</strong> — billing is not live yet. Plans are granted for testing (Settings). Do not rely on this build as your sole clinical or accounting system of record.
+                        <strong>Founding access.</strong> Card billing soon.
                     @endif
                 </div>
             @endauth

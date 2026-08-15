@@ -85,6 +85,18 @@
         </div>
     @endif
 
+    @if($user->isDataBackupOverdue())
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div>
+                <div style="font-weight: 700; color: #92400e;">Weekly data backup due</div>
+                <div style="font-size: 0.85rem; color: #92400e; line-height: 1.45; margin-top: 0.2rem;">
+                    Download a ZIP of your own clients and ledger. Doctors: keep the separate medical vault backup too.
+                </div>
+            </div>
+            <a href="/exports/backup" style="background: #92400e; color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Download backup</a>
+        </div>
+    @endif
+
     @if($practiceDesk)
         <div style="background: white; border: 1px solid var(--border-light); border-left: 5px solid {{ $deskAccent }}; border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">

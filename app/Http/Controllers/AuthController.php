@@ -249,7 +249,7 @@ class AuthController extends Controller
         $tier = \App\Support\TierPolicy::normalize($request->tier);
         if ($tier !== \App\Support\TierPolicy::TIER_FREE && ! $user->canActivatePaidTierWithoutStripe()) {
             throw ValidationException::withMessages([
-                'tier' => 'Paid plans need a Founding or access promo code until card billing launches. Select Free, or register with a 6 month promo from Cerulean Labs.',
+                'tier' => 'Paid plans need a Founding or access promo code until card billing launches. Select Free, or register with a Founding promo from Cerulean Labs.',
             ]);
         }
 

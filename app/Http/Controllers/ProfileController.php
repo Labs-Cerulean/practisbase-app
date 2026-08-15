@@ -84,7 +84,7 @@ class ProfileController extends Controller
         }
 
         if ($user->beta_invite_code_id) {
-            return redirect('/settings')->with('error', 'Your plan is locked to your beta invite. Contact Cerulean Labs if you need a change.');
+            return redirect('/settings')->with('error', 'Plan locked to your access code. Contact Cerulean Labs to change.');
         }
 
         $currentTier = \App\Support\TierPolicy::normalize($user->tier);
@@ -128,7 +128,7 @@ class ProfileController extends Controller
 
         return back()->with(
             'success',
-            'Plan updated to '.\App\Support\TierPolicy::label($newTier).' (closed beta — Stripe not connected yet).'
+            'Plan updated to '.\App\Support\TierPolicy::label($newTier).'.'
         );
     }
 

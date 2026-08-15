@@ -16,6 +16,10 @@
             <a href="#payments" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payments</a>
             <span style="color: #cbd5e1;">·</span>
             <a href="#security" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Security</a>
+            <span style="color: #cbd5e1;">·</span>
+            <a href="#data-backup" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Backup</a>
+            <span style="color: #cbd5e1;">·</span>
+            <a href="#install-app" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Install</a>
         </div>
 
         @if(session('success'))
@@ -66,7 +70,7 @@
             @endunless
 
             <div style="background: #eff6ff; color: #1e3a8a; text-align: left; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
-                Closed beta: change your plan below for testing. Stripe billing is deferred until after beta — no card required.
+                Change plan below. No card charge during Founding access.
             </div>
 
             <form action="/settings/plan" method="POST" id="plan-change-form">
@@ -519,6 +523,44 @@
             </div>
         @endif
 
+        <div id="data-backup" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Data backup</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
+                Download a weekly ZIP of <strong>your</strong> clients, invoices, payments, and expenses. Clinical vault journals stay on the separate medical backup.
+            </p>
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Last backup:
+                <strong style="color: var(--primary-navy);">
+                    {{ $user->last_data_backup_at ? $user->last_data_backup_at->format('d M Y H:i') : 'Never' }}
+                </strong>
+                @if($user->isDataBackupOverdue())
+                    <span style="color: #b45309; font-weight: 600; margin-left: 0.35rem;">· Due this week</span>
+                @endif
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                <a href="/exports/backup" style="background: var(--primary-cerulean); color: white; padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.9rem; text-decoration: none;">Open backup</a>
+                @if($user->canAccessProPackage('med'))
+                    <a href="/pro/medical/vault/backup" style="color: var(--primary-navy); font-weight: 600; font-size: 0.85rem; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Medical vault backup</a>
+                @endif
+            </div>
+        </div>
+
+        <div id="install-app" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Add to Home Screen</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
+                Open PractisBase in one tap from your phone or desktop — no app store needed.
+            </p>
+            <ul style="margin: 0; padding-left: 1.15rem; color: var(--text-main); font-size: 0.85rem; line-height: 1.55;">
+                <li><strong>iPhone / iPad:</strong> Safari → Share → Add to Home Screen</li>
+                <li><strong>Android:</strong> Chrome menu → Install app / Add to Home screen</li>
+                <li><strong>Desktop:</strong> Chrome or Edge → install icon in the address bar</li>
+            </ul>
+            <button type="button" id="pwa-install-btn" hidden style="margin-top: 1rem; background: var(--primary-navy); color: white; border: none; padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.9rem; cursor: pointer;">
+                Install PractisBase
+            </button>
+            <div id="pwa-install-status" style="display: none; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);"></div>
+        </div>
+
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
             <h3 id="security" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Security</h3>
             
@@ -866,4 +908,41 @@
             })();
         </script>
     @endif
+
+    <script>
+        (function () {
+            var btn = document.getElementById('pwa-install-btn');
+            var status = document.getElementById('pwa-install-status');
+            if (!btn) return;
+
+            var deferredPrompt = null;
+            window.addEventListener('beforeinstallprompt', function (e) {
+                e.preventDefault();
+                deferredPrompt = e;
+                btn.hidden = false;
+            });
+
+            btn.addEventListener('click', function () {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(function (choice) {
+                    if (status) {
+                        status.style.display = 'block';
+                        status.textContent = choice.outcome === 'accepted'
+                            ? 'PractisBase was added. Open it from your home screen or app list.'
+                            : 'Install cancelled. You can still use Add to Home Screen from the browser menu.';
+                    }
+                    deferredPrompt = null;
+                    btn.hidden = true;
+                });
+            });
+
+            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+                if (status) {
+                    status.style.display = 'block';
+                    status.textContent = 'PractisBase is already installed on this device.';
+                }
+            }
+        })();
+    </script>
 @endsection

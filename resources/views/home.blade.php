@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+    @include('partials.pwa-head')
 
     <style>
         :root {
@@ -651,7 +652,7 @@
 
     <section class="community" id="join">
         <h2>Register and start building.</h2>
-        <p>Open registration for Maltese sole traders. Bring an access or promo code if you have one. Profession codes unlock Full Pro for free. No card charge yet.</p>
+        <p>Register free. Add a Founding code at signup if you have one.</p>
         <div class="community-actions">
             <a href="/register" class="btn btn-sea">Register</a>
             <button type="button" class="btn btn-ghost" id="openJoinForm">Have a promo code?</button>
@@ -671,7 +672,7 @@
     </section>
 
     <footer class="site-footer">
-        PractisBase models self-employed sole traders in Malta. Sole trader scope only, not Ltd company accounts.
+        For Maltese sole traders, not Ltd companies.
         <div class="footer-links">
             <a href="/pricing">Pricing</a>
             <a href="/privacy">Privacy Policy</a>

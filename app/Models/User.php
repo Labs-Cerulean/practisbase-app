@@ -84,7 +84,18 @@ class User extends Authenticatable
             'company_books_enabled' => 'boolean',
             'credit_balance' => 'decimal:2',
             'trial_ends_at' => 'datetime',
+            'last_data_backup_at' => 'datetime',
         ];
+    }
+
+    /** Weekly personal data backup overdue after 7 days (or never downloaded). */
+    public function isDataBackupOverdue(int $maxDays = 7): bool
+    {
+        if (! $this->last_data_backup_at) {
+            return true;
+        }
+
+        return $this->last_data_backup_at->lt(now()->subDays($maxDays));
     }
 
     /**
