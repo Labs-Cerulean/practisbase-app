@@ -186,6 +186,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/community/feedback/inbox/{id}', [CommunityFeedbackOperatorController::class, 'show'])->whereNumber('id');
         Route::post('/community/feedback/inbox/{id}/reply', [CommunityFeedbackOperatorController::class, 'reply'])->whereNumber('id');
         Route::put('/community/feedback/inbox/{id}/status', [CommunityFeedbackOperatorController::class, 'updateStatus'])->whereNumber('id');
+        Route::delete('/community/feedback/inbox/{id}', [CommunityFeedbackOperatorController::class, 'destroy'])->whereNumber('id');
     });
     Route::get('/community/feedback/{id}', [CommunityFeedbackController::class, 'show'])->whereNumber('id');
     Route::post('/community/feedback/{id}/reply', [CommunityFeedbackController::class, 'reply'])->whereNumber('id');
