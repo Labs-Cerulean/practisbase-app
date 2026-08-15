@@ -8,10 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('promotions')) {
+            return;
+        }
+
         Schema::create('promotions', function (Blueprint $table) {
             $table->id();
             $table->string('code', 40)->unique();
-            $table->string('type', 32); // free_months | percentage_discount | fixed_discount
+            $table->string('type', 32);
             $table->decimal('value', 10, 2);
             $table->unsignedInteger('max_uses')->nullable();
             $table->unsignedInteger('current_uses')->default(0);
