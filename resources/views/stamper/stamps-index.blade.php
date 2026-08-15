@@ -34,6 +34,7 @@
                             <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.35rem; line-height: 1.45;">
                                 {{ $stamp->displayName() }}@if($stamp->postnominals), {{ $stamp->postnominals }}@endif
                                 · {{ $stamp->role_title }}
+                                @if($stamp->warrant_number) · Warrant {{ $stamp->warrant_number }} @endif
                                 · {{ $stamp->presetLabel() }}
                                 @if($stamp->signature_path) · Signature on file @else · No signature @endif
                             </div>

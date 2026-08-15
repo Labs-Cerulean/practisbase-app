@@ -69,9 +69,14 @@
                     </div>
 
                     <div style="margin-bottom: 1rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Warrant number</label>
+                        <input type="text" name="warrant_number" id="stamp-warrant" value="{{ old('warrant_number', $defaults['warrant_number']) }}" maxlength="80" placeholder="e.g. 3264" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
                         <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Wet signature upload</label>
                         <input type="file" name="signature" id="stamp-signature-file" accept=".jpg,.jpeg,.png,.webp,image/*" style="width: 100%; padding: 0.5rem 0;">
-                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">JPG, PNG or WebP up to 2 MB. Or draw below.</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">JPG, PNG or WebP up to 2 MB. White paper behind the ink is removed automatically. Or draw below.</div>
                     </div>
 
                     <div style="margin-bottom: 1rem;">
@@ -106,7 +111,7 @@
                 <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); position: sticky; top: 1rem;">
                     <div style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.75rem;">Live preview</div>
                     <canvas id="stamp-preview" width="420" height="220" style="width: 100%; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #fff;"></canvas>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.75rem 0 0; line-height: 1.4;">This is what you will place on PDF pages.</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.75rem 0 0; line-height: 1.4;">Checkerboard means a clear stamp background. Text on the PDF stays visible underneath.</p>
                 </div>
             </div>
         </form>
@@ -193,7 +198,7 @@
             reader.onload = function () {
                 var img = new Image();
                 img.onload = function () {
-                    uploadedImg = img;
+                    uploadedImg = knockOutPaper(img);
                     drawn = false;
                     signatureData.value = '';
                     fitPad();
@@ -216,6 +221,41 @@
     function fullName() {
         return (field('stamp-first') + ' ' + field('stamp-last')).trim();
     }
+
+    function knockOutPaper(img) {
+        try {
+            var c = document.createElement('canvas');
+            c.width = img.naturalWidth || img.width;
+            c.height = img.naturalHeight || img.height;
+            if (!c.width || !c.height) return img;
+            var g = c.getContext('2d', { willReadFrequently: true });
+            g.drawImage(img, 0, 0);
+            var data = g.getImageData(0, 0, c.width, c.height);
+            var px = data.data;
+            var hard = 235;
+            var soft = 200;
+            for (var i = 0; i < px.length; i += 4) {
+                var r = px[i], gv = px[i + 1], b = px[i + 2], a = px[i + 3];
+                if (a === 0) continue;
+                var minc = Math.min(r, gv, b);
+                var maxc = Math.max(r, gv, b);
+                var spread = maxc - minc;
+                if (minc >= hard && spread < 30) {
+                    px[i + 3] = 0;
+                    continue;
+                }
+                if (minc >= soft && spread < 40) {
+                    var fade = 1 - ((minc - soft) / Math.max(1, hard - soft));
+                    px[i + 3] = Math.round(a * Math.max(0, Math.min(1, fade)));
+                }
+            }
+            g.putImageData(data, 0, 0);
+            return c;
+        } catch (e) {
+            return img;
+        }
+    }
+
     function sigSource() {
         if (uploadedImg) return uploadedImg;
         if (drawn && signatureData.value) {
@@ -234,7 +274,6 @@
     function drawStamp(ctx, w, h, opts) {
         ctx.clearRect(0, 0, w, h);
 
-        // Checkerboard so a transparent stamp is visible in the builder
         var size = 12;
         for (var y = 0; y < h; y += size) {
             for (var x = 0; x < w; x += size) {
@@ -246,8 +285,10 @@
         var name = opts.name || 'Your name';
         var post = opts.post || '';
         var role = opts.role || 'Role';
+        var warrant = opts.warrant || '';
+        var warrantLine = warrant ? ('Warrant ' + warrant) : '';
         var preset = opts.preset;
-        var sig = opts.sig;
+        var sig = opts.sig ? knockOutPaper(opts.sig) : null;
 
         ctx.textAlign = 'center';
         ctx.fillStyle = '#0b1f33';
@@ -263,14 +304,14 @@
             ctx.beginPath();
             ctx.arc(cx, cy, r - 8, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.font = 'bold 15px Georgia, serif';
-            ctx.fillText(name, cx, cy - 8);
-            ctx.font = '12px Georgia, serif';
-            if (post) ctx.fillText(post, cx, cy + 12);
+            ctx.font = 'bold 14px Georgia, serif';
+            ctx.fillText(name, cx, cy - 22);
             ctx.font = '11px Georgia, serif';
-            ctx.fillText(role, cx, cy + 30);
+            if (post) ctx.fillText(post, cx, cy - 4);
+            ctx.fillText(role, cx, cy + 14);
+            if (warrantLine) ctx.fillText(warrantLine, cx, cy + 30);
             if (sig && sig.complete !== false) {
-                try { ctx.drawImage(sig, cx - 55, cy + 38, 110, 36); } catch (e) {}
+                try { ctx.drawImage(sig, cx - 50, cy + 38, 100, 32); } catch (e) {}
             }
             return;
         }
@@ -278,18 +319,18 @@
         if (preset === 'minimal_line') {
             ctx.textAlign = 'left';
             ctx.font = 'bold 18px Georgia, serif';
-            ctx.fillText(name + (post ? ', ' + post : ''), 24, 48);
+            ctx.fillText(name + (post ? ', ' + post : ''), 24, 42);
             ctx.strokeStyle = '#0b1f33';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(24, 62);
-            ctx.lineTo(w - 24, 62);
+            ctx.moveTo(24, 56);
+            ctx.lineTo(w - 24, 56);
             ctx.stroke();
             ctx.font = '13px Inter, sans-serif';
             ctx.fillStyle = '#334155';
-            ctx.fillText(role, 24, 86);
+            ctx.fillText(role + (warrantLine ? ' · ' + warrantLine : ''), 24, 78);
             if (sig && sig.complete !== false) {
-                try { ctx.drawImage(sig, 24, 100, 180, 55); } catch (e) {}
+                try { ctx.drawImage(sig, 24, 92, 180, 55); } catch (e) {}
             }
             return;
         }
@@ -305,28 +346,29 @@
             ctx.fillText(role.toUpperCase(), w / 2, 38);
             ctx.fillStyle = '#0b1f33';
             ctx.font = 'bold 18px Georgia, serif';
-            ctx.fillText(name, w / 2, 78);
-            ctx.font = '13px Georgia, serif';
-            if (post) ctx.fillText(post, w / 2, 100);
+            ctx.fillText(name, w / 2, 72);
+            ctx.font = '12px Georgia, serif';
+            if (post) ctx.fillText(post, w / 2, 92);
+            if (warrantLine) ctx.fillText(warrantLine, w / 2, 110);
             if (sig && sig.complete !== false) {
-                try { ctx.drawImage(sig, w / 2 - 70, 118, 140, 48); } catch (e) {}
+                try { ctx.drawImage(sig, w / 2 - 70, 122, 140, 48); } catch (e) {}
             }
             return;
         }
 
-        // classic_border
         ctx.strokeStyle = '#0b1f33';
         ctx.lineWidth = 2.5;
         ctx.strokeRect(18, 18, w - 36, h - 36);
         ctx.lineWidth = 1;
         ctx.strokeRect(24, 24, w - 48, h - 48);
-        ctx.font = 'bold 18px Georgia, serif';
-        ctx.fillText(name, w / 2, 70);
-        ctx.font = '13px Georgia, serif';
-        if (post) ctx.fillText(post, w / 2, 92);
+        ctx.font = 'bold 17px Georgia, serif';
+        ctx.fillText(name, w / 2, 62);
+        ctx.font = '12px Georgia, serif';
+        if (post) ctx.fillText(post, w / 2, 82);
         ctx.font = '12px Inter, sans-serif';
         ctx.fillStyle = '#334155';
-        ctx.fillText(role, w / 2, 114);
+        ctx.fillText(role, w / 2, 100);
+        if (warrantLine) ctx.fillText(warrantLine, w / 2, 116);
         if (sig && sig.complete !== false) {
             try { ctx.drawImage(sig, w / 2 - 70, 128, 140, 48); } catch (e) {}
         }
@@ -339,6 +381,7 @@
                 name: fullName(),
                 post: field('stamp-post'),
                 role: field('stamp-role'),
+                warrant: field('stamp-warrant'),
                 preset: selectedPreset(),
                 sig: sig
             });
@@ -349,7 +392,7 @@
         paint();
     }
 
-    ['stamp-first', 'stamp-last', 'stamp-post', 'stamp-role'].forEach(function (id) {
+    ['stamp-first', 'stamp-last', 'stamp-post', 'stamp-role', 'stamp-warrant'].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('input', renderPreview);
     });

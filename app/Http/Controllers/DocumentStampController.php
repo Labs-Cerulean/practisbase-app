@@ -40,6 +40,7 @@ class DocumentStampController extends Controller
                 'last_name' => $last,
                 'postnominals' => (string) ($user->postnominals ?? ''),
                 'role_title' => (string) ($user->profession ?? ''),
+                'warrant_number' => (string) ($user->warrant_number ?? ''),
                 'is_default' => true,
             ],
         ]);
@@ -65,6 +66,7 @@ class DocumentStampController extends Controller
             'last_name' => $validated['last_name'],
             'postnominals' => $validated['postnominals'] ?: null,
             'role_title' => $validated['role_title'],
+            'warrant_number' => $validated['warrant_number'] ?: null,
             'signature_path' => $signaturePath,
             'is_default' => $isDefault,
         ]);
@@ -87,6 +89,7 @@ class DocumentStampController extends Controller
                 'last_name' => $stamp->last_name,
                 'postnominals' => (string) ($stamp->postnominals ?? ''),
                 'role_title' => $stamp->role_title,
+                'warrant_number' => (string) ($stamp->warrant_number ?? ''),
                 'is_default' => (bool) $stamp->is_default,
             ],
         ]);
@@ -111,6 +114,7 @@ class DocumentStampController extends Controller
             'last_name' => $validated['last_name'],
             'postnominals' => $validated['postnominals'] ?: null,
             'role_title' => $validated['role_title'],
+            'warrant_number' => $validated['warrant_number'] ?: null,
             'signature_path' => $signaturePath,
             'is_default' => $request->boolean('is_default'),
         ]);
@@ -172,6 +176,7 @@ class DocumentStampController extends Controller
             'last_name' => 'required|string|max:120',
             'postnominals' => 'nullable|string|max:120',
             'role_title' => 'required|string|max:160',
+            'warrant_number' => 'nullable|string|max:80',
             'is_default' => 'nullable|boolean',
             'signature' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'signature_data' => 'nullable|string|max:1500000',
@@ -194,7 +199,17 @@ class DocumentStampController extends Controller
                 TenantStorage::disk()->delete($existingPath);
             }
 
-            return $request->file('signature')->store(
+            $file = $request->file('signature');
+            $binary = file_get_contents($file->getRealPath());
+            $cleaned = $this->knockOutSignaturePaper($binary);
+            if ($cleaned !== null) {
+                $path = TenantStorage::stampsPath($userId).'/'.Str::uuid()->toString().'.png';
+                TenantStorage::disk()->put($path, $cleaned);
+
+                return $path;
+            }
+
+            return $file->store(
                 TenantStorage::stampsPath($userId),
                 TenantStorage::diskName()
             );
@@ -226,11 +241,102 @@ class DocumentStampController extends Controller
             return null;
         }
 
+        $cleaned = $this->knockOutSignaturePaper($binary);
+        if ($cleaned !== null) {
+            $path = TenantStorage::stampsPath($userId).'/'.Str::uuid()->toString().'.png';
+            TenantStorage::disk()->put($path, $cleaned);
+
+            return $path;
+        }
+
         $ext = strtolower($matches[1]) === 'jpg' ? 'jpeg' : strtolower($matches[1]);
         $path = TenantStorage::stampsPath($userId).'/'.Str::uuid()->toString().'.'.$ext;
         TenantStorage::disk()->put($path, $binary);
 
         return $path;
+    }
+
+    /**
+     * Turn near-white paper pixels transparent so wet scans do not cover PDF text.
+     */
+    private function knockOutSignaturePaper(string $binary): ?string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return null;
+        }
+
+        $src = @imagecreatefromstring($binary);
+        if ($src === false) {
+            return null;
+        }
+
+        $width = imagesx($src);
+        $height = imagesy($src);
+        if ($width < 1 || $height < 1 || $width > 4000 || $height > 4000) {
+            imagedestroy($src);
+
+            return null;
+        }
+
+        $dst = imagecreatetruecolor($width, $height);
+        imagesavealpha($dst, true);
+        imagealphablending($dst, false);
+        $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+        imagefilledrectangle($dst, 0, 0, $width, $height, $transparent);
+
+        $hard = 235;
+        $soft = 200;
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $rgba = imagecolorat($src, $x, $y);
+                $a = ($rgba & 0x7F000000) >> 24;
+                $r = ($rgba >> 16) & 0xFF;
+                $g = ($rgba >> 8) & 0xFF;
+                $b = $rgba & 0xFF;
+
+                if (imageistruecolor($src) === false) {
+                    $cols = imagecolorsforindex($src, $rgba);
+                    $r = $cols['red'];
+                    $g = $cols['green'];
+                    $b = $cols['blue'];
+                    $a = (int) round(($cols['alpha'] ?? 0));
+                }
+
+                $min = min($r, $g, $b);
+                $max = max($r, $g, $b);
+                $spread = $max - $min;
+
+                // Paper / near-white (low colour spread)
+                if ($min >= $hard && $spread < 30) {
+                    continue;
+                }
+
+                $alpha = 0;
+                if ($min >= $soft && $spread < 40) {
+                    $alpha = (int) round(127 * (($min - $soft) / max(1, $hard - $soft)));
+                    $alpha = max(0, min(127, $alpha));
+                }
+
+                // Keep existing transparency if any (PNG alpha is 0-127 in GD)
+                if (imageistruecolor($src)) {
+                    $alpha = max($alpha, $a);
+                }
+
+                $color = imagecolorallocatealpha($dst, $r, $g, $b, $alpha);
+                imagesetpixel($dst, $x, $y, $color);
+            }
+        }
+
+        imagedestroy($src);
+
+        ob_start();
+        imagesavealpha($dst, true);
+        imagepng($dst, null, 6);
+        $png = ob_get_clean();
+        imagedestroy($dst);
+
+        return is_string($png) && $png !== '' ? $png : null;
     }
 
     private function clearDefaults(int $userId, ?int $exceptId = null): void

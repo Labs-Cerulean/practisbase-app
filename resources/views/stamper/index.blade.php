@@ -191,6 +191,40 @@
         }
     }
 
+    function knockOutPaper(img) {
+        try {
+            var c = document.createElement('canvas');
+            c.width = img.naturalWidth || img.width;
+            c.height = img.naturalHeight || img.height;
+            if (!c.width || !c.height) return img;
+            var g = c.getContext('2d', { willReadFrequently: true });
+            g.drawImage(img, 0, 0);
+            var data = g.getImageData(0, 0, c.width, c.height);
+            var px = data.data;
+            var hard = 235;
+            var soft = 200;
+            for (var i = 0; i < px.length; i += 4) {
+                var r = px[i], gv = px[i + 1], b = px[i + 2], a = px[i + 3];
+                if (a === 0) continue;
+                var minc = Math.min(r, gv, b);
+                var maxc = Math.max(r, gv, b);
+                var spread = maxc - minc;
+                if (minc >= hard && spread < 30) {
+                    px[i + 3] = 0;
+                    continue;
+                }
+                if (minc >= soft && spread < 40) {
+                    var fade = 1 - ((minc - soft) / Math.max(1, hard - soft));
+                    px[i + 3] = Math.round(a * Math.max(0, Math.min(1, fade)));
+                }
+            }
+            g.putImageData(data, 0, 0);
+            return c;
+        } catch (e) {
+            return img;
+        }
+    }
+
     function drawStampCanvas(stamp) {
         var c = document.createElement('canvas');
         c.width = 840;
@@ -199,12 +233,15 @@
         var name = (stamp.first_name + ' ' + stamp.last_name).trim();
         var post = stamp.postnominals || '';
         var role = stamp.role_title || '';
+        var warrant = stamp.warrant_number || '';
+        var warrantLine = warrant ? ('Warrant ' + warrant) : '';
         var preset = stamp.preset || 'classic_border';
 
         function paint(sigImg) {
             g.clearRect(0, 0, c.width, c.height);
             g.textAlign = 'center';
             g.fillStyle = '#0b1f33';
+            var sig = sigImg ? knockOutPaper(sigImg) : null;
 
             if (preset === 'circular_seal') {
                 var cx = c.width / 2, cy = c.height / 2, r = 180;
@@ -213,24 +250,27 @@
                 g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
                 g.lineWidth = 3;
                 g.beginPath(); g.arc(cx, cy, r - 16, 0, Math.PI * 2); g.stroke();
-                g.font = 'bold 34px Georgia, serif';
-                g.fillText(name, cx, cy - 16);
-                g.font = '22px Georgia, serif';
-                if (post) g.fillText(post, cx, cy + 20);
+                g.font = 'bold 32px Georgia, serif';
+                g.fillText(name, cx, cy - 44);
                 g.font = '20px Georgia, serif';
-                g.fillText(role, cx, cy + 52);
-                if (sigImg) g.drawImage(sigImg, cx - 110, cy + 70, 220, 70);
+                if (post) g.fillText(post, cx, cy - 12);
+                g.fillText(role, cx, cy + 20);
+                if (warrantLine) {
+                    g.font = '18px Georgia, serif';
+                    g.fillText(warrantLine, cx, cy + 48);
+                }
+                if (sig) g.drawImage(sig, cx - 100, cy + 62, 200, 64);
             } else if (preset === 'minimal_line') {
                 g.textAlign = 'left';
                 g.font = 'bold 40px Georgia, serif';
-                g.fillText(name + (post ? ', ' + post : ''), 48, 100);
+                g.fillText(name + (post ? ', ' + post : ''), 48, 90);
                 g.strokeStyle = '#0b1f33';
                 g.lineWidth = 3;
-                g.beginPath(); g.moveTo(48, 128); g.lineTo(c.width - 48, 128); g.stroke();
+                g.beginPath(); g.moveTo(48, 118); g.lineTo(c.width - 48, 118); g.stroke();
                 g.font = '26px Inter, sans-serif';
                 g.fillStyle = '#334155';
-                g.fillText(role, 48, 175);
-                if (sigImg) g.drawImage(sigImg, 48, 210, 320, 110);
+                g.fillText(role + (warrantLine ? ' · ' + warrantLine : ''), 48, 165);
+                if (sig) g.drawImage(sig, 48, 200, 320, 110);
             } else if (preset === 'warrant_block') {
                 g.strokeStyle = '#0b1f33';
                 g.lineWidth = 4;
@@ -242,24 +282,26 @@
                 g.fillText(role.toUpperCase(), c.width / 2, 78);
                 g.fillStyle = '#0b1f33';
                 g.font = 'bold 40px Georgia, serif';
-                g.fillText(name, c.width / 2, 160);
+                g.fillText(name, c.width / 2, 150);
                 g.font = '24px Georgia, serif';
-                if (post) g.fillText(post, c.width / 2, 200);
-                if (sigImg) g.drawImage(sigImg, c.width / 2 - 140, 240, 280, 100);
+                if (post) g.fillText(post, c.width / 2, 188);
+                if (warrantLine) g.fillText(warrantLine, c.width / 2, 222);
+                if (sig) g.drawImage(sig, c.width / 2 - 140, 250, 280, 100);
             } else {
                 g.strokeStyle = '#0b1f33';
                 g.lineWidth = 5;
                 g.strokeRect(36, 36, c.width - 72, c.height - 72);
                 g.lineWidth = 2;
                 g.strokeRect(48, 48, c.width - 96, c.height - 96);
-                g.font = 'bold 40px Georgia, serif';
-                g.fillText(name, c.width / 2, 140);
+                g.font = 'bold 38px Georgia, serif';
+                g.fillText(name, c.width / 2, 125);
                 g.font = '24px Georgia, serif';
-                if (post) g.fillText(post, c.width / 2, 180);
+                if (post) g.fillText(post, c.width / 2, 162);
                 g.font = '22px Inter, sans-serif';
                 g.fillStyle = '#334155';
-                g.fillText(role, c.width / 2, 220);
-                if (sigImg) g.drawImage(sigImg, c.width / 2 - 140, 250, 280, 100);
+                g.fillText(role, c.width / 2, 198);
+                if (warrantLine) g.fillText(warrantLine, c.width / 2, 230);
+                if (sig) g.drawImage(sig, c.width / 2 - 140, 255, 280, 100);
             }
         }
 
@@ -284,7 +326,7 @@
 
     async function refreshOverlayImage() {
         var stamp = currentStamp();
-        var key = String(stamp.id) + ':clear';
+        var key = String(stamp.id) + ':clear-sig';
         if (!stampPngCache[key]) {
             stampPngCache[key] = await drawStampCanvas(stamp);
         }
@@ -436,7 +478,7 @@
     window.addEventListener('touchend', endDrag);
 
     async function stampImageBytes(stamp) {
-        var key = String(stamp.id) + ':clear';
+        var key = String(stamp.id) + ':clear-sig';
         if (!stampPngCache[key]) {
             stampPngCache[key] = await drawStampCanvas(stamp);
         }
