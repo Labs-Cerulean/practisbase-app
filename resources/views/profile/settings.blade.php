@@ -149,12 +149,20 @@
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant / Council</label>
                         <select name="warrant_type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="">— Optional —</option>
-                            <option value="Medical Council Malta" {{ $user->warrant_type === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
-                            <option value="Kamra tal-Periti" {{ $user->warrant_type === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
-                            <option value="Engineering Board" {{ $user->warrant_type === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
-                            @if($user->warrant_type && ! in_array($user->warrant_type, ['Medical Council Malta', 'Kamra tal-Periti', 'Engineering Board'], true))
-                                <option value="{{ $user->warrant_type }}" selected>{{ $user->warrant_type }}</option>
+                            <option value="">Blank / prefer not to say</option>
+                            @if($user->profession === 'Medical Professional')
+                                <option value="Medical Council Malta" {{ $user->warrant_type === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
+                            @elseif($user->profession === 'Architect / Perit')
+                                <option value="Kamra tal-Periti" {{ $user->warrant_type === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
+                            @elseif($user->profession === 'Engineer')
+                                <option value="Engineering Board" {{ $user->warrant_type === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
+                            @else
+                                <option value="Medical Council Malta" {{ $user->warrant_type === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
+                                <option value="Kamra tal-Periti" {{ $user->warrant_type === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
+                                <option value="Engineering Board" {{ $user->warrant_type === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
+                            @endif
+                            @if($user->warrant_type && ! in_array($user->warrant_type, ['Medical Council Malta', 'Kamra tal-Periti', 'Engineering Board', ''], true))
+                                <option value="{{ $user->warrant_type }}" selected>{{ $user->warrant_type }} (international)</option>
                             @endif
                         </select>
                     </div>

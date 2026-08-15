@@ -144,16 +144,31 @@ class AuthController extends Controller
         $request->validate([
             'profession' => 'required|string',
             'custom_profession' => 'required_if:profession,Other|max:255',
-            'warrant_type' => 'nullable|string',
-            'warrant_number' => 'nullable|string',
+            'warrant_choice' => 'nullable|in:main,international,blank',
+            'warrant_international' => 'nullable|string|max:255',
+            'warrant_number' => 'nullable|string|max:255',
         ]);
 
         $finalProfession = $request->profession === 'Other' ? $request->custom_profession : $request->profession;
 
+        $warrantType = null;
+        $choice = $request->input('warrant_choice', 'blank');
+        if ($choice === 'main') {
+            $warrantType = match ($request->profession) {
+                'Medical Professional' => 'Medical Council Malta',
+                'Architect / Perit' => 'Kamra tal-Periti',
+                'Engineer' => 'Engineering Board',
+                default => null,
+            };
+        } elseif ($choice === 'international') {
+            $intl = trim((string) $request->input('warrant_international', ''));
+            $warrantType = $intl !== '' ? $intl : 'International body';
+        }
+
         $user->update([
             'profession' => $finalProfession,
-            'warrant_type' => $request->warrant_type,
-            'warrant_number' => $request->warrant_number,
+            'warrant_type' => $warrantType,
+            'warrant_number' => filled($request->warrant_number) ? trim($request->warrant_number) : null,
         ]);
 
         return redirect('/onboarding/financial');
@@ -163,7 +178,6 @@ class AuthController extends Controller
     {
         $user = Auth::user();
 
-        $isMedical = $user->profession === 'Medical Professional';
         $adultCutoff = now()->subYears(18)->startOfDay();
 
         $request->validate([
@@ -179,13 +193,13 @@ class AuthController extends Controller
                     }
                 },
             ],
-            'vat_status' => $isMedical ? 'nullable' : 'required|in:article_10,article_11,exempt',
+            'vat_status' => 'required|in:article_10,article_11,exempt',
             'vat_number' => 'nullable|string|max:50',
             'warrant_type' => 'nullable|string|max:255',
             'warrant_number' => 'nullable|string|max:255',
         ]);
 
-        $vatStatus = $isMedical ? 'exempt' : $request->vat_status;
+        $vatStatus = $request->vat_status;
         $vatNumber = in_array($vatStatus, ['article_10', 'article_11'], true)
             ? ($request->vat_number ?: null)
             : null;
@@ -232,8 +246,15 @@ class AuthController extends Controller
 
         \App\Support\TierPolicy::assertTierAllowedForProfession($user, $request->tier);
 
+        $tier = \App\Support\TierPolicy::normalize($request->tier);
+        if ($tier !== \App\Support\TierPolicy::TIER_FREE && ! $user->canActivatePaidTierWithoutStripe()) {
+            throw ValidationException::withMessages([
+                'tier' => 'Paid plans need a Founding or access promo code until card billing launches. Select Free, or register with a 6 month promo from Cerulean Labs.',
+            ]);
+        }
+
         $user->update([
-            'tier' => $request->tier,
+            'tier' => $tier,
         ]);
 
         $home = Auth::user()->canAccessCompanyBooks() ? '/company' : '/dashboard';
