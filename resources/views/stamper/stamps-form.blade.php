@@ -79,8 +79,9 @@
                             <label style="font-weight: 600; margin: 0;">Draw signature</label>
                             <button type="button" id="clear-draw" style="background: none; border: none; color: var(--primary-cerulean); font-weight: 600; font-size: 0.8rem; cursor: pointer; padding: 0;">Clear pad</button>
                         </div>
-                        <canvas id="sig-pad" width="640" height="180" style="width: 100%; height: 180px; border: 1px dashed var(--border-light); border-radius: var(--radius-md); background: #fafafa; touch-action: none; cursor: crosshair;"></canvas>
+                        <canvas id="sig-pad" width="640" height="180" style="width: 100%; height: 180px; border: 1px dashed var(--border-light); border-radius: var(--radius-md); background: #f8fafc; touch-action: none; cursor: crosshair;"></canvas>
                         <input type="hidden" name="signature_data" id="signature-data" value="">
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">Drawn signatures export with a clear background so they do not cover PDF text.</div>
                     </div>
 
                     @if($sigUri)
@@ -135,8 +136,7 @@
         padCtx.lineWidth = 2.2;
         padCtx.lineCap = 'round';
         padCtx.strokeStyle = '#0b1f33';
-        padCtx.fillStyle = '#fafafa';
-        padCtx.fillRect(0, 0, rect.width, 180);
+        padCtx.clearRect(0, 0, rect.width, 180);
     }
 
     function pointerPos(e) {
@@ -233,8 +233,15 @@
 
     function drawStamp(ctx, w, h, opts) {
         ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, w, h);
+
+        // Checkerboard so a transparent stamp is visible in the builder
+        var size = 12;
+        for (var y = 0; y < h; y += size) {
+            for (var x = 0; x < w; x += size) {
+                ctx.fillStyle = ((x / size + y / size) % 2 === 0) ? '#f1f5f9' : '#ffffff';
+                ctx.fillRect(x, y, size, size);
+            }
+        }
 
         var name = opts.name || 'Your name';
         var post = opts.post || '';
@@ -279,7 +286,7 @@
             ctx.lineTo(w - 24, 62);
             ctx.stroke();
             ctx.font = '13px Inter, sans-serif';
-            ctx.fillStyle = '#475569';
+            ctx.fillStyle = '#334155';
             ctx.fillText(role, 24, 86);
             if (sig && sig.complete !== false) {
                 try { ctx.drawImage(sig, 24, 100, 180, 55); } catch (e) {}
@@ -318,7 +325,7 @@
         ctx.font = '13px Georgia, serif';
         if (post) ctx.fillText(post, w / 2, 92);
         ctx.font = '12px Inter, sans-serif';
-        ctx.fillStyle = '#475569';
+        ctx.fillStyle = '#334155';
         ctx.fillText(role, w / 2, 114);
         if (sig && sig.complete !== false) {
             try { ctx.drawImage(sig, w / 2 - 70, 128, 140, 48); } catch (e) {}
