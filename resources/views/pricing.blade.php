@@ -496,7 +496,7 @@
         <div class="header-actions">
             <a href="/">Product</a>
             <a href="/login">Sign in</a>
-            <a href="/register" class="btn btn-primary">Join beta</a>
+            <a href="/register" class="btn btn-primary">Register</a>
         </div>
     </header>
 
@@ -506,9 +506,9 @@
         <p>Start lean on Free, add Standard accounts or Practice tools, or take Full Pro for both. Sole traders only — not Ltd companies.</p>
         <div class="hero-cta">
             <a href="#plans" class="btn btn-primary">Compare plans</a>
-            <a href="/register" class="btn btn-ghost">Join beta</a>
+            <a href="/register" class="btn btn-ghost">Register</a>
         </div>
-        <div class="beta-chip">Closed beta. No card charge yet. Invited testers pick any plan.</div>
+        <div class="beta-chip">No card charge yet. Access codes unlock Full Pro for free.</div>
     </section>
 
     <section class="section" id="plans">

@@ -30,43 +30,53 @@ class AuthController extends Controller
                     ->symbols()
                     ->uncompromised(),
             ],
-            'invite_code' => 'required|string|max:40',
             'promo_code' => 'nullable|string|max:40',
+            'invite_code' => 'nullable|string|max:40',
             'ref' => 'nullable|string|max:40',
             'accept_terms' => 'accepted',
             'confirm_sole_trader' => 'accepted',
             'confirm_age_adult' => 'accepted',
             'read_duration_seconds' => 'required|integer',
         ], [
-            'invite_code.required' => 'A beta invite code is required to create an account.',
             'confirm_sole_trader.accepted' => 'You must confirm you are registering as a self-employed sole trader, not a limited company.',
             'confirm_age_adult.accepted' => 'You must confirm you are 18 years of age or older. PractisBase does not allow registration by minors.',
         ]);
 
-        $normalized = BetaInviteCode::normalizeCode($request->invite_code);
-        $promoRaw = trim((string) ($request->input('promo_code') ?: $request->query('promo_code', '')));
+        $accessRaw = trim((string) (
+            $request->input('promo_code')
+            ?: $request->input('invite_code')
+            ?: $request->query('promo_code', '')
+            ?: $request->query('code', '')
+        ));
         $refRaw = trim((string) ($request->input('ref') ?: $request->query('ref', '')));
 
-        $user = DB::transaction(function () use ($request, $normalized, $promoRaw, $refRaw) {
-            $invite = BetaInviteCode::query()
-                ->where('code', $normalized)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $invite || ! $invite->isRedeemable()) {
-                throw ValidationException::withMessages([
-                    'invite_code' => 'That invite code is invalid, expired, revoked, or already used.',
-                ]);
-            }
-
-            $promoEngine = app(PromotionEngine::class);
+        $user = DB::transaction(function () use ($request, $accessRaw, $refRaw) {
+            $invite = null;
             $promo = null;
-            if ($promoRaw !== '') {
-                $promo = $promoEngine->findRedeemable($promoRaw);
-                if (! $promo) {
+            $promoEngine = app(PromotionEngine::class);
+
+            if ($accessRaw !== '') {
+                $normalizedAccess = BetaInviteCode::normalizeCode($accessRaw);
+
+                $invite = BetaInviteCode::query()
+                    ->where('code', $normalizedAccess)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($invite && $invite->isRedeemable()) {
+                    // Profession access codes unlock Full Pro for free.
+                } elseif ($invite) {
                     throw ValidationException::withMessages([
-                        'promo_code' => 'That promo code is invalid, expired, inactive, or fully used.',
+                        'promo_code' => 'That access code is expired, revoked, or already used.',
                     ]);
+                } else {
+                    $invite = null;
+                    $promo = $promoEngine->findRedeemable($accessRaw);
+                    if (! $promo) {
+                        throw ValidationException::withMessages([
+                            'promo_code' => 'That promo or access code is invalid, expired, inactive, or fully used.',
+                        ]);
+                    }
                 }
             }
 
@@ -90,15 +100,17 @@ class AuthController extends Controller
                 'read_duration_seconds' => $request->read_duration_seconds,
                 'referral_code' => strtoupper(Str::random(8)),
                 'referred_by_id' => $referrer?->id,
-                'profession' => $invite->profession(),
-                'tier' => $invite->tier(),
-                'beta_invite_code_id' => $invite->id,
+                'profession' => $invite ? $invite->profession() : null,
+                'tier' => $invite ? $invite->tier() : 'free',
+                'beta_invite_code_id' => $invite?->id,
             ]);
 
-            $invite->uses_count = $invite->uses_count + 1;
-            $invite->redeemed_by_user_id = $user->id;
-            $invite->redeemed_at = now();
-            $invite->save();
+            if ($invite) {
+                $invite->uses_count = $invite->uses_count + 1;
+                $invite->redeemed_by_user_id = $user->id;
+                $invite->redeemed_at = now();
+                $invite->save();
+            }
 
             if ($promo) {
                 $promoEngine->redeemForUser($user, $promo);
@@ -113,7 +125,11 @@ class AuthController extends Controller
 
         Auth::login($user);
 
-        return redirect('/onboarding/financial');
+        if ($user->beta_invite_code_id) {
+            return redirect('/onboarding/financial');
+        }
+
+        return redirect('/onboarding/profession');
     }
 
     public function saveProfession(Request $request)
@@ -122,7 +138,7 @@ class AuthController extends Controller
 
         if ($user->beta_invite_code_id) {
             return redirect('/onboarding/financial')
-                ->with('success', 'Your profession is locked to your beta invite.');
+                ->with('success', 'Your profession is locked to your access code.');
         }
 
         $request->validate([
@@ -194,7 +210,7 @@ class AuthController extends Controller
             $home = $user->canAccessCompanyBooks() ? '/company' : '/dashboard';
 
             return redirect($home)
-                ->with('success', 'Welcome to the PractisBase closed beta. Your Pro plan is active.');
+                ->with('success', 'Welcome to PractisBase. Your Pro access is active.');
         }
 
         return redirect('/onboarding/plans');

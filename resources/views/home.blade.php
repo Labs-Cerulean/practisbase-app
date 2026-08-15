@@ -48,6 +48,19 @@
             right: 0;
         }
         .top img { height: 34px; width: auto; }
+        .top-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            text-decoration: none;
+            color: var(--ink);
+        }
+        .top-brand strong {
+            font-family: Fraunces, Georgia, serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
         .top-nav {
             display: flex;
             align-items: center;
@@ -60,6 +73,10 @@
             color: var(--ink-soft);
         }
         .top-nav a:hover { color: var(--ink); }
+        .top-nav a.btn-primary,
+        .top-nav a.btn-primary:hover {
+            color: #fff;
+        }
 
         .btn {
             display: inline-flex;
@@ -78,10 +95,10 @@
         .btn:hover { transform: translateY(-1px); }
         .btn-primary {
             background: var(--ink);
-            color: #fff;
+            color: #fff !important;
             box-shadow: 0 14px 30px rgba(11, 31, 51, 0.18);
         }
-        .btn-primary:hover { background: #13293f; }
+        .btn-primary:hover { background: #13293f; color: #fff !important; }
         .btn-ghost {
             background: rgba(255, 255, 255, 0.55);
             border-color: var(--line);
@@ -101,7 +118,7 @@
             min-height: 100vh;
             min-height: 100svh;
             display: grid;
-            align-items: end;
+            align-items: center;
             overflow: hidden;
             background:
                 linear-gradient(180deg, rgba(243, 247, 251, 0.15) 0%, rgba(243, 247, 251, 0.72) 58%, var(--paper) 100%),
@@ -116,13 +133,13 @@
         }
         .hero-product {
             position: absolute;
-            right: clamp(-4%, 2vw, 8%);
-            top: 12%;
-            width: min(58vw, 720px);
-            aspect-ratio: 16 / 11;
+            right: clamp(-2%, 3vw, 8%);
+            top: 50%;
+            transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg);
+            width: min(52vw, 640px);
             border-radius: 22px 0 0 22px;
             background:
-                linear-gradient(160deg, rgba(255,255,255,0.95), rgba(255,255,255,0.72)),
+                linear-gradient(160deg, rgba(255,255,255,0.97), rgba(255,255,255,0.78)),
                 #fff;
             border: 1px solid rgba(255,255,255,0.7);
             border-right: 0;
@@ -130,28 +147,13 @@
                 0 40px 80px rgba(11, 31, 51, 0.18),
                 inset 0 1px 0 rgba(255,255,255,0.9);
             overflow: hidden;
-            transform: perspective(1200px) rotateY(-8deg) rotateX(4deg);
             transform-origin: right center;
-        }
-        .hero-product::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background:
-                linear-gradient(90deg, transparent 0%, rgba(11,126,181,0.06) 100%),
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 27px,
-                    rgba(15, 39, 68, 0.045) 27px,
-                    rgba(15, 39, 68, 0.045) 28px
-                );
         }
         .hero-product-chrome {
             position: relative;
             display: flex;
             gap: 0.35rem;
-            padding: 0.85rem 1rem;
+            padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--line);
             background: rgba(255,255,255,0.7);
         }
@@ -163,37 +165,38 @@
         }
         .hero-product-body {
             position: relative;
-            padding: 1.25rem 1.4rem 1.5rem;
+            padding: 1.1rem 1.25rem 1.35rem;
             display: grid;
-            gap: 0.85rem;
+            gap: 0.7rem;
         }
         .hero-row {
             display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 0.75rem;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.65rem;
         }
         .hero-block {
             border-radius: 12px;
-            background: rgba(243, 247, 251, 0.9);
+            background: rgba(243, 247, 251, 0.95);
             border: 1px solid var(--line);
-            padding: 0.9rem 1rem;
-            min-height: 4.5rem;
+            padding: 0.85rem 0.95rem;
+            min-height: 4.1rem;
         }
         .hero-block strong {
             display: block;
-            font-size: 0.72rem;
-            letter-spacing: 0.04em;
+            font-size: 0.68rem;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
             color: var(--mute);
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.3rem;
             font-weight: 700;
         }
         .hero-block em {
             font-style: normal;
             font-family: Fraunces, Georgia, serif;
-            font-size: 1.35rem;
+            font-size: 1.15rem;
             font-weight: 600;
             color: var(--ink);
+            line-height: 1.2;
         }
         .hero-block.accent {
             background: linear-gradient(145deg, #0b1f33, #163553);
@@ -202,6 +205,27 @@
         }
         .hero-block.accent strong { color: rgba(255,255,255,0.65); }
         .hero-block.accent em { color: #fff; }
+        .hero-block.med {
+            background: linear-gradient(145deg, #0f766e, #115e59);
+            border-color: transparent;
+            color: #fff;
+        }
+        .hero-block.med strong { color: rgba(255,255,255,0.7); }
+        .hero-block.med em { color: #fff; }
+        .hero-block.arch {
+            background: linear-gradient(145deg, #3f6212, #365314);
+            border-color: transparent;
+            color: #fff;
+        }
+        .hero-block.arch strong { color: rgba(255,255,255,0.7); }
+        .hero-block.arch em { color: #fff; }
+        .hero-block.eng {
+            background: linear-gradient(145deg, #0c4a6e, #075985);
+            border-color: transparent;
+            color: #fff;
+        }
+        .hero-block.eng strong { color: rgba(255,255,255,0.7); }
+        .hero-block.eng em { color: #fff; }
 
         .hero-copy {
             position: relative;
@@ -209,22 +233,29 @@
             max-width: 1280px;
             width: 100%;
             margin: 0 auto;
-            padding: clamp(7rem, 18vh, 10rem) clamp(1.25rem, 4vw, 3.5rem) clamp(2.5rem, 6vh, 4rem);
+            padding: clamp(5.5rem, 10vh, 7rem) clamp(1.25rem, 4vw, 3.5rem) clamp(2rem, 5vh, 3rem);
+        }
+        .hero-logo {
+            display: block;
+            width: clamp(4.5rem, 10vw, 6.5rem);
+            height: auto;
+            margin: 0 0 1rem;
+            filter: drop-shadow(0 10px 24px rgba(11, 31, 51, 0.12));
         }
         .hero-brand {
-            margin: 0 0 0.85rem;
+            margin: 0 0 0.65rem;
             font-family: Fraunces, Georgia, serif;
-            font-size: clamp(3rem, 8vw, 5.2rem);
+            font-size: clamp(2.75rem, 7vw, 4.6rem);
             font-weight: 700;
             letter-spacing: -0.04em;
             line-height: 0.95;
             color: var(--ink);
         }
         .hero h1 {
-            margin: 0 0 0.85rem;
+            margin: 0 0 0.75rem;
             max-width: 14ch;
             font-family: Fraunces, Georgia, serif;
-            font-size: clamp(1.55rem, 3.4vw, 2.35rem);
+            font-size: clamp(1.45rem, 3.2vw, 2.15rem);
             font-weight: 500;
             line-height: 1.2;
             color: var(--ink-soft);
@@ -233,11 +264,11 @@
             margin: 0;
             max-width: 28rem;
             color: var(--mute);
-            font-size: 1.08rem;
+            font-size: 1.05rem;
             line-height: 1.55;
         }
         .hero-cta {
-            margin-top: 1.75rem;
+            margin-top: 1.5rem;
             display: flex;
             flex-wrap: wrap;
             gap: 0.7rem;
@@ -465,28 +496,29 @@
 
         @media (max-width: 900px) {
             .hero-product {
-                opacity: 0.35;
-                width: min(90vw, 560px);
-                right: -12%;
-                top: 8%;
+                opacity: 0.28;
+                width: min(88vw, 520px);
+                right: -14%;
             }
-            .hero-copy { padding-top: 7.5rem; }
+            .hero-copy { padding-top: 5.5rem; }
             .made-row { grid-template-columns: 1fr; gap: 0.45rem; }
             .paths { grid-template-columns: 1fr; gap: 2rem; }
         }
         @media (max-width: 560px) {
             .hero-product { display: none; }
             .top-nav .hide-sm { display: none; }
+            .top-brand strong { display: none; }
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .hero-brand, .hero h1, .hero-lead, .hero-cta, .hero-product {
+            .hero-logo, .hero-brand, .hero h1, .hero-lead, .hero-cta, .hero-product {
                 animation: rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
             }
-            .hero h1 { animation-delay: 0.08s; }
-            .hero-lead { animation-delay: 0.14s; }
+            .hero-brand { animation-delay: 0.05s; }
+            .hero h1 { animation-delay: 0.1s; }
+            .hero-lead { animation-delay: 0.15s; }
             .hero-cta { animation-delay: 0.2s; }
-            .hero-product { animation-delay: 0.18s; animation-name: float-in; }
+            .hero-product { animation-delay: 0.16s; animation-name: float-in; }
             .made-row, .path, .community {
                 animation: rise 0.7s ease both;
                 animation-timeline: view();
@@ -498,19 +530,22 @@
             to { opacity: 1; transform: translateY(0); }
         }
         @keyframes float-in {
-            from { opacity: 0; transform: perspective(1200px) rotateY(-8deg) rotateX(4deg) translateX(40px); }
-            to { opacity: 1; transform: perspective(1200px) rotateY(-8deg) rotateX(4deg) translateX(0); }
+            from { opacity: 0; transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(40px); }
+            to { opacity: 1; transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(0); }
         }
     </style>
 </head>
 <body>
     <header class="top">
-        <img src="/images/logo.png" alt="PractisBase">
+        <a class="top-brand" href="/">
+            <img src="/images/logo.png" alt="">
+            <strong>PractisBase</strong>
+        </a>
         <nav class="top-nav" aria-label="Primary">
             <a class="hide-sm" href="#what">Product</a>
             <a class="hide-sm" href="/pricing">Pricing</a>
             <a href="/login">Sign in</a>
-            <a href="/register" class="btn btn-primary" style="padding: 0.65rem 1rem;">Join beta</a>
+            <a href="/register" class="btn btn-primary" style="padding: 0.65rem 1.05rem;">Register</a>
         </nav>
     </header>
 
@@ -522,23 +557,23 @@
                 </div>
                 <div class="hero-product-body">
                     <div class="hero-row">
-                        <div class="hero-block accent">
-                            <strong>Live fiscal</strong>
-                            <em>Tax · VAT · SSC</em>
+                        <div class="hero-block med">
+                            <strong>Medical</strong>
+                            <em>Vault · journals · Rx</em>
                         </div>
-                        <div class="hero-block">
-                            <strong>Today</strong>
-                            <em style="font-size: 1.1rem;">Malta rules</em>
+                        <div class="hero-block arch">
+                            <strong>Architect</strong>
+                            <em>Reports · stamps</em>
                         </div>
                     </div>
                     <div class="hero-row">
-                        <div class="hero-block">
-                            <strong>Clients</strong>
-                            <em style="font-size: 1.15rem;">Invoices &amp; RFPs</em>
+                        <div class="hero-block eng">
+                            <strong>Engineer</strong>
+                            <em>Certificates · PA</em>
                         </div>
-                        <div class="hero-block">
-                            <strong>Practice</strong>
-                            <em style="font-size: 1.15rem;">Your tools</em>
+                        <div class="hero-block accent">
+                            <strong>Accounts</strong>
+                            <em>Tax · VAT · SSC</em>
                         </div>
                     </div>
                 </div>
@@ -546,12 +581,13 @@
         </div>
 
         <div class="hero-copy">
+            <img class="hero-logo" src="/images/logo.png" alt="PractisBase">
             <p class="hero-brand">PractisBase</p>
             <h1>Made for Maltese practice.</h1>
             <p class="hero-lead">The sole-trader toolkit that understands local tax, VAT, and the way doctors, architects, and engineers actually work.</p>
             <div class="hero-cta">
                 <a href="#what" class="btn btn-sea">See what it does</a>
-                <a href="/pricing" class="btn btn-ghost">View plans</a>
+                <a href="/register" class="btn btn-ghost">Register</a>
             </div>
         </div>
     </section>
@@ -624,17 +660,17 @@
     </section>
 
     <section class="community" id="join">
-        <h2>Join the closed beta.</h2>
-        <p>Community-led growth. Bring a promo or referral if you have one — invite codes still open the door. No card charge yet.</p>
+        <h2>Register and start building.</h2>
+        <p>Open registration for Maltese sole traders. Bring an access or promo code if you have one — profession codes unlock Full Pro for free. No card charge yet.</p>
         <div class="community-actions">
-            <button type="button" class="btn btn-sea" id="openJoinForm">Join with a promo code</button>
-            <a href="/pricing" class="btn btn-ghost">See pricing next</a>
-            <a href="/register" class="btn btn-ghost">Register</a>
+            <a href="/register" class="btn btn-sea">Register</a>
+            <button type="button" class="btn btn-ghost" id="openJoinForm">Have a promo code?</button>
+            <a href="/pricing" class="btn btn-ghost">See pricing</a>
         </div>
-        <form class="join-panel" id="heroJoinForm" method="GET" action="/register" aria-label="Join with promo or referral code">
-            <label for="landingPromoCode">Promo code</label>
+        <form class="join-panel" id="heroJoinForm" method="GET" action="/register" aria-label="Register with promo or referral code">
+            <label for="landingPromoCode">Access / promo code</label>
             <input id="landingPromoCode" type="text" name="promo_code" maxlength="40" placeholder="e.g. FOUNDING-50" value="{{ request('promo_code') }}" autocomplete="off">
-            <p class="hint">Founding cohorts and admin-minted offers apply at registration.</p>
+            <p class="hint">Profession access codes unlock Full Pro. Cohort promos apply free months or discounts.</p>
             <label for="landingRefCode">Referral code (optional)</label>
             <input id="landingRefCode" type="text" name="ref" maxlength="40" placeholder="Friend's code" value="{{ request('ref') }}" autocomplete="off">
             <div class="join-actions">
