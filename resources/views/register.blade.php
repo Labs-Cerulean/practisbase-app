@@ -97,7 +97,7 @@
             <img src="/images/logo.png" alt="PractisBase">
             <h2 style="color: var(--primary-navy); margin-bottom: 0.25rem;">Create Your Account</h2>
             <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">For Maltese <strong>self-employed sole traders</strong> and professional practices — not limited companies.</p>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.5rem 0 0; line-height: 1.4;">Closed beta — you need a personal invite code. If you trade through a Ltd, partnership company, or VAT group, use a company accounting tool instead.</p>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.5rem 0 0; line-height: 1.4;">If you trade through a Ltd, partnership company, or VAT group, use a company accounting tool instead. Optional access codes unlock Full Pro for free.</p>
         </div>
 
         @if ($errors->any())
@@ -125,14 +125,9 @@
                 <input type="password" name="password" required>
             </div>
             <div class="form-group">
-                <label>Beta invite code</label>
-                <input type="text" name="invite_code" value="{{ old('invite_code', request('code')) }}" required maxlength="40" placeholder="e.g. ENG-AB12-CD34" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
-                <p style="margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Required. Each code unlocks one Pro account for Engineer, Architect, or Medical — and can be used only once.</p>
-            </div>
-            <div class="form-group">
-                <label>Promo code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
-                <input type="text" name="promo_code" value="{{ old('promo_code', request('promo_code')) }}" maxlength="40" placeholder="e.g. FOUNDING-50" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
-                <p style="margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Community cohort codes (Founding 50, free months, discounts). Pre-filled from your invite link when present.</p>
+                <label>Access / promo code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                <input type="text" name="promo_code" value="{{ old('promo_code', request('promo_code', request('code'))) }}" maxlength="40" placeholder="e.g. FOUNDING-50 or ENG-AB12-CD34" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
+                <p style="margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Profession access codes unlock Full Pro for free. Cohort promos apply free months or discounts. Leave blank to start on Free.</p>
             </div>
             <div class="form-group">
                 <label>Referral code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>

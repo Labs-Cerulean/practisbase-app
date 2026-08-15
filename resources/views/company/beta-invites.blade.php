@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('page_title', 'Beta invites')
+@section('page_title', 'Access codes')
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
         <div>
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Beta invite codes</h1>
+            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Access codes</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.95rem; max-width: 36rem;">
-                Mint one-use codes locked to Engineer, Architect, or Medical Pro. Registration without a valid code is blocked.
+                Mint profession-locked codes that unlock Full Pro for free at registration (same field as promo codes).
             </p>
         </div>
     </div>
@@ -41,7 +41,7 @@
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
             @if($invites->isEmpty())
-                <div style="padding: 2rem; color: var(--text-muted); text-align: center;">No invites yet. Generate one for each beta tester.</div>
+                <div style="padding: 2rem; color: var(--text-muted); text-align: center;">No access codes yet. Generate one for Medical, Architect, or Engineer Pro.</div>
             @else
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
                     <thead>

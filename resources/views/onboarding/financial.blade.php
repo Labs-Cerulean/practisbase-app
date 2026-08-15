@@ -28,7 +28,7 @@
 
         @if($user->beta_invite_code_id)
             <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; color: #065f46; font-size: 0.88rem; line-height: 1.45;">
-                Beta invite active: <strong>{{ $user->profession }}</strong> · Full Pro unlocked. Profession is locked to your invite.
+                Beta access active: <strong>{{ $user->profession }}</strong> · Full Pro unlocked. Profession is locked to your access code.
             </div>
         @endif
 
