@@ -46,6 +46,7 @@ use App\Http\Controllers\Company\BankController as CompanyBankController;
 use App\Http\Controllers\Company\DividendController as CompanyDividendController;
 use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringInvoiceController;
 use App\Http\Controllers\Company\BetaInviteController as CompanyBetaInviteController;
+use App\Http\Controllers\Admin\PromotionController as AdminPromotionController;
 use App\Http\Controllers\CommunityFeedbackController;
 use App\Http\Controllers\CommunityFeedbackOperatorController;
 use App\Http\Controllers\LegalController;
@@ -445,5 +446,12 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/beta-invites', [CompanyBetaInviteController::class, 'index']);
         Route::post('/beta-invites', [CompanyBetaInviteController::class, 'store']);
         Route::post('/beta-invites/{id}/revoke', [CompanyBetaInviteController::class, 'revoke'])->whereNumber('id');
+
+        Route::get('/promotions', [AdminPromotionController::class, 'index']);
+        Route::get('/promotions/create', [AdminPromotionController::class, 'create']);
+        Route::post('/promotions', [AdminPromotionController::class, 'store']);
+        Route::get('/promotions/{promotion}/edit', [AdminPromotionController::class, 'edit']);
+        Route::put('/promotions/{promotion}', [AdminPromotionController::class, 'update']);
+        Route::post('/promotions/{promotion}/toggle', [AdminPromotionController::class, 'toggle']);
     });
 });

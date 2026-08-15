@@ -23,10 +23,13 @@ use Illuminate\Notifications\Notifiable;
     'warrant_type',
     'warrant_number',
     'postnominals',
-    // SaaS Tier & Referrals
+    // SaaS Tier & Referrals / Promo wallet
     'tier',
     'referral_code',
     'referred_by_id',
+    'credit_balance',
+    'trial_ends_at',
+    'applied_promotion_id',
     // Fiscal & Tax Data (NEW)
     'employment_type',
     'date_of_birth',
@@ -79,12 +82,34 @@ class User extends Authenticatable
             'home_office_percent' => 'decimal:2',
             'clients_created_count' => 'integer',
             'company_books_enabled' => 'boolean',
+            'credit_balance' => 'decimal:2',
+            'trial_ends_at' => 'datetime',
         ];
     }
 
     /**
      * Relationships
      */
+    public function appliedPromotion()
+    {
+        return $this->belongsTo(Promotion::class, 'applied_promotion_id');
+    }
+
+    public function referralsMade()
+    {
+        return $this->hasMany(Referral::class, 'referrer_id');
+    }
+
+    public function referralReceived()
+    {
+        return $this->hasOne(Referral::class, 'referred_id');
+    }
+
+    public function referrer()
+    {
+        return $this->belongsTo(User::class, 'referred_by_id');
+    }
+
     public function clients()
     {
         return $this->hasMany(Client::class);
