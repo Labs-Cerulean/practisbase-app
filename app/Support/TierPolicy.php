@@ -44,10 +44,18 @@ class TierPolicy
         return '+ '.self::VAT_RATE_PERCENT.'% VAT';
     }
 
+    /** Gross monthly price including Maltese VAT, e.g. "18.87". */
+    public static function priceIncludingVat(string $exVat): string
+    {
+        $gross = (float) $exVat * (1 + ((float) self::VAT_RATE_PERCENT / 100));
+
+        return number_format(round($gross, 2), 2);
+    }
+
     /** One-line public pricing disclaimer. */
     public static function pricingVatDisclaimer(): string
     {
-        return 'Prices exclude '.self::VAT_RATE_PERCENT.'% Maltese VAT. VAT-registered businesses can usually reclaim it.';
+        return 'List prices exclude '.self::VAT_RATE_PERCENT.'% Maltese VAT.';
     }
 
     public const TIER_FREE = 'free';

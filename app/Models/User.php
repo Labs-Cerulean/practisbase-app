@@ -305,6 +305,18 @@ class User extends Authenticatable
         return filled($this->profession) && filled($this->employment_type) && filled($this->tier);
     }
 
+    /**
+     * Paid tiers without live Stripe: access-code Pro, or an active promo trial window.
+     */
+    public function canActivatePaidTierWithoutStripe(): bool
+    {
+        if ($this->beta_invite_code_id) {
+            return true;
+        }
+
+        return $this->trial_ends_at !== null && $this->trial_ends_at->isFuture();
+    }
+
     public function onboardingRedirectPath(): string
     {
         if (! filled($this->profession)) {
