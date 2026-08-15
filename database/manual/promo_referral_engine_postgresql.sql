@@ -37,13 +37,6 @@ ALTER TABLE users
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS applied_promotion_id bigint NULL;
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'users_applied_promotion_id_foreign'
-    ) THEN
-        ALTER TABLE users
-            ADD CONSTRAINT users_applied_promotion_id_foreign
-            FOREIGN KEY (applied_promotion_id) REFERENCES promotions(id) ON DELETE SET NULL;
-    END IF;
-END $$;
+ALTER TABLE users
+    ADD CONSTRAINT users_applied_promotion_id_foreign
+    FOREIGN KEY (applied_promotion_id) REFERENCES promotions(id) ON DELETE SET NULL;
