@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/css/style.css?v=shell4">
+    <link rel="stylesheet" href="/css/style.css?v=shell5">
     @include('partials.pwa-head')
 </head>
 <body>
@@ -155,7 +155,7 @@
                 <div class="avatar" aria-hidden="true">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
                 <a href="/settings" class="header-action header-desktop-only">Settings</a>
                 @unless($companyMode)
-                    <button type="button" class="header-action header-desktop-only" data-open-install-app style="border: 1px solid rgba(255,255,255,0.35); background: transparent; cursor: pointer; font: inherit;">Download app</button>
+                    <button type="button" class="header-action header-desktop-only header-action-btn" data-open-install-app>Download app</button>
                 @endunless
                 <form action="/logout" method="POST" class="header-desktop-only header-logout-form">
                     @csrf

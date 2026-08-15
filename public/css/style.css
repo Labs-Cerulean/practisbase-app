@@ -243,6 +243,22 @@ img, svg { max-width: 100%; height: auto; }
 
 .header-action:hover { color: #fff; }
 
+.header-action-btn {
+    background: none;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+    border-left: 1px solid rgba(255,255,255,0.2);
+    padding: 0 0 0 0.85rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.header-action-btn:hover { color: #fff; }
+
 .header-logout-form {
     margin: 0;
     border-left: 1px solid rgba(255,255,255,0.2);
