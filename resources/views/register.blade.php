@@ -129,6 +129,16 @@
                 <input type="text" name="invite_code" value="{{ old('invite_code', request('code')) }}" required maxlength="40" placeholder="e.g. ENG-AB12-CD34" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
                 <p style="margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Required. Each code unlocks one Pro account for Engineer, Architect, or Medical — and can be used only once.</p>
             </div>
+            <div class="form-group">
+                <label>Promo code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                <input type="text" name="promo_code" value="{{ old('promo_code', request('promo_code')) }}" maxlength="40" placeholder="e.g. FOUNDING-50" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
+                <p style="margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Community cohort codes (Founding 50, free months, discounts). Pre-filled from your invite link when present.</p>
+            </div>
+            <div class="form-group">
+                <label>Referral code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                <input type="text" name="ref" value="{{ old('ref', request('ref')) }}" maxlength="40" placeholder="Friend's referral code" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
+                <p style="margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Credits your referrer after your first paid subscription clears.</p>
+            </div>
 
             <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--primary-navy); font-size: 0.9rem;">Master Service Agreement &amp; Privacy Policy</label>
             <p style="margin: 0 0 0.75rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">

@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\BetaInviteCode;
+use App\Models\Promotion;
 use App\Models\User;
+use App\Support\PromotionEngine;
+use App\Support\ReferralRewardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +31,8 @@ class AuthController extends Controller
                     ->uncompromised(),
             ],
             'invite_code' => 'required|string|max:40',
+            'promo_code' => 'nullable|string|max:40',
+            'ref' => 'nullable|string|max:40',
             'accept_terms' => 'accepted',
             'confirm_sole_trader' => 'accepted',
             'confirm_age_adult' => 'accepted',
@@ -39,8 +44,10 @@ class AuthController extends Controller
         ]);
 
         $normalized = BetaInviteCode::normalizeCode($request->invite_code);
+        $promoRaw = trim((string) ($request->input('promo_code') ?: $request->query('promo_code', '')));
+        $refRaw = trim((string) ($request->input('ref') ?: $request->query('ref', '')));
 
-        $user = DB::transaction(function () use ($request, $normalized) {
+        $user = DB::transaction(function () use ($request, $normalized, $promoRaw, $refRaw) {
             $invite = BetaInviteCode::query()
                 ->where('code', $normalized)
                 ->lockForUpdate()
@@ -52,6 +59,28 @@ class AuthController extends Controller
                 ]);
             }
 
+            $promoEngine = app(PromotionEngine::class);
+            $promo = null;
+            if ($promoRaw !== '') {
+                $promo = $promoEngine->findRedeemable($promoRaw);
+                if (! $promo) {
+                    throw ValidationException::withMessages([
+                        'promo_code' => 'That promo code is invalid, expired, inactive, or fully used.',
+                    ]);
+                }
+            }
+
+            $referrer = null;
+            if ($refRaw !== '') {
+                $refCode = Promotion::normalizeCode($refRaw);
+                $referrer = User::query()->where('referral_code', $refCode)->first();
+                if (! $referrer) {
+                    throw ValidationException::withMessages([
+                        'ref' => 'That referral code is not recognised.',
+                    ]);
+                }
+            }
+
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -60,6 +89,7 @@ class AuthController extends Controller
                 'accepted_ip' => $request->ip(),
                 'read_duration_seconds' => $request->read_duration_seconds,
                 'referral_code' => strtoupper(Str::random(8)),
+                'referred_by_id' => $referrer?->id,
                 'profession' => $invite->profession(),
                 'tier' => $invite->tier(),
                 'beta_invite_code_id' => $invite->id,
@@ -69,6 +99,14 @@ class AuthController extends Controller
             $invite->redeemed_by_user_id = $user->id;
             $invite->redeemed_at = now();
             $invite->save();
+
+            if ($promo) {
+                $promoEngine->redeemForUser($user, $promo);
+            }
+
+            if ($referrer) {
+                app(ReferralRewardService::class)->attachPending($referrer, $user);
+            }
 
             return $user;
         });
