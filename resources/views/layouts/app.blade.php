@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/css/style.css?v=shell3">
+    <link rel="stylesheet" href="/css/style.css?v=shell4">
     @include('partials.pwa-head')
 </head>
 <body>
@@ -108,6 +108,11 @@
                         @endif
 
                         <li class="nav-mobile-only nav-section-label">Account</li>
+                        @unless($companyMode)
+                            <li class="nav-mobile-only">
+                                <button type="button" class="nav-link" data-open-install-app style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit;">Download app</button>
+                            </li>
+                        @endunless
                         <li class="nav-mobile-only">
                             <a href="/settings" class="nav-link {{ request()->is('settings*') ? 'active' : '' }}">Settings</a>
                         </li>
@@ -150,7 +155,7 @@
                 <div class="avatar" aria-hidden="true">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
                 <a href="/settings" class="header-action header-desktop-only">Settings</a>
                 @unless($companyMode)
-                    <button type="button" class="header-action" data-open-install-app style="border: 1px solid rgba(255,255,255,0.35); background: transparent; cursor: pointer; font: inherit;">Download app</button>
+                    <button type="button" class="header-action header-desktop-only" data-open-install-app style="border: 1px solid rgba(255,255,255,0.35); background: transparent; cursor: pointer; font: inherit;">Download app</button>
                 @endunless
                 <form action="/logout" method="POST" class="header-desktop-only header-logout-form">
                     @csrf
