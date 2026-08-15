@@ -176,7 +176,7 @@
     <div class="cs-wrap">
         <div class="cs-hero">
             <div>
-                <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Cerulean Labs · Marketing</div>
+                <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Marketing · Content studio</div>
                 <h1>Content studio</h1>
                 <p>
                     Ready-to-post LinkedIn packs for PractisBase. Screenshot the graphic, copy the caption, or screen-record the tip for each card.
@@ -193,7 +193,7 @@
             <h2>How to use</h2>
             <ol>
                 <li>Pick a pack below (start with <strong>Launch · Founding 25</strong>).</li>
-                <li>Screenshot the square graphic (full card — real background art + text). Avoid browser chrome if you can.</li>
+                <li>Screenshot the square graphic (full card: real background art and text). Avoid browser chrome if you can.</li>
                 <li>Click <strong>Copy caption</strong>, paste into LinkedIn, attach the image.</li>
                 <li>Optional: follow the screen-record tip for a 15–30s demo clip.</li>
                 <li>Founding code live in copy: <code>{{ $foundingCode }}</code> · first 25 · 3 months free. Links use <code>utm_source=linkedin&amp;utm_medium=social&amp;utm_campaign=…</code> (plus <code>promo_code=</code> on Founding posts).</li>
@@ -211,13 +211,13 @@
         @foreach($packs as $pack)
             @php
                 $group = match (true) {
-                    str_contains($pack['id'], 'launch') || str_contains($pack['id'], 'founding') || $pack['id'] === 'local-pride' => 'launch',
+                    str_contains($pack['id'], 'launch') || str_contains($pack['id'], 'founding') || $pack['id'] === 'local-pride' || $pack['id'] === 'built-in-malta' => 'launch',
                     in_array($pack['id'], [
                         'doctors-vault', 'architects-desk', 'engineers-field',
                         'bca-compliance', 'secure-clinic', 'equipment-certification',
                         'work-from-site', 'warrant-stamp',
                     ], true) => 'profession',
-                    in_array($pack['id'], ['backup-trust', 'cerulean-labs', 'accountants-best-friend'], true) => 'trust',
+                    in_array($pack['id'], ['backup-trust', 'accountants-best-friend'], true) => 'trust',
                     default => 'product',
                 };
             @endphp
