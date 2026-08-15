@@ -550,7 +550,7 @@
             <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
                 Open PractisBase in one tap from your phone or desktop — no app store needed.
             </p>
-            <button type="button" data-open-install-app style="background: var(--primary-navy); color: white; border: none; padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.9rem; cursor: pointer;">
+            <button type="button" data-open-install-app style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer;">
                 Download app
             </button>
         </div>

@@ -100,15 +100,15 @@
         </div>
     @endif
 
-    <div id="pb-dashboard-install-card" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow-sm);">
+    <div id="pb-dashboard-install-card" class="pb-install-card-mobile" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: none; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow-sm);">
         <div>
             <div style="font-weight: 700; color: var(--primary-navy);">Download app</div>
             <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.2rem;">
-                One tap from your desktop, Android, or iPhone — no app store.
+                One tap from your phone — no app store.
             </div>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button type="button" data-open-install-app style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; cursor: pointer; white-space: nowrap;">Download app</button>
+            <button type="button" data-open-install-app style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer; white-space: nowrap;">Download app</button>
             <button type="button" id="pb-dismiss-install-card" style="background: white; color: var(--text-muted); border: 1px solid var(--border-light); padding: 0.55rem 0.85rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer;">Hide</button>
         </div>
     </div>
@@ -125,6 +125,9 @@
                     return;
                 }
             } catch (e) {}
+            if (window.matchMedia('(max-width: 900px)').matches) {
+                card.style.display = 'flex';
+            }
             if (dismiss) {
                 dismiss.addEventListener('click', function () {
                     card.style.display = 'none';
