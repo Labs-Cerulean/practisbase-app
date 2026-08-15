@@ -115,10 +115,9 @@
         /* —— Hero: one composition —— */
         .hero {
             position: relative;
-            min-height: 100vh;
-            min-height: 100svh;
+            min-height: auto;
             display: grid;
-            align-items: center;
+            align-items: start;
             overflow: hidden;
             background:
                 linear-gradient(180deg, rgba(243, 247, 251, 0.15) 0%, rgba(243, 247, 251, 0.72) 58%, var(--paper) 100%),
@@ -134,8 +133,8 @@
         .hero-product {
             position: absolute;
             right: clamp(-2%, 3vw, 8%);
-            top: 50%;
-            transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg);
+            top: 4.75rem;
+            transform: perspective(1200px) rotateY(-8deg) rotateX(3deg);
             width: min(52vw, 640px);
             border-radius: 22px 0 0 22px;
             background:
@@ -233,23 +232,14 @@
             max-width: 1280px;
             width: 100%;
             margin: 0 auto;
-            padding: clamp(5.5rem, 10vh, 7rem) clamp(1.25rem, 4vw, 3.5rem) clamp(2rem, 5vh, 3rem);
+            padding: 5.75rem clamp(1.25rem, 4vw, 3.5rem) 2.75rem;
         }
         .hero-logo {
             display: block;
-            width: clamp(4.5rem, 10vw, 6.5rem);
+            width: clamp(11rem, 28vw, 18rem);
             height: auto;
-            margin: 0 0 1rem;
-            filter: drop-shadow(0 10px 24px rgba(11, 31, 51, 0.12));
-        }
-        .hero-brand {
-            margin: 0 0 0.65rem;
-            font-family: Fraunces, Georgia, serif;
-            font-size: clamp(2.75rem, 7vw, 4.6rem);
-            font-weight: 700;
-            letter-spacing: -0.04em;
-            line-height: 0.95;
-            color: var(--ink);
+            margin: 0 0 1.15rem;
+            filter: drop-shadow(0 16px 36px rgba(11, 31, 51, 0.14));
         }
         .hero h1 {
             margin: 0 0 0.75rem;
@@ -500,7 +490,8 @@
                 width: min(88vw, 520px);
                 right: -14%;
             }
-            .hero-copy { padding-top: 5.5rem; }
+            .hero-copy { padding-top: 5.25rem; padding-bottom: 2.25rem; }
+            .hero-logo { width: clamp(9.5rem, 42vw, 14rem); }
             .made-row { grid-template-columns: 1fr; gap: 0.45rem; }
             .paths { grid-template-columns: 1fr; gap: 2rem; }
         }
@@ -508,15 +499,15 @@
             .hero-product { display: none; }
             .top-nav .hide-sm { display: none; }
             .top-brand strong { display: none; }
+            .hero-copy { padding-top: 4.75rem; }
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .hero-logo, .hero-brand, .hero h1, .hero-lead, .hero-cta, .hero-product {
+            .hero-logo, .hero h1, .hero-lead, .hero-cta, .hero-product {
                 animation: rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
             }
-            .hero-brand { animation-delay: 0.05s; }
-            .hero h1 { animation-delay: 0.1s; }
-            .hero-lead { animation-delay: 0.15s; }
+            .hero h1 { animation-delay: 0.08s; }
+            .hero-lead { animation-delay: 0.14s; }
             .hero-cta { animation-delay: 0.2s; }
             .hero-product { animation-delay: 0.16s; animation-name: float-in; }
             .made-row, .path, .community {
@@ -530,8 +521,8 @@
             to { opacity: 1; transform: translateY(0); }
         }
         @keyframes float-in {
-            from { opacity: 0; transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(40px); }
-            to { opacity: 1; transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(0); }
+            from { opacity: 0; transform: perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(40px); }
+            to { opacity: 1; transform: perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(0); }
         }
     </style>
 </head>
@@ -582,7 +573,6 @@
 
         <div class="hero-copy">
             <img class="hero-logo" src="/images/logo.png" alt="PractisBase">
-            <p class="hero-brand">PractisBase</p>
             <h1>Made for Maltese practice.</h1>
             <p class="hero-lead">The sole-trader toolkit that understands local tax, VAT, and the way doctors, architects, and engineers actually work.</p>
             <div class="hero-cta">
