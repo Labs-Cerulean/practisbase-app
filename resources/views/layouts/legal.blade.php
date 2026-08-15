@@ -82,6 +82,7 @@
             text-decoration: none;
         }
     </style>
+    @include('partials.pwa-head')
 </head>
 <body>
     <div class="legal-shell">

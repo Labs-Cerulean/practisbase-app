@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\AccountantDownloadController;
+use App\Http\Controllers\DataBackupController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProfileController;
@@ -187,6 +188,9 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     });
     Route::get('/community/feedback/{id}', [CommunityFeedbackController::class, 'show'])->whereNumber('id');
     Route::post('/community/feedback/{id}/reply', [CommunityFeedbackController::class, 'reply'])->whereNumber('id');
+
+    Route::get('/exports/backup', [DataBackupController::class, 'form']);
+    Route::post('/exports/backup', [DataBackupController::class, 'download'])->middleware('throttle:5,1');
 
     Route::get('/ledger', [InvoiceController::class, 'index']);
     Route::get('/ledger/create', [InvoiceController::class, 'create']);

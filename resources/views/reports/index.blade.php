@@ -279,7 +279,7 @@
                 
                 <div style="border-top: 1px solid {{ $isOverThreshold ? '#fecaca' : 'var(--border-light)' }}; padding-top: 0.75rem; font-size: 0.85rem; color: {{ $isOverThreshold ? '#991b1b' : 'var(--text-muted)' }}; background: {{ $isOverThreshold ? '#fef2f2' : 'transparent' }}; margin: -1.5rem; margin-top: 1rem; padding: 1.5rem; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg);">
                     @if($isOverThreshold)
-                        <strong>CRITICAL ACTION REQUIRED:</strong> You have exceeded the €35,000 exempt threshold. By law, you must register for Article 10 (Standard VAT) within 30 days.
+                        <strong>VAT notice:</strong> over €35k. Article 10 registration usually due within 30 days.
                     @else
                         <strong>Action Required:</strong> Submit your annual declaration confirming your revenue remains under the threshold.
                     @endif

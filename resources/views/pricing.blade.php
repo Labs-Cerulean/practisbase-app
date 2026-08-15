@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    @include('partials.pwa-head')
 
     <style>
         :root {
@@ -508,7 +509,7 @@
             <a href="#plans" class="btn btn-primary">Compare plans</a>
             <a href="/register" class="btn btn-ghost">Register</a>
         </div>
-        <div class="beta-chip">No card charge yet. Access codes unlock Full Pro for free.</div>
+        <div class="beta-chip">Founding promos available. Card billing soon.</div>
     </section>
 
     <section class="section" id="plans">
@@ -695,7 +696,7 @@
     </section>
 
     <footer class="site-footer">
-        PractisBase models self employed sole traders in Malta. Sole trader scope only, not Ltd company accounts.
+        For Maltese sole traders, not Ltd companies.
         <div style="margin-top: 0.65rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
             <a href="/" style="color: var(--pb-sea); font-weight: 600; text-decoration: none;">Product</a>
             <a href="/privacy" style="color: var(--pb-sea); font-weight: 600; text-decoration: none;">Privacy Policy</a>

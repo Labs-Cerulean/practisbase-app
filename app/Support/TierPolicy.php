@@ -369,7 +369,7 @@ class TierPolicy
         }
 
         if (! self::isDowngrade($from, $to) && self::tierRank($to) >= self::tierRank($from)) {
-            $notes[] = 'Upgrade to '.self::label($to).'. Closed beta: no card charge yet.';
+            $notes[] = 'Upgrade to '.self::label($to).'. No card charge during Founding access.';
         }
 
         return array_values(array_unique($notes));

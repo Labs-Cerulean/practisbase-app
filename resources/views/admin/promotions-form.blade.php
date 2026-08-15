@@ -48,7 +48,7 @@
                     <label style="display: block; font-weight: 600; margin-bottom: 0.35rem;">Value</label>
                     <input type="number" name="value" step="0.01" min="0.01" required value="{{ old('value', $promotion->value ?? '3') }}"
                            style="width: 100%; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">Months, % off, or € off. For Founding 50: type Free months, value 6, max uses 1 per unique code.</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">Months, % off, or € off. Soft launch Founding: type Free months, value 3, max uses 1 per unique code (~20 seats).</div>
                 </div>
             </div>
 

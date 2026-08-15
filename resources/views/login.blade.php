@@ -22,6 +22,7 @@
         .btn-submit { width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
         .btn-submit:hover { background: var(--primary-cerulean-hover); }
     </style>
+    @include('partials.pwa-head')
 </head>
 <body>
 

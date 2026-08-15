@@ -7,7 +7,7 @@
         <div>
             <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Promotion engine</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.95rem; max-width: 40rem;">
-                Mint Founding codes here (Cerulean Labs). For the first 50: create unique codes with type Free months, value 6, max uses 1. Redeemed at registration; paid plans stay locked until a code or live billing.
+                Mint Founding codes here (Cerulean Labs). Soft launch: prefer ~20 codes with type Free months, value 3, max uses 1 each. Redeemed at registration; paid plans stay locked until a code or live billing.
             </p>
         </div>
         <a href="/company/promotions/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ New promo</a>

@@ -63,6 +63,7 @@
             font-size: 0.85rem;
         }
     </style>
+    @include('partials.pwa-head')
 </head>
 <body>
 @php
@@ -90,17 +91,17 @@
             </div>
         @endif
 
-        @if($canPaid)
+        @if($canPaid && $user->trial_ends_at)
             <div class="promo-banner">
-                Promo or access code active
-                @if($user->trial_ends_at)
-                    · free until {{ $user->trial_ends_at->format('d M Y') }}
-                @endif
-                . Choose any plan below.
+                Founding access until {{ $user->trial_ends_at->format('d M Y') }}. Choose a plan.
+            </div>
+        @elseif($canPaid)
+            <div class="promo-banner">
+                Founding access. Choose a plan.
             </div>
         @else
             <div class="promo-banner">
-                Card billing is not live yet. Choose Free now, or use a Founding promo code at signup for 6 months free on a paid plan. Codes are issued by Cerulean Labs.
+                Start Free, or use a Founding code at signup. Card billing soon.
             </div>
         @endif
 
