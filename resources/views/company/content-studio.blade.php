@@ -57,106 +57,56 @@
             box-shadow: 0 18px 40px rgba(11, 31, 51, 0.18);
             font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
             z-index: 0;
+            background-color: #0b1f33;
+            background-size: cover;
+            background-position: center;
+        }
+        .cs-graphic::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(165deg, rgba(7, 20, 33, 0.55) 0%, rgba(7, 20, 33, 0.35) 42%, rgba(7, 20, 33, 0.72) 100%);
+            pointer-events: none;
+            z-index: 0;
         }
         .cs-graphic > * { position: relative; z-index: 1; }
         .cs-graphic.theme-sea {
-            background:
-                radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.18), transparent 55%),
-                linear-gradient(145deg, #0b1f33 0%, #0b7eb5 58%, #086690 100%);
+            background-image: url('/images/content-studio/hero-blue-gradient.jpg');
         }
         .cs-graphic.theme-ink {
-            background:
-                radial-gradient(90% 70% at 0% 100%, rgba(11,126,181,0.35), transparent 50%),
-                linear-gradient(160deg, #071421 0%, #0b1f33 55%, #16324f 100%);
+            background-image: url('/images/content-studio/financial-chart.jpg');
         }
-        .cs-graphic.theme-teal {
-            background:
-                radial-gradient(100% 80% at 100% 0%, rgba(255,255,255,0.14), transparent 50%),
-                linear-gradient(150deg, #0f3d3a 0%, #0f766e 55%, #115e59 100%);
+        .cs-graphic.theme-teal,
+        .cs-graphic.theme-medical-clean {
+            background-image: url('/images/content-studio/medical-clean.jpg');
         }
-        .cs-graphic.theme-olive {
-            background:
-                radial-gradient(100% 80% at 0% 0%, rgba(255,255,255,0.12), transparent 45%),
-                linear-gradient(150deg, #1a2e05 0%, #3f6212 55%, #365314 100%);
+        .cs-graphic.theme-olive,
+        .cs-graphic.theme-blueprint-texture {
+            background-image: url('/images/content-studio/blueprint-texture.jpg');
         }
-        .cs-graphic.theme-sky {
-            background:
-                radial-gradient(100% 80% at 100% 100%, rgba(255,255,255,0.16), transparent 45%),
-                linear-gradient(150deg, #0c4a6e 0%, #0369a1 55%, #0284c7 100%);
+        .cs-graphic.theme-sky,
+        .cs-graphic.theme-hero-blue-gradient {
+            background-image: url('/images/content-studio/hero-blue-gradient.jpg');
         }
         .cs-graphic.theme-mist {
-            background:
-                linear-gradient(160deg, #0b1f33 0%, #1e3a5f 45%, #334155 100%);
+            background-image: url('/images/content-studio/hero-blue-gradient.jpg');
         }
         .cs-graphic.theme-gold {
-            background:
-                radial-gradient(90% 70% at 100% 0%, rgba(251,191,36,0.28), transparent 50%),
-                linear-gradient(150deg, #0b1f33 0%, #1e3a5f 40%, #92400e 100%);
-        }
-        .cs-graphic.theme-hero-blue-gradient {
-            background:
-                radial-gradient(120% 90% at 10% 10%, rgba(125, 211, 252, 0.35), transparent 50%),
-                linear-gradient(145deg, #082f49 0%, #0284c7 48%, #0b1f33 100%);
+            background-image: url('/images/content-studio/malta-skyline.jpg');
         }
         .cs-graphic.theme-financial-chart {
-            background-color: #0b1f33;
-            background-image:
-                linear-gradient(rgba(14, 165, 233, 0.12) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(14, 165, 233, 0.12) 1px, transparent 1px),
-                linear-gradient(160deg, #071421 0%, #0c4a6e 55%, #0b1f33 100%);
-            background-size: 28px 28px, 28px 28px, auto;
-        }
-        .cs-graphic.theme-blueprint-texture {
-            background-color: #0c4a6e;
-            background-image:
-                linear-gradient(rgba(186, 230, 253, 0.18) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(186, 230, 253, 0.18) 1px, transparent 1px),
-                radial-gradient(80% 60% at 100% 0%, rgba(255,255,255,0.12), transparent 55%),
-                linear-gradient(150deg, #082f49 0%, #0c4a6e 50%, #075985 100%);
-            background-size: 22px 22px, 22px 22px, auto, auto;
-        }
-        .cs-graphic.theme-medical-clean {
-            background:
-                radial-gradient(90% 70% at 100% 0%, rgba(167, 243, 208, 0.22), transparent 50%),
-                linear-gradient(155deg, #042f2e 0%, #0f766e 45%, #134e4a 100%);
+            background-image: url('/images/content-studio/financial-chart.jpg');
         }
         .cs-graphic.theme-mobile-mockup {
-            background:
-                radial-gradient(70% 50% at 80% 20%, rgba(255,255,255,0.16), transparent 55%),
-                linear-gradient(165deg, #0b1f33 0%, #1e293b 40%, #0b7eb5 100%);
-        }
-        .cs-graphic.theme-mobile-mockup::after {
-            content: "";
-            position: absolute;
-            right: 1.1rem;
-            bottom: 4.2rem;
-            width: 72px;
-            height: 128px;
-            border: 2px solid rgba(255,255,255,0.45);
-            border-radius: 12px;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
-            background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
-            pointer-events: none;
+            background-image: url('/images/content-studio/mobile-mockup.jpg');
         }
         .cs-graphic.theme-malta-skyline {
-            background:
-                linear-gradient(180deg, rgba(11,31,51,0.15) 0%, rgba(11,31,51,0.55) 55%, rgba(11,31,51,0.85) 100%),
-                linear-gradient(180deg, #7dd3fc 0%, #38bdf8 28%, #0ea5e9 48%, #0369a1 70%, #0b1f33 100%);
-        }
-        .cs-graphic.theme-malta-skyline::before {
-            content: "";
-            position: absolute;
-            left: 0; right: 0; bottom: 0;
-            height: 28%;
-            background:
-                linear-gradient(90deg, transparent 0 6%, #0b1f33 6% 14%, transparent 14% 22%, #0b1f33 22% 31%, transparent 31% 40%, #0b1f33 40% 48%, transparent 48% 58%, #0b1f33 58% 70%, transparent 70% 78%, #0b1f33 78% 88%, transparent 88% 100%);
-            opacity: 0.55;
-            pointer-events: none;
+            background-image: url('/images/content-studio/malta-skyline.jpg');
         }
         .cs-brand {
             display: flex; align-items: center; gap: 0.55rem;
         }
-        .cs-brand img { height: 28px; width: auto; filter: brightness(0) invert(1); opacity: 0.95; }
+        .cs-brand img { height: 22px; width: auto; filter: none; opacity: 1; }
         .cs-brand strong {
             font-family: Fraunces, Georgia, serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em;
         }
@@ -243,7 +193,7 @@
             <h2>How to use</h2>
             <ol>
                 <li>Pick a pack below (start with <strong>Launch · Founding 25</strong>).</li>
-                <li>Screenshot the square graphic (full card, no browser chrome if you can).</li>
+                <li>Screenshot the square graphic (full card — real background art + text). Avoid browser chrome if you can.</li>
                 <li>Click <strong>Copy caption</strong>, paste into LinkedIn, attach the image.</li>
                 <li>Optional: follow the screen-record tip for a 15–30s demo clip.</li>
                 <li>Founding code live in copy: <code>{{ $foundingCode }}</code> · first 25 · 3 months free. Links use <code>utm_source=linkedin&amp;utm_medium=social&amp;utm_campaign=…</code> (plus <code>promo_code=</code> on Founding posts).</li>
