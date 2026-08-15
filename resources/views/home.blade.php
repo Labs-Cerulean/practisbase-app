@@ -521,8 +521,8 @@
             to { opacity: 1; transform: translateY(0); }
         }
         @keyframes float-in {
-            from { opacity: 0; transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(40px); }
-            to { opacity: 1; transform: translateY(-46%) perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(0); }
+            from { opacity: 0; transform: perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(40px); }
+            to { opacity: 1; transform: perspective(1200px) rotateY(-8deg) rotateX(3deg) translateX(0); }
         }
     </style>
 </head>
