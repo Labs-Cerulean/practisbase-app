@@ -16,8 +16,8 @@
         @endif
 
         @if($backupOverdue)
-            <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #92400e; font-size: 0.9rem; line-height: 1.45;">
-                Weekly backup is overdue (or never done). Download a fresh copy now.
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid var(--primary-cerulean); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: var(--primary-navy); font-size: 0.9rem; line-height: 1.45;">
+                Weekly reminder: download a fresh copy of your data.
             </div>
         @endif
 

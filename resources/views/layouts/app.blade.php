@@ -149,6 +149,9 @@
                 @endif
                 <div class="avatar" aria-hidden="true">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
                 <a href="/settings" class="header-action header-desktop-only">Settings</a>
+                @unless($companyMode)
+                    <button type="button" class="header-action" data-open-install-app style="border: 1px solid rgba(255,255,255,0.35); background: transparent; cursor: pointer; font: inherit;">Download app</button>
+                @endunless
                 <form action="/logout" method="POST" class="header-desktop-only header-logout-form">
                     @csrf
                     <button type="submit" class="logout-btn">Log out</button>
@@ -197,6 +200,10 @@
             </footer>
         </main>
     </div>
+
+    @unless($companyMode ?? false)
+        @include('partials.install-app')
+    @endunless
 
     <script>
         (function () {
