@@ -1,5 +1,5 @@
-/* PractisBase minimal service worker — enables install / Add to Home Screen. */
-const CACHE = 'practisbase-shell-v1';
+/* PractisBase service worker — installability only; do not intercept navigations. */
+const CACHE = 'practisbase-shell-v2';
 const PRECACHE = ['/offline.html', '/images/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {
@@ -16,20 +16,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  // Network-first for app navigation; fall back to a tiny offline page.
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/offline.html'))
-    );
-  }
-});
+/* Fetch listener required for install prompts. Pass through all requests so a
+   slow or sleeping origin cannot hang page loads via the service worker. */
+self.addEventListener('fetch', () => {});

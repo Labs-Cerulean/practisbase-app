@@ -383,10 +383,18 @@ img, svg { max-width: 100%; height: auto; }
         grid-column: 1 / 2;
     }
 
-    .app-header { padding: 0 0.85rem; }
+    .app-header { padding: 0 0.85rem; gap: 0.5rem; }
 
-    .header-title { font-size: 1rem; }
+    .header-left { gap: 0.45rem; }
 
+    .header-title {
+        font-size: 0.95rem;
+        max-width: min(52vw, 11rem);
+    }
+
+    .user-profile { gap: 0.4rem; }
+
+    .tier-badge,
     .user-meta,
     .header-desktop-only {
         display: none !important;
