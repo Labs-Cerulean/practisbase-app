@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'vault' => \App\Http\Middleware\EnsureMedicalVaultUnlocked::class,
             'company_books' => \App\Http\Middleware\EnsureCompanyBooks::class,
             'company_shell' => \App\Http\Middleware\PreferCompanyBooksShell::class,
+            'stamper' => \App\Http\Middleware\EnsureDocumentStamper::class,
         ]);
 
         // Mobile WebAuthn often drops session/CSRF cookies during the biometric UI.

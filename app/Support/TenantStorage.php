@@ -30,6 +30,11 @@ class TenantStorage
         return 'tenants/' . $userId . '/branding';
     }
 
+    public static function stampsPath(int $userId): string
+    {
+        return 'tenants/' . $userId . '/stamps';
+    }
+
     public static function medicalAttachmentsPath(int $userId, int $vaultId): string
     {
         return 'medical/' . $userId . '/vault_' . $vaultId . '/attachments';

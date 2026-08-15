@@ -136,6 +136,11 @@ class User extends Authenticatable
         return $this->hasMany(Expense::class);
     }
 
+    public function documentStamps()
+    {
+        return $this->hasMany(DocumentStamp::class);
+    }
+
     /**
      * Standard+ with ledger rows for the year → use ledger total.
      * Article 10: deduct expense net (ex-VAT); reclaimable VAT is handled on the VAT side.
@@ -239,6 +244,11 @@ class User extends Authenticatable
     public function canAccessReports(): bool
     {
         return \App\Support\TierPolicy::canAccessReports($this);
+    }
+
+    public function canAccessDocumentStamper(): bool
+    {
+        return \App\Support\TierPolicy::canAccessDocumentStamper($this);
     }
 
     public function canAccessStandardTools(): bool

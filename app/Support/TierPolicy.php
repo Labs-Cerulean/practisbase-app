@@ -166,6 +166,12 @@ class TierPolicy
         return self::hasStandardFinancial($user);
     }
 
+    /** PDF Document Stamper: Standard accounts, Practice, or Full Pro. */
+    public static function canAccessDocumentStamper(User $user): bool
+    {
+        return self::hasStandardFinancial($user) || self::hasPracticeTools($user);
+    }
+
     public static function canAccessStandardTools(User $user): bool
     {
         return self::hasStandardFinancial($user);
