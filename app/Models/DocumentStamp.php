@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'last_name',
     'postnominals',
     'role_title',
+    'warrant_number',
     'signature_path',
     'is_default',
 ])]
@@ -83,6 +84,7 @@ class DocumentStamp extends Model
             'last_name' => $this->last_name,
             'postnominals' => $this->postnominals,
             'role_title' => $this->role_title,
+            'warrant_number' => $this->warrant_number,
             'signature_data_uri' => $this->signatureDataUri(),
             'is_default' => (bool) $this->is_default,
         ];
