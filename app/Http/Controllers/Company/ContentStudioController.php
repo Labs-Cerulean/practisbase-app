@@ -20,8 +20,8 @@ class ContentStudioController extends Controller
 
         return view('company.content-studio', [
             'packs' => $packs,
-            'siteUrl' => 'https://www.practisbase.com',
-            'foundingCode' => 'FOUNDING-J1EDKG',
+            'siteUrl' => MarketingContentPacks::SITE,
+            'foundingCode' => MarketingContentPacks::FOUNDING_CODE,
         ]);
     }
 }

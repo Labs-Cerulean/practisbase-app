@@ -56,7 +56,9 @@
             padding: 1.6rem 1.5rem 1.35rem; color: #fff;
             box-shadow: 0 18px 40px rgba(11, 31, 51, 0.18);
             font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+            z-index: 0;
         }
+        .cs-graphic > * { position: relative; z-index: 1; }
         .cs-graphic.theme-sea {
             background:
                 radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,0.18), transparent 55%),
@@ -90,6 +92,66 @@
             background:
                 radial-gradient(90% 70% at 100% 0%, rgba(251,191,36,0.28), transparent 50%),
                 linear-gradient(150deg, #0b1f33 0%, #1e3a5f 40%, #92400e 100%);
+        }
+        .cs-graphic.theme-hero-blue-gradient {
+            background:
+                radial-gradient(120% 90% at 10% 10%, rgba(125, 211, 252, 0.35), transparent 50%),
+                linear-gradient(145deg, #082f49 0%, #0284c7 48%, #0b1f33 100%);
+        }
+        .cs-graphic.theme-financial-chart {
+            background-color: #0b1f33;
+            background-image:
+                linear-gradient(rgba(14, 165, 233, 0.12) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(14, 165, 233, 0.12) 1px, transparent 1px),
+                linear-gradient(160deg, #071421 0%, #0c4a6e 55%, #0b1f33 100%);
+            background-size: 28px 28px, 28px 28px, auto;
+        }
+        .cs-graphic.theme-blueprint-texture {
+            background-color: #0c4a6e;
+            background-image:
+                linear-gradient(rgba(186, 230, 253, 0.18) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(186, 230, 253, 0.18) 1px, transparent 1px),
+                radial-gradient(80% 60% at 100% 0%, rgba(255,255,255,0.12), transparent 55%),
+                linear-gradient(150deg, #082f49 0%, #0c4a6e 50%, #075985 100%);
+            background-size: 22px 22px, 22px 22px, auto, auto;
+        }
+        .cs-graphic.theme-medical-clean {
+            background:
+                radial-gradient(90% 70% at 100% 0%, rgba(167, 243, 208, 0.22), transparent 50%),
+                linear-gradient(155deg, #042f2e 0%, #0f766e 45%, #134e4a 100%);
+        }
+        .cs-graphic.theme-mobile-mockup {
+            background:
+                radial-gradient(70% 50% at 80% 20%, rgba(255,255,255,0.16), transparent 55%),
+                linear-gradient(165deg, #0b1f33 0%, #1e293b 40%, #0b7eb5 100%);
+        }
+        .cs-graphic.theme-mobile-mockup::after {
+            content: "";
+            position: absolute;
+            right: 1.1rem;
+            bottom: 4.2rem;
+            width: 72px;
+            height: 128px;
+            border: 2px solid rgba(255,255,255,0.45);
+            border-radius: 12px;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+            background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+            pointer-events: none;
+        }
+        .cs-graphic.theme-malta-skyline {
+            background:
+                linear-gradient(180deg, rgba(11,31,51,0.15) 0%, rgba(11,31,51,0.55) 55%, rgba(11,31,51,0.85) 100%),
+                linear-gradient(180deg, #7dd3fc 0%, #38bdf8 28%, #0ea5e9 48%, #0369a1 70%, #0b1f33 100%);
+        }
+        .cs-graphic.theme-malta-skyline::before {
+            content: "";
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 28%;
+            background:
+                linear-gradient(90deg, transparent 0 6%, #0b1f33 6% 14%, transparent 14% 22%, #0b1f33 22% 31%, transparent 31% 40%, #0b1f33 40% 48%, transparent 48% 58%, #0b1f33 58% 70%, transparent 70% 78%, #0b1f33 78% 88%, transparent 88% 100%);
+            opacity: 0.55;
+            pointer-events: none;
         }
         .cs-brand {
             display: flex; align-items: center; gap: 0.55rem;
@@ -184,7 +246,7 @@
                 <li>Screenshot the square graphic (full card, no browser chrome if you can).</li>
                 <li>Click <strong>Copy caption</strong>, paste into LinkedIn, attach the image.</li>
                 <li>Optional: follow the screen-record tip for a 15–30s demo clip.</li>
-                <li>Founding code live in copy: <code>{{ $foundingCode }}</code> · first 25 · 3 months free.</li>
+                <li>Founding code live in copy: <code>{{ $foundingCode }}</code> · first 25 · 3 months free. Links use <code>utm_source=linkedin&amp;utm_medium=social&amp;utm_campaign=…</code> (plus <code>promo_code=</code> on Founding posts).</li>
             </ol>
         </div>
 
@@ -199,9 +261,13 @@
         @foreach($packs as $pack)
             @php
                 $group = match (true) {
-                    str_contains($pack['id'], 'launch') || str_contains($pack['id'], 'founding') => 'launch',
-                    in_array($pack['id'], ['doctors-vault', 'architects-desk', 'engineers-field'], true) => 'profession',
-                    in_array($pack['id'], ['backup-trust', 'cerulean-labs'], true) => 'trust',
+                    str_contains($pack['id'], 'launch') || str_contains($pack['id'], 'founding') || $pack['id'] === 'local-pride' => 'launch',
+                    in_array($pack['id'], [
+                        'doctors-vault', 'architects-desk', 'engineers-field',
+                        'bca-compliance', 'secure-clinic', 'equipment-certification',
+                        'work-from-site', 'warrant-stamp',
+                    ], true) => 'profession',
+                    in_array($pack['id'], ['backup-trust', 'cerulean-labs', 'accountants-best-friend'], true) => 'trust',
                     default => 'product',
                 };
             @endphp
