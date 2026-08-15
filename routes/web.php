@@ -58,6 +58,10 @@ use App\Http\Controllers\LegalController;
 */
 
 Route::get('/', function () {
+    return view('home');
+});
+
+Route::get('/pricing', function () {
     return view('pricing');
 });
 

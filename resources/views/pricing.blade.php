@@ -107,48 +107,6 @@
             line-height: 1.55;
         }
         .hero-cta { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
-        .hero-join {
-            margin: 1.35rem auto 0;
-            max-width: 26rem;
-            text-align: left;
-            background: rgba(255, 255, 255, 0.82);
-            border: 1px solid var(--pb-line);
-            border-radius: 14px;
-            padding: 1rem 1.1rem 1.1rem;
-            display: none;
-        }
-        .hero-join.is-open { display: block; }
-        .hero-join label {
-            display: block;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: var(--pb-ink);
-            margin: 0 0 0.35rem;
-        }
-        .hero-join input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 0.7rem 0.8rem;
-            border: 1px solid var(--pb-line);
-            border-radius: 10px;
-            font: inherit;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            background: #fff;
-        }
-        .hero-join .join-hint {
-            margin: -0.35rem 0 0.85rem;
-            font-size: 0.75rem;
-            color: var(--pb-mute);
-            line-height: 1.4;
-        }
-        .hero-join .join-actions {
-            display: flex;
-            gap: 0.55rem;
-            flex-wrap: wrap;
-        }
         .beta-chip {
             display: inline-block;
             margin-top: 1.25rem;
@@ -498,13 +456,12 @@
         }
 
         @media (prefers-reduced-motion: no-preference) {
-            .hero-brand, .hero h1, .hero p, .hero-cta, .hero-join, .beta-chip {
+            .hero-brand, .hero h1, .hero p, .hero-cta, .beta-chip {
                 animation: rise 0.7s ease both;
             }
             .hero h1 { animation-delay: 0.08s; }
             .hero p { animation-delay: 0.14s; }
             .hero-cta { animation-delay: 0.2s; }
-            .hero-join { animation-delay: 0.22s; }
             .beta-chip { animation-delay: 0.26s; }
             .ladder .plan, .prof-path, .accounts-path {
                 animation: rise 0.65s ease both;
@@ -533,33 +490,25 @@
 @endphp
 
     <header class="site-header">
-        <img src="/images/logo.png" alt="PractisBase">
+        <a href="/" style="display: inline-flex; align-items: center; text-decoration: none;">
+            <img src="/images/logo.png" alt="PractisBase">
+        </a>
         <div class="header-actions">
+            <a href="/">Product</a>
             <a href="/login">Sign in</a>
             <a href="/register" class="btn btn-primary">Join beta</a>
         </div>
     </header>
 
     <section class="hero">
-        <p class="hero-brand">PractisBase</p>
-        <h1>Built by Maltese professionals, for Maltese professionals.</h1>
-        <p>Tired of generic software that ignores all the local and bespoke parameters? Join our community-led platform, we have fixed it for you. Request features, give feedback, and watch us upgrade the ultimate sole-trader toolkit.</p>
+        <p class="hero-brand">Pricing</p>
+        <h1>Clear plans for Maltese sole traders.</h1>
+        <p>Start lean on Free, add Standard accounts or Practice tools, or take Full Pro for both. Sole traders only — not Ltd companies.</p>
         <div class="hero-cta">
-            <button type="button" class="btn btn-primary" id="openJoinForm">Join with a promo code</button>
-            <a href="#plans" class="btn btn-ghost">Compare plans</a>
+            <a href="#plans" class="btn btn-primary">Compare plans</a>
+            <a href="/register" class="btn btn-ghost">Join beta</a>
         </div>
-        <form class="hero-join" id="heroJoinForm" method="GET" action="/register" aria-label="Join with promo or referral code">
-            <label for="landingPromoCode">Promo code</label>
-            <input id="landingPromoCode" type="text" name="promo_code" maxlength="40" placeholder="e.g. FOUNDING-50" value="{{ request('promo_code') }}" autocomplete="off">
-            <p class="join-hint">Founding cohorts and admin-minted offers apply at registration.</p>
-            <label for="landingRefCode">Referral code <span style="font-weight:500;color:var(--pb-mute);">(optional)</span></label>
-            <input id="landingRefCode" type="text" name="ref" maxlength="40" placeholder="Friend's code" value="{{ request('ref') }}" autocomplete="off">
-            <div class="join-actions">
-                <button type="submit" class="btn btn-primary">Continue to register</button>
-                <button type="button" class="btn btn-ghost" id="closeJoinForm">Cancel</button>
-            </div>
-        </form>
-        <div class="beta-chip">Community-led growth. Closed beta invite still required. No card charge yet.</div>
+        <div class="beta-chip">Closed beta. No card charge yet. Invited testers pick any plan.</div>
     </section>
 
     <section class="section" id="plans">
@@ -748,34 +697,10 @@
     <footer class="site-footer">
         PractisBase models self employed sole traders in Malta. Sole trader scope only, not Ltd company accounts.
         <div style="margin-top: 0.65rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="/" style="color: var(--pb-sea); font-weight: 600; text-decoration: none;">Product</a>
             <a href="/privacy" style="color: var(--pb-sea); font-weight: 600; text-decoration: none;">Privacy Policy</a>
             <a href="/msa" style="color: var(--pb-sea); font-weight: 600; text-decoration: none;">Master Service Agreement</a>
         </div>
     </footer>
-    <script>
-        (function () {
-            var form = document.getElementById('heroJoinForm');
-            var openBtn = document.getElementById('openJoinForm');
-            var closeBtn = document.getElementById('closeJoinForm');
-            if (!form || !openBtn) return;
-
-            function openForm() {
-                form.classList.add('is-open');
-                var promo = document.getElementById('landingPromoCode');
-                if (promo) promo.focus();
-            }
-            function closeForm() {
-                form.classList.remove('is-open');
-            }
-
-            openBtn.addEventListener('click', openForm);
-            if (closeBtn) closeBtn.addEventListener('click', closeForm);
-
-            var params = new URLSearchParams(window.location.search);
-            if (params.get('promo_code') || params.get('ref')) {
-                openForm();
-            }
-        })();
-    </script>
 </body>
 </html>
