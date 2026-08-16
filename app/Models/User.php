@@ -54,6 +54,7 @@ use Illuminate\Notifications\Notifiable;
     'clinical_note_template',
     'company_books_enabled',
     'exclude_from_kpis',
+    'exclude_from_mrr',
     'beta_invite_code_id',
 ])]
 #[Hidden(['password', 'remember_token'])]
@@ -84,6 +85,7 @@ class User extends Authenticatable
             'clients_created_count' => 'integer',
             'company_books_enabled' => 'boolean',
             'exclude_from_kpis' => 'boolean',
+            'exclude_from_mrr' => 'boolean',
             'credit_balance' => 'decimal:2',
             'trial_ends_at' => 'datetime',
             'last_data_backup_at' => 'datetime',

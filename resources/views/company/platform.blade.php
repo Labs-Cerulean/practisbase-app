@@ -25,7 +25,7 @@
     </div>
 
     <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #92400e; line-height: 1.45;">
-        Card billing is not live yet. <strong>List MRR</strong> is a planning proxy from selected plans × public list prices (ex-VAT). Mark fake test accounts as <strong>Test</strong> in the users table to drop them from counts and MRR. Beta users stay counted unless you mark them too.
+        Card billing is not live yet. <strong>List MRR</strong> is a planning proxy from selected plans × public list prices (ex-VAT). Mark fake accounts as <strong>Test</strong> (drop from counts and MRR). Mark real beta accounts as <strong>Beta</strong> (stay in counts, drop from MRR).
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.85rem; margin-bottom: 1.25rem;">
@@ -36,8 +36,8 @@
             ['Active 7d', number_format($t['active_7d']), 'Sessions in last 7 days'],
             ['Signups 7d', number_format($t['signups_7d']), 'New accounts'],
             ['Onboarded', $t['onboarding_rate'].'%', number_format($t['onboarded']).' complete'],
-            ['List MRR', '€'.number_format($a['list_mrr_ex_vat'], 2), 'Proxy ex-VAT · not collected'],
-            ['Test excluded', number_format($t['excluded_test_users']), 'Hidden from counts and MRR'],
+            ['List MRR', '€'.number_format($a['list_mrr_ex_vat'], 2), 'Proxy ex-VAT · beta/test excluded'],
+            ['Beta / Test', number_format($t['beta_users']).' / '.number_format($t['excluded_test_users']), 'Beta in counts · Test hidden'],
         ] as [$label, $value, $hint])
             <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.1rem; box-shadow: var(--shadow-sm);">
                 <div style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted);">{{ $label }}</div>
@@ -58,7 +58,10 @@
                                 <div style="font-weight: 600; color: var(--primary-navy);">{{ $card['label'] }}</div>
                                 <div style="font-size: 0.75rem; color: var(--text-muted);">
                                     @if($card['unit_price'] > 0)
-                                        €{{ number_format($card['unit_price'], 2) }}/mo list · €{{ number_format($card['list_mrr'], 2) }} proxy
+                                        €{{ number_format($card['unit_price'], 2) }}/mo list · €{{ number_format($card['list_mrr'], 2) }} MRR
+                                        @if(($card['mrr_count'] ?? $card['count']) !== $card['count'])
+                                            ({{ number_format($card['mrr_count']) }} billed proxy)
+                                        @endif
                                     @else
                                         No list price
                                     @endif
@@ -173,10 +176,10 @@
         <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
             <div>
                 <div style="font-weight: 700; color: var(--primary-navy);">Users</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">{{ $users->total() }} shown · page {{ $users->currentPage() }} of {{ max(1, $users->lastPage()) }} · {{ number_format($t['excluded_test_users']) }} marked test</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">{{ $users->total() }} shown · {{ number_format($t['beta_users']) }} beta · {{ number_format($t['excluded_test_users']) }} test</div>
             </div>
             <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                @foreach(['all' => 'All', 'counted' => 'Counted', 'excluded' => 'Test only'] as $key => $label)
+                @foreach(['all' => 'All', 'counted' => 'In MRR', 'beta' => 'Beta', 'test' => 'Test'] as $key => $label)
                     <a href="/company/platform?view={{ $key }}" style="padding: 0.35rem 0.7rem; border-radius: var(--radius-md); font-size: 0.78rem; font-weight: 600; text-decoration: none; border: 1px solid var(--border-light); {{ ($userView ?? 'all') === $key ? 'background: var(--primary-navy); color: white; border-color: var(--primary-navy);' : 'background: white; color: var(--primary-navy);' }}">{{ $label }}</a>
                 @endforeach
             </div>
@@ -189,20 +192,22 @@
                         <th style="padding: 0.5rem 0.4rem;">Plan</th>
                         <th style="padding: 0.5rem 0.4rem;">Access</th>
                         <th style="padding: 0.5rem 0.4rem;">Usage</th>
-                        <th style="padding: 0.5rem 0.4rem;">List €/mo</th>
+                        <th style="padding: 0.5rem 0.4rem;">MRR €</th>
                         <th style="padding: 0.5rem 0.4rem;">Joined</th>
                         <th style="padding: 0.5rem 0.4rem;">Last active</th>
-                        <th style="padding: 0.5rem 0.4rem;">KPI</th>
+                        <th style="padding: 0.5rem 0.4rem;">Cohort</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($users as $row)
-                        <tr style="border-bottom: 1px solid var(--border-light); vertical-align: top; {{ $row['exclude_from_kpis'] ? 'background: #f8fafc; opacity: 0.92;' : '' }}">
+                        <tr style="border-bottom: 1px solid var(--border-light); vertical-align: top; {{ $row['cohort'] === 'test' ? 'background: #f8fafc;' : ($row['cohort'] === 'beta' ? 'background: #eff6ff;' : '') }}">
                             <td style="padding: 0.65rem 0.4rem;">
                                 <div style="font-weight: 600; color: var(--primary-navy);">
                                     {{ $row['name'] }}
-                                    @if($row['exclude_from_kpis'])
+                                    @if($row['cohort'] === 'test')
                                         <span style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 0.1rem 0.4rem; border-radius: 999px; margin-left: 0.35rem;">Test</span>
+                                    @elseif($row['cohort'] === 'beta')
+                                        <span style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; padding: 0.1rem 0.4rem; border-radius: 999px; margin-left: 0.35rem;">Beta</span>
                                     @endif
                                 </div>
                                 <div style="color: var(--text-muted);">{{ $row['email'] }}</div>
@@ -233,10 +238,10 @@
                                 @endif
                             </td>
                             <td style="padding: 0.65rem 0.4rem;">
-                                @if($row['exclude_from_kpis'])
-                                    —
-                                @elseif($row['list_price'] > 0)
+                                @if($row['list_price'] > 0)
                                     €{{ number_format($row['list_price'], 2) }}
+                                @elseif($row['plan_price'] > 0)
+                                    <span style="color: var(--text-muted);">€{{ number_format($row['plan_price'], 2) }} off</span>
                                 @else
                                     —
                                 @endif
@@ -246,12 +251,17 @@
                                 {{ $row['last_activity'] ? $row['last_activity']->diffForHumans() : '—' }}
                             </td>
                             <td style="padding: 0.65rem 0.4rem;">
-                                <form action="/company/platform/users/{{ $row['id'] }}/kpi-exclude?view={{ urlencode($userView ?? 'all') }}" method="POST" style="margin: 0;">
-                                    @csrf
-                                    <button type="submit" style="padding: 0.35rem 0.65rem; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: 700; cursor: pointer; {{ $row['exclude_from_kpis'] ? 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' : 'background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;' }}">
-                                        {{ $row['exclude_from_kpis'] ? 'Include' : 'Mark test' }}
-                                    </button>
-                                </form>
+                                <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                                    @foreach(['counted' => 'Counted', 'beta' => 'Beta', 'test' => 'Test'] as $cohort => $label)
+                                        <form action="/company/platform/users/{{ $row['id'] }}/kpi-cohort?view={{ urlencode($userView ?? 'all') }}" method="POST" style="margin: 0;">
+                                            @csrf
+                                            <input type="hidden" name="cohort" value="{{ $cohort }}">
+                                            <button type="submit" {{ $row['cohort'] === $cohort ? 'disabled' : '' }} style="width: 100%; padding: 0.3rem 0.55rem; border-radius: var(--radius-md); font-size: 0.72rem; font-weight: 700; cursor: {{ $row['cohort'] === $cohort ? 'default' : 'pointer' }}; {{ $row['cohort'] === $cohort ? 'background: var(--primary-navy); color: white; border: 1px solid var(--primary-navy);' : 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' }}">
+                                                {{ $label }}
+                                            </button>
+                                        </form>
+                                    @endforeach
+                                </div>
                             </td>
                         </tr>
                     @empty

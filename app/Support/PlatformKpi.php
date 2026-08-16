@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * PractisBase SaaS KPIs for the company operator login only.
  * Excludes company_books staff and users marked exclude_from_kpis (test accounts).
+ * Users marked exclude_from_mrr (beta) stay in counts but are omitted from list MRR.
  */
 class PlatformKpi
 {
@@ -24,7 +25,8 @@ class PlatformKpi
         $day14 = $now->copy()->addDays(14);
 
         $users = self::endUsersQuery();
-        $excludedCount = self::excludedTestUsersCount();
+        $excludedCount = self::cohortCount('test');
+        $betaCount = self::cohortCount('beta');
 
         $total = (clone $users)->count();
         $free = (clone $users)->where(function ($q) {
@@ -74,19 +76,28 @@ class PlatformKpi
             ->pluck('total', 'profession_key')
             ->all();
 
+        $byTierMrr = self::mrrUsersQuery()
+            ->selectRaw("COALESCE(NULLIF(tier, ''), 'free') as tier_key, COUNT(*) as total")
+            ->groupBy('tier_key')
+            ->pluck('total', 'tier_key')
+            ->all();
+
         $tierCards = [];
         $listMrr = 0.0;
         foreach (TierPolicy::allTiers() as $tier) {
             $count = (int) ($byTier[$tier] ?? 0);
+            $mrrCount = (int) ($byTierMrr[$tier] ?? 0);
             $unit = self::listPriceExVat($tier);
+            $tierMrr = round($mrrCount * $unit, 2);
             $tierCards[] = [
                 'tier' => $tier,
                 'label' => TierPolicy::label($tier),
                 'count' => $count,
+                'mrr_count' => $mrrCount,
                 'unit_price' => $unit,
-                'list_mrr' => round($count * $unit, 2),
+                'list_mrr' => $tierMrr,
             ];
-            $listMrr += $count * $unit;
+            $listMrr += $tierMrr;
         }
         foreach ($byTier as $tier => $count) {
             if (! in_array($tier, TierPolicy::allTiers(), true)) {
@@ -94,6 +105,7 @@ class PlatformKpi
                     'tier' => $tier,
                     'label' => $tier,
                     'count' => (int) $count,
+                    'mrr_count' => (int) ($byTierMrr[$tier] ?? 0),
                     'unit_price' => 0.0,
                     'list_mrr' => 0.0,
                 ];
@@ -178,6 +190,7 @@ class PlatformKpi
                 'active_30d' => $active30,
                 'backup_overdue' => $backupOverdue,
                 'excluded_test_users' => $excludedCount,
+                'beta_users' => $betaCount,
             ],
             'access' => [
                 'beta_unlocked' => $betaUnlocked,
@@ -206,7 +219,7 @@ class PlatformKpi
 
     public static function usersTable(int $perPage = 40, string $view = 'all'): LengthAwarePaginator
     {
-        $view = in_array($view, ['all', 'counted', 'excluded'], true) ? $view : 'all';
+        $view = in_array($view, ['all', 'counted', 'beta', 'test'], true) ? $view : 'all';
 
         $activityMap = [];
         if (self::hasSessionsTable()) {
@@ -223,13 +236,25 @@ class PlatformKpi
                 $q->where('company_books_enabled', false)->orWhereNull('company_books_enabled');
             });
 
-        if (self::hasExcludeColumn()) {
-            if ($view === 'counted') {
+        if ($view === 'counted') {
+            self::applyCountedScope($query);
+            if (self::hasMrrColumn()) {
                 $query->where(function ($q) {
-                    $q->where('exclude_from_kpis', false)->orWhereNull('exclude_from_kpis');
+                    $q->where('exclude_from_mrr', false)->orWhereNull('exclude_from_mrr');
                 });
-            } elseif ($view === 'excluded') {
+            }
+        } elseif ($view === 'beta') {
+            self::applyCountedScope($query);
+            if (self::hasMrrColumn()) {
+                $query->where('exclude_from_mrr', true);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($view === 'test') {
+            if (self::hasExcludeColumn()) {
                 $query->where('exclude_from_kpis', true);
+            } else {
+                $query->whereRaw('1 = 0');
             }
         }
 
@@ -241,6 +266,7 @@ class PlatformKpi
                 'expenses',
             ])
             ->when(self::hasExcludeColumn(), fn ($q) => $q->orderByDesc('exclude_from_kpis'))
+            ->when(self::hasMrrColumn(), fn ($q) => $q->orderByDesc('exclude_from_mrr'))
             ->orderByDesc('created_at')
             ->paginate($perPage)
             ->appends(['view' => $view])
@@ -256,7 +282,10 @@ class PlatformKpi
                 }
 
                 $lastTs = $activityMap[$user->id] ?? null;
-                $excluded = self::hasExcludeColumn() && (bool) $user->exclude_from_kpis;
+                $isTest = self::hasExcludeColumn() && (bool) $user->exclude_from_kpis;
+                $isBeta = ! $isTest && self::hasMrrColumn() && (bool) $user->exclude_from_mrr;
+                $cohort = $isTest ? 'test' : ($isBeta ? 'beta' : 'counted');
+                $unit = self::listPriceExVat($tier);
 
                 return [
                     'id' => $user->id,
@@ -277,9 +306,12 @@ class PlatformKpi
                     'beta_code' => $user->betaInviteCode?->code,
                     'credit_balance' => (float) $user->credit_balance,
                     'trial_ends_at' => $user->trial_ends_at,
-                    'list_price' => $excluded ? 0.0 : self::listPriceExVat($tier),
+                    'list_price' => ($cohort === 'counted') ? $unit : 0.0,
+                    'plan_price' => $unit,
                     'backup_overdue' => ! $user->last_data_backup_at || $user->last_data_backup_at < now()->subDays(7),
-                    'exclude_from_kpis' => $excluded,
+                    'cohort' => $cohort,
+                    'exclude_from_kpis' => $isTest,
+                    'exclude_from_mrr' => $isBeta || $isTest,
                 ];
             });
     }
@@ -293,18 +325,42 @@ class PlatformKpi
         return self::applyCountedScope($q);
     }
 
-    private static function excludedTestUsersCount(): int
+    private static function mrrUsersQuery()
     {
-        if (! self::hasExcludeColumn()) {
-            return 0;
+        $q = self::endUsersQuery();
+        if (self::hasMrrColumn()) {
+            $q->where(function ($q) {
+                $q->where('exclude_from_mrr', false)->orWhereNull('exclude_from_mrr');
+            });
         }
 
-        return (int) User::query()
-            ->where(function ($q) {
-                $q->where('company_books_enabled', false)->orWhereNull('company_books_enabled');
-            })
-            ->where('exclude_from_kpis', true)
-            ->count();
+        return $q;
+    }
+
+    private static function cohortCount(string $cohort): int
+    {
+        $q = User::query()->where(function ($q) {
+            $q->where('company_books_enabled', false)->orWhereNull('company_books_enabled');
+        });
+
+        if ($cohort === 'test') {
+            if (! self::hasExcludeColumn()) {
+                return 0;
+            }
+
+            return (int) $q->where('exclude_from_kpis', true)->count();
+        }
+
+        if ($cohort === 'beta') {
+            if (! self::hasMrrColumn()) {
+                return 0;
+            }
+            self::applyCountedScope($q);
+
+            return (int) $q->where('exclude_from_mrr', true)->count();
+        }
+
+        return 0;
     }
 
     private static function applyCountedScope($query)
@@ -339,6 +395,15 @@ class PlatformKpi
     {
         try {
             return Schema::hasColumn('users', 'exclude_from_kpis');
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private static function hasMrrColumn(): bool
+    {
+        try {
+            return Schema::hasColumn('users', 'exclude_from_mrr');
         } catch (\Throwable) {
             return false;
         }

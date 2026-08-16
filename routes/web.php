@@ -430,7 +430,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     Route::middleware('company_books')->prefix('company')->group(function () {
         Route::get('/', [CompanyDeskController::class, 'index']);
         Route::get('/platform', [CompanyPlatformDashboardController::class, 'index']);
-        Route::post('/platform/users/{id}/kpi-exclude', [CompanyPlatformDashboardController::class, 'toggleKpiExclude'])->whereNumber('id');
+        Route::post('/platform/users/{id}/kpi-cohort', [CompanyPlatformDashboardController::class, 'setKpiCohort'])->whereNumber('id');
         Route::get('/profile', [CompanyProfileController::class, 'edit']);
         Route::put('/profile', [CompanyProfileController::class, 'update']);
         Route::post('/profile/logo', [CompanyProfileController::class, 'updateLogo']);
