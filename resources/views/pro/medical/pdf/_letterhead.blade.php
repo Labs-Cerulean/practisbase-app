@@ -7,8 +7,8 @@
     $warrantType = trim((string) ($user->warrant_type ?? ''));
 @endphp
 <div style="text-align: center; margin-bottom: 16px;">
-    @if($user->logoDataUri())
-        <img src="{{ $user->logoDataUri() }}" style="max-height: 52px; max-width: 160px; margin-bottom: 8px;">
+    @if($user->logoDataUriForPdf())
+        <img src="{{ $user->logoDataUriForPdf() }}" style="max-height: 52px; max-width: 160px; margin-bottom: 8px;">
     @endif
     <div class="practice" style="font-size: 16px; font-weight: bold; color: #0f172a; margin: 0;">{{ $user->name }}</div>
     @if($user->postnominalsLine())

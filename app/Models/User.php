@@ -224,6 +224,18 @@ class User extends Authenticatable
         return $this->storedImageDataUri($this->clinical_stamp_path);
     }
 
+    /** DomPDF-safe logo (omits/converts when needed). */
+    public function logoDataUriForPdf(): ?string
+    {
+        return \App\Support\DomPdfImage::embeddable($this->logoDataUri());
+    }
+
+    /** DomPDF-safe clinical / professional stamp. */
+    public function clinicalStampDataUriForPdf(): ?string
+    {
+        return \App\Support\DomPdfImage::embeddable($this->clinicalStampDataUri());
+    }
+
     public function defaultDocumentStamp(): ?DocumentStamp
     {
         return $this->documentStamps()

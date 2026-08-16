@@ -1,6 +1,6 @@
 {{-- Shared clinical signature / stamp block. Requires $user. --}}
 @php
-    $stampUri = $user->clinicalStampDataUri();
+    $stampUri = $user->clinicalStampDataUriForPdf();
 @endphp
 <div class="sign" style="margin-top: 28px;">
     @if($stampUri)

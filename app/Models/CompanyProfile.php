@@ -83,4 +83,9 @@ class CompanyProfile extends Model
 
         return 'data:'.$mime.';base64,'.base64_encode($binary);
     }
+
+    public function logoDataUriForPdf(): ?string
+    {
+        return \App\Support\DomPdfImage::embeddable($this->logoDataUri());
+    }
 }
