@@ -4,10 +4,6 @@
 
 @section('content')
     <div style="max-width: 720px; margin: 0 auto;">
-        <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.9rem; line-height: 1.45;">
-            <strong>Pre-production vault.</strong> Do not store real patient data until legal go-live review is complete. Lost recovery codes cannot be reset by Cerulean Labs.
-        </div>
-
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
             <h1 style="color: var(--primary-navy); margin-top: 0; font-size: 1.35rem;">Create medical vault</h1>
             <p style="color: var(--text-muted); line-height: 1.5;">
