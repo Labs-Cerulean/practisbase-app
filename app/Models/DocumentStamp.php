@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'role_title',
     'warrant_number',
     'signature_path',
+    'composed_path',
     'is_default',
 ])]
 class DocumentStamp extends Model
@@ -52,17 +53,37 @@ class DocumentStamp extends Model
 
     public function signatureDataUri(): ?string
     {
-        if (! filled($this->signature_path)) {
+        return $this->pathToDataUri($this->signature_path);
+    }
+
+    /** Full stamp image (preset + text + signature) for clinical / professional PDFs. */
+    public function composedDataUri(): ?string
+    {
+        return $this->pathToDataUri($this->composed_path);
+    }
+
+    public function hasComposedImage(): bool
+    {
+        if (! filled($this->composed_path)) {
+            return false;
+        }
+
+        return TenantStorage::disk()->exists($this->composed_path);
+    }
+
+    private function pathToDataUri(?string $path): ?string
+    {
+        if (! filled($path)) {
             return null;
         }
 
         $disk = TenantStorage::disk();
-        if (! $disk->exists($this->signature_path)) {
+        if (! $disk->exists($path)) {
             return null;
         }
 
-        $binary = $disk->get($this->signature_path);
-        $ext = strtolower(pathinfo($this->signature_path, PATHINFO_EXTENSION));
+        $binary = $disk->get($path);
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $mime = match ($ext) {
             'jpg', 'jpeg' => 'image/jpeg',
             'webp' => 'image/webp',
@@ -86,6 +107,7 @@ class DocumentStamp extends Model
             'role_title' => $this->role_title,
             'warrant_number' => $this->warrant_number,
             'signature_data_uri' => $this->signatureDataUri(),
+            'needs_composed' => ! $this->hasComposedImage(),
             'is_default' => (bool) $this->is_default,
         ];
     }

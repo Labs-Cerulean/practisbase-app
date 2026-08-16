@@ -25,16 +25,20 @@ class DocumentStampController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = Auth::user();
         [$first, $last] = $this->splitName((string) $user->name);
+        $returnTo = $this->safeReturnPath($request->query('return'));
+        $isClinicalSetup = $request->query('setup') === 'clinical';
 
         return view('stamper.stamps-form', [
             'stamp' => null,
             'presets' => DocumentStamp::PRESETS,
+            'returnTo' => $returnTo,
+            'isClinicalSetup' => $isClinicalSetup,
             'defaults' => [
-                'label' => 'My stamp',
+                'label' => $isClinicalSetup ? 'Clinical stamp' : 'My stamp',
                 'preset' => 'classic_border',
                 'first_name' => $first,
                 'last_name' => $last,
@@ -58,7 +62,7 @@ class DocumentStampController extends Controller
             $this->clearDefaults($user->id);
         }
 
-        DocumentStamp::create([
+        $stamp = DocumentStamp::create([
             'user_id' => $user->id,
             'label' => $validated['label'],
             'preset' => $validated['preset'],
@@ -71,7 +75,14 @@ class DocumentStampController extends Controller
             'is_default' => $isDefault,
         ]);
 
+        $this->storeComposedImage($request, $user->id, $stamp, null);
         $this->syncWarrantToProfile($user, $validated['warrant_number'] ?? null);
+
+        $returnTo = $this->safeReturnPath($request->input('return'));
+        if ($returnTo) {
+            return redirect($returnTo)
+                ->with('success', 'Stamp saved. It will print on your clinical documents.');
+        }
 
         return redirect('/stamper')
             ->with('success', 'Stamp saved. Place it on a PDF when you are ready.');
@@ -89,6 +100,8 @@ class DocumentStampController extends Controller
         return view('stamper.stamps-form', [
             'stamp' => $stamp,
             'presets' => DocumentStamp::PRESETS,
+            'returnTo' => null,
+            'isClinicalSetup' => false,
             'defaults' => [
                 'label' => $stamp->label,
                 'preset' => $stamp->preset,
@@ -126,6 +139,7 @@ class DocumentStampController extends Controller
             'is_default' => $request->boolean('is_default'),
         ]);
 
+        $this->storeComposedImage($request, $user->id, $stamp, $stamp->composed_path);
         $this->syncWarrantToProfile($user, $validated['warrant_number'] ?? null);
 
         return redirect('/stamper/stamps')
@@ -138,6 +152,9 @@ class DocumentStampController extends Controller
 
         if ($stamp->signature_path) {
             TenantStorage::disk()->delete($stamp->signature_path);
+        }
+        if ($stamp->composed_path) {
+            TenantStorage::disk()->delete($stamp->composed_path);
         }
 
         $wasDefault = $stamp->is_default;
@@ -168,6 +185,24 @@ class DocumentStampController extends Controller
             ->with('success', 'Default stamp updated.');
     }
 
+    /** Persist a browser-rendered stamp PNG (used by the stamper to backfill older stamps). */
+    public function saveComposed(Request $request, int $id)
+    {
+        $user = Auth::user();
+        $stamp = $this->findOwned($id);
+
+        $request->validate([
+            'composed_data' => 'required|string|max:2500000',
+        ]);
+
+        $this->storeComposedImage($request, $user->id, $stamp, $stamp->composed_path);
+
+        return response()->json([
+            'ok' => true,
+            'has_composed' => $stamp->fresh()->hasComposedImage(),
+        ]);
+    }
+
     private function findOwned(int $id): DocumentStamp
     {
         return DocumentStamp::query()
@@ -188,6 +223,37 @@ class DocumentStampController extends Controller
         $user->update(['warrant_number' => $warrant]);
     }
 
+    private function safeReturnPath(?string $path): ?string
+    {
+        $path = trim((string) $path);
+        if ($path === '' || ! str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            return null;
+        }
+        if (str_contains($path, "\n") || str_contains($path, "\r")) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    private function storeComposedImage(Request $request, int $userId, DocumentStamp $stamp, ?string $existingPath): void
+    {
+        if (! $request->filled('composed_data')) {
+            return;
+        }
+
+        $stored = $this->storePngDataUri($request->input('composed_data'), $userId, 'composed');
+        if ($stored === null) {
+            return;
+        }
+
+        if ($existingPath && $existingPath !== $stored) {
+            TenantStorage::disk()->delete($existingPath);
+        }
+
+        $stamp->update(['composed_path' => $stored]);
+    }
+
     private function validateStamp(Request $request): array
     {
         return $request->validate([
@@ -201,7 +267,9 @@ class DocumentStampController extends Controller
             'is_default' => 'nullable|boolean',
             'signature' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'signature_data' => 'nullable|string|max:1500000',
+            'composed_data' => 'nullable|string|max:2500000',
             'remove_signature' => 'nullable|boolean',
+            'return' => 'nullable|string|max:500',
         ]);
     }
 
@@ -252,26 +320,35 @@ class DocumentStampController extends Controller
 
     private function storeSignatureDataUri(string $dataUri, int $userId): ?string
     {
+        return $this->storePngDataUri($dataUri, $userId, 'sig');
+    }
+
+    private function storePngDataUri(string $dataUri, int $userId, string $prefix): ?string
+    {
         if (! preg_match('#^data:image/(png|jpeg|jpg|webp);base64,#i', $dataUri, $matches)) {
             return null;
         }
 
         $raw = substr($dataUri, strpos($dataUri, ',') + 1);
         $binary = base64_decode($raw, true);
-        if ($binary === false || strlen($binary) < 32 || strlen($binary) > 1_500_000) {
+        $max = $prefix === 'composed' ? 2_500_000 : 1_500_000;
+        if ($binary === false || strlen($binary) < 32 || strlen($binary) > $max) {
             return null;
         }
 
-        $cleaned = $this->knockOutSignaturePaper($binary);
-        if ($cleaned !== null) {
-            $path = TenantStorage::stampsPath($userId).'/'.Str::uuid()->toString().'.png';
-            TenantStorage::disk()->put($path, $cleaned);
-
-            return $path;
+        if ($prefix === 'sig') {
+            $cleaned = $this->knockOutSignaturePaper($binary);
+            if ($cleaned !== null) {
+                $binary = $cleaned;
+            }
         }
 
-        $ext = strtolower($matches[1]) === 'jpg' ? 'jpeg' : strtolower($matches[1]);
-        $path = TenantStorage::stampsPath($userId).'/'.Str::uuid()->toString().'.'.$ext;
+        $ext = strtolower($matches[1]) === 'jpeg' || strtolower($matches[1]) === 'jpg' ? 'jpg' : (strtolower($matches[1]) === 'webp' ? 'webp' : 'png');
+        if ($prefix === 'sig' || $prefix === 'composed') {
+            $ext = 'png';
+        }
+
+        $path = TenantStorage::stampsPath($userId).'/'.$prefix.'-'.Str::uuid()->toString().'.'.$ext;
         TenantStorage::disk()->put($path, $binary);
 
         return $path;

@@ -695,6 +695,32 @@
 
     refreshOverlayImage();
     updateActionState();
+
+    // Backfill composed PNGs for stamps created before clinical PDF wiring.
+    (async function backfillComposed() {
+        var tokenEl = document.querySelector('meta[name="csrf-token"]');
+        var token = tokenEl ? tokenEl.getAttribute('content') : '';
+        for (var i = 0; i < stamps.length; i++) {
+            var s = stamps[i];
+            if (!s.needs_composed) continue;
+            try {
+                var dataUri = await drawStampCanvas(s);
+                await fetch('/stamper/stamps/' + s.id + '/composed', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ composed_data: dataUri })
+                });
+                s.needs_composed = false;
+            } catch (err) {
+                console.warn('Could not backfill stamp ' + s.id, err);
+            }
+        }
+    })();
 })();
 </script>
 @endpush
