@@ -649,9 +649,13 @@
                 if (to === currentTier) return;
                 if (!isDowngrade(to)) {
                     confirmField.value = '';
+                    confirmField.disabled = true;
                     typed.value = '';
+                    typed.disabled = true;
                     return;
                 }
+                confirmField.disabled = false;
+                typed.disabled = false;
                 if (confirmField.value === '1' && understand.checked && typed.value.trim().toUpperCase() === 'DOWNGRADE') {
                     return;
                 }
@@ -668,6 +672,8 @@
                     alert('Type DOWNGRADE to confirm.');
                     return;
                 }
+                confirmField.disabled = false;
+                typed.disabled = false;
                 confirmField.value = '1';
                 modal.hidden = true;
                 document.body.style.overflow = '';

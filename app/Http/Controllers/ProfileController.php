@@ -91,8 +91,6 @@ class ProfileController extends Controller
 
         $request->validate([
             'tier' => \App\Support\TierPolicy::validationRule(),
-            'confirm_downgrade' => 'nullable|accepted',
-            'confirm_downgrade_typed' => 'nullable|string|max:32',
         ]);
 
         $newTier = \App\Support\TierPolicy::normalize($request->tier);
