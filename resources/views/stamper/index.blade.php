@@ -3,6 +3,68 @@
 @section('page_title', 'Document Stamper')
 
 @section('content')
+    <style>
+        .stamper-page { max-width: 1100px; margin: 0 auto; }
+        .stamper-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .stamper-title { color: var(--primary-navy); margin: 0 0 0.35rem; font-size: 1.5rem; }
+        .stamper-sub { color: var(--text-muted); margin: 0; line-height: 1.45; }
+        .stamper-hero-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .stamper-card { background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
+        .stamper-empty { text-align: center; padding: 2rem; }
+        .stamper-empty p { color: var(--text-muted); margin: 0 0 1rem; }
+        .stamper-controls { display: flex; flex-direction: column; gap: 0.9rem; }
+        .stamper-field label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+        .stamper-field select,
+        .stamper-field input[type="file"] { width: 100%; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white; box-sizing: border-box; }
+        .stamper-field input[type="file"] { padding: 0.45rem 0; border: none; }
+        .stamper-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .stamper-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.7rem 0.95rem;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1px solid transparent;
+            line-height: 1.2;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        .stamper-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .stamper-btn-sm { padding: 0.4rem 0.75rem; font-weight: 600; }
+        .stamper-btn-primary { background: var(--primary-cerulean); color: #fff; border-color: var(--primary-cerulean); }
+        .stamper-btn-ghost { background: #fff; color: var(--primary-navy); border-color: var(--border-light); }
+        .stamper-btn-navy { background: #0b1f33; color: #fff; border-color: #0b1f33; }
+        .stamper-btn-danger { background: #991b1b; color: #fff; border-color: #991b1b; }
+        .stamper-btn-danger-outline { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        .stamper-help { margin-top: 0.85rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; }
+        .stamper-workspace { margin-top: 0.25rem; }
+        .stamper-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+        .stamper-pager { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .stamper-pager span { font-size: 0.9rem; color: var(--primary-navy); font-weight: 600; }
+        .stamper-status { font-size: 0.7rem !important; font-weight: 700 !important; letter-spacing: 0.03em; text-transform: uppercase; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; padding: 0.15rem 0.45rem; border-radius: 999px; }
+        .stamper-size { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
+        .stamper-size input { width: 120px; }
+        .stamper-stage { position: relative; overflow: auto; max-height: 75vh; background: #e2e8f0; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem; text-align: center; -webkit-overflow-scrolling: touch; }
+        .stamper-frame { position: relative; display: inline-block; box-shadow: var(--shadow-sm); background: white; max-width: 100%; }
+        .stamper-frame canvas { display: block; max-width: 100%; height: auto; }
+        #stamp-overlay { position: absolute; left: 40px; top: 40px; width: 180px; cursor: grab; user-select: none; touch-action: none; z-index: 2; background: transparent; }
+        @media (min-width: 900px) {
+            .stamper-controls { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 0.85rem 1rem; align-items: end; }
+            .stamper-actions { grid-column: 1 / -1; }
+        }
+        @media (max-width: 640px) {
+            .stamper-card { padding: 1rem; }
+            .stamper-actions .stamper-btn { flex: 1 1 calc(50% - 0.5rem); min-width: 0; }
+            .stamper-actions #btn-download { flex: 1 1 100%; }
+            .stamper-stage { padding: 0.65rem; max-height: 65vh; }
+        }
+    </style>
+
     <div class="stamper-page">
         <div class="stamper-hero">
             <div>
@@ -75,52 +137,6 @@
 
 @if($stamps->isNotEmpty())
 @push('scripts')
-<style>
-.stamper-page { max-width: 1100px; margin: 0 auto; }
-.stamper-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-.stamper-title { color: var(--primary-navy); margin: 0 0 0.35rem; font-size: 1.5rem; }
-.stamper-sub { color: var(--text-muted); margin: 0; line-height: 1.45; }
-.stamper-hero-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.stamper-card { background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem; }
-.stamper-empty { text-align: center; padding: 2rem; }
-.stamper-empty p { color: var(--text-muted); margin: 0 0 1rem; }
-.stamper-controls { display: flex; flex-direction: column; gap: 0.9rem; }
-.stamper-field label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
-.stamper-field select,
-.stamper-field input[type="file"] { width: 100%; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white; box-sizing: border-box; }
-.stamper-field input[type="file"] { padding: 0.45rem 0; border: none; }
-.stamper-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.stamper-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.7rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; cursor: pointer; border: none; line-height: 1.2; }
-.stamper-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.stamper-btn-sm { padding: 0.4rem 0.75rem; font-weight: 600; }
-.stamper-btn-primary { background: var(--primary-cerulean); color: white; }
-.stamper-btn-ghost { background: white; color: var(--primary-navy); border: 1px solid var(--border-light); }
-.stamper-btn-navy { background: #0b1f33; color: white; }
-.stamper-btn-danger { background: #991b1b; color: white; }
-.stamper-btn-danger-outline { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-.stamper-help { margin-top: 0.85rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; }
-.stamper-workspace { margin-top: 0.25rem; }
-.stamper-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-.stamper-pager { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.stamper-pager span { font-size: 0.9rem; color: var(--primary-navy); font-weight: 600; }
-.stamper-status { font-size: 0.7rem !important; font-weight: 700 !important; letter-spacing: 0.03em; text-transform: uppercase; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; padding: 0.15rem 0.45rem; border-radius: 999px; }
-.stamper-size { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
-.stamper-size input { width: 120px; }
-.stamper-stage { position: relative; overflow: auto; max-height: 75vh; background: #e2e8f0; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem; text-align: center; -webkit-overflow-scrolling: touch; }
-.stamper-frame { position: relative; display: inline-block; box-shadow: var(--shadow-sm); background: white; max-width: 100%; }
-.stamper-frame canvas { display: block; max-width: 100%; height: auto; }
-#stamp-overlay { position: absolute; left: 40px; top: 40px; width: 180px; cursor: grab; user-select: none; touch-action: none; z-index: 2; background: transparent; }
-@media (min-width: 900px) {
-    .stamper-controls { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 0.85rem 1rem; align-items: end; }
-    .stamper-actions { grid-column: 1 / -1; }
-}
-@media (max-width: 640px) {
-    .stamper-card { padding: 1rem; }
-    .stamper-actions .stamper-btn { flex: 1 1 calc(50% - 0.5rem); min-width: 0; }
-    .stamper-actions #btn-download { flex: 1 1 100%; }
-    .stamper-stage { padding: 0.65rem; max-height: 65vh; }
-}
-</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
