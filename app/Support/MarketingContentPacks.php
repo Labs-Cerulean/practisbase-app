@@ -431,6 +431,8 @@ class MarketingContentPacks
             ],
         ];
 
+        $packs = array_merge($packs, self::highlightReels($code));
+
         foreach ($packs as &$pack) {
             $path = $pack['url_path'] ?? '/';
             $extra = $pack['url_extra'] ?? [];
@@ -441,5 +443,247 @@ class MarketingContentPacks
         unset($pack);
 
         return $packs;
+    }
+
+    /**
+     * Numbered Highlight reel series for short LinkedIn video posts (every few days).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function highlightReels(string $code): array
+    {
+        return [
+            [
+                'id' => 'highlight-reel-01',
+                'label' => 'Highlight reel 1 · Document Stamper',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'blueprint-texture',
+                'ready' => true,
+                'kicker' => 'Highlight reel 1',
+                'headline' => 'Stamp PDFs from your phone. No print. No scan.',
+                'subline' => 'Upload, place your stamp, download. The file never leaves your browser.',
+                'highlight' => 'Document Stamper · Standard and Practice',
+                'cta' => 'Try Document Stamper',
+                'caption' => "Printing, signing and scanning documents is a massive waste of time, whether you are at your desk or out on site.\n\n"
+                    ."PractisBase Document Stamper lets you apply your official warrant stamp to PDFs from your phone or computer. Medical professionals, Periti, engineers, and any Standard account.\n\n"
+                    ."Frictionless: upload a PDF, drag your saved stamp into place, download. Desktop and mobile.\n"
+                    ."Completely secure: processing stays in your browser. Sensitive documents never leave your device.\n\n"
+                    ."Designed to simplify life for Maltese sole traders.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Malta #SoleTrader #Periti #MedicalProfessionals #MalteseBusiness #DigitalTransformation #Compliance',
+                'tip' => 'You already shot this one. Keep it as the series opener. Reuse the caption when you want a remount.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-02',
+                'label' => 'Highlight reel 2 · Build your stamp once',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'blueprint-texture',
+                'ready' => true,
+                'kicker' => 'Highlight reel 2',
+                'headline' => 'Build your stamp once. Reuse it forever.',
+                'subline' => 'Name, postnominals, role, warrant, wet signature upload or draw in app.',
+                'highlight' => 'Presets · signature pad · warrant number',
+                'cta' => 'Create your stamp',
+                'caption' => "Stop redrawing your details on every PDF.\n\n"
+                    ."In PractisBase you create a stamp once: preset, name, surname, postnominals, role, warrant number, and a wet signature (upload or draw).\n\n"
+                    ."Then you place that same stamp on any PDF, one page or all pages, in seconds.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Periti #Engineers #Doctors #Malta #SoleTrader',
+                'tip' => 'Screen record stamp builder: pick a preset, type warrant, draw signature, save. Keep under 45 seconds.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-03',
+                'label' => 'Highlight reel 3 · Leave Excel',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'financial-chart',
+                'ready' => true,
+                'kicker' => 'Highlight reel 3',
+                'headline' => 'Leave Excel behind for invoices and VAT.',
+                'subline' => 'Official invoices count. RFPs stay €0 until converted. Live totals you can trust.',
+                'highlight' => 'Strict fiscal mode · Malta ready',
+                'cta' => 'Open the ledger',
+                'caption' => "If your VAT maths lives in a spreadsheet you last touched in March, this is for you.\n\n"
+                    ."PractisBase keeps invoices and RFPs separate the Maltese way. Pro formas hold no official fiscal weight until converted. Live Tax and VAT totals update as you work.\n\n"
+                    ."Less reconciling at midnight. More clarity when CFR asks.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #MaltaTax #VAT #SoleTrader #LeaveExcel',
+                'tip' => 'Record converting an RFP to an invoice, then cut to Tax and VAT glance. No real client names.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-04',
+                'label' => 'Highlight reel 4 · Tax and VAT desk',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'financial-chart',
+                'ready' => true,
+                'kicker' => 'Highlight reel 4',
+                'headline' => 'Tax is not a black box.',
+                'subline' => 'Click any figure for the receipt of the maths. TA22, SSC, brackets, provisional tax.',
+                'highlight' => 'Auditable breakdowns',
+                'cta' => 'See Tax and VAT',
+                'caption' => "Most apps show you a tax number and hope you trust it.\n\n"
+                    ."PractisBase shows the receipt. Click a dotted total and see how TA22, SSC, brackets and provisional tax settled for the year.\n\n"
+                    ."Built for Maltese sole traders who want to understand the number before they pay it.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #TA22 #SSC #MaltaTax #SoleTrader',
+                'tip' => 'Tap a dotted tax figure and pan the breakdown modal. Voiceover: this is the maths, not a mystery.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-05',
+                'label' => 'Highlight reel 5 · Article 11 watch',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'financial-chart',
+                'ready' => true,
+                'kicker' => 'Highlight reel 5',
+                'headline' => 'See €35k coming before CFR does.',
+                'subline' => 'Article 11 threshold progress on your desk, with a clear warning if you cross it.',
+                'highlight' => '€35,000 exempt watch',
+                'cta' => 'Watch your threshold',
+                'caption' => "Crossing the €35,000 Article 11 line by accident is an expensive surprise.\n\n"
+                    ."PractisBase tracks billed revenue against the threshold and surfaces a clear notice when you are approaching or over.\n\n"
+                    ."Act early. Do not scramble in June.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #VAT #Article11 #MaltaTax #SoleTrader',
+                'tip' => 'Zoom the Article 11 progress card. Keep copy calm, not scary.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-06',
+                'label' => 'Highlight reel 6 · Medical vault',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'medical-clean',
+                'ready' => true,
+                'kicker' => 'Highlight reel 6',
+                'headline' => 'Patient notes that stay under your key.',
+                'subline' => 'Encrypted vault, stampables with issue codes, trusted device unlock.',
+                'highlight' => 'Practitioner held encryption',
+                'cta' => 'See the clinical desk',
+                'caption' => "Clinical notes do not belong in a shared Drive folder.\n\n"
+                    ."PractisBase Medical keeps an encrypted patient vault with practitioner held keys, issued stampables with pharmacist issue codes, and trusted device unlock.\n\n"
+                    ."Books and clinic in one login when you are ready for Full Pro.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Doctors #Malta #ClinicalNotes #DataProtection',
+                'tip' => 'Demo vault unlock then open a blank patient create screen. Never show real patient data.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-07',
+                'label' => 'Highlight reel 7 · Architect studio',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'blueprint-texture',
+                'ready' => true,
+                'kicker' => 'Highlight reel 7',
+                'headline' => 'Condition reports and BCA templates, ready to stamp.',
+                'subline' => 'Projects, method statements, document versions, and Document Stamper beside your books.',
+                'highlight' => 'Studio desk for Periti',
+                'cta' => 'Open the studio desk',
+                'caption' => "Site paperwork should not die in WhatsApp threads.\n\n"
+                    ."PractisBase for architects and Periti: projects, condition reports, method statements, BCA templates, document versions, and Document Stamper next to your invoices.\n\n"
+                    ."Practice tools first. Full Pro when Tax and VAT should sit beside the studio.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Periti #Architects #BCA #Malta',
+                'tip' => 'Walk project list → condition report → stamp PDF. Add on screen captions.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-08',
+                'label' => 'Highlight reel 8 · Engineer field',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'blueprint-texture',
+                'ready' => true,
+                'kicker' => 'Highlight reel 8',
+                'headline' => 'Field certificates and equipment due dates, one board.',
+                'subline' => 'Projects, PAs, specialised reports, certificate register, equipment due board.',
+                'highlight' => 'Technical desk for engineers',
+                'cta' => 'Open the technical desk',
+                'caption' => "Missed equipment renewals cost more than a reminder ever will.\n\n"
+                    ."PractisBase for engineers: Client → Project → PA, field certificates, specialised reports, and an equipment due board so renewals surface before they expire.\n\n"
+                    ."Stamp PDFs on site when you need them. Books when you upgrade.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Engineers #Malta #FieldCertificates #Compliance',
+                'tip' => 'Show equipment due board, then stamp a certificate PDF on mobile.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-09',
+                'label' => 'Highlight reel 9 · Work from site',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'mobile-mockup',
+                'ready' => true,
+                'kicker' => 'Highlight reel 9',
+                'headline' => 'Add PractisBase to your Home Screen.',
+                'subline' => 'Phone ready desk for invoices, projects, and stamps when you are away from the office.',
+                'highlight' => 'PWA · Download app',
+                'cta' => 'Install from the browser',
+                'caption' => "You should not need a laptop to raise an invoice or stamp a site PDF.\n\n"
+                    ."PractisBase installs as an app from your browser. Add to Home Screen, then work from the van, the clinic corridor, or the site cabin.\n\n"
+                    ."Same secure login. Same Maltese rules.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Mobile #Malta #SoleTrader #OnSite',
+                'tip' => 'Film Add to Home Screen on Android or iPhone, then open Document Stamper from the icon.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-10',
+                'label' => 'Highlight reel 10 · Accountant pack',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'financial-chart',
+                'ready' => true,
+                'kicker' => 'Highlight reel 10',
+                'headline' => 'Hand your accountant a clean pack, not a ZIP of chaos.',
+                'subline' => 'One export for the year: ledger, expenses, the numbers they actually need.',
+                'highlight' => 'For accountant · one click',
+                'cta' => 'Export the pack',
+                'caption' => "Your accountant does not want 40 email attachments named final_final_v3.\n\n"
+                    ."PractisBase Standard includes a For accountant export so you hand over a clean pack for the year.\n\n"
+                    ."Less chasing. Faster close.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Accountants #MaltaTax #SoleTrader',
+                'tip' => 'Screen the For accountant page and the download click. Mention Standard plan.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-11',
+                'label' => 'Highlight reel 11 · Weekly backup',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'hero-blue-gradient',
+                'ready' => true,
+                'kicker' => 'Highlight reel 11',
+                'headline' => 'Your data, downloadable, on your schedule.',
+                'subline' => 'Personal data backup for every account. Keep a copy you control.',
+                'highlight' => 'Weekly backup habit',
+                'cta' => 'Download your backup',
+                'caption' => "Trust the cloud. Still keep a copy.\n\n"
+                    ."PractisBase reminds you to take a personal data backup so your invoices, clients and practice records are not only on our servers.\n\n"
+                    ."A calm weekly habit beats a panic restore.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #DataBackup #Malta #SoleTrader #Trust',
+                'tip' => 'Show Data backup screen and the soft weekly nag. Keep tone confident, not fearful.',
+                'url_path' => '/',
+            ],
+            [
+                'id' => 'highlight-reel-12',
+                'label' => 'Highlight reel 12 · Founding seats',
+                'channel' => 'LinkedIn · Video',
+                'theme' => 'hero-blue-gradient',
+                'ready' => true,
+                'kicker' => 'Highlight reel 12',
+                'headline' => 'Founding seats are open. Three months free.',
+                'subline' => 'First 25 users. Code '.$code.' at signup. Built in Malta for sole traders.',
+                'highlight' => 'First 25 · '.$code,
+                'cta' => 'Claim a founding seat',
+                'caption' => "If you have been watching the Highlight reels, this is the invite.\n\n"
+                    ."PractisBase is live for Maltese sole traders: accounts, Tax and VAT, and profession tools for doctors, Periti and engineers.\n\n"
+                    ."Founding offer: the first 25 users get 3 months free with code {$code} at signup.\n\n"
+                    .'{url}',
+                'hashtags' => '#PractisBase #Malta #SoleTrader #Founding #JoinUs',
+                'tip' => 'End the series with this. Overlay the code on screen. Soft CTA, no hype.',
+                'url_path' => '/register',
+                'url_extra' => ['promo_code' => $code],
+            ],
+        ];
     }
 }

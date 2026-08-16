@@ -192,16 +192,16 @@
         <div class="cs-guide">
             <h2>How to use</h2>
             <ol>
-                <li>Pick a pack below (start with <strong>Launch · Founding 25</strong>).</li>
-                <li>Screenshot the square graphic (full card: real background art and text). Avoid browser chrome if you can.</li>
-                <li>Click <strong>Copy caption</strong>, paste into LinkedIn, attach the image.</li>
-                <li>Optional: follow the screen-record tip for a 15–30s demo clip.</li>
+                <li>For growth posts, use the <strong>Highlight reels</strong> filter. Post every 2 to 3 days (reel 1 is live; reels 2 to 12 are next).</li>
+                <li>Screen record the tip on each pack (15 to 45 seconds). Paste the caption. Attach the square graphic as the cover if LinkedIn asks for one.</li>
+                <li>Still use Launch / Product packs for static image posts between reels when you want variety.</li>
                 <li>Founding code live in copy: <code>{{ $foundingCode }}</code> · first 25 · 3 months free. Links use <code>utm_source=linkedin&amp;utm_medium=social&amp;utm_campaign=…</code> (plus <code>promo_code=</code> on Founding posts).</li>
             </ol>
         </div>
 
         <div class="cs-chip-row" id="cs-filters">
             <button type="button" class="cs-chip is-active" data-filter="all">All</button>
+            <button type="button" class="cs-chip" data-filter="reels">Highlight reels</button>
             <button type="button" class="cs-chip" data-filter="launch">Launch</button>
             <button type="button" class="cs-chip" data-filter="product">Product</button>
             <button type="button" class="cs-chip" data-filter="profession">Professions</button>
@@ -211,6 +211,7 @@
         @foreach($packs as $pack)
             @php
                 $group = match (true) {
+                    str_starts_with($pack['id'], 'highlight-reel-') => 'reels',
                     str_contains($pack['id'], 'launch') || str_contains($pack['id'], 'founding') || $pack['id'] === 'local-pride' || $pack['id'] === 'built-in-malta' => 'launch',
                     in_array($pack['id'], [
                         'doctors-vault', 'architects-desk', 'engineers-field',
