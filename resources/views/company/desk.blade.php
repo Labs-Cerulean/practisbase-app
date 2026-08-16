@@ -95,6 +95,10 @@
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <a href="/company/platform" style="background: #0b1f33; border: 1px solid #0b1f33; border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: white;">PractisBase dashboard</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">Users · plans · usage · access economics</div>
+        </a>
         <a href="/company/accounts" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Accounts</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">TB · P&amp;L · Balance sheet · journals</div>

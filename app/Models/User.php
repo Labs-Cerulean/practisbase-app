@@ -106,6 +106,11 @@ class User extends Authenticatable
         return $this->belongsTo(Promotion::class, 'applied_promotion_id');
     }
 
+    public function betaInviteCode()
+    {
+        return $this->belongsTo(BetaInviteCode::class, 'beta_invite_code_id');
+    }
+
     public function referralsMade()
     {
         return $this->hasMany(Referral::class, 'referrer_id');
