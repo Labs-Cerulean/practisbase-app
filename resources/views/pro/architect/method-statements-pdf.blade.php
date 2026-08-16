@@ -24,8 +24,8 @@
     </style>
 </head>
 <body>
-    @if($user->logoDataUri())
-        <img src="{{ $user->logoDataUri() }}" style="max-height: 52px; max-width: 160px; margin-bottom: 8px;">
+    @if($user->logoDataUriForPdf())
+        <img src="{{ $user->logoDataUriForPdf() }}" style="max-height: 52px; max-width: 160px; margin-bottom: 8px;">
     @endif
     <div class="practice">{{ $user->name }}</div>
     @if($user->postnominalsLine())
@@ -103,8 +103,8 @@
     </div>
 
     <div class="sign">
-        @if($user->clinicalStampDataUri())
-            <img src="{{ $user->clinicalStampDataUri() }}" style="max-height: 70px; max-width: 160px;">
+        @if($user->clinicalStampDataUriForPdf())
+            <img src="{{ $user->clinicalStampDataUriForPdf() }}" style="max-height: 70px; max-width: 160px;">
         @endif
         <div class="sign-line">
             {{ $user->name }}@if($user->postnominalsLine()), {{ $user->postnominalsLine() }}@endif

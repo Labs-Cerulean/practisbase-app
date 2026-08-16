@@ -27,8 +27,8 @@
     </style>
 </head>
 <body>
-    @if($user->logoDataUri())
-        <img src="{{ $user->logoDataUri() }}" style="max-height: 56px; max-width: 170px; margin-bottom: 12px;">
+    @if($user->logoDataUriForPdf())
+        <img src="{{ $user->logoDataUriForPdf() }}" style="max-height: 56px; max-width: 170px; margin-bottom: 12px;">
     @endif
     <div class="practice">{{ $user->name }}</div>
     @if($user->postnominalsLine())

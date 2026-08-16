@@ -13,8 +13,8 @@
     </style>
 </head>
 <body>
-    @if($user->logoDataUri())
-        <img src="{{ $user->logoDataUri() }}" style="max-height: 60px; max-width: 180px; margin-bottom: 16px;">
+    @if($user->logoDataUriForPdf())
+        <img src="{{ $user->logoDataUriForPdf() }}" style="max-height: 60px; max-width: 180px; margin-bottom: 16px;">
     @endif
     <h1>{{ $documentTitle }}</h1>
     <div class="meta">Professional stamp sheet · {{ \Illuminate\Support\Carbon::parse($stampDate)->format('d M Y') }}</div>

@@ -281,12 +281,12 @@
         $warrantType = trim((string) ($user->warrant_type ?? ''));
         $clinicPhone = trim((string) ($user->clinic_phone ?? ''));
         $clinicAddress = trim((string) ($user->clinic_address ?? ''));
-        $stampUri = $user->clinicalStampDataUri();
+        $stampUri = $user->clinicalStampDataUriForPdf();
     @endphp
 
     <div class="pad-header">
-        @if($user->logoDataUri())
-            <img class="pad-logo" src="{{ $user->logoDataUri() }}" alt="">
+        @if($user->logoDataUriForPdf())
+            <img class="pad-logo" src="{{ $user->logoDataUriForPdf() }}" alt="">
         @endif
         <div class="pad-name">{{ $user->name }}</div>
         @if($user->postnominalsLine())
