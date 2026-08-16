@@ -133,7 +133,7 @@
                     </div>
                 </div>
                 <div id="stamper-help" class="stamper-help">
-                    Choose a stamp and upload a PDF. Drag to place, drag the corner to resize, then stamp. Download when ready.
+                    Place stamp → drag / resize → Stamp this page to commit. Remove clears completely.
                 </div>
             </div>
 
@@ -226,6 +226,7 @@
     function updateActionState() {
         var ready = !!sourcePdfBytes;
         var hasPage = !!placements[pageNum];
+        var canPlace = ready && !draftVisible && !hasPage;
         btnApplyPage.disabled = !ready || !draftVisible;
         btnApplyAll.disabled = !ready || !draftVisible;
         btnDownload.disabled = !ready || placementCount() === 0;
@@ -233,8 +234,14 @@
         btnRemoveAll.disabled = !ready || placementCount() === 0;
         pageStatus.hidden = !hasPage;
         if (btnPlace) {
-            btnPlace.disabled = !ready || draftVisible || hasPage;
+            btnPlace.disabled = !canPlace;
             btnPlace.hidden = false;
+            btnPlace.classList.toggle('stamper-btn-primary', canPlace);
+            btnPlace.classList.toggle('stamper-btn-ghost', !canPlace);
+        }
+        if (btnApplyPage) {
+            btnApplyPage.classList.toggle('stamper-btn-primary', ready && draftVisible);
+            btnApplyPage.classList.toggle('stamper-btn-ghost', !(ready && draftVisible));
         }
         if (hasPage || draftVisible) {
             overlayWrap.hidden = false;
@@ -511,7 +518,7 @@
     if (btnPlace) {
         btnPlace.addEventListener('click', function () {
             showDraftOverlay(true);
-            setHelp('Place the stamp, then Stamp this page.');
+            setHelp('Drag to position, resize from the corner, then Stamp this page (or Stamp all pages) to commit.');
         });
     }
 
@@ -631,7 +638,7 @@
         if (!p) return;
         placements[pageNum] = p;
         updateActionState();
-        setHelp('Stamp saved on page ' + pageNum + '. Move it and stamp again to update, or Remove to delete it. Download when ready.');
+        setHelp('Stamp saved on page ' + pageNum + '. Remove to clear it, or Download when ready.');
     });
 
     btnApplyAll.addEventListener('click', function () {
@@ -647,19 +654,19 @@
             };
         }
         updateActionState();
-        setHelp('Stamp saved on all ' + pageCount + ' pages. Use Remove or Remove all to correct a mistake before download.');
+        setHelp('Stamp saved on all ' + pageCount + ' pages. Remove or Remove all to clear, or Download when ready.');
     });
 
     btnRemovePage.addEventListener('click', function () {
         delete placements[pageNum];
-        showDraftOverlay(true);
-        setHelp('Removed stamp from page ' + pageNum + '. Drag to place again, then Stamp this page.');
+        hideDraftOverlay();
+        setHelp('Stamp removed from page ' + pageNum + '. Click Place stamp to put one back, then Stamp this page to commit.');
     });
 
     btnRemoveAll.addEventListener('click', function () {
         placements = {};
-        showDraftOverlay(true);
-        setHelp('All stamps removed. Drag to place again, then Stamp this page or Stamp all pages.');
+        hideDraftOverlay();
+        setHelp('All stamps removed. Click Place stamp to put one back, then Stamp this page to commit.');
     });
 
     btnDownload.addEventListener('click', async function () {
