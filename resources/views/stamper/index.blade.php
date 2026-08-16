@@ -47,12 +47,40 @@
         .stamper-pager { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
         .stamper-pager span { font-size: 0.9rem; color: var(--primary-navy); font-weight: 600; }
         .stamper-status { font-size: 0.7rem !important; font-weight: 700 !important; letter-spacing: 0.03em; text-transform: uppercase; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; padding: 0.15rem 0.45rem; border-radius: 999px; }
-        .stamper-size { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
-        .stamper-size input { width: 120px; }
         .stamper-stage { position: relative; overflow: auto; max-height: 75vh; background: #e2e8f0; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem; text-align: center; -webkit-overflow-scrolling: touch; }
         .stamper-frame { position: relative; display: inline-block; box-shadow: var(--shadow-sm); background: white; max-width: 100%; }
         .stamper-frame canvas { display: block; max-width: 100%; height: auto; }
-        #stamp-overlay { position: absolute; left: 40px; top: 40px; width: 180px; cursor: grab; user-select: none; touch-action: none; z-index: 2; background: transparent; }
+        .stamper-overlay-wrap {
+            position: absolute;
+            left: 40px;
+            top: 40px;
+            width: 180px;
+            z-index: 2;
+            touch-action: none;
+            user-select: none;
+        }
+        .stamper-overlay-wrap[hidden] { display: none !important; }
+        #stamp-overlay {
+            display: block;
+            width: 100%;
+            height: auto;
+            cursor: grab;
+            background: transparent;
+            pointer-events: auto;
+        }
+        .stamper-resize-handle {
+            position: absolute;
+            right: -6px;
+            bottom: -6px;
+            width: 16px;
+            height: 16px;
+            padding: 0;
+            border: 2px solid #fff;
+            border-radius: 3px;
+            background: var(--primary-cerulean);
+            cursor: nwse-resize;
+            box-shadow: 0 0 0 1px rgba(11, 31, 51, 0.25);
+        }
         @media (min-width: 900px) {
             .stamper-controls { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 0.85rem 1rem; align-items: end; }
             .stamper-actions { grid-column: 1 / -1; }
@@ -60,7 +88,6 @@
         @media (max-width: 640px) {
             .stamper-card { padding: 1rem; }
             .stamper-actions .stamper-btn { flex: 1 1 calc(50% - 0.5rem); min-width: 0; }
-            .stamper-actions #btn-download { flex: 1 1 100%; }
             .stamper-stage { padding: 0.65rem; max-height: 65vh; }
         }
     </style>
@@ -100,13 +127,12 @@
                     <div class="stamper-actions">
                         <button type="button" id="btn-apply-page" class="stamper-btn stamper-btn-primary" disabled>Stamp this page</button>
                         <button type="button" id="btn-apply-all" class="stamper-btn stamper-btn-ghost" disabled>Stamp all pages</button>
-                        <button type="button" id="btn-remove-page" class="stamper-btn stamper-btn-danger" disabled>Remove page stamp</button>
-                        <button type="button" id="btn-remove-all" class="stamper-btn stamper-btn-danger-outline" disabled>Remove all stamps</button>
-                        <button type="button" id="btn-download" class="stamper-btn stamper-btn-navy" disabled>Download PDF</button>
+                        <button type="button" id="btn-remove-page" class="stamper-btn stamper-btn-danger" disabled>Remove</button>
+                        <button type="button" id="btn-remove-all" class="stamper-btn stamper-btn-danger-outline" disabled>Remove all</button>
                     </div>
                 </div>
                 <div id="stamper-help" class="stamper-help">
-                    Choose a stamp and upload a PDF. Drag the stamp on the page preview, then stamp this page or all pages. You can remove a stamp before download.
+                    Choose a stamp and upload a PDF. Drag to place, drag the corner to resize, then stamp. Download when ready.
                 </div>
             </div>
 
@@ -118,18 +144,19 @@
                         <button type="button" id="btn-next" class="stamper-btn stamper-btn-ghost stamper-btn-sm">Next</button>
                         <span id="page-stamp-status" class="stamper-status" hidden>Stamped</span>
                     </div>
-                    <div class="stamper-size">
-                        <label for="stamp-scale">Size</label>
-                        <input type="range" id="stamp-scale" min="40" max="160" value="100">
-                    </div>
+                    <button type="button" id="btn-download" class="stamper-btn stamper-btn-navy" disabled>Download PDF</button>
                 </div>
 
                 <div id="pdf-stage" class="stamper-stage">
                     <div id="pdf-frame" class="stamper-frame">
                         <canvas id="pdf-canvas"></canvas>
-                        <img id="stamp-overlay" alt="Stamp" draggable="false">
+                        <div id="stamp-overlay-wrap" class="stamper-overlay-wrap" hidden>
+                            <img id="stamp-overlay" alt="Stamp" draggable="false">
+                            <button type="button" id="stamp-resize-handle" class="stamper-resize-handle" aria-label="Resize stamp"></button>
+                        </div>
                     </div>
                 </div>
+                <button type="button" id="btn-place-stamp" class="stamper-btn stamper-btn-ghost stamper-btn-sm" style="margin-top: 0.65rem;" hidden>Place stamp</button>
             </div>
         @endif
     </div>
@@ -156,8 +183,10 @@
     var workspace = document.getElementById('stamper-workspace');
     var canvas = document.getElementById('pdf-canvas');
     var ctx = canvas.getContext('2d');
+    var overlayWrap = document.getElementById('stamp-overlay-wrap');
     var overlay = document.getElementById('stamp-overlay');
-    var scaleInput = document.getElementById('stamp-scale');
+    var resizeHandle = document.getElementById('stamp-resize-handle');
+    var btnPlace = document.getElementById('btn-place-stamp');
     var pageLabel = document.getElementById('page-label');
     var pageStatus = document.getElementById('page-stamp-status');
     var btnPrev = document.getElementById('btn-prev');
@@ -176,8 +205,11 @@
     var placements = {};
     var fileName = 'stamped.pdf';
     var dragging = false;
+    var resizing = false;
     var dragOffset = { x: 0, y: 0 };
+    var resizeStart = { x: 0, y: 0, w: 0 };
     var stampPngCache = {};
+    var draftVisible = false;
 
     function currentStamp() {
         return stampById[String(select.value)] || stamps[0];
@@ -193,18 +225,51 @@
 
     function updateActionState() {
         var ready = !!sourcePdfBytes;
-        btnApplyPage.disabled = !ready;
-        btnApplyAll.disabled = !ready;
+        var hasPage = !!placements[pageNum];
+        btnApplyPage.disabled = !ready || !draftVisible;
+        btnApplyAll.disabled = !ready || !draftVisible;
         btnDownload.disabled = !ready || placementCount() === 0;
-        btnRemovePage.disabled = !ready || !placements[pageNum];
+        btnRemovePage.disabled = !ready || !hasPage;
         btnRemoveAll.disabled = !ready || placementCount() === 0;
-        pageStatus.hidden = !placements[pageNum];
-        if (placements[pageNum]) {
-            overlay.style.outline = '2px dashed rgba(11, 31, 51, 0.35)';
-            overlay.style.outlineOffset = '2px';
+        pageStatus.hidden = !hasPage;
+        if (btnPlace) btnPlace.hidden = !ready || draftVisible || hasPage;
+        if (hasPage || draftVisible) {
+            overlayWrap.hidden = false;
+            overlayWrap.style.outline = hasPage ? '2px dashed rgba(11, 31, 51, 0.35)' : '2px dashed rgba(2, 132, 199, 0.45)';
+            overlayWrap.style.outlineOffset = '2px';
         } else {
-            overlay.style.outline = 'none';
+            overlayWrap.hidden = true;
+            overlayWrap.style.outline = 'none';
         }
+    }
+
+    function defaultOverlaySize() {
+        return Math.min(180, Math.max(120, (document.getElementById('pdf-frame').clientWidth || 320) * 0.42));
+    }
+
+    function showDraftOverlay(atCenter) {
+        var frame = document.getElementById('pdf-frame');
+        if (!frame) return;
+        draftVisible = true;
+        overlayWrap.hidden = false;
+        var w = defaultOverlaySize();
+        overlayWrap.style.width = Math.round(w) + 'px';
+        if (atCenter) {
+            overlayWrap.style.left = Math.max(0, Math.round((frame.clientWidth - w) / 2)) + 'px';
+            overlayWrap.style.top = Math.max(0, Math.round(frame.clientHeight * 0.35)) + 'px';
+        } else if (!overlayWrap.style.left) {
+            overlayWrap.style.left = '40px';
+            overlayWrap.style.top = '40px';
+        }
+        updateActionState();
+    }
+
+    function hideDraftOverlay() {
+        draftVisible = false;
+        if (!placements[pageNum]) {
+            overlayWrap.hidden = true;
+        }
+        updateActionState();
     }
 
     function knockOutPaper(img) {
@@ -347,23 +412,15 @@
             stampPngCache[key] = await drawStampCanvas(stamp);
         }
         overlay.src = stampPngCache[key];
-        applyOverlaySize();
-    }
-
-    function applyOverlaySize() {
-        var base = Math.min(180, Math.max(120, (document.getElementById('pdf-frame').clientWidth || 320) * 0.42));
-        var pct = parseInt(scaleInput.value, 10) || 100;
-        overlay.style.width = Math.round(base * pct / 100) + 'px';
-        overlay.style.height = 'auto';
     }
 
     function capturePlacement() {
         var frame = document.getElementById('pdf-frame');
-        if (!frame || !frame.clientWidth || !frame.clientHeight) return null;
-        var left = parseFloat(overlay.style.left) || 0;
-        var top = parseFloat(overlay.style.top) || 0;
-        var width = overlay.offsetWidth || overlay.getBoundingClientRect().width;
-        var height = overlay.offsetHeight || overlay.getBoundingClientRect().height;
+        if (!frame || !frame.clientWidth || !frame.clientHeight || overlayWrap.hidden) return null;
+        var left = parseFloat(overlayWrap.style.left) || 0;
+        var top = parseFloat(overlayWrap.style.top) || 0;
+        var width = overlayWrap.offsetWidth || overlayWrap.getBoundingClientRect().width;
+        var height = overlayWrap.offsetHeight || overlayWrap.getBoundingClientRect().height;
         return {
             nx: left / frame.clientWidth,
             ny: top / frame.clientHeight,
@@ -374,24 +431,25 @@
     }
 
     function restorePlacementForPage() {
-        applyOverlaySize();
         var p = placements[pageNum];
         var frame = document.getElementById('pdf-frame');
         if (!p || !frame) {
-            overlay.style.left = '24px';
-            overlay.style.top = '24px';
+            draftVisible = false;
+            overlayWrap.hidden = true;
             updateActionState();
             return;
         }
-        overlay.style.left = Math.round(p.nx * frame.clientWidth) + 'px';
-        overlay.style.top = Math.round(p.ny * frame.clientHeight) + 'px';
-        overlay.style.width = Math.round(p.nw * frame.clientWidth) + 'px';
+        draftVisible = true;
+        overlayWrap.hidden = false;
+        overlayWrap.style.left = Math.round(p.nx * frame.clientWidth) + 'px';
+        overlayWrap.style.top = Math.round(p.ny * frame.clientHeight) + 'px';
+        overlayWrap.style.width = Math.round(p.nw * frame.clientWidth) + 'px';
         if (p.stampId && stampById[String(p.stampId)] && String(select.value) !== String(p.stampId)) {
             select.value = String(p.stampId);
             refreshOverlayImage().then(function () {
-                overlay.style.left = Math.round(p.nx * frame.clientWidth) + 'px';
-                overlay.style.top = Math.round(p.ny * frame.clientHeight) + 'px';
-                overlay.style.width = Math.round(p.nw * frame.clientWidth) + 'px';
+                overlayWrap.style.left = Math.round(p.nx * frame.clientWidth) + 'px';
+                overlayWrap.style.top = Math.round(p.ny * frame.clientHeight) + 'px';
+                overlayWrap.style.width = Math.round(p.nw * frame.clientWidth) + 'px';
             });
         }
         updateActionState();
@@ -414,11 +472,13 @@
         pageCount = pdfDoc.numPages;
         pageNum = 1;
         placements = {};
+        draftVisible = true;
         workspace.hidden = false;
         await refreshOverlayImage();
         await renderPage(pageNum);
+        showDraftOverlay(true);
         updateActionState();
-        setHelp('Drag the stamp into place, then Stamp this page or Stamp all pages. Remove a stamp anytime before download. The PDF never leaves your device.');
+        setHelp('Drag the stamp, resize from the corner, then Stamp this page or all pages. Download when ready.');
     }
 
     fileInput.addEventListener('change', async function () {
@@ -445,9 +505,12 @@
         if (pdfDoc) restorePlacementForPage();
     });
 
-    scaleInput.addEventListener('input', function () {
-        applyOverlaySize();
-    });
+    if (btnPlace) {
+        btnPlace.addEventListener('click', function () {
+            showDraftOverlay(true);
+            setHelp('Place the stamp, then Stamp this page.');
+        });
+    }
 
     btnPrev.addEventListener('click', async function () {
         if (!pdfDoc || pageNum <= 1) return;
@@ -461,35 +524,56 @@
     });
 
     function startDrag(e) {
+        if (e.target === resizeHandle) return;
         dragging = true;
         overlay.style.cursor = 'grabbing';
         var point = e.touches && e.touches[0] ? e.touches[0] : e;
-        var rect = overlay.getBoundingClientRect();
+        var rect = overlayWrap.getBoundingClientRect();
         dragOffset.x = point.clientX - rect.left;
         dragOffset.y = point.clientY - rect.top;
         e.preventDefault();
     }
     function moveDrag(e) {
-        if (!dragging) return;
+        if (!dragging && !resizing) return;
         var point = e.touches && e.touches[0] ? e.touches[0] : e;
-        var frame = document.getElementById('pdf-frame').getBoundingClientRect();
+        var frameEl = document.getElementById('pdf-frame');
+        var frame = frameEl.getBoundingClientRect();
+        if (resizing) {
+            var nextW = Math.max(80, Math.min(frame.width * 0.85, resizeStart.w + (point.clientX - resizeStart.x)));
+            overlayWrap.style.width = Math.round(nextW) + 'px';
+            e.preventDefault();
+            return;
+        }
         var left = point.clientX - frame.left - dragOffset.x;
         var top = point.clientY - frame.top - dragOffset.y;
-        var maxL = frame.width - overlay.offsetWidth;
-        var maxT = frame.height - overlay.offsetHeight;
-        overlay.style.left = Math.max(0, Math.min(maxL, left)) + 'px';
-        overlay.style.top = Math.max(0, Math.min(maxT, top)) + 'px';
+        var maxL = frame.width - overlayWrap.offsetWidth;
+        var maxT = frame.height - overlayWrap.offsetHeight;
+        overlayWrap.style.left = Math.max(0, Math.min(maxL, left)) + 'px';
+        overlayWrap.style.top = Math.max(0, Math.min(maxT, top)) + 'px';
         e.preventDefault();
     }
     function endDrag() {
         dragging = false;
+        resizing = false;
         overlay.style.cursor = 'grab';
     }
 
+    function startResize(e) {
+        resizing = true;
+        var point = e.touches && e.touches[0] ? e.touches[0] : e;
+        resizeStart.x = point.clientX;
+        resizeStart.y = point.clientY;
+        resizeStart.w = overlayWrap.offsetWidth;
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
     overlay.addEventListener('mousedown', startDrag);
+    resizeHandle.addEventListener('mousedown', startResize);
     window.addEventListener('mousemove', moveDrag);
     window.addEventListener('mouseup', endDrag);
     overlay.addEventListener('touchstart', startDrag, { passive: false });
+    resizeHandle.addEventListener('touchstart', startResize, { passive: false });
     window.addEventListener('touchmove', moveDrag, { passive: false });
     window.addEventListener('touchend', endDrag);
 
@@ -544,7 +628,7 @@
         if (!p) return;
         placements[pageNum] = p;
         updateActionState();
-        setHelp('Stamp saved on page ' + pageNum + '. Move it and stamp again to update, or Remove page stamp to delete it. Download when ready.');
+        setHelp('Stamp saved on page ' + pageNum + '. Move it and stamp again to update, or Remove to delete it. Download when ready.');
     });
 
     btnApplyAll.addEventListener('click', function () {
@@ -560,25 +644,21 @@
             };
         }
         updateActionState();
-        setHelp('Stamp saved on all ' + pageCount + ' pages. Use Remove page stamp or Remove all stamps to correct a mistake before download.');
+        setHelp('Stamp saved on all ' + pageCount + ' pages. Use Remove or Remove all to correct a mistake before download.');
     });
 
     btnRemovePage.addEventListener('click', function () {
         delete placements[pageNum];
-        overlay.style.left = '24px';
-        overlay.style.top = '24px';
-        applyOverlaySize();
+        hideDraftOverlay();
         updateActionState();
         setHelp('Removed stamp from page ' + pageNum + '.');
     });
 
     btnRemoveAll.addEventListener('click', function () {
         placements = {};
-        overlay.style.left = '24px';
-        overlay.style.top = '24px';
-        applyOverlaySize();
+        hideDraftOverlay();
         updateActionState();
-        setHelp('All stamps removed. Place again when ready.');
+        setHelp('All stamps removed.');
     });
 
     btnDownload.addEventListener('click', async function () {

@@ -38,9 +38,10 @@
         $demoAge = trim((string) ($payload['age'] ?? ''));
         $demoId = trim((string) ($payload['id_card'] ?? ''));
         $demoTel = trim((string) ($payload['tel'] ?? ''));
+        $demoEmail = trim((string) ($payload['email'] ?? ''));
         $demoAddress = trim((string) ($payload['address'] ?? ''));
         $demoNotes = trim((string) ($payload['notes'] ?? ''));
-        $hasDemoGrid = $demoDob !== '' || $demoAge !== '' || $demoId !== '' || $demoTel !== '';
+        $hasDemoGrid = $demoDob !== '' || $demoAge !== '' || $demoId !== '' || $demoTel !== '' || $demoEmail !== '';
         $hasDemoExtras = $hasDemoGrid || $demoAddress !== '' || $demoNotes !== '';
     @endphp
     <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);">
@@ -69,6 +70,12 @@
                     <div>
                         <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Tel</div>
                         <div>{{ $demoTel }}</div>
+                    </div>
+                @endif
+                @if($demoEmail !== '')
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Email</div>
+                        <div>{{ $demoEmail }}</div>
                     </div>
                 @endif
             </div>

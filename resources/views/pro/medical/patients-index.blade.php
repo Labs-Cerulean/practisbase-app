@@ -14,7 +14,9 @@
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
             <a href="/pro/medical/vault/backup" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Backup</a>
             <a href="/pro/medical/templates" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Templates</a>
-            <a href="/pro/medical/import" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Import Word</a>
+            @if(strtolower(trim((string) (auth()->user()->email ?? ''))) === 'sarah.darmanin2@gmail.com')
+                <a href="/pro/medical/import" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Import Word</a>
+            @endif
             <form action="/pro/medical/vault/lock" method="POST" style="margin: 0;">
                 @csrf
                 <button type="submit" title="Lock medical vault"
@@ -59,7 +61,9 @@
             <p style="color: var(--text-muted);">No patients in this vault yet.</p>
             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                 <a href="/pro/medical/patients/create" style="color: var(--primary-cerulean); font-weight: 600;">Add first patient &rarr;</a>
-                <a href="/pro/medical/import" style="color: var(--primary-navy); font-weight: 600;">Import gynae Word batch &rarr;</a>
+                @if(strtolower(trim((string) (auth()->user()->email ?? ''))) === 'sarah.darmanin2@gmail.com')
+                    <a href="/pro/medical/import" style="color: var(--primary-navy); font-weight: 600;">Import gynae Word batch &rarr;</a>
+                @endif
             </div>
         </div>
     @else

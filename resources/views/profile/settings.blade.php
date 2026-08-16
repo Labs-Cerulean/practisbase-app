@@ -4,22 +4,25 @@
 
 @section('content')
     <div style="max-width: 650px; margin: 0 auto;">
-        
+
         <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin-bottom: 0.75rem;">Settings</h1>
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.8rem;">
-            <a href="#plan" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Plan</a>
-            <span style="color: #cbd5e1;">·</span>
-            <a href="#practice" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Practice</a>
-            <span style="color: #cbd5e1;">·</span>
-            <a href="#tax-setup" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Tax setup</a>
-            <span style="color: #cbd5e1;">·</span>
-            <a href="#payments" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payments</a>
-            <span style="color: #cbd5e1;">·</span>
-            <a href="#security" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Security</a>
-            <span style="color: #cbd5e1;">·</span>
-            <a href="#data-backup" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Backup</a>
-            <span style="color: #cbd5e1;">·</span>
-            <a href="#install-app" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Download app</a>
+
+        <div class="settings-tabs" role="tablist" aria-label="Settings sections" style="display: flex; flex-wrap: wrap; gap: 0.15rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-light);">
+            @php
+                $settingsTabs = [
+                    'plan' => 'Plan',
+                    'practice' => 'Practice',
+                    'tax' => 'Tax',
+                    'payments' => 'Payments',
+                    'branding' => 'Branding',
+                    'security' => 'Security',
+                    'backup' => 'Backup',
+                    'app' => 'App',
+                ];
+            @endphp
+            @foreach($settingsTabs as $tabId => $tabLabel)
+                <button type="button" class="settings-tab-btn" role="tab" data-tab="{{ $tabId }}" aria-controls="tab-{{ $tabId }}" style="padding: 0.65rem 0.85rem; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 700; font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">{{ $tabLabel }}</button>
+            @endforeach
         </div>
 
         @if(session('success'))
@@ -44,60 +47,63 @@
             </div>
         @endif
 
-        <div id="plan" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Plan</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 1.25rem;">
-                Plans split <strong>accounts</strong> (Tax &amp; VAT) from <strong>practice tools</strong> (clinical / projects). Practice keeps the Free financial layer ({{ $user->freeClientCap() }} lifetime clients). Deletes do <strong>not</strong> free Free-tier slots.
-            </p>
+        {{-- Plan --}}
+        <div id="tab-plan" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <div id="plan" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Plan</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.75rem; margin-bottom: 1.25rem;">
+                    Accounts (Tax &amp; VAT) and practice tools are separate. Practice keeps Free invoicing ({{ $user->freeClientCap() }} lifetime clients).
+                </p>
 
-            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;">
-                <span style="display: inline-block; background: rgba(2, 132, 199, 0.1); color: var(--primary-cerulean); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.35rem 0.75rem; border-radius: 20px; border: 1px solid rgba(2, 132, 199, 0.25);">
-                    {{ \App\Support\TierPolicy::label($user->tier ?: 'free') }}
-                </span>
-                <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 600;">
-                    {{ $user->clientUsageLabel() }}
-                </span>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;">
+                    <span style="display: inline-block; background: rgba(2, 132, 199, 0.1); color: var(--primary-cerulean); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 0.35rem 0.75rem; border-radius: 20px; border: 1px solid rgba(2, 132, 199, 0.25);">
+                        {{ \App\Support\TierPolicy::label($user->tier ?: 'free') }}
+                    </span>
+                    <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 600;">
+                        {{ $user->clientUsageLabel() }}
+                    </span>
+                </div>
+
+                @unless($user->hasStandardFinancial())
+                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #92400e; font-size: 0.85rem; line-height: 1.45;">
+                        @if($user->isPracticeOnly())
+                            Practice includes Free invoicing only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to <strong>Full Pro</strong> for unlimited clients and <strong>Tax &amp; VAT</strong>.
+                        @else
+                            Free includes Overview + invoices only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard for accounts, Practice for profession tools, or Full Pro for both.
+                        @endif
+                    </div>
+                @endunless
+
+                <div style="background: #eff6ff; color: #1e3a8a; text-align: left; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
+                    Change plan below. No card charge during Founding access.
+                </div>
+
+                <form action="/settings/plan" method="POST" id="plan-change-form">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="confirm_downgrade" id="confirm_downgrade_field" value="">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Change plan</label>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                        <select name="tier" id="plan-tier-select" required style="flex: 1; min-width: 180px; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                            @foreach(($allowedTiers ?? ['free', 'standard']) as $tierOption)
+                                <option value="{{ $tierOption }}" {{ ($user->tier ?: 'free') === $tierOption ? 'selected' : '' }}>
+                                    {{ \App\Support\TierPolicy::label($tierOption) }}
+                                    @if(\App\Support\TierPolicy::priceLabel($tierOption) !== '')
+                                        ({{ \App\Support\TierPolicy::priceLabel($tierOption) }}/mo)
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <button type="submit" id="plan-submit-btn" style="padding: 0.75rem 1.25rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                            Update plan
+                        </button>
+                    </div>
+                    <div id="plan-change-preview" style="display: none; margin-top: 0.85rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; line-height: 1.45;"></div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                        Practice and Pro packages are limited to your registered profession.
+                    </div>
+                </form>
             </div>
-
-            @unless($user->hasStandardFinancial())
-                <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; color: #92400e; font-size: 0.85rem; line-height: 1.45;">
-                    @if($user->isPracticeOnly())
-                        Practice includes Free invoicing only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to <strong>Full Pro</strong> for unlimited clients and <strong>Tax &amp; VAT</strong>.
-                    @else
-                        Free includes Overview + invoices only (max {{ $user->freeClientCap() }} lifetime clients). Upgrade to Standard for accounts, Practice for profession tools, or Full Pro for both.
-                    @endif
-                </div>
-            @endunless
-
-            <div style="background: #eff6ff; color: #1e3a8a; text-align: left; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
-                Change plan below. No card charge during Founding access.
-            </div>
-
-            <form action="/settings/plan" method="POST" id="plan-change-form">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="confirm_downgrade" id="confirm_downgrade_field" value="">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Change plan</label>
-                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-                    <select name="tier" id="plan-tier-select" required style="flex: 1; min-width: 180px; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                        @foreach(($allowedTiers ?? ['free', 'standard']) as $tierOption)
-                            <option value="{{ $tierOption }}" {{ ($user->tier ?: 'free') === $tierOption ? 'selected' : '' }}>
-                                {{ \App\Support\TierPolicy::label($tierOption) }}
-                                @if(\App\Support\TierPolicy::priceLabel($tierOption) !== '')
-                                    ({{ \App\Support\TierPolicy::priceLabel($tierOption) }}/mo)
-                                @endif
-                            </option>
-                        @endforeach
-                    </select>
-                    <button type="submit" id="plan-submit-btn" style="padding: 0.75rem 1.25rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
-                        Update plan
-                    </button>
-                </div>
-                <div id="plan-change-preview" style="display: none; margin-top: 0.85rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; line-height: 1.45;"></div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-                    Practice and Pro packages are limited to your registered profession. Contact support to change profession.
-                </div>
-            </form>
         </div>
 
         <div id="downgrade-modal" class="pb-modal" hidden>
@@ -121,475 +127,596 @@
             </div>
         </div>
 
-        <form action="/settings/profile" method="POST">
-            @csrf
-            @method('PUT')
+        {{-- Practice --}}
+        <div id="tab-practice" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <form action="/settings/profile" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="settings_section" value="practice">
 
-            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-                <h3 id="practice" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Practice profile</h3>
-                
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Full Name / Practice Name <span style="color: #b91c1c;">*</span></label>
-                    <input type="text" name="name" value="{{ $user->name }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
+                <div id="practice" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                    <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Practice</h3>
 
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Postnominals</label>
-                    <input type="text" name="postnominals" value="{{ $user->postnominals }}" placeholder="e.g. MD, MRCS, B.Sc." maxlength="255" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Email Address <span style="color: #b91c1c;">*</span></label>
-                    <input type="email" name="email" value="{{ $user->email }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Profession</label>
-                        <input type="text" id="profInput" value="{{ $user->profession }}" disabled style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #f1f5f9; color: #64748b; cursor: not-allowed; font-weight: 500;">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Contact support to change your registered profession.</div>
-                    </div>
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant / Council</label>
-                        <select name="warrant_type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="">Prefer not to say</option>
-                            @if($user->profession === 'Medical Professional')
-                                <option value="Medical Council Malta" {{ $user->warrant_type === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
-                            @elseif($user->profession === 'Architect / Perit')
-                                <option value="Kamra tal-Periti" {{ $user->warrant_type === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
-                            @elseif($user->profession === 'Engineer')
-                                <option value="Engineering Board" {{ $user->warrant_type === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
-                            @else
-                                <option value="Medical Council Malta" {{ $user->warrant_type === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
-                                <option value="Kamra tal-Periti" {{ $user->warrant_type === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
-                                <option value="Engineering Board" {{ $user->warrant_type === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
-                            @endif
-                            @if($user->warrant_type && ! in_array($user->warrant_type, ['Medical Council Malta', 'Kamra tal-Periti', 'Engineering Board', ''], true))
-                                <option value="{{ $user->warrant_type }}" selected>{{ $user->warrant_type }} (international)</option>
-                            @endif
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Medical Reg / Warrant Number</label>
-                    <input type="text" name="warrant_number" value="{{ $user->warrant_number }}" placeholder="e.g. 3264" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Printed as “Medical Reg Nº” on clinical PDFs.</div>
-                </div>
-
-                @if($user->canAccessProPackage('med'))
                     <div class="form-group" style="margin-bottom: 1.25rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Default clinical note template</label>
-                        <select name="clinical_note_template" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            @foreach(\App\Support\ClinicalNoteTemplates::optionsForUser($user) as $key => $label)
-                                <option value="{{ $key }}" {{ old('clinical_note_template', $user->clinical_note_template ?? 'general') === $key ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
-                            Used for patient notes.
-                            <a href="/pro/medical/templates" style="color: var(--primary-cerulean); font-weight: 600;">Manage templates</a>
-                        </div>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Full Name / Practice Name <span style="color: #b91c1c;">*</span></label>
+                        <input type="text" name="name" value="{{ old('name', $user->name) }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     </div>
+
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Postnominals</label>
+                        <input type="text" name="postnominals" value="{{ old('postnominals', $user->postnominals) }}" placeholder="e.g. MD, MRCS, B.Sc." maxlength="255" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Email Address <span style="color: #b91c1c;">*</span></label>
+                        <input type="email" name="email" value="{{ old('email', $user->email) }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                         <div>
-                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinic phone</label>
-                            <input type="text" name="clinic_phone" value="{{ $user->clinic_phone }}" placeholder="e.g. +356 21XX XXXX" maxlength="64" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Profession</label>
+                            <input type="text" id="profInput" value="{{ $user->profession }}" disabled style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #f1f5f9; color: #64748b; cursor: not-allowed; font-weight: 500;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Contact support to change.</div>
                         </div>
                         <div>
-                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinic address</label>
-                            <input type="text" name="clinic_address" value="{{ $user->clinic_address }}" placeholder="Clinic / consulting rooms" maxlength="500" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                        </div>
-                    </div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin: -0.5rem 0 1.25rem;">Shown on prescription / referral / certificate letterheads.</div>
-                @endif
-            </div>
-
-            <div id="tax-setup" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.35rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Tax setup</h3>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 1.5rem; line-height: 1.45;">Plain-language choices below — we map them to Maltese sole-trader rules (TA22, Article 10/11, etc.) for your Tax &amp; VAT report.</p>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">How do you work? <span style="color: #b91c1c;">*</span></label>
-                        <select name="employment_type" id="empType" onchange="handleEmpChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="full_time" {{ $user->employment_type === 'full_time' ? 'selected' : '' }}>This practice is my main work (full-time self-employed)</option>
-                            <option value="part_time" {{ $user->employment_type === 'part_time' ? 'selected' : '' }}>I also have a main job (part-time self-employed)</option>
-                        </select>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Part-time uses the TA22 flat-rate scheme where it applies.</div>
-                    </div>
-                    
-                    <div id="dobSettingsGroup" style="display: {{ $user->employment_type === 'full_time' || ($dobLocked ?? false) ? 'block' : 'none' }};">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Date of Birth (SSC) <span style="color: #b91c1c;">*</span></label>
-                        <input type="date" name="date_of_birth" id="dobSettingsInput" value="{{ $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '' }}"
-                               {{ ($dobLocked ?? false) ? 'disabled' : '' }}
-                               max="{{ now()->subYears(18)->format('Y-m-d') }}"
-                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); {{ ($dobLocked ?? false) ? 'background:#f1f5f9;color:#64748b;' : '' }}">
-                        @if($dobLocked ?? false)
-                            <div style="font-size: 0.75rem; color: #92400e; margin-top: 0.35rem;">Locked after a fiscal year was closed — closed-year SSC used this DOB.</div>
-                        @else
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Used for Class 2 SSC age bands. Must be 18+. Becomes locked after your first year-end close.</div>
-                        @endif
-                    </div>
-                </div>
-
-                @if($hasClosedFiscalYears ?? false)
-                    <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: var(--radius-md); color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
-                        You have closed fiscal year(s). Changing employment type, VAT status, salary, or tax computation only affects <strong>open</strong> years. Closed years keep their frozen report snapshot. You cannot apply a regime change from a date inside a closed year.
-                    </div>
-                @endif
-
-                <div id="regimeEffectiveWrap" style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md);">
-                    <label style="display: block; font-weight: 700; margin-bottom: 0.35rem; font-size: 0.9rem; color: #92400e;">Apply this tax setup from</label>
-                    <p style="margin: 0 0 0.65rem; font-size: 0.8rem; color: #78350f; line-height: 1.45;">
-                        You changed VAT, employment, salary, tax status, or SSC max-paid. Invoices and expenses <strong>before</strong> this date keep the previous setup. Defaults to today.
-                    </p>
-                    <input type="date" name="regime_effective_from" id="regimeEffectiveFrom" value="{{ old('regime_effective_from', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" style="width: 100%; max-width: 16rem; padding: 0.75rem; border: 1px solid #f59e0b; border-radius: var(--radius-md); background: white;">
-                    @error('regime_effective_from')
-                        <div style="color: #991b1b; font-size: 0.8rem; margin-top: 0.4rem;">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                @if(!empty($regimeSegments) && count($regimeSegments) > 0)
-                    <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.45rem;">Tax setup history</div>
-                        <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
-                            @foreach($regimeSegments as $seg)
-                                <li>
-                                    From {{ \Illuminate\Support\Carbon::parse($seg['effective_from'])->format('d M Y') }}:
-                                    {{ $seg['employment_type'] === 'part_time' ? 'Part-time' : 'Full-time' }},
-                                    {{ str_replace('_', ' ', $seg['vat_status']) }},
-                                    salary €{{ number_format($seg['primary_salary'], 2) }}
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Do you charge VAT? <span style="color: #b91c1c;">*</span></label>
-                        <select name="vat_status" id="vatSettingsStatus" onchange="handleVatChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="article_11" {{ $user->vat_status === 'article_11' ? 'selected' : '' }}>No VAT yet — under €35k (Article 11)</option>
-                            <option value="article_10" {{ $user->vat_status === 'article_10' ? 'selected' : '' }}>Yes — I charge 18% VAT (Article 10)</option>
-                            <option value="exempt" {{ $user->vat_status === 'exempt' ? 'selected' : '' }}>Exempt work (e.g. therapeutic medical / Fifth Schedule)</option>
-                        </select>
-                    </div>
-                    
-                    <div id="vatSettingsGroup" style="display: {{ in_array($user->vat_status, ['article_10', 'article_11']) ? 'block' : 'none' }};">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">VAT Number <span style="font-weight: 500; color: var(--text-muted);">(optional until needed)</span></label>
-                        <input type="text" name="vat_number" id="vatSettingsInput" value="{{ $user->vat_number }}" placeholder="MT..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.4rem 0 0; line-height: 1.4;">Required only when issuing an Article 10 invoice or charging 18% VAT.</p>
-                    </div>
-                </div>
-
-                @if($user->missingVatNumberForArticle10Documents())
-                    <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.45;">
-                        You are on Article 10 without a VAT number. Add it here before creating an official invoice or applying 18% VAT.
-                    </div>
-                @endif
-
-                <div id="medicalVatAlert" style="display: {{ $user->profession === 'Medical Professional' ? 'block' : 'none' }}; margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
-                    Therapeutic care is usually Fifth Schedule exempt. Non-therapeutic work may need Article 10/11.
-                </div>
-
-                <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-                <h3 id="tax-details" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Tax details for calculations</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Used only for your Tax &amp; VAT report — never printed on invoices.</p>
-                
-                <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
-                    
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Tax Computation Status</label>
-                        <select name="tax_computation" id="taxComputation" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: inherit; background: white;">
-                            <option value="" disabled {{ !$user->tax_computation ? 'selected' : '' }}>Select your status</option>
-                            <option value="single" {{ $user->tax_computation === 'single' ? 'selected' : '' }}>Single</option>
-                            <option value="married" {{ $user->tax_computation === 'married' ? 'selected' : '' }}>Married</option>
-                            <option value="parent" {{ $user->tax_computation === 'parent' ? 'selected' : '' }}>Parent</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Primary Employment Salary (Gross)</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">If this practice is your secondary income, enter your main job's annual salary. Otherwise, enter 0.</p>
-                        <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
-                            <span style="color: var(--text-muted); font-weight: 600;">€</span>
-                            <input type="number" name="primary_salary" id="primarySalary" step="0.01" min="0" value="{{ $user->primary_salary ?? '0.00' }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant / Council</label>
+                            <select name="warrant_type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="">Prefer not to say</option>
+                                @php $warrantType = old('warrant_type', $user->warrant_type); @endphp
+                                @if($user->profession === 'Medical Professional')
+                                    <option value="Medical Council Malta" {{ $warrantType === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
+                                @elseif($user->profession === 'Architect / Perit')
+                                    <option value="Kamra tal-Periti" {{ $warrantType === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
+                                @elseif($user->profession === 'Engineer')
+                                    <option value="Engineering Board" {{ $warrantType === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
+                                @else
+                                    <option value="Medical Council Malta" {{ $warrantType === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
+                                    <option value="Kamra tal-Periti" {{ $warrantType === 'Kamra tal-Periti' ? 'selected' : '' }}>Kamra tal-Periti</option>
+                                    <option value="Engineering Board" {{ $warrantType === 'Engineering Board' ? 'selected' : '' }}>Engineering Board</option>
+                                @endif
+                                @if($warrantType && ! in_array($warrantType, ['Medical Council Malta', 'Kamra tal-Periti', 'Engineering Board', ''], true))
+                                    <option value="{{ $warrantType }}" selected>{{ $warrantType }} (international)</option>
+                                @endif
+                            </select>
                         </div>
                     </div>
 
-                    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
-                            <input type="checkbox" name="max_ssc_paid" id="maxSscPaid" value="1" {{ $user->max_ssc_paid ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
-                            I already pay the maximum Social Security (SSC) at my primary job.
-                        </label>
-                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-left: 1.7rem; margin-top: 0.25rem;">Checking this box legally exempts your part-time self-employed income from further SSC contributions.</p>
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Medical Reg / Warrant Number</label>
+                        <input type="text" name="warrant_number" value="{{ old('warrant_number', $user->warrant_number) }}" placeholder="e.g. 3264" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Used on clinical PDFs and new Document Stamper stamps.</div>
                     </div>
 
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Estimated Annual Allowable Expenses</label>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">Saved for <strong>{{ date('Y') }}</strong> (and as the default fallback). Empty expense ledgers use the estimate for that year; Standard+ ledger totals override when &gt; €0. Closed years keep their frozen estimate.</p>
-                        <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
-                            <span style="color: var(--text-muted); font-weight: 600;">€</span>
-                            <input type="number" name="estimated_expenses" step="0.01" min="0" value="{{ ($user->estimated_expenses_by_year[(string) date('Y')] ?? null) !== null ? $user->estimated_expenses_by_year[(string) date('Y')] : ($user->estimated_expenses ?? '0.00') }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
-                        </div>
-                    </div>
-
-                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1rem;">
-                        <div style="font-weight: 700; color: #1e3a8a; margin-bottom: 0.35rem; font-size: 0.9rem;">Business-use helpers</div>
-                        <p style="margin: 0 0 0.75rem; font-size: 0.8rem; color: #1e40af; line-height: 1.45;">
-                            Used for car, fuel, and working-from-home bills on the Expense Ledger.
-                            Current: car/fuel <strong>{{ $user->car_business_use_percent !== null ? number_format((float) $user->car_business_use_percent, 0).'%' : 'not set' }}</strong>,
-                            home office <strong>{{ $user->home_office_percent !== null ? number_format((float) $user->home_office_percent, 0).'%' : 'not set' }}</strong>.
-                        </p>
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <button type="button" data-open-car-helper style="padding: 0.5rem 0.85rem; background: white; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer; color: #1d4ed8;">Car / fuel helper</button>
-                            <button type="button" data-open-wfh-helper style="padding: 0.5rem 0.85rem; background: white; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer; color: #1d4ed8;">Home office helper</button>
-                            <a href="/expenses" style="padding: 0.5rem 0.85rem; font-weight: 600; font-size: 0.8rem; color: #1d4ed8;">Open expenses →</a>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-                <h3 id="payments" style="color: var(--primary-navy); margin-top: 2rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">How clients pay you</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Shown on invoices when set. Leave blank if you prefer.</p>
-
-                @php $pm = $user->payment_methods ?? []; @endphp
-
-                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
-                        <input type="checkbox" name="pm_bov" value="1" id="toggleBov" onchange="toggleSection('bovSection')" {{ isset($pm['bov_mobile']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
-                        BOV Mobile Pay
-                    </label>
-                    <div id="bovSection" style="display: {{ isset($pm['bov_mobile']) ? 'block' : 'none' }}; margin-top: 1rem;">
-                        <input type="text" name="pm_bov_number" placeholder="Mobile Number (e.g., +356 9999 9999)" value="{{ $pm['bov_mobile'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
-                </div>
-
-                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
-                        <input type="checkbox" name="pm_revolut" value="1" id="toggleRevolut" onchange="toggleSection('revolutSection')" {{ isset($pm['revolut']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
-                        Revolut
-                    </label>
-                    <div id="revolutSection" style="display: {{ isset($pm['revolut']) ? 'block' : 'none' }}; margin-top: 1rem;">
-                        <input type="text" name="pm_revolut_number" placeholder="Mobile Number or Revolut Tag (@username)" value="{{ $pm['revolut'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
-                </div>
-
-                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
-                        <input type="checkbox" name="pm_bank" value="1" id="toggleBank" onchange="toggleSection('bankSection')" {{ !empty($pm['banks']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
-                        Bank Transfers (IBAN)
-                    </label>
-                    <div id="bankSection" style="display: {{ !empty($pm['banks']) ? 'block' : 'none' }}; margin-top: 1rem;">
-                        <div id="bankRowsContainer">
-                            @if(!empty($pm['banks']))
-                                @foreach($pm['banks'] as $bank)
-                                    <div class="bank-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                        <input type="text" name="bank_names[]" value="{{ $bank['bank'] }}" placeholder="Bank (e.g., BOV)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                                        <input type="text" name="ibans[]" value="{{ $bank['iban'] }}" placeholder="IBAN (e.g., MT12 BOVM...)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                                        <button type="button" onclick="this.closest('.bank-row').remove()" style="padding: 0.75rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
-                                    </div>
+                    @if($user->canAccessProPackage('med'))
+                        <div class="form-group" style="margin-bottom: 1.25rem;">
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Default clinical note template</label>
+                            <select name="clinical_note_template" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                @foreach(\App\Support\ClinicalNoteTemplates::optionsForUser($user) as $key => $label)
+                                    <option value="{{ $key }}" {{ old('clinical_note_template', $user->clinical_note_template ?? 'general') === $key ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
+                            </select>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
+                                Used for patient notes.
+                                <a href="/pro/medical/templates" style="color: var(--primary-cerulean); font-weight: 600;">Manage templates</a>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                            <div>
+                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinic phone</label>
+                                <input type="text" name="clinic_phone" value="{{ old('clinic_phone', $user->clinic_phone) }}" placeholder="e.g. +356 21XX XXXX" maxlength="64" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            </div>
+                            <div>
+                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Clinic address</label>
+                                <input type="text" name="clinic_address" value="{{ old('clinic_address', $user->clinic_address) }}" placeholder="Clinic / consulting rooms" maxlength="500" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin: -0.5rem 0 1.25rem;">Shown on prescription / referral / certificate letterheads.</div>
+                    @endif
+
+                    <button type="submit" style="width: 100%; background: var(--primary-cerulean); color: white; border: none; padding: 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
+                        Save practice
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {{-- Tax --}}
+        <div id="tab-tax" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <form action="/settings/profile" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="settings_section" value="tax">
+
+                <div id="tax-setup" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                    <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.35rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Tax</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 1.5rem; line-height: 1.45;">Mapped to Maltese sole-trader rules for your Tax &amp; VAT report.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">How do you work? <span style="color: #b91c1c;">*</span></label>
+                            <select name="employment_type" id="empType" onchange="handleEmpChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="full_time" {{ old('employment_type', $user->employment_type) === 'full_time' ? 'selected' : '' }}>This practice is my main work (full-time self-employed)</option>
+                                <option value="part_time" {{ old('employment_type', $user->employment_type) === 'part_time' ? 'selected' : '' }}>I also have a main job (part-time self-employed)</option>
+                            </select>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Part-time uses TA22 where it applies.</div>
+                        </div>
+
+                        @php
+                            $empTypeVal = old('employment_type', $user->employment_type);
+                            $showDob = $empTypeVal === 'full_time' || ($dobLocked ?? false);
+                        @endphp
+                        <div id="dobSettingsGroup" style="display: {{ $showDob ? 'block' : 'none' }};">
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Date of Birth (SSC) <span style="color: #b91c1c;">*</span></label>
+                            <input type="date" name="date_of_birth" id="dobSettingsInput" value="{{ old('date_of_birth', $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '') }}"
+                                   {{ ($dobLocked ?? false) ? 'disabled' : '' }}
+                                   max="{{ now()->subYears(18)->format('Y-m-d') }}"
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); {{ ($dobLocked ?? false) ? 'background:#f1f5f9;color:#64748b;' : '' }}">
+                            @if($dobLocked ?? false)
+                                <div style="font-size: 0.75rem; color: #92400e; margin-top: 0.35rem;">Locked after a fiscal year was closed.</div>
                             @else
-                                <div class="bank-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                    <input type="text" name="bank_names[]" placeholder="Bank (e.g., BOV)" style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                                    <input type="text" name="ibans[]" placeholder="IBAN (e.g., MT12 BOVM...)" style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                                    <button type="button" onclick="this.closest('.bank-row').remove()" style="padding: 0.75rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
-                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Used for Class 2 SSC age bands. Must be 18+.</div>
                             @endif
                         </div>
-                        <button type="button" onclick="addBankRow()" style="margin-top: 0.5rem; background: transparent; color: var(--primary-cerulean); border: 1px dashed var(--primary-cerulean); padding: 0.5rem; border-radius: var(--radius-md); font-size: 0.85rem; cursor: pointer;">+ Add Another Bank</button>
                     </div>
-                </div>
 
-                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
-                        <input type="checkbox" name="pm_cheque" value="1" id="toggleCheque" onchange="toggleSection('chequeSection')" {{ isset($pm['cheque']) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
-                        Physical Cheques
-                    </label>
-                    <div id="chequeSection" style="display: {{ isset($pm['cheque']) ? 'block' : 'none' }}; margin-top: 1rem;">
-                        <input type="text" name="pm_cheque_name" placeholder="Payable To (e.g., Dr. Jane Doe)" value="{{ $pm['cheque']['name'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
-                        <input type="text" name="pm_cheque_address" placeholder="Postal Address for Cheques" value="{{ $pm['cheque']['address'] ?? '' }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    @if($hasClosedFiscalYears ?? false)
+                        <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: var(--radius-md); color: #1e3a8a; font-size: 0.85rem; line-height: 1.45;">
+                            Closed years stay frozen. Changes only affect open years.
+                        </div>
+                    @endif
+
+                    <div id="regimeEffectiveWrap" style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md);">
+                        <label style="display: block; font-weight: 700; margin-bottom: 0.35rem; font-size: 0.9rem; color: #92400e;">Apply this tax setup from</label>
+                        <p style="margin: 0 0 0.65rem; font-size: 0.8rem; color: #78350f; line-height: 1.45;">
+                            Documents before this date keep the previous setup. Defaults to today.
+                        </p>
+                        <input type="date" name="regime_effective_from" id="regimeEffectiveFrom" value="{{ old('regime_effective_from', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" style="width: 100%; max-width: 16rem; padding: 0.75rem; border: 1px solid #f59e0b; border-radius: var(--radius-md); background: white;">
+                        @error('regime_effective_from')
+                            <div style="color: #991b1b; font-size: 0.8rem; margin-top: 0.4rem;">{{ $message }}</div>
+                        @enderror
                     </div>
-                </div>
 
-                <button type="submit" style="margin-top: 1.5rem; width: 100%; background: var(--primary-cerulean); color: white; border: none; padding: 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
-                    Save All Profile Changes
-                </button>
+                    @if(!empty($regimeSegments) && count($regimeSegments) > 0)
+                        <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary-navy); margin-bottom: 0.45rem;">Tax setup history</div>
+                            <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+                                @foreach($regimeSegments as $seg)
+                                    <li>
+                                        From {{ \Illuminate\Support\Carbon::parse($seg['effective_from'])->format('d M Y') }}:
+                                        {{ $seg['employment_type'] === 'part_time' ? 'Part-time' : 'Full-time' }},
+                                        {{ str_replace('_', ' ', $seg['vat_status']) }},
+                                        salary €{{ number_format($seg['primary_salary'], 2) }}
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Do you charge VAT? <span style="color: #b91c1c;">*</span></label>
+                            <select name="vat_status" id="vatSettingsStatus" onchange="handleVatChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="article_11" {{ old('vat_status', $user->vat_status) === 'article_11' ? 'selected' : '' }}>No VAT yet — under €35k (Article 11)</option>
+                                <option value="article_10" {{ old('vat_status', $user->vat_status) === 'article_10' ? 'selected' : '' }}>Yes — I charge 18% VAT (Article 10)</option>
+                                <option value="exempt" {{ old('vat_status', $user->vat_status) === 'exempt' ? 'selected' : '' }}>Exempt work (e.g. therapeutic medical / Fifth Schedule)</option>
+                            </select>
+                        </div>
+
+                        <div id="vatSettingsGroup" style="display: {{ in_array(old('vat_status', $user->vat_status), ['article_10', 'article_11']) ? 'block' : 'none' }};">
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">VAT Number <span style="font-weight: 500; color: var(--text-muted);">(optional until needed)</span></label>
+                            <input type="text" name="vat_number" id="vatSettingsInput" value="{{ old('vat_number', $user->vat_number) }}" placeholder="MT..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+
+                    @if($user->missingVatNumberForArticle10Documents())
+                        <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.45;">
+                            Add a VAT number before creating an Article 10 invoice.
+                        </div>
+                    @endif
+
+                    <div id="medicalVatAlert" style="display: {{ $user->profession === 'Medical Professional' ? 'block' : 'none' }}; margin-bottom: 1.25rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+                        Therapeutic care is usually Fifth Schedule exempt. Non-therapeutic work may need Article 10/11.
+                    </div>
+
+                    <h3 id="tax-details" style="color: var(--primary-navy); margin-top: 0.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Tax details</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">For your Tax &amp; VAT report only — never printed on invoices.</p>
+
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Tax Computation Status</label>
+                            <select name="tax_computation" id="taxComputation" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: inherit; background: white;">
+                                <option value="" disabled {{ !old('tax_computation', $user->tax_computation) ? 'selected' : '' }}>Select your status</option>
+                                <option value="single" {{ old('tax_computation', $user->tax_computation) === 'single' ? 'selected' : '' }}>Single</option>
+                                <option value="married" {{ old('tax_computation', $user->tax_computation) === 'married' ? 'selected' : '' }}>Married</option>
+                                <option value="parent" {{ old('tax_computation', $user->tax_computation) === 'parent' ? 'selected' : '' }}>Parent</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Primary Employment Salary (Gross)</label>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">If this is secondary income, enter your main job’s annual salary. Otherwise 0.</p>
+                            <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
+                                <span style="color: var(--text-muted); font-weight: 600;">€</span>
+                                <input type="number" name="primary_salary" id="primarySalary" step="0.01" min="0" value="{{ old('primary_salary', $user->primary_salary ?? '0.00') }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
+                            </div>
+                        </div>
+
+                        <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                                <input type="checkbox" name="max_ssc_paid" id="maxSscPaid" value="1" {{ (old('settings_section') === 'tax' ? (bool) old('max_ssc_paid') : (bool) $user->max_ssc_paid) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                                I already pay max SSC at my primary job.
+                            </label>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-left: 1.7rem; margin-top: 0.25rem;">Exempts part-time self-employed income from further SSC.</p>
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Estimated Annual Allowable Expenses</label>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0; margin-bottom: 0.5rem;">Saved for <strong>{{ date('Y') }}</strong>. Ledger totals override when &gt; €0.</p>
+                            <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0 0.75rem;">
+                                <span style="color: var(--text-muted); font-weight: 600;">€</span>
+                                <input type="number" name="estimated_expenses" step="0.01" min="0" value="{{ old('estimated_expenses', ($user->estimated_expenses_by_year[(string) date('Y')] ?? null) !== null ? $user->estimated_expenses_by_year[(string) date('Y')] : ($user->estimated_expenses ?? '0.00')) }}" required style="width: 100%; padding: 0.75rem; border: none; background: transparent; font-family: inherit;">
+                            </div>
+                        </div>
+
+                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1rem;">
+                            <div style="font-weight: 700; color: #1e3a8a; margin-bottom: 0.35rem; font-size: 0.9rem;">Business-use helpers</div>
+                            <p style="margin: 0 0 0.75rem; font-size: 0.8rem; color: #1e40af; line-height: 1.45;">
+                                Car/fuel <strong>{{ $user->car_business_use_percent !== null ? number_format((float) $user->car_business_use_percent, 0).'%' : 'not set' }}</strong>,
+                                home office <strong>{{ $user->home_office_percent !== null ? number_format((float) $user->home_office_percent, 0).'%' : 'not set' }}</strong>.
+                            </p>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" data-open-car-helper style="padding: 0.5rem 0.85rem; background: white; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer; color: #1d4ed8;">Car / fuel helper</button>
+                                <button type="button" data-open-wfh-helper style="padding: 0.5rem 0.85rem; background: white; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer; color: #1d4ed8;">Home office helper</button>
+                                <a href="/expenses" style="padding: 0.5rem 0.85rem; font-weight: 600; font-size: 0.8rem; color: #1d4ed8;">Open expenses →</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" style="width: 100%; background: var(--primary-cerulean); color: white; border: none; padding: 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
+                        Save tax setup
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {{-- Payments --}}
+        <div id="tab-payments" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <form action="/settings/profile" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="settings_section" value="payments">
+
+                <div id="payments" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                    <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Payments</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Shown on invoices when set.</p>
+
+                    @php $pm = $user->payment_methods ?? []; @endphp
+
+                    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox" name="pm_bov" value="1" id="toggleBov" onchange="toggleSection('bovSection')" {{ (old('settings_section') === 'payments' ? (bool) old('pm_bov') : isset($pm['bov_mobile'])) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                            BOV Mobile Pay
+                        </label>
+                        <div id="bovSection" style="display: {{ (old('settings_section') === 'payments' ? (bool) old('pm_bov') : isset($pm['bov_mobile'])) ? 'block' : 'none' }}; margin-top: 1rem;">
+                            <input type="text" name="pm_bov_number" placeholder="Mobile Number (e.g., +356 9999 9999)" value="{{ old('pm_bov_number', $pm['bov_mobile'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox" name="pm_revolut" value="1" id="toggleRevolut" onchange="toggleSection('revolutSection')" {{ (old('settings_section') === 'payments' ? (bool) old('pm_revolut') : isset($pm['revolut'])) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                            Revolut
+                        </label>
+                        <div id="revolutSection" style="display: {{ (old('settings_section') === 'payments' ? (bool) old('pm_revolut') : isset($pm['revolut'])) ? 'block' : 'none' }}; margin-top: 1rem;">
+                            <input type="text" name="pm_revolut_number" placeholder="Mobile Number or Revolut Tag (@username)" value="{{ old('pm_revolut_number', $pm['revolut'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox" name="pm_bank" value="1" id="toggleBank" onchange="toggleSection('bankSection')" {{ (old('settings_section') === 'payments' ? (bool) old('pm_bank') : !empty($pm['banks'])) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                            Bank Transfers (IBAN)
+                        </label>
+                        <div id="bankSection" style="display: {{ (old('settings_section') === 'payments' ? (bool) old('pm_bank') : !empty($pm['banks'])) ? 'block' : 'none' }}; margin-top: 1rem;">
+                            <div id="bankRowsContainer">
+                                @php
+                                    if (old('settings_section') === 'payments' && old('bank_names') !== null) {
+                                        $banks = [];
+                                        foreach ((array) old('bank_names') as $i => $bankName) {
+                                            $banks[] = ['bank' => $bankName, 'iban' => old('ibans.'.$i, '')];
+                                        }
+                                    } else {
+                                        $banks = $pm['banks'] ?? [];
+                                    }
+                                @endphp
+                                @if(!empty($banks))
+                                    @foreach($banks as $bank)
+                                        <div class="bank-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="text" name="bank_names[]" value="{{ $bank['bank'] ?? '' }}" placeholder="Bank (e.g., BOV)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                            <input type="text" name="ibans[]" value="{{ $bank['iban'] ?? '' }}" placeholder="IBAN (e.g., MT12 BOVM...)" required style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                            <button type="button" onclick="this.closest('.bank-row').remove()" style="padding: 0.75rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="bank-row" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        <input type="text" name="bank_names[]" placeholder="Bank (e.g., BOV)" style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                        <input type="text" name="ibans[]" placeholder="IBAN (e.g., MT12 BOVM...)" style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                        <button type="button" onclick="this.closest('.bank-row').remove()" style="padding: 0.75rem; background: #fee2e2; color: #ef4444; border: none; border-radius: var(--radius-md); cursor: pointer; font-weight: bold;">X</button>
+                                    </div>
+                                @endif
+                            </div>
+                            <button type="button" onclick="addBankRow()" style="margin-top: 0.5rem; background: transparent; color: var(--primary-cerulean); border: 1px dashed var(--primary-cerulean); padding: 0.5rem; border-radius: var(--radius-md); font-size: 0.85rem; cursor: pointer;">+ Add Another Bank</button>
+                        </div>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer;">
+                            <input type="checkbox" name="pm_cheque" value="1" id="toggleCheque" onchange="toggleSection('chequeSection')" {{ (old('settings_section') === 'payments' ? (bool) old('pm_cheque') : isset($pm['cheque'])) ? 'checked' : '' }} style="width: 1.2rem; height: 1.2rem;">
+                            Physical Cheques
+                        </label>
+                        <div id="chequeSection" style="display: {{ (old('settings_section') === 'payments' ? (bool) old('pm_cheque') : isset($pm['cheque'])) ? 'block' : 'none' }}; margin-top: 1rem;">
+                            <input type="text" name="pm_cheque_name" placeholder="Payable To (e.g., Dr. Jane Doe)" value="{{ old('pm_cheque_name', $pm['cheque']['name'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.5rem;">
+                            <input type="text" name="pm_cheque_address" placeholder="Postal Address for Cheques" value="{{ old('pm_cheque_address', $pm['cheque']['address'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                    </div>
+
+                    <button type="submit" style="width: 100%; background: var(--primary-cerulean); color: white; border: none; padding: 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
+                        Save payments
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {{-- Branding --}}
+        <div id="tab-branding" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <div id="branding" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Branding</h3>
+                @if($user->canAccessStandardTools() || $user->canAccessProPackage('med'))
+                    <form action="/settings/branding" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        @method('PUT')
+
+                        @if($user->canAccessStandardTools())
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Logo for invoices / RFPs and clinical letterheads.</p>
+                            @if($user->logoDataUri())
+                                <div style="margin-bottom: 1rem;">
+                                    <img src="{{ $user->logoDataUri() }}" alt="Current logo" style="max-height: 64px; max-width: 200px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
+                                </div>
+                            @endif
+                            <div style="margin-bottom: 1rem;">
+                                <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB.</p>
+                            </div>
+                            @if($user->logo_path)
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1.25rem; cursor: pointer;">
+                                    <input type="checkbox" name="remove_logo" value="1">
+                                    Remove current logo
+                                </label>
+                            @endif
+                        @endif
+
+                        @if($user->canAccessProPackage('med'))
+                            <div style="{{ $user->canAccessStandardTools() ? 'border-top: 1px solid var(--border-light); padding-top: 1.25rem; margin-top: 0.5rem;' : '' }}">
+                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+                                    <strong style="color: var(--primary-navy);">Clinical stamp / signature</strong> — printed on prescription, referral, and certificate PDFs when you issue them. Separate from Stamp &amp; issue (that only locks the document).
+                                </p>
+                                @if($user->clinicalStampDataUri())
+                                    <div style="margin-bottom: 1rem;">
+                                        <img src="{{ $user->clinicalStampDataUri() }}" alt="Clinical stamp" style="max-height: 96px; max-width: 240px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
+                                    </div>
+                                @else
+                                    <p style="font-size: 0.85rem; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 1rem;">
+                                        No stamp uploaded yet — issued PDFs will not show a stamp image until you add one here.
+                                    </p>
+                                @endif
+                                <div style="margin-bottom: 1rem;">
+                                    <input type="file" name="clinical_stamp" accept=".jpg,.jpeg,.png,.webp">
+                                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB.</p>
+                                </div>
+                                @if($user->clinical_stamp_path)
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1rem; cursor: pointer;">
+                                        <input type="checkbox" name="remove_clinical_stamp" value="1">
+                                        Remove clinical stamp
+                                    </label>
+                                @endif
+                            </div>
+                        @endif
+
+                        <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Save Branding</button>
+                    </form>
+                @else
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Custom logo branding is included with Standard and Pro. Upgrade in Plan.</p>
+                @endif
             </div>
-        </form>
+        </div>
 
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Document Branding</h3>
-            @if($user->canAccessStandardTools() || $user->canAccessProPackage('med'))
-                <form action="/settings/branding" method="POST" enctype="multipart/form-data">
+        {{-- Security --}}
+        <div id="tab-security" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <div id="security" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Security</h3>
+
+                <form action="/settings/password" method="POST">
                     @csrf
                     @method('PUT')
 
-                    @if($user->canAccessStandardTools())
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Logo for invoices / RFPs and clinical letterheads (Standard+).</p>
-                        @if($user->logoDataUri())
-                            <div style="margin-bottom: 1rem;">
-                                <img src="{{ $user->logoDataUri() }}" alt="Current logo" style="max-height: 64px; max-width: 200px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
-                            </div>
-                        @endif
-                        <div style="margin-bottom: 1rem;">
-                            <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
-                            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB.</p>
-                        </div>
-                        @if($user->logo_path)
-                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1.25rem; cursor: pointer;">
-                                <input type="checkbox" name="remove_logo" value="1">
-                                Remove current logo
-                            </label>
-                        @endif
-                    @endif
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Current Password</label>
+                        <input type="password" name="current_password" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
 
-                    @if($user->canAccessProPackage('med'))
-                        <div style="{{ $user->canAccessStandardTools() ? 'border-top: 1px solid var(--border-light); padding-top: 1.25rem; margin-top: 0.5rem;' : '' }}">
-                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
-                                <strong style="color: var(--primary-navy);">Clinical stamp / signature image</strong> — printed on issued prescriptions, referrals, and certificates. Prefer a clear PNG (stamp alone, or stamp + signature).
-                            </p>
-                            @if($user->clinicalStampDataUri())
-                                <div style="margin-bottom: 1rem;">
-                                    <img src="{{ $user->clinicalStampDataUri() }}" alt="Clinical stamp" style="max-height: 96px; max-width: 240px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
-                                </div>
-                            @endif
-                            <div style="margin-bottom: 1rem;">
-                                <input type="file" name="clinical_stamp" accept=".jpg,.jpeg,.png,.webp">
-                                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB · private storage.</p>
-                            </div>
-                            @if($user->clinical_stamp_path)
-                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1rem; cursor: pointer;">
-                                    <input type="checkbox" name="remove_clinical_stamp" value="1">
-                                    Remove clinical stamp
-                                </label>
-                            @endif
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">New Password</label>
+                            <input type="password" name="password" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         </div>
-                    @endif
+                        <div>
+                            <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Confirm New Password</label>
+                            <input type="password" name="password_confirmation" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                    </div>
 
-                    <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Save Branding</button>
+                    <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">
+                        Update Password
+                    </button>
                 </form>
-            @else
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Custom logo branding is included with Standard and Pro. Upgrade in the Subscription card above.</p>
+            </div>
+
+            @if($showMedicalVaultDevices ?? false)
+                <div id="trusted-devices" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                    <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Trusted devices</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.75rem 0 1rem; line-height: 1.45;">
+                        Enable quick unlock per browser after the vault is unlocked.
+                    </p>
+                    @unless($medicalVaultUnlocked ?? false)
+                        <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem;">
+                            Unlock from <a href="/pro/medical/patients" style="color: #92400e; font-weight: 700;">Patients</a> to enable on this browser. You can still revoke below.
+                        </div>
+                    @endunless
+                    <div id="settings-trusted-devices-list" style="font-size: 0.9rem; color: var(--text-muted);">
+                        @php $initialDevices = $medicalVaultDevices ?? []; @endphp
+                        @if(count($initialDevices) === 0)
+                            <span style="color: var(--text-muted);">No trusted devices yet.@if($medicalVaultUnlocked ?? false) Use the button below on this browser.@endif</span>
+                        @else
+                            <div style="display: grid; gap: 0.55rem;">
+                                @foreach($initialDevices as $d)
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.65rem 0.75rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                        <div>
+                                            <div style="font-weight: 700; color: var(--primary-navy);">{{ $d['device_label'] ?: 'Trusted device' }}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                                Last used:
+                                                @if(!empty($d['last_used_at']))
+                                                    {{ \Illuminate\Support\Carbon::parse($d['last_used_at'])->timezone(config('app.timezone'))->format('d M Y, H:i') }}
+                                                @else
+                                                    never
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <button type="button" data-revoke-id="{{ $d['id'] }}" data-credential-id="{{ $d['credential_id'] }}" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">Revoke</button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                    @if($medicalVaultUnlocked ?? false)
+                        <button type="button" id="settings-trust-enable" style="display: none; margin-top: 1rem; padding: 0.55rem 1rem; background: white; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">
+                            Enable quick unlock on this browser
+                        </button>
+                        <div id="settings-trust-status" style="display: none; margin-top: 0.65rem; font-size: 0.85rem;"></div>
+                    @endif
+                </div>
             @endif
         </div>
 
-        @if($showMedicalVaultDevices ?? false)
-            <div id="trusted-devices" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Trusted devices</h3>
-                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.75rem 0 1rem; line-height: 1.45;">
-                    Each browser or phone must be enabled separately after the vault is unlocked. On this phone: unlock from Patients, then tap Enable (banner or button below). To add another device later: open PractisBase there, unlock with your recovery code once, then Enable on that browser.
+        {{-- Backup --}}
+        <div id="tab-backup" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <div id="data-backup" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Backup</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
+                    Weekly ZIP of your clients, invoices, payments, and expenses. Clinical vault journals use the medical backup.
                 </p>
-                @unless($medicalVaultUnlocked ?? false)
-                    <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem;">
-                        Unlock the vault from <a href="/pro/medical/patients" style="color: #92400e; font-weight: 700;">Patients</a> to enable quick unlock on <em>this</em> browser. You can still revoke devices below.
-                    </div>
-                @endunless
-                <div id="settings-trusted-devices-list" style="font-size: 0.9rem; color: var(--text-muted);">
-                    @php $initialDevices = $medicalVaultDevices ?? []; @endphp
-                    @if(count($initialDevices) === 0)
-                        <span style="color: var(--text-muted);">No trusted devices yet.@if($medicalVaultUnlocked ?? false) Use the button below on this browser.@endif</span>
-                    @else
-                        <div style="display: grid; gap: 0.55rem;">
-                            @foreach($initialDevices as $d)
-                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.65rem 0.75rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                                    <div>
-                                        <div style="font-weight: 700; color: var(--primary-navy);">{{ $d['device_label'] ?: 'Trusted device' }}</div>
-                                        <div style="font-size: 0.75rem; color: var(--text-muted);">
-                                            Last used:
-                                            @if(!empty($d['last_used_at']))
-                                                {{ \Illuminate\Support\Carbon::parse($d['last_used_at'])->timezone(config('app.timezone'))->format('d M Y, H:i') }}
-                                            @else
-                                                never
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <button type="button" data-revoke-id="{{ $d['id'] }}" data-credential-id="{{ $d['credential_id'] }}" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">Revoke</button>
-                                </div>
-                            @endforeach
-                        </div>
+                <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Last backup:
+                    <strong style="color: var(--primary-navy);">
+                        {{ $user->last_data_backup_at ? $user->last_data_backup_at->format('d M Y H:i') : 'Never' }}
+                    </strong>
+                    @if($user->isDataBackupOverdue())
+                        <span style="color: var(--primary-cerulean); font-weight: 600; margin-left: 0.35rem;">· Reminder this week</span>
                     @endif
                 </div>
-                @if($medicalVaultUnlocked ?? false)
-                    <button type="button" id="settings-trust-enable" style="display: none; margin-top: 1rem; padding: 0.55rem 1rem; background: white; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">
-                        Enable quick unlock on this browser
-                    </button>
-                    <div id="settings-trust-status" style="display: none; margin-top: 0.65rem; font-size: 0.85rem;"></div>
-                @endif
-            </div>
-        @endif
-
-        <div id="data-backup" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Data backup</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
-                Download a weekly ZIP of <strong>your</strong> clients, invoices, payments, and expenses. Clinical vault journals stay on the separate medical backup.
-            </p>
-            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
-                Last backup:
-                <strong style="color: var(--primary-navy);">
-                    {{ $user->last_data_backup_at ? $user->last_data_backup_at->format('d M Y H:i') : 'Never' }}
-                </strong>
-                @if($user->isDataBackupOverdue())
-                    <span style="color: var(--primary-cerulean); font-weight: 600; margin-left: 0.35rem;">· Reminder this week</span>
-                @endif
-            </div>
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-                <a href="/exports/backup" style="background: var(--primary-cerulean); color: white; padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.9rem; text-decoration: none;">Open backup</a>
-                @if($user->canAccessProPackage('med'))
-                    <a href="/pro/medical/vault/backup" style="color: var(--primary-navy); font-weight: 600; font-size: 0.85rem; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Medical vault backup</a>
-                @endif
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                    <a href="/exports/backup" style="background: var(--primary-cerulean); color: white; padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.9rem; text-decoration: none;">Open backup</a>
+                    @if($user->canAccessProPackage('med'))
+                        <a href="/pro/medical/vault/backup" style="color: var(--primary-navy); font-weight: 600; font-size: 0.85rem; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Medical vault backup</a>
+                    @endif
+                </div>
             </div>
         </div>
 
-        <div id="install-app" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-            <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Download app</h3>
-            <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
-                Open PractisBase in one tap from your phone or desktop — no app store needed.
-            </p>
-            <button type="button" data-open-install-app style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer;">
-                Download app
-            </button>
-        </div>
-
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
-            <h3 id="security" style="color: var(--primary-navy); margin-top: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Security</h3>
-            
-            <form action="/settings/password" method="POST">
-                @csrf
-                @method('PUT')
-
-                <div class="form-group" style="margin-bottom: 1.25rem;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Current Password</label>
-                    <input type="password" name="current_password" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">New Password</label>
-                        <input type="password" name="password" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
-                    <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Confirm New Password</label>
-                        <input type="password" name="password_confirmation" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
-                </div>
-
-                <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">
-                    Update Password
+        {{-- App --}}
+        <div id="tab-app" class="settings-tab-panel" role="tabpanel" style="display: none;">
+            <div id="install-app" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
+                <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">App</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
+                    Open PractisBase in one tap — no app store needed.
+                </p>
+                <button type="button" data-open-install-app style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer;">
+                    Download app
                 </button>
-            </form>
+            </div>
         </div>
 
     </div>
 
     @include('expenses.partials.business-use-helpers', [
         'user' => $user,
-        'redirectTo' => '/settings',
+        'redirectTo' => '/settings#tax',
     ])
 
     <script>
+        (function () {
+            var valid = { plan: true, practice: true, tax: true, payments: true, branding: true, security: true, backup: true, app: true };
+            var aliases = {
+                'tax-setup': 'tax',
+                'tax-details': 'tax',
+                'data-backup': 'backup',
+                'install-app': 'app',
+                'trusted-devices': 'security'
+            };
+
+            function resolveTab(raw) {
+                var h = (raw || '').replace(/^#/, '');
+                if (aliases[h]) return aliases[h];
+                if (valid[h]) return h;
+                return 'plan';
+            }
+
+            function activate(tab) {
+                tab = resolveTab(tab);
+                if (!valid[tab]) tab = 'plan';
+                document.querySelectorAll('.settings-tab-panel').forEach(function (el) {
+                    el.style.display = el.id === 'tab-' + tab ? 'block' : 'none';
+                });
+                document.querySelectorAll('.settings-tab-btn').forEach(function (btn) {
+                    var on = btn.getAttribute('data-tab') === tab;
+                    btn.style.color = on ? 'var(--primary-navy)' : 'var(--text-muted)';
+                    btn.style.borderBottomColor = on ? 'var(--primary-cerulean)' : 'transparent';
+                    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+                if (history.replaceState) {
+                    history.replaceState(null, '', '#' + tab);
+                } else {
+                    location.hash = tab;
+                }
+            }
+
+            document.querySelectorAll('.settings-tab-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    activate(btn.getAttribute('data-tab'));
+                });
+            });
+
+            window.addEventListener('hashchange', function () {
+                activate(location.hash);
+            });
+
+            var initial = resolveTab(location.hash);
+            @if(old('settings_section'))
+                initial = @json(old('settings_section'));
+            @elseif($errors->has('regime_effective_from') || $errors->has('employment_type') || $errors->has('vat_status') || $errors->has('tax_computation') || $errors->has('primary_salary') || $errors->has('estimated_expenses') || $errors->has('date_of_birth'))
+                initial = 'tax';
+            @elseif($errors->has('name') || $errors->has('email') || $errors->has('warrant_number') || $errors->has('postnominals'))
+                initial = 'practice';
+            @elseif($errors->has('pm_bov_number') || $errors->has('pm_revolut_number') || $errors->has('pm_cheque_name') || $errors->has('bank_names') || $errors->has('ibans'))
+                initial = 'payments';
+            @elseif($errors->has('current_password') || $errors->has('password'))
+                initial = 'security';
+            @elseif($errors->has('logo') || $errors->has('clinical_stamp') || $errors->has('branding'))
+                initial = 'branding';
+            @endif
+            activate(initial);
+            window.__settingsActivateTab = activate;
+        })();
+
         (function () {
             var currentTier = @json($currentTier ?? \App\Support\TierPolicy::normalize($user->tier));
             var downgradeMap = @json(collect($allowedTiers ?? [])->mapWithKeys(fn ($t) => [$t => \App\Support\TierPolicy::isDowngrade($currentTier ?? $user->tier, $t)])->all());
@@ -685,7 +812,6 @@
             });
         })();
 
-        // Handle Employment toggle logic
         function handleEmpChange() {
             const empType = document.getElementById('empType').value;
             const dobGroup = document.getElementById('dobSettingsGroup');
@@ -701,7 +827,6 @@
             syncRegimeEffective();
         }
 
-        // Handle VAT toggle logic
         function handleVatChange() {
             const vatStatus = document.getElementById('vatSettingsStatus');
             const vatGroup = document.getElementById('vatSettingsGroup');
@@ -747,7 +872,6 @@
             input.required = changed;
         }
 
-        // Handle Profession change logic (Show Strict Medical Warning but DO NOT lock the dropdown)
         function handleProfChange() {
             const profEl = document.getElementById('profInput');
             const alert = document.getElementById('medicalVatAlert');
@@ -760,7 +884,6 @@
             }
         }
 
-        // Run once on load to ensure initial state is correct
         document.addEventListener("DOMContentLoaded", function() {
             handleProfChange();
             syncRegimeEffective();
@@ -864,9 +987,7 @@
                 }
 
                 bindRevokeButtons();
-                PractisVaultDevice.listDevices().then(renderDevices).catch(function () {
-                    // Keep server-rendered list; only replace if still empty placeholder.
-                });
+                PractisVaultDevice.listDevices().then(renderDevices).catch(function () {});
 
                 if (enableBtn && vaultUnlocked) {
                     PractisVaultDevice.platformAvailable().then(function (ok) {
@@ -897,11 +1018,6 @@
                             enableBtn.textContent = 'Enable quick unlock on this browser';
                         });
                     });
-                }
-
-                if (window.location.hash === '#trusted-devices') {
-                    var el = document.getElementById('trusted-devices');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             })();
         </script>

@@ -14,8 +14,20 @@ use Illuminate\Support\Str;
 
 class ClinicalImportController extends Controller
 {
+    private const ALLOWED_EMAIL = 'sarah.darmanin2@gmail.com';
+
+    private function assertAllowedImporter(): void
+    {
+        $email = strtolower(trim((string) (Auth::user()->email ?? '')));
+        if ($email !== self::ALLOWED_EMAIL) {
+            abort(404);
+        }
+    }
+
     public function form()
     {
+        $this->assertAllowedImporter();
+
         return view('pro.medical.import-gynae', [
             'maxBatch' => 5,
         ]);
@@ -27,6 +39,8 @@ class ClinicalImportController extends Controller
      */
     public function commit(Request $request)
     {
+        $this->assertAllowedImporter();
+
         $user = Auth::user();
         $vault = MedicalVault::activeForUser($user->id);
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
