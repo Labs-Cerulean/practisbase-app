@@ -125,6 +125,7 @@
                         <input type="file" id="pdf-file" accept="application/pdf,.pdf">
                     </div>
                     <div class="stamper-actions">
+                        <button type="button" id="btn-place-stamp" class="stamper-btn stamper-btn-ghost" disabled>Place stamp</button>
                         <button type="button" id="btn-apply-page" class="stamper-btn stamper-btn-primary" disabled>Stamp this page</button>
                         <button type="button" id="btn-apply-all" class="stamper-btn stamper-btn-ghost" disabled>Stamp all pages</button>
                         <button type="button" id="btn-remove-page" class="stamper-btn stamper-btn-danger" disabled>Remove</button>
@@ -156,7 +157,6 @@
                         </div>
                     </div>
                 </div>
-                <button type="button" id="btn-place-stamp" class="stamper-btn stamper-btn-ghost stamper-btn-sm" style="margin-top: 0.65rem;" hidden>Place stamp</button>
             </div>
         @endif
     </div>
@@ -232,7 +232,10 @@
         btnRemovePage.disabled = !ready || !hasPage;
         btnRemoveAll.disabled = !ready || placementCount() === 0;
         pageStatus.hidden = !hasPage;
-        if (btnPlace) btnPlace.hidden = !ready || draftVisible || hasPage;
+        if (btnPlace) {
+            btnPlace.disabled = !ready || draftVisible || hasPage;
+            btnPlace.hidden = false;
+        }
         if (hasPage || draftVisible) {
             overlayWrap.hidden = false;
             overlayWrap.style.outline = hasPage ? '2px dashed rgba(11, 31, 51, 0.35)' : '2px dashed rgba(2, 132, 199, 0.45)';
@@ -649,16 +652,14 @@
 
     btnRemovePage.addEventListener('click', function () {
         delete placements[pageNum];
-        hideDraftOverlay();
-        updateActionState();
-        setHelp('Removed stamp from page ' + pageNum + '.');
+        showDraftOverlay(true);
+        setHelp('Removed stamp from page ' + pageNum + '. Drag to place again, then Stamp this page.');
     });
 
     btnRemoveAll.addEventListener('click', function () {
         placements = {};
-        hideDraftOverlay();
-        updateActionState();
-        setHelp('All stamps removed.');
+        showDraftOverlay(true);
+        setHelp('All stamps removed. Drag to place again, then Stamp this page or Stamp all pages.');
     });
 
     btnDownload.addEventListener('click', async function () {
