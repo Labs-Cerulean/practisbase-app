@@ -17,7 +17,7 @@
                 $refChrome = \App\Models\ClinicalEntry::typeChrome('referral');
                 $certChrome = \App\Models\ClinicalEntry::typeChrome('certificate');
             @endphp
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: {{ $journalChrome['soft'] }}; border: 1px solid {{ $journalChrome['border'] }}; color: {{ $journalChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Journal</a>
+            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: {{ $journalChrome['soft'] }}; border: 1px solid {{ $journalChrome['border'] }}; color: {{ $journalChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Patient notes</a>
             <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=prescription" style="background: {{ $rxChrome['badge_bg'] }}; color: {{ $rxChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Prescription</a>
             <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=referral" style="background: {{ $refChrome['badge_bg'] }}; color: {{ $refChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Referral</a>
             <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=certificate" style="background: {{ $certChrome['badge_bg'] }}; color: {{ $certChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Certificate</a>
@@ -33,45 +33,73 @@
         </div>
     @endif
 
+    @php
+        $demoDob = !empty($payload['date_of_birth']) ? \Illuminate\Support\Carbon::parse($payload['date_of_birth'])->format('d M Y') : '';
+        $demoAge = trim((string) ($payload['age'] ?? ''));
+        $demoId = trim((string) ($payload['id_card'] ?? ''));
+        $demoTel = trim((string) ($payload['tel'] ?? ''));
+        $demoAddress = trim((string) ($payload['address'] ?? ''));
+        $demoNotes = trim((string) ($payload['notes'] ?? ''));
+        $hasDemoGrid = $demoDob !== '' || $demoAge !== '' || $demoId !== '' || $demoTel !== '';
+        $hasDemoExtras = $hasDemoGrid || $demoAddress !== '' || $demoNotes !== '';
+    @endphp
     <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem; margin-bottom: 0.85rem;">
-            <div>
-                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Date of birth</div>
-                <div>{{ !empty($payload['date_of_birth']) ? \Illuminate\Support\Carbon::parse($payload['date_of_birth'])->format('d M Y') : '—' }}</div>
+        @if($hasDemoExtras)
+            @if($hasDemoGrid)
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem; margin-bottom: 0.85rem;">
+                @if($demoDob !== '')
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Date of birth</div>
+                        <div>{{ $demoDob }}</div>
+                    </div>
+                @endif
+                @if($demoAge !== '')
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Age</div>
+                        <div>{{ $demoAge }}</div>
+                    </div>
+                @endif
+                @if($demoId !== '')
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">ID card</div>
+                        <div>{{ $demoId }}</div>
+                    </div>
+                @endif
+                @if($demoTel !== '')
+                    <div>
+                        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Tel</div>
+                        <div>{{ $demoTel }}</div>
+                    </div>
+                @endif
             </div>
-            <div>
-                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Age</div>
-                <div>{{ $payload['age'] ?? '—' }}</div>
-            </div>
-            <div>
-                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">ID card</div>
-                <div>{{ $payload['id_card'] ?? '—' }}</div>
-            </div>
-            <div>
-                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Tel</div>
-                <div>{{ $payload['tel'] ?? '—' }}</div>
-            </div>
-        </div>
-        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Address</div>
-        <div style="white-space: pre-wrap; margin-bottom: 0.75rem;">{{ $payload['address'] ?? '—' }}</div>
-        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Notes</div>
-        <div style="white-space: pre-wrap; margin-bottom: 1rem;">{{ $payload['notes'] ?: '—' }}</div>
+            @endif
+            @if($demoAddress !== '')
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Address</div>
+                <div style="white-space: pre-wrap; margin-bottom: 0.75rem;">{{ $demoAddress }}</div>
+            @endif
+            @if($demoNotes !== '')
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Notes</div>
+                <div style="white-space: pre-wrap; margin-bottom: 1rem;">{{ $demoNotes }}</div>
+            @endif
+        @endif
 
-        <div style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
-            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">Billing Client link</div>
+        <div style="{{ $hasDemoExtras ? 'border-top: 1px solid var(--border-light); padding-top: 1rem;' : '' }}">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">
+                Billing Client link
+                @include('partials.help-tip', ['text' => 'Link a billing Client for invoices. Clinical details stay in the vault.'])
+            </div>
             @if($patient->billingClient)
                 <div style="margin-bottom: 0.65rem; font-size: 0.9rem;">
                     Linked to <a href="/clients/{{ $patient->billingClient->id }}" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">{{ $patient->billingClient->name }}</a>
-                    — use that Client for invoices; keep clinical work here.
                 </div>
             @else
-                <div style="margin-bottom: 0.65rem; font-size: 0.85rem; color: var(--text-muted);">Not linked to a billing Client yet.</div>
+                <div style="margin-bottom: 0.65rem; font-size: 0.85rem; color: var(--text-muted);">Not linked yet.</div>
 
                 <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
-                    <div style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.35rem;">Create Client from this patient</div>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.75rem; line-height: 1.4;">
-                        Patient was created first? Add invoice details here. We prefill the name; clinical DOB/notes stay in the vault only.
-                    </p>
+                    <div style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.35rem;">
+                        Create Client from this patient
+                        @include('partials.help-tip', ['text' => 'Prefills the billing name. Clinical DOB and notes stay in the vault only.'])
+                    </div>
                     @if(!($canAddClient ?? false))
                         <div style="background: #fffbeb; color: #92400e; padding: 0.65rem 0.85rem; border-radius: var(--radius-md); font-size: 0.85rem;">
                             Free lifetime client cap reached. Upgrade to Standard/Pro to create another Client.
@@ -106,7 +134,7 @@
                                     <textarea name="billing_address" rows="2" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('billing_address') }}</textarea>
                                 </div>
                                 <div id="individual-extra" style="{{ old('type', 'individual') === 'company' ? 'display:none;' : '' }}">
-                                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">ID card (optional)</label>
+                                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">ID card</label>
                                     <input type="text" name="id_card_number" value="{{ old('id_card_number') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                                 </div>
                                 <div id="company-extra" style="display: none; gap: 0.65rem;">
@@ -192,41 +220,50 @@
         </div>
     </div>
 
-    <h3 style="color: var(--primary-navy);">Clinical entries</h3>
-    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0;">
-        Prescriptions, referrals, and certificates stay editable until you press <strong>Stamp &amp; issue</strong> — then they lock. Journal notes stay editable.
-        Find all stampables across patients in
-        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Stampables</a>.
+    <h3 style="color: var(--primary-navy); margin-bottom: 0.35rem;">
+        Clinical entries
+        @include('partials.help-tip', ['text' => 'Prescriptions, referrals, and certificates stay editable until Stamp & issue. Patient notes stay editable. Browse all documents across patients in Documents.'])
+    </h3>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.75rem;">
+        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Documents</a>
     </p>
     @include('pro.medical._type-colour-key', ['includeJournal' => true, 'margin' => '0 0 1rem'])
     @if($entries->isEmpty())
-        <p style="color: var(--text-muted);">No journal / prescription / referral / certificate entries yet.</p>
+        <p style="color: var(--text-muted);">No entries yet.</p>
     @else
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
             <div style="display: grid; gap: 0.65rem;">
-                <div>
-                    <label for="entry-search" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Search entries</label>
-                    <input id="entry-search" type="search" placeholder="Title, body, type, issue code…"
-                           style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.65rem;">
-                    <div>
-                        <label for="entry-filter-type" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Type</label>
-                        <select id="entry-filter-type" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="all">All types</option>
-                            @foreach(($entryTypes ?? []) as $typeKey => $typeLabel)
-                                <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
-                            @endforeach
-                        </select>
+                <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: flex-end;">
+                    <div style="flex: 1; min-width: 180px;">
+                        <label for="entry-search" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Search</label>
+                        <input id="entry-search" type="search" placeholder="Search entries…"
+                               style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     </div>
-                    <div>
-                        <label for="entry-filter-status" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Status</label>
-                        <select id="entry-filter-status" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="all">All</option>
-                            <option value="draft">Draft / editable</option>
-                            <option value="issued">Stamped &amp; issued</option>
-                            <option value="journal">Journals only</option>
-                        </select>
+                    <button type="button" id="entry-advanced-toggle" aria-expanded="false" aria-controls="entry-advanced-filters"
+                            style="padding: 0.65rem 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 700; color: var(--primary-navy); cursor: pointer; font-size: 0.85rem;">
+                        Advanced
+                    </button>
+                </div>
+                <div id="entry-advanced-filters" style="display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.65rem;">
+                        <div>
+                            <label for="entry-filter-type" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Type</label>
+                            <select id="entry-filter-type" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="all">All types</option>
+                                @foreach(($entryTypes ?? []) as $typeKey => $typeLabel)
+                                    <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="entry-filter-status" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Status</label>
+                            <select id="entry-filter-status" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="all">All</option>
+                                <option value="draft">Draft</option>
+                                <option value="issued">Issued</option>
+                                <option value="journal">Patient notes</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
@@ -351,9 +388,9 @@
                     @if($entry['is_stampable'])
                         <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: {{ $chrome['soft'] }}; border: 1px solid {{ $chrome['border'] }}; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-main);">
                             @if($entry['is_issued'])
-                                Official {{ strtolower($entry['type_label']) }} PDF template ready — authenticity mark includes issue code and date.
+                                Official PDF ready with issue code and date.
                             @else
-                                Stampable document. After Stamp &amp; issue it locks and downloads via the type-specific PDF template.
+                                After Stamp &amp; issue this locks and downloads as PDF.
                             @endif
                         </div>
                     @endif
@@ -391,7 +428,7 @@
 
                     @if(!empty($entry['attachments']) && count($entry['attachments']))
                         <div style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border-light);">
-                            <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">Encrypted attachments</div>
+                            <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">Attachments</div>
                             <ul style="margin: 0; padding-left: 1.1rem;">
                                 @foreach($entry['attachments'] as $att)
                                     <li style="margin-bottom: 0.25rem;">
@@ -413,13 +450,14 @@
                               style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border-light);">
                             @csrf
                             <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">
-                                {{ $entry['is_stampable'] ? 'Add encrypted photo / scan (JPEG, PNG, WebP, PDF · max 10 MB)' : 'Add encrypted file (JPEG, PNG, WebP, PDF · max 10 MB)' }}
+                                Add photo / scan
+                                @include('partials.help-tip', ['text' => 'JPEG, PNG, WebP, or PDF · max 10 MB. Stored encrypted in your vault.'])
                             </label>
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                                 <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" required
                                        style="font-size: 0.85rem;">
                                 <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.45rem 0.85rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">
-                                    Encrypt &amp; attach
+                                    Attach
                                 </button>
                             </div>
                         </form>
@@ -440,7 +478,18 @@
                 var list = document.getElementById('entry-list');
                 var countEl = document.getElementById('entry-count-visible');
                 var empty = document.getElementById('entry-empty-filter');
+                var advancedToggle = document.getElementById('entry-advanced-toggle');
+                var advancedPanel = document.getElementById('entry-advanced-filters');
                 if (!search || !list) return;
+
+                if (advancedToggle && advancedPanel) {
+                    advancedToggle.addEventListener('click', function () {
+                        var open = advancedPanel.style.display !== 'none';
+                        advancedPanel.style.display = open ? 'none' : 'block';
+                        advancedToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+                        advancedToggle.textContent = open ? 'Advanced' : 'Hide filters';
+                    });
+                }
 
                 function apply() {
                     var q = (search.value || '').trim().toLowerCase();

@@ -142,7 +142,7 @@
                 <div class="form-group">
                     <label>Warranting body</label>
                     <select name="warrant_choice" id="warrantChoice" onchange="handleWarrantChoice()">
-                        <option value="blank">Blank / prefer not to say</option>
+                        <option value="blank">Prefer not to say</option>
                         <option value="main" id="warrantMainOption">Main body</option>
                         <option value="international">International body (specify)</option>
                     </select>

@@ -447,7 +447,7 @@
                 This code identifies a single issued original from the practice named above.
                 Quote <strong>{{ $entry->issue_code }}</strong> when verifying with the issuing practice.
                 Do not accept photocopies or reprints that reuse the same code without confirmation.
-                Dispense as marked (Single / Repeat). Professional aid only — not a government-certified form.
+                Dispense as marked (Single / Repeat).
             </div>
         </div>
 

@@ -1,17 +1,17 @@
 @extends('layouts.app')
 
-@section('page_title', 'Stampables')
+@section('page_title', 'Documents')
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
         <div style="min-width: 200px; flex: 1;">
-            <h1 style="font-size: 1.35rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Stampables</h1>
+            <h1 style="font-size: 1.35rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Documents</h1>
             <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">
-                Search prescriptions, referrals, and certificates. Create and stamp them from the patient record.
+                Prescriptions, referrals, and certificates.
             </p>
             @if($hasLegacy ?? false)
                 <p style="color: #92400e; margin: 0.5rem 0 0; font-size: 0.85rem;">
-                    Legacy rows from the old shared Certificates screen are listed read-only. New certificates should be created under the patient.
+                    Some legacy certificates are listed read-only.
                 </p>
             @endif
         </div>
@@ -35,13 +35,13 @@
     @endif
 
     <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
-        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">Verify issue code</div>
-        <p style="margin: 0 0 0.65rem; color: var(--text-muted); font-size: 0.85rem;">
-            Match a printed code against this register. No match flags a possible reprint or reuse.
-        </p>
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">
+            Verify issue code
+            @include('partials.help-tip', ['text' => 'Match a printed code against this register. No match may mean a reprint or reuse.'])
+        </div>
         <form action="/pro/medical/issue-codes/lookup" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
             @csrf
-            <input type="text" name="issue_code" required placeholder="e.g. RX-7F3K-9M2P" maxlength="32"
+            <input type="text" name="issue_code" required placeholder="Issue code" maxlength="32"
                    style="flex: 1; min-width: 180px; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-family: ui-monospace, monospace; letter-spacing: 0.04em; text-transform: uppercase;">
             <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.65rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Look up</button>
         </form>
@@ -49,34 +49,42 @@
 
     @if($rows->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
-            <p style="color: var(--text-muted); margin: 0 0 0.75rem;">No prescriptions, referrals, or certificates yet.</p>
+            <p style="color: var(--text-muted); margin: 0 0 0.75rem;">No documents yet.</p>
             <a href="/pro/medical/patients" style="color: var(--primary-cerulean); font-weight: 600;">Create one from a patient record &rarr;</a>
         </div>
     @else
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
             <div style="display: grid; gap: 0.65rem;">
-                <div>
-                    <label for="stampable-search" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Search</label>
-                    <input id="stampable-search" type="search" placeholder="Title, patient, ref, issue code…"
-                           style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.65rem;">
-                    <div>
-                        <label for="stampable-filter-type" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Type</label>
-                        <select id="stampable-filter-type" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="all">All stampables</option>
-                            @foreach($types as $typeKey => $typeLabel)
-                                <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
-                            @endforeach
-                        </select>
+                <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: flex-end;">
+                    <div style="flex: 1; min-width: 180px;">
+                        <label for="stampable-search" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Search</label>
+                        <input id="stampable-search" type="search" placeholder="Search documents…"
+                               style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     </div>
-                    <div>
-                        <label for="stampable-filter-status" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Status</label>
-                        <select id="stampable-filter-status" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="all">All</option>
-                            <option value="draft">Draft</option>
-                            <option value="issued">Stamped &amp; issued</option>
-                        </select>
+                    <button type="button" id="stampable-advanced-toggle" aria-expanded="false" aria-controls="stampable-advanced-filters"
+                            style="padding: 0.65rem 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 700; color: var(--primary-navy); cursor: pointer; font-size: 0.85rem;">
+                        Advanced
+                    </button>
+                </div>
+                <div id="stampable-advanced-filters" style="display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.65rem;">
+                        <div>
+                            <label for="stampable-filter-type" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Type</label>
+                            <select id="stampable-filter-type" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="all">All types</option>
+                                @foreach($types as $typeKey => $typeLabel)
+                                    <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="stampable-filter-status" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Status</label>
+                            <select id="stampable-filter-status" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="all">All</option>
+                                <option value="draft">Draft</option>
+                                <option value="issued">Issued</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
@@ -154,7 +162,7 @@
             @endforeach
         </div>
         <div id="stampable-empty-filter" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted); border: 2px dashed var(--border-light); border-radius: var(--radius-md); background: white; margin-top: 0.75rem;">
-            No stampables match these filters.
+            No documents match these filters.
         </div>
 
         <script>
@@ -166,7 +174,18 @@
                 var list = document.getElementById('stampable-list');
                 var countEl = document.getElementById('stampable-count-visible');
                 var empty = document.getElementById('stampable-empty-filter');
+                var advancedToggle = document.getElementById('stampable-advanced-toggle');
+                var advancedPanel = document.getElementById('stampable-advanced-filters');
                 if (!search || !list) return;
+
+                if (advancedToggle && advancedPanel) {
+                    advancedToggle.addEventListener('click', function () {
+                        var open = advancedPanel.style.display !== 'none';
+                        advancedPanel.style.display = open ? 'none' : 'block';
+                        advancedToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+                        advancedToggle.textContent = open ? 'Advanced' : 'Hide filters';
+                    });
+                }
 
                 function apply() {
                     var q = (search.value || '').trim().toLowerCase();

@@ -153,7 +153,7 @@
                     <div>
                         <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Warrant / Council</label>
                         <select name="warrant_type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="">Blank / prefer not to say</option>
+                            <option value="">Prefer not to say</option>
                             @if($user->profession === 'Medical Professional')
                                 <option value="Medical Council Malta" {{ $user->warrant_type === 'Medical Council Malta' ? 'selected' : '' }}>Medical Council Malta</option>
                             @elseif($user->profession === 'Architect / Perit')
@@ -187,9 +187,8 @@
                             @endforeach
                         </select>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
-                            Used when creating journal notes.
-                            <a href="/pro/medical/templates" style="color: var(--primary-cerulean); font-weight: 600;">Manage your templates</a>
-                            (create gynae follow-up, obs follow-up, etc.).
+                            Used for patient notes.
+                            <a href="/pro/medical/templates" style="color: var(--primary-cerulean); font-weight: 600;">Manage templates</a>
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
@@ -212,7 +211,7 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">How do you work?</label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">How do you work? <span style="color: #b91c1c;">*</span></label>
                         <select name="employment_type" id="empType" onchange="handleEmpChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
                             <option value="full_time" {{ $user->employment_type === 'full_time' ? 'selected' : '' }}>This practice is my main work (full-time self-employed)</option>
                             <option value="part_time" {{ $user->employment_type === 'part_time' ? 'selected' : '' }}>I also have a main job (part-time self-employed)</option>
@@ -221,7 +220,7 @@
                     </div>
                     
                     <div id="dobSettingsGroup" style="display: {{ $user->employment_type === 'full_time' || ($dobLocked ?? false) ? 'block' : 'none' }};">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Date of Birth (SSC)</label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Date of Birth (SSC) <span style="color: #b91c1c;">*</span></label>
                         <input type="date" name="date_of_birth" id="dobSettingsInput" value="{{ $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '' }}"
                                {{ ($dobLocked ?? false) ? 'disabled' : '' }}
                                max="{{ now()->subYears(18)->format('Y-m-d') }}"
@@ -269,7 +268,7 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Do you charge VAT?</label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Do you charge VAT? <span style="color: #b91c1c;">*</span></label>
                         <select name="vat_status" id="vatSettingsStatus" onchange="handleVatChange()" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
                             <option value="article_11" {{ $user->vat_status === 'article_11' ? 'selected' : '' }}>No VAT yet — under €35k (Article 11)</option>
                             <option value="article_10" {{ $user->vat_status === 'article_10' ? 'selected' : '' }}>Yes — I charge 18% VAT (Article 10)</option>
@@ -290,8 +289,8 @@
                     </div>
                 @endif
 
-                <div id="medicalVatAlert" style="display: {{ $user->profession === 'Medical Professional' ? 'block' : 'none' }}; margin-top: 1rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.85rem; line-height: 1.5;">
-                    <strong>Medical VAT:</strong> Therapeutic care is normally <strong>Fifth Schedule exempt</strong>. Non-therapeutic services (cosmetic, medico-legal, consultancy) may need Article 10/11 — choose the matching status above so you can charge VAT when required.
+                <div id="medicalVatAlert" style="display: {{ $user->profession === 'Medical Professional' ? 'block' : 'none' }}; margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+                    Therapeutic care is usually Fifth Schedule exempt. Non-therapeutic work may need Article 10/11.
                 </div>
 
                 <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
@@ -354,7 +353,7 @@
             </div>
 
                 <h3 id="payments" style="color: var(--primary-navy); margin-top: 2rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">How clients pay you</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Select how you want clients to pay you. These will be automatically formatted onto your invoices. <strong>(Select at least one)</strong></p>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Shown on invoices when set. Leave blank if you prefer.</p>
 
                 @php $pm = $user->payment_methods ?? []; @endphp
 

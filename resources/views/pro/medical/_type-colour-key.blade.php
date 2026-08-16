@@ -2,7 +2,7 @@
 @php
     $items = [];
     if ($includeJournal ?? false) {
-        $items['journal'] = 'Journal';
+        $items['journal'] = 'Patient notes';
     }
     $items['prescription'] = 'Prescription';
     $items['referral'] = 'Referral';

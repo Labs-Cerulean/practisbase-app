@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('page_title', 'Journal templates')
+@section('page_title', 'Note templates')
 
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
         <div>
             <a href="/pro/medical/patients" style="color: var(--text-muted); font-weight: 600; text-decoration: none; font-size: 0.85rem;">&larr; Patients</a>
-            <h1 style="margin: 0.4rem 0 0.35rem; color: var(--primary-navy); font-size: 1.45rem;">Journal templates</h1>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; max-width: 40rem; line-height: 1.45;">
-                Build the consult forms you actually use — gynae follow-up, obs follow-up, or anything else. Field values stay encrypted in each note; templates are just your form layout.
+            <h1 style="margin: 0.4rem 0 0.35rem; color: var(--primary-navy); font-size: 1.45rem;">Note templates</h1>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; max-width: 36rem; line-height: 1.45;">
+                Form layouts for patient notes. Field values stay encrypted in each note.
             </p>
         </div>
         <a href="/pro/medical/templates/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ New template</a>
