@@ -79,35 +79,52 @@
             @endif
             @if($demoNotes !== '')
                 <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Notes</div>
-                <div style="white-space: pre-wrap; margin-bottom: 1rem;">{{ $demoNotes }}</div>
+                <div style="white-space: pre-wrap;">{{ $demoNotes }}</div>
             @endif
         @endif
+    </div>
 
-        <div style="{{ $hasDemoExtras ? 'border-top: 1px solid var(--border-light); padding-top: 1rem;' : '' }}">
-            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">
-                Billing Client link
-                @include('partials.help-tip', ['text' => 'Link a billing Client for invoices. Clinical details stay in the vault.'])
-            </div>
-            @if($patient->billingClient)
-                <div style="margin-bottom: 0.65rem; font-size: 0.9rem;">
-                    Linked to <a href="/clients/{{ $patient->billingClient->id }}" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">{{ $patient->billingClient->name }}</a>
-                </div>
-            @else
-                <div style="margin-bottom: 0.65rem; font-size: 0.85rem; color: var(--text-muted);">Not linked yet.</div>
-
-                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
-                    <div style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.35rem;">
-                        Create Client from this patient
-                        @include('partials.help-tip', ['text' => 'Prefills the billing name. Clinical DOB and notes stay in the vault only.'])
+    @php
+        $billingFormOpen = $errors->has('name') || $errors->has('type') || $errors->has('billing_client_id')
+            || $errors->has('email') || $errors->has('phone') || $errors->has('billing_address');
+    @endphp
+    <div style="margin: -0.5rem 0 1.25rem; display: flex; justify-content: flex-end;">
+        <details id="billing-client-panel" style="width: 100%; max-width: 28rem;" @if($billingFormOpen) open @endif>
+            <summary style="cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 600; color: var(--primary-cerulean);">
+                @if($patient->billingClient)
+                    Billing: {{ $patient->billingClient->name }}
+                @else
+                    Make / link client
+                @endif
+            </summary>
+            <div style="margin-top: 0.65rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
+                @if($patient->billingClient)
+                    <div style="margin-bottom: 0.75rem; font-size: 0.9rem;">
+                        Linked to <a href="/clients/{{ $patient->billingClient->id }}" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">{{ $patient->billingClient->name }}</a>
                     </div>
+                    <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        @csrf
+                        @method('PUT')
+                        <select name="billing_client_id" style="flex: 1; min-width: 160px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                            <option value="">No billing link</option>
+                            @foreach($clients as $client)
+                                @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
+                                <option value="{{ $client->id }}"
+                                    {{ (int) $patient->billing_client_id === (int) $client->id ? 'selected' : '' }}
+                                    {{ $taken ? 'disabled' : '' }}>
+                                    {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update</button>
+                    </form>
+                @else
                     @if(!($canAddClient ?? false))
-                        <div style="background: #fffbeb; color: #92400e; padding: 0.65rem 0.85rem; border-radius: var(--radius-md); font-size: 0.85rem;">
-                            Free lifetime client cap reached. Upgrade to Standard/Pro to create another Client.
-                        </div>
+                        <div style="font-size: 0.85rem; color: #92400e; margin-bottom: 0.75rem;">Client cap reached. Upgrade to create another.</div>
                     @else
-                        <form action="/pro/medical/patients/{{ $patient->id }}/billing-client" method="POST" id="create-client-from-patient">
+                        <form action="/pro/medical/patients/{{ $patient->id }}/billing-client" method="POST" id="create-client-from-patient" style="margin-bottom: 0.85rem;">
                             @csrf
-                            <div style="display: grid; gap: 0.65rem;">
+                            <div style="display: grid; gap: 0.55rem;">
                                 <div>
                                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Type</label>
                                     <select name="type" id="client_type_from_patient" required style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
@@ -119,7 +136,7 @@
                                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Billing name</label>
                                     <input type="text" name="name" value="{{ old('name', $payload['display_name'] ?? '') }}" required style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem;">
                                     <div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Email</label>
                                         <input type="email" name="email" value="{{ old('email') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
@@ -137,7 +154,7 @@
                                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">ID card</label>
                                     <input type="text" name="id_card_number" value="{{ old('id_card_number') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                                 </div>
-                                <div id="company-extra" style="display: none; gap: 0.65rem;">
+                                <div id="company-extra" style="display: none; gap: 0.55rem;">
                                     <div>
                                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">VAT number</label>
                                         <input type="text" name="vat_number" value="{{ old('vat_number') }}" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
@@ -152,7 +169,7 @@
                                     </div>
                                 </div>
                                 <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.65rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
-                                    Create Client &amp; link
+                                    Create &amp; link
                                 </button>
                             </div>
                         </form>
@@ -172,52 +189,29 @@
                             })();
                         </script>
                     @endif
-                </div>
-            @endif
 
-            @if(! $patient->billingClient)
-                @if($clients->isEmpty())
-                    <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
-                        Or create a Client under <a href="/clients/create" style="color: var(--primary-cerulean); font-weight: 600;">Clients</a> and link it below later.
-                    </div>
-                @else
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.75rem 0 0.5rem; line-height: 1.4;">
-                        Or link an <strong>existing</strong> Client:
-                    </p>
-                    <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        @csrf
-                        @method('PUT')
-                        <select name="billing_client_id" style="flex: 1; min-width: 180px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="">No billing link</option>
-                            @foreach($clients as $client)
-                                @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
-                                <option value="{{ $client->id }}" {{ $taken ? 'disabled' : '' }}>
-                                    {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update link</button>
-                    </form>
+                    @if($clients->isNotEmpty())
+                        <div style="border-top: 1px solid var(--border-light); padding-top: 0.75rem; margin-top: 0.25rem;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.45rem;">Or link existing</div>
+                            <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                                @csrf
+                                @method('PUT')
+                                <select name="billing_client_id" style="flex: 1; min-width: 160px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                    <option value="">Choose client…</option>
+                                    @foreach($clients as $client)
+                                        @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
+                                        <option value="{{ $client->id }}" {{ $taken ? 'disabled' : '' }}>
+                                            {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Link</button>
+                            </form>
+                        </div>
+                    @endif
                 @endif
-            @else
-                <form action="/pro/medical/patients/{{ $patient->id }}/billing-link" method="POST" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.75rem;">
-                    @csrf
-                    @method('PUT')
-                    <select name="billing_client_id" style="flex: 1; min-width: 180px; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                        <option value="">No billing link</option>
-                        @foreach($clients as $client)
-                            @php $taken = in_array($client->id, $linkedClientIds, true); @endphp
-                            <option value="{{ $client->id }}"
-                                {{ (int) $patient->billing_client_id === (int) $client->id ? 'selected' : '' }}
-                                {{ $taken ? 'disabled' : '' }}>
-                                {{ $client->name }}{{ $taken ? ' (linked elsewhere)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">Update link</button>
-                </form>
-            @endif
-        </div>
+            </div>
+        </details>
     </div>
 
     <h3 style="color: var(--primary-navy); margin-bottom: 0.35rem;">
