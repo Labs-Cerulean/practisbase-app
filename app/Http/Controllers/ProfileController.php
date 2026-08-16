@@ -154,10 +154,6 @@ class ProfileController extends Controller
         $hasClosedFiscalYears = FiscalReportEngine::hasClosedYears($user->id);
         $dobLocked = $hasClosedFiscalYears && filled($user->date_of_birth);
 
-        if (!$request->has('pm_cheque') && !$request->has('pm_bank') && !$request->has('pm_bov') && !$request->has('pm_revolut')) {
-            return back()->withErrors(['payment_error' => 'You must enable at least one payment method for your invoices.'])->withInput();
-        }
-
         $adultCutoff = now()->subYears(18)->startOfDay();
 
         $request->validate([

@@ -157,14 +157,6 @@
                         <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['patient_count'] }}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Drafts to stamp</div>
-                        <div style="font-size: 1.35rem; font-weight: 700; color: {{ $practiceDesk['draft_stampables'] > 0 ? '#b45309' : 'var(--primary-navy)' }};">{{ $practiceDesk['draft_stampables'] }}</div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Issued {{ $year }}</div>
-                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['issued_ytd'] }}</div>
-                    </div>
-                    <div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">Vault</div>
                         <div style="font-size: 1.05rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.2rem;">
                             @if(! $practiceDesk['vault_setup'])
@@ -181,31 +173,16 @@
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: {{ $practiceDesk['recent_drafts']->isEmpty() ? '0' : '1rem' }};">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0;">
                     @if($practiceDesk['vault_unlocked'])
-                        <a href="/pro/medical/stampables" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Stampables</a>
                         <a href="/pro/medical/patients" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Patients</a>
+                        <a href="/pro/medical/stampables" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Documents</a>
                     @elseif($practiceDesk['vault_setup'])
                         <a href="/pro/medical/vault/unlock" style="padding: 0.55rem 0.85rem; background: {{ $deskAccent }}; color: white; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem;">Unlock to continue</a>
                     @else
-                        <a href="/pro/medical/vault/setup" style="padding: 0.55rem 0.85rem; background: {{ $deskAccent }}; color: white; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem;">Set up clinical vault</a>
+                        <a href="/pro/medical/vault/setup" style="padding: 0.55rem 0.85rem; background: {{ $deskAccent }}; color: white; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem;">Set up vault</a>
                     @endif
                 </div>
-
-                @if($practiceDesk['recent_drafts']->isNotEmpty())
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 0.85rem;">
-                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.55rem;">Awaiting stamp</div>
-                        @foreach($practiceDesk['recent_drafts'] as $draft)
-                            <div style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border-light); font-size: 0.9rem;">
-                                <span style="font-weight: 600; color: var(--primary-navy);">{{ $draft->typeLabel() }}</span>
-                                <span style="color: var(--text-muted);">{{ $draft->entry_date?->format('d M Y') }}</span>
-                            </div>
-                        @endforeach
-                        @if($practiceDesk['vault_unlocked'])
-                            <a href="/pro/medical/stampables" style="display: inline-block; margin-top: 0.65rem; font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Review stampables →</a>
-                        @endif
-                    </div>
-                @endif
             @else
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                     @if(($practiceDesk['kind'] ?? null) === 'arch' || ($practiceDesk['kind'] ?? null) === 'eng')
@@ -451,7 +428,7 @@
                     <div style="display: flex; flex-direction: column; gap: 0.65rem;">
                         @if($hasPractice && ($practiceDesk['kind'] ?? null) === 'med')
                             <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
-                            <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Stampables</a>
+                            <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Documents</a>
                         @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'arch')
                             <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
                             <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>
@@ -478,7 +455,7 @@
             <div style="display: flex; flex-direction: column; gap: 0.65rem;">
                 @if(($practiceDesk['kind'] ?? null) === 'med')
                     <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
-                    <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Stampables</a>
+                    <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Documents</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'arch')
                     <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
                     <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>

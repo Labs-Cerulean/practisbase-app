@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/css/style.css?v=shell5">
+    <link rel="stylesheet" href="/css/style.css?v=shell6">
     @include('partials.pwa-head')
 </head>
 <body>
@@ -72,6 +72,29 @@
                                 </li>
                             @endif
 
+                            @if(auth()->user()->canAccessProPackage('med'))
+                                <li class="nav-section-label" aria-hidden="true">Practice</li>
+                                <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
+                                <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Documents</a></li>
+                            @elseif(auth()->user()->canAccessProPackage('arch'))
+                                <li class="nav-section-label" aria-hidden="true">Practice</li>
+                                <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>
+                                <li><a href="/pro/architect/documents" class="nav-link {{ request()->is('pro/architect/documents*') ? 'active' : '' }}">Documents</a></li>
+                                <li><a href="/pro/architect/condition-reports" class="nav-link {{ request()->is('pro/architect/condition-reports*') ? 'active' : '' }}">Condition reports</a></li>
+                                <li><a href="/pro/architect/method-statements" class="nav-link {{ request()->is('pro/architect/method-statements*') ? 'active' : '' }}">Method statements</a></li>
+                                <li><a href="/pro/architect/templates" class="nav-link {{ request()->is('pro/architect/templates*') ? 'active' : '' }}">BCA templates</a></li>
+                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
+                            @elseif(auth()->user()->canAccessProPackage('eng'))
+                                <li class="nav-section-label" aria-hidden="true">Practice</li>
+                                <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') || request()->is('pro/engineer/pa*') ? 'active' : '' }}">Projects</a></li>
+                                <li><a href="/pro/engineer/documents" class="nav-link {{ request()->is('pro/engineer/documents*') ? 'active' : '' }}">Documents</a></li>
+                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') || request()->is('pro/engineer/certificates*') ? 'active' : '' }}">Certificates</a></li>
+                                <li><a href="/pro/engineer/reports" class="nav-link {{ request()->is('pro/engineer/reports*') ? 'active' : '' }}">Reports</a></li>
+                                <li class="nav-section-label" aria-hidden="true">Equipment</li>
+                                <li><a href="/pro/engineer/equipment" class="nav-link {{ request()->is('pro/engineer/equipment') || request()->is('pro/engineer/equipment/create') || (request()->is('pro/engineer/equipment/*') && ! request()->is('pro/engineer/equipment/due')) ? 'active' : '' }}">Register</a></li>
+                                <li><a href="/pro/engineer/equipment/due" class="nav-link {{ request()->is('pro/engineer/equipment/due') ? 'active' : '' }}">Due board</a></li>
+                            @endif
+
                             @if(auth()->user()->canAccessReports())
                                 <li class="nav-section-label" aria-hidden="true">Money</li>
                                 <li>
@@ -83,29 +106,6 @@
                                 <li>
                                     <a href="/exports/accountant" class="nav-link {{ request()->is('exports/accountant*') ? 'active' : '' }}">For accountant</a>
                                 </li>
-                            @endif
-
-                            @if(auth()->user()->canAccessProPackage('med'))
-                                <li class="nav-section-label" aria-hidden="true">Clinical</li>
-                                <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
-                                <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Stampables</a></li>
-                            @elseif(auth()->user()->canAccessProPackage('arch'))
-                                <li class="nav-section-label" aria-hidden="true">Projects</li>
-                                <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>
-                                <li><a href="/pro/architect/documents" class="nav-link {{ request()->is('pro/architect/documents*') ? 'active' : '' }}">Documents</a></li>
-                                <li><a href="/pro/architect/condition-reports" class="nav-link {{ request()->is('pro/architect/condition-reports*') ? 'active' : '' }}">Condition reports</a></li>
-                                <li><a href="/pro/architect/method-statements" class="nav-link {{ request()->is('pro/architect/method-statements*') ? 'active' : '' }}">Method statements</a></li>
-                                <li><a href="/pro/architect/templates" class="nav-link {{ request()->is('pro/architect/templates*') ? 'active' : '' }}">BCA templates</a></li>
-                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') ? 'active' : '' }}">Certificates</a></li>
-                            @elseif(auth()->user()->canAccessProPackage('eng'))
-                                <li class="nav-section-label" aria-hidden="true">Projects</li>
-                                <li><a href="/pro/engineer/projects" class="nav-link {{ request()->is('pro/engineer/projects*') || request()->is('pro/engineer/pa*') ? 'active' : '' }}">Projects</a></li>
-                                <li><a href="/pro/engineer/documents" class="nav-link {{ request()->is('pro/engineer/documents*') ? 'active' : '' }}">Documents</a></li>
-                                <li><a href="/pro/certificates" class="nav-link {{ request()->is('pro/certificates*') || request()->is('pro/engineer/certificates*') ? 'active' : '' }}">Certificates</a></li>
-                                <li><a href="/pro/engineer/reports" class="nav-link {{ request()->is('pro/engineer/reports*') ? 'active' : '' }}">Reports</a></li>
-                                <li class="nav-section-label" aria-hidden="true">Equipment</li>
-                                <li><a href="/pro/engineer/equipment" class="nav-link {{ request()->is('pro/engineer/equipment') || request()->is('pro/engineer/equipment/create') || (request()->is('pro/engineer/equipment/*') && ! request()->is('pro/engineer/equipment/due')) ? 'active' : '' }}">Register</a></li>
-                                <li><a href="/pro/engineer/equipment/due" class="nav-link {{ request()->is('pro/engineer/equipment/due') ? 'active' : '' }}">Due board</a></li>
                             @endif
 
                             <li class="nav-section-label" aria-hidden="true">Community</li>

@@ -16,8 +16,7 @@
             </select>
         </div>
         <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 18rem; line-height: 1.4;">
-            Manage your own templates in
-            <a href="/pro/medical/templates" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Journal templates</a>.
+            <a href="/pro/medical/templates" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Note templates</a>
         </div>
     </div>
 

@@ -31,7 +31,7 @@
             <div>
                 <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #0f172a;">Medicines</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                    Type a name for suggestions from your previous prescriptions. New medicines are saved for next time. Empty rows are ignored.
+                    Suggestions from your previous prescriptions. Empty rows are ignored.
                 </div>
             </div>
             <button type="button" id="add-medicine-row" style="background: #0f172a; color: white; border: none; padding: 0.45rem 0.85rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">

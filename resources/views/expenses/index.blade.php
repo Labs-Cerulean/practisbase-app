@@ -5,35 +5,29 @@
 @section('content')
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
         <div>
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Expense Ledger</h1>
+            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Expenses</h1>
             <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
-                Logged expenses for {{ $year }} replace the Settings estimate in your Live Fiscal Report when the year total is greater than zero.
-            </p>
-            <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
-                Only practice costs belong here —
+                {{ $year }} practice costs —
                 <button type="button" data-open-expense-guide style="background: none; border: none; padding: 0; font: inherit; color: var(--primary-navy); font-weight: 600; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">what is claimable?</button>
             </p>
         </div>
         <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
-            <button type="button" data-open-car-helper style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: var(--shadow-sm);">Car / fuel %</button>
-            <button type="button" data-open-wfh-helper style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: var(--shadow-sm);">Home office %</button>
-            <button type="button" data-open-expense-guide style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer; box-shadow: var(--shadow-sm);">Claim guide</button>
             <a href="/expenses/create" style="background: var(--primary-cerulean); color: white; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; text-decoration: none;">+ Log Expense</a>
+            <details style="position: relative;">
+                <summary style="list-style: none; cursor: pointer; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.6rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; box-shadow: var(--shadow-sm);">
+                    Set parameters
+                </summary>
+                <div style="position: absolute; right: 0; top: calc(100% + 0.35rem); z-index: 20; min-width: 11rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: 0.35rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                    <button type="button" data-open-car-helper style="background: none; border: none; text-align: left; padding: 0.55rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; color: var(--primary-navy); cursor: pointer;">Car / fuel %</button>
+                    <button type="button" data-open-wfh-helper style="background: none; border: none; text-align: left; padding: 0.55rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; color: var(--primary-navy); cursor: pointer;">Home office %</button>
+                </div>
+            </details>
         </div>
     </div>
 
     <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.45;">
-        Saved defaults:
-        car/fuel <strong style="color: var(--primary-navy);">{{ $user->car_business_use_percent !== null ? number_format((float) $user->car_business_use_percent, 0).'%' : 'not set' }}</strong>
+        Defaults: car/fuel <strong style="color: var(--primary-navy);">{{ $user->car_business_use_percent !== null ? number_format((float) $user->car_business_use_percent, 0).'%' : 'not set' }}</strong>
         · home office <strong style="color: var(--primary-navy);">{{ $user->home_office_percent !== null ? number_format((float) $user->home_office_percent, 0).'%' : 'not set' }}</strong>
-        — use the helpers anytime things change.
-    </div>
-
-    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; justify-content: space-between;">
-        <p style="margin: 0; font-size: 0.85rem; color: #78350f; line-height: 1.45; flex: 1; min-width: 220px;">
-            <strong>Trap alert:</strong> Car costs, fuel, personal insurance, and home bills are easy to over-claim. Personal spending is not deductible — only the business share of mixed costs.
-        </p>
-        <button type="button" data-open-expense-guide style="background: none; border: none; padding: 0; font: inherit; color: #92400e; font-weight: 700; font-size: 0.85rem; cursor: pointer; border-bottom: 1px dotted #92400e; white-space: nowrap;">Read the guide</button>
     </div>
 
     @if(session('success'))

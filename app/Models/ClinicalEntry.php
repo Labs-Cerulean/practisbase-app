@@ -30,7 +30,7 @@ class ClinicalEntry extends Model
     }
 
     public const TYPES = [
-        'journal' => 'Journal note',
+        'journal' => 'Patient notes',
         'prescription' => 'Digital prescription',
         'referral' => 'Referral letter',
         'certificate' => 'Medical certificate',

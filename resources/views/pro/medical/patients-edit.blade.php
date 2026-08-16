@@ -18,35 +18,38 @@
             @csrf
             @method('PUT')
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Display name</label>
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Display name *</label>
                 <input type="text" name="display_name" value="{{ old('display_name', $payload['display_name'] ?? '') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">ID card <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">ID card</label>
                     <input type="text" name="id_card" value="{{ old('id_card', $payload['id_card'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
                 <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Tel <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Tel</label>
                     <input type="text" name="tel" value="{{ old('tel', $payload['tel'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
             </div>
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Address <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Address</label>
                 <textarea name="address" rows="2" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('address', $payload['address'] ?? '') }}</textarea>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
                 <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date of birth <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date of birth</label>
                     <input type="date" name="date_of_birth" value="{{ old('date_of_birth', $payload['date_of_birth'] ?? '') }}" max="{{ date('Y-m-d') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
                 <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Age <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Age</label>
                     <input type="text" name="age" value="{{ old('age', $payload['age'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
             </div>
             <div style="margin-bottom: 1.25rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Private notes <span style="font-weight: 500; color: var(--text-muted);">(encrypted)</span></label>
+                <label style="display: inline-flex; align-items: center; font-weight: 600; margin-bottom: 0.4rem;">
+                    Private notes
+                    @include('partials.help-tip', ['text' => 'Stored encrypted in your medical vault.'])
+                </label>
                 <textarea name="notes" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('notes', $payload['notes'] ?? '') }}</textarea>
             </div>
             <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save patient</button>

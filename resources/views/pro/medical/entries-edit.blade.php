@@ -5,6 +5,7 @@
 @section('content')
     @php
         $isRx = $entry->entry_type === 'prescription';
+        $isJournal = $entry->entry_type === 'journal';
         $hasStructuredMeds = $isRx && ! empty($payload['medicines']) && is_array($payload['medicines']);
         $medicines = $isRx
             ? \App\Models\ClinicalEntry::medicinesFromPayload($payload)
@@ -14,6 +15,8 @@
         }
         $rxTitle = $hasStructuredMeds ? ($payload['title'] ?? '') : '';
         $rxNotes = $hasStructuredMeds ? ($payload['body'] ?? '') : '';
+        $certKind = old('certificate_kind', $payload['certificate_kind'] ?? 'medical_certificate');
+        $subjectDefault = old('subject_name', $payload['subject_name'] ?? ($patientPayload['display_name'] ?? ''));
     @endphp
     <div style="max-width: {{ $isRx ? '820px' : '720px' }}; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
@@ -22,7 +25,7 @@
         </div>
         @if($entry->isStampable())
             <div style="background: #fffbeb; color: #92400e; padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.85rem;">
-                Draft document — still editable. After <strong>Stamp &amp; issue</strong> it locks permanently and the official PDF template prints the authenticity code + date.
+                Draft — still editable until <strong>Stamp &amp; issue</strong>.
             </div>
         @endif
         @if($errors->any())
@@ -41,33 +44,17 @@
             </div>
 
             <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
-                    @if($entry->entry_type === 'certificate') Document / issued date
-                    @elseif($isRx) Prescription date
-                    @else Date
-                    @endif
-                </label>
+                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date *</label>
                 <input type="date" name="entry_date" value="{{ old('entry_date', $entry->entry_date->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
 
             @if($entry->entry_type === 'certificate')
                 <div style="margin-bottom: 1rem; padding: 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md);">
-                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #14532d; margin-bottom: 0.75rem;">Certificate / declaration details</div>
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Kind</label>
-                        <select name="certificate_kind" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            @foreach($certificateKinds as $key => $label)
-                                <option value="{{ $key }}" {{ old('certificate_kind', $payload['certificate_kind'] ?? 'medical_certificate') === $key ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Subject / recipient</label>
-                        <input type="text" name="subject_name" value="{{ old('subject_name', $payload['subject_name'] ?? ($patientPayload['display_name'] ?? '')) }}"
-                               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #14532d; margin-bottom: 0.75rem;">Certificate</div>
+                    <input type="hidden" name="certificate_kind" value="{{ $certKind }}">
+                    <input type="hidden" name="subject_name" value="{{ $subjectDefault }}">
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Expires on <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Expires on</label>
                         <input type="date" name="expires_on" value="{{ old('expires_on', $payload['expires_on'] ?? '') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     </div>
                 </div>
@@ -75,9 +62,9 @@
 
             @if($entry->entry_type === 'referral')
                 <div style="margin-bottom: 1rem; padding: 1rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md);">
-                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #1e3a5f; margin-bottom: 0.75rem;">Referral details</div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Referred to <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
-                    <input type="text" name="referred_to" value="{{ old('referred_to', $payload['referred_to'] ?? '') }}" placeholder="Clinician, clinic, or specialty"
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #1e3a5f; margin-bottom: 0.75rem;">Referral</div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Referred to</label>
+                    <input type="text" name="referred_to" value="{{ old('referred_to', $payload['referred_to'] ?? '') }}" placeholder="Clinician or clinic"
                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
             @endif
@@ -90,7 +77,7 @@
                 ])
             @endif
 
-            @if($entry->entry_type === 'journal')
+            @if($isJournal)
                 @include('pro.medical._journal-template-fields', [
                     'noteTemplate' => $noteTemplate ?? 'general',
                     'fieldValues' => old('fields', $fieldValues ?? []),
@@ -99,34 +86,36 @@
                 ])
             @endif
 
+            @if($isJournal)
+                <input type="hidden" name="title" value="{{ old('title', $payload['title'] ?? 'Patient note') }}">
+            @elseif($isRx)
+                {{-- Title auto-derived from medicines on save --}}
+                <input type="hidden" name="title" value="{{ old('title', $rxTitle) }}">
+            @else
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Title *</label>
+                    <input type="text" name="title" value="{{ old('title', $payload['title'] ?? '') }}" required
+                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+            @endif
+
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
-                    @if($entry->entry_type === 'certificate') Certificate title
-                    @elseif($isRx) Prescription label (optional)
-                    @elseif($entry->entry_type === 'referral') Referral title
-                    @else Title
+                    @if($entry->entry_type === 'certificate') Details *
+                    @elseif($isRx) Notes
+                    @elseif($isJournal) Additional notes
+                    @else Details *
                     @endif
                 </label>
-                <input type="text" name="title" value="{{ old('title', $isRx ? $rxTitle : ($payload['title'] ?? '')) }}" {{ $isRx ? '' : 'required' }}
-                       style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                @if($isRx)
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">Defaults to the first medicine or “Prescription (N medicines)”.</div>
-                @endif
-            </div>
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
-                    @if($entry->entry_type === 'certificate') Details / clinical statement (encrypted)
-                    @elseif($isRx) General notes for pharmacist / patient (optional, encrypted)
-                    @elseif($entry->entry_type === 'journal') Additional notes (optional, encrypted)
-                    @else Body (encrypted at rest)
-                    @endif
-                </label>
-                <textarea name="body" rows="{{ ($isRx || $entry->entry_type === 'journal') ? 3 : 8 }}" {{ ($isRx || $entry->entry_type === 'journal') ? '' : 'required' }}
-                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($entry->entry_type === 'journal' ? ($payload['extra'] ?? '') : ($payload['body'] ?? ''))) }}</textarea>
+                <textarea name="body" rows="{{ ($isRx || $isJournal) ? 3 : 8 }}" {{ ($isRx || $isJournal) ? '' : 'required' }}
+                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($isJournal ? ($payload['extra'] ?? '') : ($payload['body'] ?? ''))) }}</textarea>
             </div>
 
             <div style="margin-bottom: 1.25rem;">
-                <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Add photo / scan <span style="font-weight: 500; color: var(--text-muted);">(optional, encrypted)</span></label>
+                <label style="display: inline-flex; align-items: center; font-weight: 600; margin-bottom: 0.4rem;">
+                    Add photo / scan
+                    @include('partials.help-tip', ['text' => 'JPEG, PNG, WebP, or PDF · max 10 MB. Stored encrypted in your vault.'])
+                </label>
                 <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
             </div>
 
@@ -134,7 +123,7 @@
         </form>
     </div>
 
-    @if($entry->entry_type === 'journal')
+    @if($isJournal)
     <script>
         (function () {
             var noteTemplate = document.getElementById('note_template');

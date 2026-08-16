@@ -227,7 +227,7 @@ class ClinicalEntryController extends Controller
         ];
 
         if ($type === 'journal') {
-            $rules['title'] = 'required|string|max:255';
+            $rules['title'] = 'nullable|string|max:255';
             $rules['body'] = 'nullable|string|max:20000';
         } elseif ($type !== 'prescription') {
             $rules['title'] = 'required|string|max:255';
@@ -289,6 +289,11 @@ class ClinicalEntryController extends Controller
         }
 
         if ($type === 'journal') {
+            $title = trim((string) ($validated['title'] ?? ''));
+            if ($title === '') {
+                $validated['title'] = 'Patient note';
+            }
+
             $resolved = ClinicalNoteTemplates::resolveForUser($user, $validated['note_template'] ?? null);
             $fields = ClinicalNoteTemplates::extractFieldsFromDefs($resolved['fields'], $validated['fields'] ?? []);
             $extraBody = trim((string) ($validated['body'] ?? ''));
@@ -296,7 +301,7 @@ class ClinicalEntryController extends Controller
 
             if ($composed === '') {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'body' => 'Add at least one consult field or a free-text note for this journal entry.',
+                    'body' => 'Add at least one consult field or a free-text note for this patient note.',
                 ]);
             }
 
@@ -328,7 +333,8 @@ class ClinicalEntryController extends Controller
 
         if ($validated['entry_type'] === 'certificate') {
             $payload['certificate_kind'] = $validated['certificate_kind'];
-            $payload['subject_name'] = $validated['subject_name'] ?? null;
+            $subject = trim((string) ($validated['subject_name'] ?? ''));
+            $payload['subject_name'] = $subject !== '' ? $subject : null;
             $payload['expires_on'] = $validated['expires_on'] ?? null;
         }
 

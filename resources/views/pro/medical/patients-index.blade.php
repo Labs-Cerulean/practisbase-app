@@ -7,8 +7,8 @@
         <div style="min-width: 200px; flex: 1;">
             <h1 style="font-size: 1.35rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Patients</h1>
             <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">
-                Encrypted clinical records.
-                <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Stampables</a>
+                Clinical vault
+                <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none; border-bottom: 1px dotted var(--primary-navy); margin-left: 0.35rem;">Documents</a>
             </p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
@@ -40,10 +40,10 @@
     <div id="device-trust-banner" style="display: none; margin-bottom: 1rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #2563eb; border-radius: var(--radius-md); color: #1e3a8a;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 180px;">
-                <div style="font-weight: 700; margin-bottom: 0.2rem;">Enable quick unlock on this browser?</div>
+                <div style="font-weight: 700; margin-bottom: 0.2rem;">Quick unlock?</div>
                 <p style="margin: 0; font-size: 0.85rem; line-height: 1.4; color: var(--text-muted);">
-                    Use Face ID / fingerprint next time instead of the recovery code. Each phone or laptop needs its own Enable after unlock.
-                    Manage or revoke in <a href="/settings#trusted-devices" style="color: #1d4ed8; font-weight: 600;">Settings</a>.
+                    Face ID / fingerprint on this browser.
+                    <a href="/settings#trusted-devices" style="color: #1d4ed8; font-weight: 600;">Settings</a>
                 </p>
                 <div id="device-trust-status" style="display: none; margin-top: 0.5rem; font-size: 0.85rem;"></div>
             </div>
@@ -65,41 +65,49 @@
     @else
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
             <div style="display: grid; gap: 0.75rem;">
-                <div>
-                    <label for="patient-search" style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">Search</label>
-                    <input id="patient-search" type="search" placeholder="Name, patient ref, linked client, notes…"
-                           style="width: 100%; padding: 0.75rem 0.9rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.95rem;">
+                <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: flex-end;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="patient-search" style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">Search</label>
+                        <input id="patient-search" type="search" placeholder="Search patients…"
+                               style="width: 100%; padding: 0.75rem 0.9rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.95rem;">
+                    </div>
+                    <button type="button" id="patient-advanced-toggle" aria-expanded="false" aria-controls="patient-advanced-filters"
+                            style="padding: 0.75rem 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 700; color: var(--primary-navy); cursor: pointer; font-size: 0.85rem;">
+                        Advanced
+                    </button>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.65rem;">
-                    <div>
-                        <label for="filter-link" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Billing link</label>
-                        <select id="filter-link" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="all">All patients</option>
-                            <option value="linked">Linked to a Client</option>
-                            <option value="unlinked">Clinical only (no Client)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="filter-entry" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Has entry type</label>
-                        <select id="filter-entry" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="all">Any</option>
-                            <option value="journal">Journal</option>
-                            <option value="prescription">Prescription</option>
-                            <option value="referral">Referral</option>
-                            <option value="certificate">Certificate</option>
-                            <option value="attachment">Attachment</option>
-                            <option value="none">No entries yet</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="filter-sort" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Sort</label>
-                        <select id="filter-sort" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                            <option value="newest">Newest first</option>
-                            <option value="oldest">Oldest first</option>
-                            <option value="name-asc">Name A–Z</option>
-                            <option value="name-desc">Name Z–A</option>
-                            <option value="dob">Date of birth</option>
-                        </select>
+                <div id="patient-advanced-filters" style="display: none;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.65rem;">
+                        <div>
+                            <label for="filter-link" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Billing link</label>
+                            <select id="filter-link" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="all">All patients</option>
+                                <option value="linked">Linked to a Client</option>
+                                <option value="unlinked">Clinical only (no Client)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filter-entry" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Entry type</label>
+                            <select id="filter-entry" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="all">Any</option>
+                                <option value="journal">Patient notes</option>
+                                <option value="prescription">Prescription</option>
+                                <option value="referral">Referral</option>
+                                <option value="certificate">Certificate</option>
+                                <option value="attachment">Attachment</option>
+                                <option value="none">No entries yet</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filter-sort" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Sort</label>
+                            <select id="filter-sort" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="newest">Newest first</option>
+                                <option value="oldest">Oldest first</option>
+                                <option value="name-asc">Name A–Z</option>
+                                <option value="name-desc">Name Z–A</option>
+                                <option value="dob">Date of birth</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
@@ -138,7 +146,7 @@
                             @endif
                         </div>
                         <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;">
-                            J {{ $row['journal_count'] }} · Rx {{ $row['prescription_count'] }} · Ref {{ $row['referral_count'] }} · Cert {{ $row['certificate_count'] }} · Files {{ $row['attachment_count'] }}
+                            Notes {{ $row['journal_count'] }} · Rx {{ $row['prescription_count'] }} · Ref {{ $row['referral_count'] }} · Cert {{ $row['certificate_count'] }} · Files {{ $row['attachment_count'] }}
                         </div>
                     </div>
                     <div style="color: var(--primary-cerulean); font-weight: 600; font-size: 0.85rem; align-self: center;">Open</div>
@@ -161,7 +169,18 @@
             var list = document.getElementById('patient-list');
             var countEl = document.getElementById('patient-count-visible');
             var empty = document.getElementById('patient-empty-filter');
+            var advancedToggle = document.getElementById('patient-advanced-toggle');
+            var advancedPanel = document.getElementById('patient-advanced-filters');
             if (!search || !list) return;
+
+            if (advancedToggle && advancedPanel) {
+                advancedToggle.addEventListener('click', function () {
+                    var open = advancedPanel.style.display !== 'none';
+                    advancedPanel.style.display = open ? 'none' : 'block';
+                    advancedToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+                    advancedToggle.textContent = open ? 'Advanced' : 'Hide filters';
+                });
+            }
 
             function rows() {
                 return Array.prototype.slice.call(list.querySelectorAll('.patient-row'));
