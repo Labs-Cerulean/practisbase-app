@@ -37,6 +37,7 @@ use App\Http\Controllers\Pro\Engineer\CertificateController as EngineerCertifica
 use App\Http\Controllers\Pro\Engineer\ReportController as EngineerReportController;
 use App\Http\Controllers\Pro\Engineer\EquipmentController as EngineerEquipmentController;
 use App\Http\Controllers\Company\DeskController as CompanyDeskController;
+use App\Http\Controllers\Company\PlatformDashboardController as CompanyPlatformDashboardController;
 use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
 use App\Http\Controllers\Company\InvoiceController as CompanyInvoiceController;
@@ -428,6 +429,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
 
     Route::middleware('company_books')->prefix('company')->group(function () {
         Route::get('/', [CompanyDeskController::class, 'index']);
+        Route::get('/platform', [CompanyPlatformDashboardController::class, 'index']);
         Route::get('/profile', [CompanyProfileController::class, 'edit']);
         Route::put('/profile', [CompanyProfileController::class, 'update']);
         Route::post('/profile/logo', [CompanyProfileController::class, 'updateLogo']);
