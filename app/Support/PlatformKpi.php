@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * PractisBase SaaS KPIs for the company operator login only.
- * Excludes company_books staff accounts from all end-user metrics.
+ * Excludes company_books staff and users marked exclude_from_kpis (test accounts).
  */
 class PlatformKpi
 {
@@ -24,6 +24,7 @@ class PlatformKpi
         $day14 = $now->copy()->addDays(14);
 
         $users = self::endUsersQuery();
+        $excludedCount = self::excludedTestUsersCount();
 
         $total = (clone $users)->count();
         $free = (clone $users)->where(function ($q) {
@@ -176,6 +177,7 @@ class PlatformKpi
                 'active_7d' => $active7,
                 'active_30d' => $active30,
                 'backup_overdue' => $backupOverdue,
+                'excluded_test_users' => $excludedCount,
             ],
             'access' => [
                 'beta_unlocked' => $betaUnlocked,
@@ -202,8 +204,10 @@ class PlatformKpi
         ];
     }
 
-    public static function usersTable(int $perPage = 40): LengthAwarePaginator
+    public static function usersTable(int $perPage = 40, string $view = 'all'): LengthAwarePaginator
     {
+        $view = in_array($view, ['all', 'counted', 'excluded'], true) ? $view : 'all';
+
         $activityMap = [];
         if (self::hasSessionsTable()) {
             $activityMap = DB::table('sessions')
@@ -214,18 +218,32 @@ class PlatformKpi
                 ->all();
         }
 
-        return User::query()
+        $query = User::query()
             ->where(function ($q) {
                 $q->where('company_books_enabled', false)->orWhereNull('company_books_enabled');
-            })
+            });
+
+        if (self::hasExcludeColumn()) {
+            if ($view === 'counted') {
+                $query->where(function ($q) {
+                    $q->where('exclude_from_kpis', false)->orWhereNull('exclude_from_kpis');
+                });
+            } elseif ($view === 'excluded') {
+                $query->where('exclude_from_kpis', true);
+            }
+        }
+
+        return $query
             ->with(['appliedPromotion:id,code', 'betaInviteCode:id,code,pro_package'])
             ->withCount([
                 'clients',
                 'invoices as invoices_count' => fn ($q) => $q->where('type', 'invoice'),
                 'expenses',
             ])
+            ->when(self::hasExcludeColumn(), fn ($q) => $q->orderByDesc('exclude_from_kpis'))
             ->orderByDesc('created_at')
             ->paginate($perPage)
+            ->appends(['view' => $view])
             ->through(function (User $user) use ($activityMap) {
                 $tier = TierPolicy::normalize($user->tier);
                 $access = 'Free';
@@ -238,6 +256,7 @@ class PlatformKpi
                 }
 
                 $lastTs = $activityMap[$user->id] ?? null;
+                $excluded = self::hasExcludeColumn() && (bool) $user->exclude_from_kpis;
 
                 return [
                     'id' => $user->id,
@@ -258,17 +277,71 @@ class PlatformKpi
                     'beta_code' => $user->betaInviteCode?->code,
                     'credit_balance' => (float) $user->credit_balance,
                     'trial_ends_at' => $user->trial_ends_at,
-                    'list_price' => self::listPriceExVat($tier),
+                    'list_price' => $excluded ? 0.0 : self::listPriceExVat($tier),
                     'backup_overdue' => ! $user->last_data_backup_at || $user->last_data_backup_at < now()->subDays(7),
+                    'exclude_from_kpis' => $excluded,
                 ];
             });
     }
 
     private static function endUsersQuery()
     {
-        return User::query()->where(function ($q) {
+        $q = User::query()->where(function ($q) {
             $q->where('company_books_enabled', false)->orWhereNull('company_books_enabled');
         });
+
+        return self::applyCountedScope($q);
+    }
+
+    private static function excludedTestUsersCount(): int
+    {
+        if (! self::hasExcludeColumn()) {
+            return 0;
+        }
+
+        return (int) User::query()
+            ->where(function ($q) {
+                $q->where('company_books_enabled', false)->orWhereNull('company_books_enabled');
+            })
+            ->where('exclude_from_kpis', true)
+            ->count();
+    }
+
+    private static function applyCountedScope($query)
+    {
+        if (self::hasExcludeColumn()) {
+            $query->where(function ($q) {
+                $q->where('exclude_from_kpis', false)->orWhereNull('exclude_from_kpis');
+            });
+        }
+
+        return $query;
+    }
+
+    private static function applyCountedUserJoin($query)
+    {
+        $query->where(function ($q) {
+            $q->where('users.company_books_enabled', false)
+                ->orWhereNull('users.company_books_enabled');
+        });
+
+        if (self::hasExcludeColumn()) {
+            $query->where(function ($q) {
+                $q->where('users.exclude_from_kpis', false)
+                    ->orWhereNull('users.exclude_from_kpis');
+            });
+        }
+
+        return $query;
+    }
+
+    private static function hasExcludeColumn(): bool
+    {
+        try {
+            return Schema::hasColumn('users', 'exclude_from_kpis');
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private static function listPriceExVat(string $tier): float
@@ -300,15 +373,13 @@ class PlatformKpi
 
         $since = now()->subDays($days)->getTimestamp();
 
-        return (int) DB::table('sessions')
+        $q = DB::table('sessions')
             ->join('users', 'users.id', '=', 'sessions.user_id')
-            ->where(function ($q) {
-                $q->where('users.company_books_enabled', false)
-                    ->orWhereNull('users.company_books_enabled');
-            })
-            ->where('sessions.last_activity', '>=', $since)
-            ->selectRaw('COUNT(DISTINCT sessions.user_id) as aggregate')
-            ->value('aggregate');
+            ->where('sessions.last_activity', '>=', $since);
+
+        self::applyCountedUserJoin($q);
+
+        return (int) $q->selectRaw('COUNT(DISTINCT sessions.user_id) as aggregate')->value('aggregate');
     }
 
     private static function usersWithRows(string $table): int
@@ -318,11 +389,9 @@ class PlatformKpi
         }
 
         $q = DB::table($table)
-            ->join('users', 'users.id', '=', $table.'.user_id')
-            ->where(function ($q) {
-                $q->where('users.company_books_enabled', false)
-                    ->orWhereNull('users.company_books_enabled');
-            });
+            ->join('users', 'users.id', '=', $table.'.user_id');
+
+        self::applyCountedUserJoin($q);
 
         if (Schema::hasColumn($table, 'deleted_at')) {
             $q->whereNull($table.'.deleted_at');
@@ -338,11 +407,9 @@ class PlatformKpi
         }
 
         $q = DB::table($table)
-            ->join('users', 'users.id', '=', $table.'.user_id')
-            ->where(function ($q) {
-                $q->where('users.company_books_enabled', false)
-                    ->orWhereNull('users.company_books_enabled');
-            });
+            ->join('users', 'users.id', '=', $table.'.user_id');
+
+        self::applyCountedUserJoin($q);
 
         if (Schema::hasColumn($table, 'deleted_at')) {
             $q->whereNull($table.'.deleted_at');
