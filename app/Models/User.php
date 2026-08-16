@@ -203,9 +203,38 @@ class User extends Authenticatable
         return $this->storedImageDataUri($this->logo_path);
     }
 
+    /**
+     * Stamp image for clinical / professional PDFs.
+     * Prefer the default Document Stamp (generator); fall back to a legacy branding upload.
+     */
     public function clinicalStampDataUri(): ?string
     {
+        $stamp = $this->documentStamps()
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->first();
+
+        if ($stamp) {
+            $composed = $stamp->composedDataUri();
+            if ($composed) {
+                return $composed;
+            }
+        }
+
         return $this->storedImageDataUri($this->clinical_stamp_path);
+    }
+
+    public function defaultDocumentStamp(): ?DocumentStamp
+    {
+        return $this->documentStamps()
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->first();
+    }
+
+    public function hasDocumentStamp(): bool
+    {
+        return $this->documentStamps()->exists();
     }
 
     private function storedImageDataUri(?string $path): ?string

@@ -37,6 +37,20 @@ class ClinicalEntryController extends Controller
             $defaultType = 'journal';
         }
 
+        if (in_array($defaultType, ClinicalEntry::STAMPABLE_TYPES, true) && ! $user->hasDocumentStamp()) {
+            if (! $user->canAccessDocumentStamper()) {
+                return redirect('/pro/medical/patients/'.$patient->id)
+                    ->withErrors(['stamp' => 'Create a stamp under Documents / Stamper before issuing clinical documents.']);
+            }
+
+            $return = '/pro/medical/patients/'.$patient->id.'/entries/create?type='.$defaultType;
+
+            return redirect('/stamper/stamps/create?'.http_build_query([
+                'setup' => 'clinical',
+                'return' => $return,
+            ]))->with('success', 'Set up your clinical stamp first — it prints on prescriptions, referrals, and certificates.');
+        }
+
         $catalogue = ClinicalNoteTemplates::catalogueForUser($user);
         $defaultTemplate = ClinicalNoteTemplates::normalizeForUser(
             $user,
@@ -69,6 +83,20 @@ class ClinicalEntryController extends Controller
         }
 
         $validated = $this->validateEntryPayload($request, $user);
+
+        if (in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true) && ! $user->hasDocumentStamp()) {
+            if (! $user->canAccessDocumentStamper()) {
+                return back()->withErrors(['entry_type' => 'Create a stamp before saving this document.'])->withInput();
+            }
+
+            $return = '/pro/medical/patients/'.$patient->id.'/entries/create?type='.$validated['entry_type'];
+
+            return redirect('/stamper/stamps/create?'.http_build_query([
+                'setup' => 'clinical',
+                'return' => $return,
+            ]))->with('success', 'Set up your clinical stamp first — then save the document.');
+        }
+
         $payload = $this->buildEncryptedPayload($validated);
 
         $encrypted = MedicalVaultCrypto::encrypt($payload, $key);

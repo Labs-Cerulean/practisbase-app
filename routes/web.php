@@ -210,6 +210,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::put('/stamps/{id}', [DocumentStampController::class, 'update'])->whereNumber('id');
         Route::delete('/stamps/{id}', [DocumentStampController::class, 'destroy'])->whereNumber('id');
         Route::post('/stamps/{id}/default', [DocumentStampController::class, 'makeDefault'])->whereNumber('id');
+        Route::post('/stamps/{id}/composed', [DocumentStampController::class, 'saveComposed'])->whereNumber('id');
     });
 
     Route::get('/ledger', [InvoiceController::class, 'index']);

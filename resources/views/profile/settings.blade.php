@@ -471,61 +471,58 @@
         <div id="tab-branding" class="settings-tab-panel" role="tabpanel" style="display: none;">
             <div id="branding" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
                 <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Branding</h3>
-                @if($user->canAccessStandardTools() || $user->canAccessProPackage('med'))
+                @if($user->canAccessStandardTools())
                     <form action="/settings/branding" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
 
-                        @if($user->canAccessStandardTools())
-                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Logo for invoices / RFPs and clinical letterheads.</p>
-                            @if($user->logoDataUri())
-                                <div style="margin-bottom: 1rem;">
-                                    <img src="{{ $user->logoDataUri() }}" alt="Current logo" style="max-height: 64px; max-width: 200px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
-                                </div>
-                            @endif
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Logo for invoices / RFPs and clinical letterheads.</p>
+                        @if($user->logoDataUri())
                             <div style="margin-bottom: 1rem;">
-                                <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
-                                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB.</p>
+                                <img src="{{ $user->logoDataUri() }}" alt="Current logo" style="max-height: 64px; max-width: 200px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
                             </div>
-                            @if($user->logo_path)
-                                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1.25rem; cursor: pointer;">
-                                    <input type="checkbox" name="remove_logo" value="1">
-                                    Remove current logo
-                                </label>
-                            @endif
                         @endif
-
-                        @if($user->canAccessProPackage('med'))
-                            <div style="{{ $user->canAccessStandardTools() ? 'border-top: 1px solid var(--border-light); padding-top: 1.25rem; margin-top: 0.5rem;' : '' }}">
-                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
-                                    <strong style="color: var(--primary-navy);">Clinical stamp / signature</strong> — printed on prescription, referral, and certificate PDFs when you issue them. Separate from Stamp &amp; issue (that only locks the document).
-                                </p>
-                                @if($user->clinicalStampDataUri())
-                                    <div style="margin-bottom: 1rem;">
-                                        <img src="{{ $user->clinicalStampDataUri() }}" alt="Clinical stamp" style="max-height: 96px; max-width: 240px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
-                                    </div>
-                                @else
-                                    <p style="font-size: 0.85rem; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 1rem;">
-                                        No stamp uploaded yet — issued PDFs will not show a stamp image until you add one here.
-                                    </p>
-                                @endif
-                                <div style="margin-bottom: 1rem;">
-                                    <input type="file" name="clinical_stamp" accept=".jpg,.jpeg,.png,.webp">
-                                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB.</p>
-                                </div>
-                                @if($user->clinical_stamp_path)
-                                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1rem; cursor: pointer;">
-                                        <input type="checkbox" name="remove_clinical_stamp" value="1">
-                                        Remove clinical stamp
-                                    </label>
-                                @endif
-                            </div>
+                        <div style="margin-bottom: 1rem;">
+                            <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp">
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.35rem 0 0;">JPG, PNG or WebP · max 2MB.</p>
+                        </div>
+                        @if($user->logo_path)
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-bottom: 1.25rem; cursor: pointer;">
+                                <input type="checkbox" name="remove_logo" value="1">
+                                Remove current logo
+                            </label>
                         @endif
 
                         <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Save Branding</button>
                     </form>
-                @else
+                @elseif(! $user->canAccessProPackage('med'))
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Custom logo branding is included with Standard and Pro. Upgrade in Plan.</p>
+                @endif
+
+                @if($user->canAccessProPackage('med'))
+                    <div style="{{ $user->canAccessStandardTools() ? 'border-top: 1px solid var(--border-light); padding-top: 1.25rem; margin-top: 1.25rem;' : '' }}">
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+                            <strong style="color: var(--primary-navy);">Clinical stamp</strong> — from the stamp generator (your default stamp). Prints on prescriptions, referrals, and certificates.
+                        </p>
+                        @php $defaultStamp = $user->defaultDocumentStamp(); @endphp
+                        @if($user->clinicalStampDataUri())
+                            <div style="margin-bottom: 1rem;">
+                                <img src="{{ $user->clinicalStampDataUri() }}" alt="Clinical stamp" style="max-height: 96px; max-width: 240px; border: 1px solid var(--border-light); border-radius: 6px; padding: 0.35rem; background: #f8fafc;">
+                            </div>
+                            @if($defaultStamp)
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.85rem;">{{ $defaultStamp->label }} · {{ $defaultStamp->presetLabel() }}</p>
+                            @endif
+                        @else
+                            <p style="font-size: 0.85rem; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 1rem;">
+                                No stamp yet — create one in the generator. You will also be prompted on your first prescription, referral, or certificate.
+                            </p>
+                        @endif
+                        @if($user->canAccessDocumentStamper())
+                            <a href="/stamper/stamps{{ $defaultStamp ? '' : '/create?setup=clinical' }}" style="display: inline-block; background: var(--primary-cerulean); color: white; text-decoration: none; padding: 0.65rem 1.1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.9rem;">
+                                {{ $defaultStamp ? 'Manage stamps' : 'Create clinical stamp' }}
+                            </a>
+                        @endif
+                    </div>
                 @endif
             </div>
         </div>
@@ -710,7 +707,7 @@
                 initial = 'payments';
             @elseif($errors->has('current_password') || $errors->has('password'))
                 initial = 'security';
-            @elseif($errors->has('logo') || $errors->has('clinical_stamp') || $errors->has('branding'))
+            @elseif($errors->has('logo') || $errors->has('branding'))
                 initial = 'branding';
             @endif
             activate(initial);

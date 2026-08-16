@@ -7,14 +7,26 @@
         $isEdit = (bool) $stamp;
         $action = $isEdit ? '/stamper/stamps/'.$stamp->id : '/stamper/stamps';
         $sigUri = $isEdit ? $stamp->signatureDataUri() : null;
+        $returnTo = $returnTo ?? null;
+        $isClinicalSetup = $isClinicalSetup ?? false;
     @endphp
 
     <div style="max-width: 980px; margin: 0 auto;">
         <div style="margin-bottom: 1.25rem;">
-            <a href="/stamper/stamps" style="color: var(--primary-cerulean); font-weight: 600; font-size: 0.85rem; text-decoration: none;">← My stamps</a>
-            <h1 style="color: var(--primary-navy); margin: 0.5rem 0 0.35rem; font-size: 1.5rem;">{{ $isEdit ? 'Edit stamp' : 'Create your stamp' }}</h1>
-            <p style="color: var(--text-muted); margin: 0; line-height: 1.45;">Choose a preset, enter your details, then upload a wet signature or draw one here.</p>
+            <a href="{{ $returnTo ?: '/stamper/stamps' }}" style="color: var(--primary-cerulean); font-weight: 600; font-size: 0.85rem; text-decoration: none;">← {{ $returnTo ? 'Back' : 'My stamps' }}</a>
+            <h1 style="color: var(--primary-navy); margin: 0.5rem 0 0.35rem; font-size: 1.5rem;">{{ $isEdit ? 'Edit stamp' : ($isClinicalSetup ? 'Create your clinical stamp' : 'Create your stamp') }}</h1>
+            <p style="color: var(--text-muted); margin: 0; line-height: 1.45;">
+                @if($isClinicalSetup)
+                    One stamp for prescriptions, referrals, and certificates. Choose a preset, add your warrant details, then upload or draw a signature.
+                @else
+                    Choose a preset, enter your details, then upload a wet signature or draw one here.
+                @endif
+            </p>
         </div>
+
+        @if(session('success'))
+            <div style="background: #ecfdf5; color: #065f46; padding: 0.85rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>
+        @endif
 
         @if($errors->any())
             <div style="background: #fef2f2; color: #991b1b; padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
@@ -27,6 +39,10 @@
             @if($isEdit)
                 @method('PUT')
             @endif
+            @if($returnTo)
+                <input type="hidden" name="return" value="{{ $returnTo }}">
+            @endif
+            <input type="hidden" name="composed_data" id="composed-data" value="">
 
             <div style="display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 1.25rem; align-items: start;">
                 <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
@@ -409,9 +425,95 @@
     var removeBox = document.querySelector('input[name="remove_signature"]');
     if (removeBox) removeBox.addEventListener('change', renderPreview);
 
+    function exportComposedDataUri() {
+        var c = document.createElement('canvas');
+        c.width = 840;
+        c.height = 440;
+        var g = c.getContext('2d');
+        var name = fullName() || 'Your name';
+        var post = field('stamp-post');
+        var role = field('stamp-role') || 'Role';
+        var warrant = field('stamp-warrant');
+        var warrantLine = warrant ? ('Warrant ' + warrant) : '';
+        var preset = selectedPreset();
+        var sigImg = sigSource();
+        var sig = sigImg ? knockOutPaper(sigImg) : null;
+
+        g.clearRect(0, 0, c.width, c.height);
+        g.textAlign = 'center';
+        g.fillStyle = '#0b1f33';
+
+        if (preset === 'circular_seal') {
+            var cx = c.width / 2, cy = c.height / 2, r = 180;
+            g.strokeStyle = '#0b1f33';
+            g.lineWidth = 6;
+            g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 3;
+            g.beginPath(); g.arc(cx, cy, r - 16, 0, Math.PI * 2); g.stroke();
+            g.font = 'bold 32px Georgia, serif';
+            g.fillText(name, cx, cy - 44);
+            g.font = '20px Georgia, serif';
+            if (post) g.fillText(post, cx, cy - 12);
+            g.fillText(role, cx, cy + 20);
+            if (warrantLine) {
+                g.font = '18px Georgia, serif';
+                g.fillText(warrantLine, cx, cy + 48);
+            }
+            if (sig) try { g.drawImage(sig, cx - 100, cy + 62, 200, 64); } catch (e) {}
+        } else if (preset === 'minimal_line') {
+            g.textAlign = 'left';
+            g.font = 'bold 40px Georgia, serif';
+            g.fillText(name + (post ? ', ' + post : ''), 48, 90);
+            g.strokeStyle = '#0b1f33';
+            g.lineWidth = 3;
+            g.beginPath(); g.moveTo(48, 118); g.lineTo(c.width - 48, 118); g.stroke();
+            g.font = '26px Inter, sans-serif';
+            g.fillStyle = '#334155';
+            g.fillText(role + (warrantLine ? ' · ' + warrantLine : ''), 48, 165);
+            if (sig) try { g.drawImage(sig, 48, 200, 320, 110); } catch (e) {}
+        } else if (preset === 'warrant_block') {
+            g.strokeStyle = '#0b1f33';
+            g.lineWidth = 4;
+            g.strokeRect(32, 32, c.width - 64, c.height - 64);
+            g.fillStyle = '#0b1f33';
+            g.fillRect(32, 32, c.width - 64, 70);
+            g.fillStyle = '#ffffff';
+            g.font = 'bold 26px Inter, sans-serif';
+            g.fillText(role.toUpperCase(), c.width / 2, 78);
+            g.fillStyle = '#0b1f33';
+            g.font = 'bold 40px Georgia, serif';
+            g.fillText(name, c.width / 2, 150);
+            g.font = '24px Georgia, serif';
+            if (post) g.fillText(post, c.width / 2, 188);
+            if (warrantLine) g.fillText(warrantLine, c.width / 2, 222);
+            if (sig) try { g.drawImage(sig, c.width / 2 - 140, 250, 280, 100); } catch (e) {}
+        } else {
+            g.strokeStyle = '#0b1f33';
+            g.lineWidth = 5;
+            g.strokeRect(36, 36, c.width - 72, c.height - 72);
+            g.lineWidth = 2;
+            g.strokeRect(48, 48, c.width - 96, c.height - 96);
+            g.font = 'bold 38px Georgia, serif';
+            g.fillText(name, c.width / 2, 125);
+            g.font = '24px Georgia, serif';
+            if (post) g.fillText(post, c.width / 2, 162);
+            g.font = '22px Inter, sans-serif';
+            g.fillStyle = '#334155';
+            g.fillText(role, c.width / 2, 198);
+            if (warrantLine) g.fillText(warrantLine, c.width / 2, 230);
+            if (sig) try { g.drawImage(sig, c.width / 2 - 140, 255, 280, 100); } catch (e) {}
+        }
+
+        return c.toDataURL('image/png');
+    }
+
     document.getElementById('stamp-form').addEventListener('submit', function () {
         if (drawn) {
             signatureData.value = pad.toDataURL('image/png');
+        }
+        var composed = document.getElementById('composed-data');
+        if (composed) {
+            composed.value = exportComposedDataUri();
         }
     });
 

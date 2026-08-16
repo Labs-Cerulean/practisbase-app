@@ -397,9 +397,8 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $canLogo = $user->canAccessStandardTools();
-        $canStamp = $user->canAccessProPackage('med');
 
-        if (! $canLogo && ! $canStamp) {
+        if (! $canLogo) {
             return redirect('/settings#branding')->withErrors([
                 'branding' => 'Document branding is available on Standard and Pro plans.',
             ]);
@@ -409,8 +408,6 @@ class ProfileController extends Controller
             $request->validate([
                 'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
                 'remove_logo' => 'nullable|boolean',
-                'clinical_stamp' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-                'remove_clinical_stamp' => 'nullable|boolean',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e->redirectTo(url('/settings#branding'));
@@ -418,13 +415,13 @@ class ProfileController extends Controller
 
         $messages = [];
 
-        if ($canLogo && $request->boolean('remove_logo') && $user->logo_path) {
+        if ($request->boolean('remove_logo') && $user->logo_path) {
             TenantStorage::disk()->delete($user->logo_path);
             $user->update(['logo_path' => null]);
             $messages[] = 'Logo removed.';
         }
 
-        if ($canLogo && $request->hasFile('logo')) {
+        if ($request->hasFile('logo')) {
             if ($user->logo_path) {
                 TenantStorage::disk()->delete($user->logo_path);
             }
@@ -436,26 +433,6 @@ class ProfileController extends Controller
 
             $user->update(['logo_path' => $path]);
             $messages[] = 'Logo uploaded.';
-        }
-
-        if ($canStamp && $request->boolean('remove_clinical_stamp') && $user->clinical_stamp_path) {
-            TenantStorage::disk()->delete($user->clinical_stamp_path);
-            $user->update(['clinical_stamp_path' => null]);
-            $messages[] = 'Clinical stamp removed.';
-        }
-
-        if ($canStamp && $request->hasFile('clinical_stamp')) {
-            if ($user->clinical_stamp_path) {
-                TenantStorage::disk()->delete($user->clinical_stamp_path);
-            }
-
-            $path = $request->file('clinical_stamp')->store(
-                TenantStorage::brandingPath($user->id),
-                TenantStorage::diskName()
-            );
-
-            $user->update(['clinical_stamp_path' => $path]);
-            $messages[] = 'Clinical stamp uploaded. It will appear on issued prescriptions, referrals, and certificates.';
         }
 
         if ($messages === []) {
