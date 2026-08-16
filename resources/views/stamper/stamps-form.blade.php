@@ -70,7 +70,14 @@
 
                     <div style="margin-bottom: 1rem;">
                         <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Warrant number</label>
-                        <input type="text" name="warrant_number" id="stamp-warrant" value="{{ old('warrant_number', $defaults['warrant_number']) }}" maxlength="80" placeholder="e.g. 3264" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        @php
+                            $warrantDefault = $defaults['warrant_number'] ?? '';
+                            if ($warrantDefault === '' || $warrantDefault === null) {
+                                $warrantDefault = (string) (auth()->user()->warrant_number ?? '');
+                            }
+                        @endphp
+                        <input type="text" name="warrant_number" id="stamp-warrant" value="{{ old('warrant_number', $warrantDefault) }}" maxlength="80" placeholder="e.g. 3264" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.35rem;">Same as Settings → Practice</div>
                     </div>
 
                     <div style="margin-bottom: 1rem;">

@@ -238,13 +238,14 @@
                 </div>
             </div>
             <div class="form-group">
-                <label>Access / promo code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
-                <input type="text" name="promo_code" value="{{ old('promo_code', request('promo_code', request('code'))) }}" maxlength="40" placeholder="e.g. FOUNDING-50" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
-                <p class="field-hint">Leave blank to start on Free.</p>
+                <label for="register-access-code">Access code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                <input id="register-access-code" type="text" name="promo_code" value="{{ old('promo_code', request('promo_code', request('code'))) }}" maxlength="40" placeholder="e.g. MED-XXXX-XXXX" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
+                <p class="field-hint">Profession unlock from Cerulean Labs (or a promo). Not your friend's referral code.</p>
             </div>
             <div class="form-group">
-                <label>Referral code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
-                <input type="text" name="ref" value="{{ old('ref', request('ref')) }}" maxlength="40" placeholder="Friend's code" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
+                <label for="register-friend-code">Friend's referral code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
+                <input id="register-friend-code" type="text" name="ref" value="{{ old('ref', request('ref')) }}" maxlength="40" placeholder="8-character friend code" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
+                <p class="field-hint">Only if a friend shared their short referral code.</p>
             </div>
 
             <label style="display: block; font-weight: 700; margin-bottom: 0.4rem; color: var(--primary-navy); font-size: 0.88rem;">Master Service Agreement &amp; Privacy Policy</label>

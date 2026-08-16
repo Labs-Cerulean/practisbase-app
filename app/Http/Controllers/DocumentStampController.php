@@ -71,13 +71,20 @@ class DocumentStampController extends Controller
             'is_default' => $isDefault,
         ]);
 
+        $this->syncWarrantToProfile($user, $validated['warrant_number'] ?? null);
+
         return redirect('/stamper')
             ->with('success', 'Stamp saved. Place it on a PDF when you are ready.');
     }
 
     public function edit(int $id)
     {
+        $user = Auth::user();
         $stamp = $this->findOwned($id);
+        $warrant = (string) ($stamp->warrant_number ?? '');
+        if ($warrant === '') {
+            $warrant = (string) ($user->warrant_number ?? '');
+        }
 
         return view('stamper.stamps-form', [
             'stamp' => $stamp,
@@ -89,7 +96,7 @@ class DocumentStampController extends Controller
                 'last_name' => $stamp->last_name,
                 'postnominals' => (string) ($stamp->postnominals ?? ''),
                 'role_title' => $stamp->role_title,
-                'warrant_number' => (string) ($stamp->warrant_number ?? ''),
+                'warrant_number' => $warrant,
                 'is_default' => (bool) $stamp->is_default,
             ],
         ]);
@@ -118,6 +125,8 @@ class DocumentStampController extends Controller
             'signature_path' => $signaturePath,
             'is_default' => $request->boolean('is_default'),
         ]);
+
+        $this->syncWarrantToProfile($user, $validated['warrant_number'] ?? null);
 
         return redirect('/stamper/stamps')
             ->with('success', 'Stamp updated.');
@@ -165,6 +174,18 @@ class DocumentStampController extends Controller
             ->where('user_id', Auth::id())
             ->where('id', $id)
             ->firstOrFail();
+    }
+
+    private function syncWarrantToProfile($user, ?string $warrant): void
+    {
+        $warrant = filled($warrant) ? trim($warrant) : null;
+        if ($warrant === null) {
+            return;
+        }
+        if ((string) ($user->warrant_number ?? '') === $warrant) {
+            return;
+        }
+        $user->update(['warrant_number' => $warrant]);
     }
 
     private function validateStamp(Request $request): array

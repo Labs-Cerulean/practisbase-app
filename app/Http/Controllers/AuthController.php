@@ -50,43 +50,54 @@ class AuthController extends Controller
         ));
         $refRaw = trim((string) ($request->input('ref') ?: $request->query('ref', '')));
 
-        $user = DB::transaction(function () use ($request, $accessRaw, $refRaw) {
-            $invite = null;
-            $promo = null;
-            $promoEngine = app(PromotionEngine::class);
+        // Resolve access + referral codes before any user insert so a failed
+        // register never locks the email address.
+        $invite = null;
+        $promo = null;
+        $referrer = null;
+        $promoEngine = app(PromotionEngine::class);
 
-            if ($accessRaw !== '') {
-                $normalizedAccess = BetaInviteCode::normalizeCode($accessRaw);
+        if ($accessRaw !== '') {
+            $normalizedAccess = BetaInviteCode::normalizeCode($accessRaw);
+            $invite = BetaInviteCode::query()->where('code', $normalizedAccess)->first();
 
+            if ($invite && $invite->isRedeemable()) {
+                // Profession access codes unlock Full Pro for free.
+            } elseif ($invite) {
+                throw ValidationException::withMessages([
+                    'promo_code' => 'That access code is expired, revoked, or already used.',
+                ]);
+            } else {
+                $invite = null;
+                $promo = $promoEngine->findRedeemable($accessRaw);
+                if (! $promo) {
+                    throw ValidationException::withMessages([
+                        'promo_code' => 'That access code is not valid. Use the profession/promo code field — not the friend referral field.',
+                    ]);
+                }
+            }
+        }
+
+        if ($refRaw !== '') {
+            $refCode = Promotion::normalizeCode($refRaw);
+            $referrer = User::query()->where('referral_code', $refCode)->first();
+            if (! $referrer) {
+                throw ValidationException::withMessages([
+                    'ref' => 'That friend referral code is not recognised. Access codes like MED-XXXX-XXXX go in Access code, not here.',
+                ]);
+            }
+        }
+
+        $user = DB::transaction(function () use ($request, $invite, $promo, $referrer, $promoEngine) {
+            if ($invite) {
                 $invite = BetaInviteCode::query()
-                    ->where('code', $normalizedAccess)
+                    ->where('id', $invite->id)
                     ->lockForUpdate()
                     ->first();
 
-                if ($invite && $invite->isRedeemable()) {
-                    // Profession access codes unlock Full Pro for free.
-                } elseif ($invite) {
+                if (! $invite || ! $invite->isRedeemable()) {
                     throw ValidationException::withMessages([
                         'promo_code' => 'That access code is expired, revoked, or already used.',
-                    ]);
-                } else {
-                    $invite = null;
-                    $promo = $promoEngine->findRedeemable($accessRaw);
-                    if (! $promo) {
-                        throw ValidationException::withMessages([
-                            'promo_code' => 'That promo or access code is invalid, expired, inactive, or fully used.',
-                        ]);
-                    }
-                }
-            }
-
-            $referrer = null;
-            if ($refRaw !== '') {
-                $refCode = Promotion::normalizeCode($refRaw);
-                $referrer = User::query()->where('referral_code', $refCode)->first();
-                if (! $referrer) {
-                    throw ValidationException::withMessages([
-                        'ref' => 'That referral code is not recognised.',
                     ]);
                 }
             }

@@ -112,6 +112,7 @@ class PatientController extends Controller
             'age' => 'nullable|string|max:20',
             'id_card' => 'nullable|string|max:64',
             'tel' => 'nullable|string|max:64',
+            'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string|max:2000',
             'billing_client_id' => [
@@ -141,6 +142,7 @@ class PatientController extends Controller
             'age' => $validated['age'] ?? null,
             'id_card' => $validated['id_card'] ?? null,
             'tel' => $validated['tel'] ?? null,
+            'email' => $validated['email'] ?? null,
             'address' => $validated['address'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ], $key);
@@ -396,6 +398,7 @@ class PatientController extends Controller
             'age' => 'nullable|string|max:20',
             'id_card' => 'nullable|string|max:64',
             'tel' => 'nullable|string|max:64',
+            'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:500',
             'notes' => 'nullable|string|max:2000',
         ]);
@@ -406,6 +409,7 @@ class PatientController extends Controller
             'age' => $validated['age'] ?? null,
             'id_card' => $validated['id_card'] ?? null,
             'tel' => $validated['tel'] ?? null,
+            'email' => $validated['email'] ?? null,
             'address' => $validated['address'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ], $key);
