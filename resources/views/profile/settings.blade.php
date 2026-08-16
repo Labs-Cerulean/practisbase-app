@@ -514,7 +514,7 @@
                             @endif
                         @else
                             <p style="font-size: 0.85rem; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.65rem 0.85rem; margin-bottom: 1rem;">
-                                No stamp yet — create one in the generator. You will also be prompted on your first prescription.
+                                No stamp yet — create one in the generator. You will also be prompted on your first prescription, referral, or certificate.
                             </p>
                         @endif
                         @if($user->canAccessDocumentStamper())
