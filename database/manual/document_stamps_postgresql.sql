@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS document_stamps (
     role_title varchar(160) NOT NULL,
     warrant_number varchar(80) NULL,
     signature_path varchar(500) NULL,
+    composed_path varchar(500) NULL,
     is_default boolean NOT NULL DEFAULT false,
     created_at timestamp without time zone NULL,
     updated_at timestamp without time zone NULL
