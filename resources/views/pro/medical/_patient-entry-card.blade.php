@@ -69,12 +69,6 @@
                 </div>
             @endforeach
         </div>
-        @if(! empty($entry['has_structured_medicines']) && trim((string) $entry['body']) !== '')
-            <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">
-                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Notes</span><br>
-                {{ $entry['body'] }}
-            </div>
-        @endif
     @elseif(!empty($entry['fields']) && is_array($entry['fields']))
         @php
             if (!empty($entry['field_defs']) && is_array($entry['field_defs'])) {

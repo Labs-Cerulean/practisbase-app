@@ -14,7 +14,6 @@
             $medicines = [['name' => '', 'strength' => '', 'dose' => '', 'quantity' => '', 'instructions' => '']];
         }
         $rxTitle = $hasStructuredMeds ? ($payload['title'] ?? '') : '';
-        $rxNotes = $hasStructuredMeds ? ($payload['body'] ?? '') : '';
         $certKind = old('certificate_kind', $payload['certificate_kind'] ?? 'medical_certificate');
         $subjectDefault = old('subject_name', $payload['subject_name'] ?? ($patientPayload['display_name'] ?? ''));
     @endphp
@@ -89,8 +88,9 @@
             @if($isJournal)
                 <input type="hidden" name="title" value="{{ old('title', $payload['title'] ?? 'Patient note') }}">
             @elseif($isRx)
-                {{-- Title auto-derived from medicines on save --}}
+                {{-- Title auto-derived from medicines on save; notes live on each medicine --}}
                 <input type="hidden" name="title" value="{{ old('title', $rxTitle) }}">
+                <input type="hidden" name="body" value="">
             @else
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Title *</label>
@@ -99,17 +99,18 @@
                 </div>
             @endif
 
+            @unless($isRx)
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Details *
-                    @elseif($isRx) Notes
                     @elseif($isJournal) Additional notes
                     @else Details *
                     @endif
                 </label>
-                <textarea name="body" rows="{{ ($isRx || $isJournal) ? 3 : 8 }}" {{ ($isRx || $isJournal) ? '' : 'required' }}
-                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($isJournal ? ($payload['extra'] ?? '') : ($payload['body'] ?? ''))) }}</textarea>
+                <textarea name="body" rows="{{ $isJournal ? 3 : 8 }}" {{ $isJournal ? '' : 'required' }}
+                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isJournal ? ($payload['extra'] ?? '') : ($payload['body'] ?? '')) }}</textarea>
             </div>
+            @endunless
 
             <div style="margin-bottom: 1.25rem;">
                 <label style="display: inline-flex; align-items: center; font-weight: 600; margin-bottom: 0.4rem;">
