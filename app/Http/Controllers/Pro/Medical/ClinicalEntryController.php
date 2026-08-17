@@ -152,11 +152,15 @@ class ClinicalEntryController extends Controller
         $payload = MedicalVaultCrypto::decrypt($entry->payload_ciphertext, $entry->payload_nonce, $key);
         $patientPayload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
 
-        $catalogue = ClinicalNoteTemplates::catalogueForUser($user);
-        $noteTemplate = ClinicalNoteTemplates::normalizeForUser(
-            $user,
-            old('note_template', $payload['template'] ?? ($user->clinical_note_template ?? ClinicalNoteTemplates::GENERAL))
-        );
+        $payloadTemplate = (string) ($payload['template'] ?? '');
+        $noteTemplate = old('note_template');
+        if ($noteTemplate === null) {
+            $noteTemplate = $payloadTemplate !== ''
+                ? $payloadTemplate
+                : ClinicalNoteTemplates::normalizeForUser($user, $user->clinical_note_template ?? null);
+        }
+
+        $catalogue = ClinicalNoteTemplates::catalogueForUserIncluding($payloadTemplate, $user);
 
         return view('pro.medical.entries-edit', [
             'patient' => $patient,
@@ -264,6 +268,7 @@ class ClinicalEntryController extends Controller
     {
         $type = $request->input('entry_type');
         $allowedTemplates = array_keys(ClinicalNoteTemplates::optionsForUser($user));
+        $allowedTemplates[] = ClinicalNoteTemplates::GYNAE_OBS;
 
         $rules = [
             'entry_type' => 'required|in:' . implode(',', array_keys(ClinicalEntry::TYPES)),

@@ -18,17 +18,7 @@ class MedicalBackupController extends Controller
 {
     public function form()
     {
-        $user = Auth::user();
-        $vault = MedicalVault::activeForUser($user->id);
-
-        if (! $vault) {
-            return redirect('/pro/medical/vault/setup');
-        }
-
-        return view('pro.medical.vault-backup', [
-            'vault' => $vault,
-            'backupOverdue' => $vault->isBackupOverdue(),
-        ]);
+        return redirect('/exports/backup#medical');
     }
 
     public function download(Request $request): StreamedResponse|\Illuminate\Http\RedirectResponse

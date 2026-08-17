@@ -13,46 +13,97 @@ class ClinicalNoteTemplates
 {
     public const GENERAL = 'general';
 
+    public const GYNAE = 'gynae';
+
+    public const OBS = 'obs';
+
+    /** @deprecated Kept so older notes with template=gynae_obs still resolve. */
     public const GYNAE_OBS = 'gynae_obs';
 
+    public const FIELD_TYPES = ['text', 'date', 'bullets'];
+
     /**
+     * Starters shown in the template picker (not including legacy aliases).
+     *
      * @return array<string, string>
      */
     public static function builtinOptions(): array
     {
         return [
             self::GENERAL => 'General consult',
+            self::GYNAE => 'Gynae consult',
+            self::OBS => 'Obs consult',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function allBuiltinLabels(): array
+    {
+        return self::builtinOptions() + [
             self::GYNAE_OBS => 'Gynae / Obs consult',
         ];
     }
 
     /**
-     * @return array<string, array{label: string, rows: int}>
+     * @return array<string, array{label: string, type: string}>
      */
     public static function builtinFields(string $key): array
     {
         $core = [
-            'presenting_complaint' => ['label' => 'Presenting complaint', 'rows' => 3],
-            'pmhx' => ['label' => 'PMHx', 'rows' => 2],
-            'pshx' => ['label' => 'PSHx', 'rows' => 2],
-            'dhx' => ['label' => 'DHx', 'rows' => 2],
-            'shx' => ['label' => 'SHx', 'rows' => 2],
-            'exam' => ['label' => 'Exam', 'rows' => 3],
-            'plan' => ['label' => 'Plan', 'rows' => 3],
+            'presenting_complaint' => ['label' => 'Presenting complaint', 'type' => 'text'],
+            'pmhx' => ['label' => 'PMHx', 'type' => 'text'],
+            'pshx' => ['label' => 'PSHx', 'type' => 'text'],
+            'dhx' => ['label' => 'DHx', 'type' => 'text'],
+            'shx' => ['label' => 'SHx', 'type' => 'text'],
+            'exam' => ['label' => 'Exam', 'type' => 'text'],
+            'plan' => ['label' => 'Plan', 'type' => 'bullets'],
         ];
 
-        if ($key === self::GYNAE_OBS) {
+        if ($key === self::GYNAE) {
             return [
-                'lmp' => ['label' => 'LMP', 'rows' => 1],
+                'lmp' => ['label' => 'LMP', 'type' => 'date'],
                 'presenting_complaint' => $core['presenting_complaint'],
-                'gynae_hx' => ['label' => 'Gynae Hx', 'rows' => 3],
-                'obs_hx' => ['label' => 'Obs Hx', 'rows' => 3],
+                'gynae_hx' => ['label' => 'Gynae Hx', 'type' => 'text'],
                 'pmhx' => $core['pmhx'],
                 'pshx' => $core['pshx'],
                 'dhx' => $core['dhx'],
                 'shx' => $core['shx'],
                 'exam' => $core['exam'],
-                'us' => ['label' => 'US', 'rows' => 3],
+                'us' => ['label' => 'US', 'type' => 'text'],
+                'plan' => $core['plan'],
+            ];
+        }
+
+        if ($key === self::OBS) {
+            return [
+                'lmp' => ['label' => 'LMP', 'type' => 'date'],
+                'edd' => ['label' => 'EDD', 'type' => 'date'],
+                'presenting_complaint' => $core['presenting_complaint'],
+                'obs_hx' => ['label' => 'Obs Hx', 'type' => 'text'],
+                'pmhx' => $core['pmhx'],
+                'pshx' => $core['pshx'],
+                'dhx' => $core['dhx'],
+                'shx' => $core['shx'],
+                'exam' => $core['exam'],
+                'us' => ['label' => 'US', 'type' => 'text'],
+                'plan' => $core['plan'],
+            ];
+        }
+
+        if ($key === self::GYNAE_OBS) {
+            return [
+                'lmp' => ['label' => 'LMP', 'type' => 'date'],
+                'presenting_complaint' => $core['presenting_complaint'],
+                'gynae_hx' => ['label' => 'Gynae Hx', 'type' => 'text'],
+                'obs_hx' => ['label' => 'Obs Hx', 'type' => 'text'],
+                'pmhx' => $core['pmhx'],
+                'pshx' => $core['pshx'],
+                'dhx' => $core['dhx'],
+                'shx' => $core['shx'],
+                'exam' => $core['exam'],
+                'us' => ['label' => 'US', 'type' => 'text'],
                 'plan' => $core['plan'],
             ];
         }
@@ -82,7 +133,7 @@ class ClinicalNoteTemplates
     /**
      * Catalogue for a doctor: built-in starters + their custom templates.
      *
-     * @return list<array{key: string, name: string, builtin: bool, fields: list<array{key: string, label: string, rows: int}>}>
+     * @return list<array{key: string, name: string, builtin: bool, fields: list<array{key: string, label: string, type: string}>}>
      */
     public static function catalogueForUser(User $user): array
     {
@@ -115,6 +166,31 @@ class ClinicalNoteTemplates
     }
 
     /**
+     * Catalogue plus a legacy builtin when editing an older note that still uses it.
+     *
+     * @return list<array{key: string, name: string, builtin: bool, fields: list<array{key: string, label: string, type: string}>}>
+     */
+    public static function catalogueForUserIncluding(?string $extraKey, User $user): array
+    {
+        $catalogue = self::catalogueForUser($user);
+        if ($extraKey === self::GYNAE_OBS) {
+            foreach ($catalogue as $row) {
+                if ($row['key'] === self::GYNAE_OBS) {
+                    return $catalogue;
+                }
+            }
+            $catalogue[] = [
+                'key' => self::GYNAE_OBS,
+                'name' => self::allBuiltinLabels()[self::GYNAE_OBS] . ' (legacy)',
+                'builtin' => true,
+                'fields' => self::fieldsListFromMap(self::builtinFields(self::GYNAE_OBS)),
+            ];
+        }
+
+        return $catalogue;
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function optionsForUser(User $user): array
@@ -128,12 +204,22 @@ class ClinicalNoteTemplates
     }
 
     /**
-     * @return array{key: string, name: string, builtin: bool, fields: list<array{key: string, label: string, rows: int}>}
+     * @return array{key: string, name: string, builtin: bool, fields: list<array{key: string, label: string, type: string}>}
      */
     public static function resolveForUser(User $user, ?string $key): array
     {
         $catalogue = self::catalogueForUser($user);
         $wanted = $key ?: self::GENERAL;
+
+        // Older notes still carry the combined starter key.
+        if ($wanted === self::GYNAE_OBS) {
+            return [
+                'key' => self::GYNAE_OBS,
+                'name' => self::allBuiltinLabels()[self::GYNAE_OBS],
+                'builtin' => true,
+                'fields' => self::fieldsListFromMap(self::builtinFields(self::GYNAE_OBS)),
+            ];
+        }
 
         foreach ($catalogue as $row) {
             if ($row['key'] === $wanted) {
@@ -146,6 +232,8 @@ class ClinicalNoteTemplates
 
     public static function normalizeForUser(User $user, ?string $key): string
     {
+        $key = self::migrateBuiltinKey($key);
+
         return self::resolveForUser($user, $key)['key'];
     }
 
@@ -161,13 +249,26 @@ class ClinicalNoteTemplates
 
     public static function normalize(?string $template): string
     {
-        $key = $template ?: self::GENERAL;
+        $key = self::migrateBuiltinKey($template ?: self::GENERAL);
+        $known = self::allBuiltinLabels();
 
-        return array_key_exists($key, self::builtinOptions()) ? $key : self::GENERAL;
+        return array_key_exists($key, $known) ? $key : self::GENERAL;
     }
 
     /**
-     * @return array<string, array{label: string, rows: int}>
+     * Map retired combined key to Gynae when picking a default for new notes.
+     */
+    public static function migrateBuiltinKey(?string $key): string
+    {
+        if ($key === self::GYNAE_OBS) {
+            return self::GYNAE;
+        }
+
+        return $key ?: self::GENERAL;
+    }
+
+    /**
+     * @return array<string, array{label: string, type: string}>
      */
     public static function fields(string $template): array
     {
@@ -175,7 +276,7 @@ class ClinicalNoteTemplates
     }
 
     /**
-     * @param  list<array{key: string, label: string, rows: int}>  $fieldDefs
+     * @param  list<array{key: string, label: string, type?: string}>  $fieldDefs
      * @param  array<string, mixed>  $input
      * @return array<string, string>
      */
@@ -196,7 +297,7 @@ class ClinicalNoteTemplates
     }
 
     /**
-     * @param  list<array{key: string, label: string, rows: int}>  $fieldDefs
+     * @param  list<array{key: string, label: string, type?: string}>  $fieldDefs
      * @param  array<string, string>  $fields
      */
     public static function composeBodyFromDefs(array $fieldDefs, array $fields, ?string $extraBody = null): string
@@ -207,6 +308,12 @@ class ClinicalNoteTemplates
             $value = trim((string) ($fields[$def['key']] ?? ''));
             if ($value === '') {
                 continue;
+            }
+            $type = self::normalizeFieldType($def['type'] ?? 'text');
+            if ($type === 'bullets') {
+                $value = self::formatBullets($value);
+            } elseif ($type === 'date') {
+                $value = self::formatDateValue($value);
             }
             $lines[] = $def['label'] . ":\n" . $value;
         }
@@ -220,7 +327,7 @@ class ClinicalNoteTemplates
     }
 
     /**
-     * @param  list<array{key: string, label: string, rows: int}>  $fieldDefs
+     * @param  list<array{key: string, label: string, type?: string}>  $fieldDefs
      * @param  array<string, string>  $fields
      * @return array{
      *   title: string,
@@ -228,7 +335,7 @@ class ClinicalNoteTemplates
      *   template: string,
      *   template_name: string,
      *   fields: array<string, string>,
-     *   field_defs: list<array{key: string, label: string, rows: int}>,
+     *   field_defs: list<array{key: string, label: string, type: string}>,
      *   extra: string
      * }
      */
@@ -269,14 +376,14 @@ class ClinicalNoteTemplates
 
     /**
      * @param  array<string, string>  $fields
-     * @return array{title: string, body: string, template: string, template_name: string, fields: array<string, string>, field_defs: list<array{key: string, label: string, rows: int}>, extra: string}
+     * @return array{title: string, body: string, template: string, template_name: string, fields: array<string, string>, field_defs: list<array{key: string, label: string, type: string}>, extra: string}
      */
     public static function buildPayload(string $template, string $title, array $fields, ?string $extraBody = null): array
     {
         $key = self::normalize($template);
         $resolved = [
             'key' => $key,
-            'name' => self::builtinOptions()[$key],
+            'name' => self::allBuiltinLabels()[$key] ?? self::builtinOptions()[self::GENERAL],
             'builtin' => true,
             'fields' => self::fieldsListFromMap(self::builtinFields($key)),
         ];
@@ -285,8 +392,8 @@ class ClinicalNoteTemplates
     }
 
     /**
-     * @param  array<string, array{label: string, rows: int}>  $map
-     * @return list<array{key: string, label: string, rows: int}>
+     * @param  array<string, array{label: string, type?: string, rows?: int}>  $map
+     * @return list<array{key: string, label: string, type: string}>
      */
     public static function fieldsListFromMap(array $map): array
     {
@@ -295,7 +402,7 @@ class ClinicalNoteTemplates
             $out[] = [
                 'key' => (string) $key,
                 'label' => (string) ($meta['label'] ?? $key),
-                'rows' => max(1, min(12, (int) ($meta['rows'] ?? 2))),
+                'type' => self::normalizeFieldType($meta['type'] ?? 'text'),
             ];
         }
 
@@ -306,7 +413,7 @@ class ClinicalNoteTemplates
      * Normalize posted custom field definitions from the template builder.
      *
      * @param  mixed  $raw
-     * @return list<array{key: string, label: string, rows: int}>
+     * @return list<array{key: string, label: string, type: string}>
      */
     public static function sanitizeFieldDefinitions(mixed $raw): array
     {
@@ -343,11 +450,46 @@ class ClinicalNoteTemplates
             $out[] = [
                 'key' => $key,
                 'label' => mb_substr($label, 0, 80),
-                'rows' => max(1, min(12, (int) ($row['rows'] ?? 2))),
+                'type' => self::normalizeFieldType($row['type'] ?? 'text'),
             ];
         }
 
         return $out;
+    }
+
+    public static function normalizeFieldType(mixed $type): string
+    {
+        $type = strtolower(trim((string) $type));
+
+        return in_array($type, self::FIELD_TYPES, true) ? $type : 'text';
+    }
+
+    public static function formatBullets(string $value): string
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $value) ?: [];
+        $out = [];
+        $n = 1;
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $line = preg_replace('/^\d+[\.\)]\s*/', '', $line) ?? $line;
+            $line = preg_replace('/^[\-\*\u2022]\s*/u', '', $line) ?? $line;
+            $out[] = $n . '. ' . trim($line);
+            $n++;
+        }
+
+        return $out === [] ? trim($value) : implode("\n", $out);
+    }
+
+    public static function formatDateValue(string $value): string
+    {
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->format('d/m/Y');
+        } catch (\Throwable) {
+            return $value;
+        }
     }
 
     private static function slugKey(string $label, int $index): string

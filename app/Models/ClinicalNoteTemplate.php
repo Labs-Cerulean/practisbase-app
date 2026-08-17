@@ -29,7 +29,7 @@ class ClinicalNoteTemplate extends Model
     }
 
     /**
-     * @return list<array{key: string, label: string, rows: int}>
+     * @return list<array{key: string, label: string, type: string}>
      */
     public function normalizedFields(): array
     {

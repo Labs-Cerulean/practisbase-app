@@ -26,8 +26,11 @@ class ClinicalNoteTemplateController extends Controller
                 ClinicalNoteTemplates::GENERAL => ClinicalNoteTemplates::fieldsListFromMap(
                     ClinicalNoteTemplates::builtinFields(ClinicalNoteTemplates::GENERAL)
                 ),
-                ClinicalNoteTemplates::GYNAE_OBS => ClinicalNoteTemplates::fieldsListFromMap(
-                    ClinicalNoteTemplates::builtinFields(ClinicalNoteTemplates::GYNAE_OBS)
+                ClinicalNoteTemplates::GYNAE => ClinicalNoteTemplates::fieldsListFromMap(
+                    ClinicalNoteTemplates::builtinFields(ClinicalNoteTemplates::GYNAE)
+                ),
+                ClinicalNoteTemplates::OBS => ClinicalNoteTemplates::fieldsListFromMap(
+                    ClinicalNoteTemplates::builtinFields(ClinicalNoteTemplates::OBS)
                 ),
             ],
             'defaultKey' => ClinicalNoteTemplates::normalizeForUser($user, $user->clinical_note_template ?? null),
@@ -41,7 +44,8 @@ class ClinicalNoteTemplateController extends Controller
         $fields = [];
         $name = '';
 
-        if ($from === ClinicalNoteTemplates::GENERAL || $from === ClinicalNoteTemplates::GYNAE_OBS) {
+        $builtinKeys = array_keys(ClinicalNoteTemplates::builtinOptions());
+        if (in_array($from, $builtinKeys, true)) {
             $fields = ClinicalNoteTemplates::fieldsListFromMap(ClinicalNoteTemplates::builtinFields($from));
             $name = ClinicalNoteTemplates::builtinOptions()[$from] . ' (mine)';
         } elseif (ClinicalNoteTemplates::isCustomKey($from)) {
@@ -56,9 +60,9 @@ class ClinicalNoteTemplateController extends Controller
 
         if ($fields === []) {
             $fields = [
-                ['key' => 'presenting_complaint', 'label' => 'Presenting complaint', 'rows' => 3],
-                ['key' => 'exam', 'label' => 'Exam', 'rows' => 3],
-                ['key' => 'plan', 'label' => 'Plan', 'rows' => 3],
+                ['key' => 'presenting_complaint', 'label' => 'Presenting complaint', 'type' => 'text'],
+                ['key' => 'exam', 'label' => 'Exam', 'type' => 'text'],
+                ['key' => 'plan', 'label' => 'Plan', 'type' => 'bullets'],
             ];
         }
 
@@ -165,7 +169,7 @@ class ClinicalNoteTemplateController extends Controller
             'fields' => 'required|array|min:1|max:40',
             'fields.*.label' => 'required|string|max:80',
             'fields.*.key' => 'nullable|string|max:40',
-            'fields.*.rows' => 'nullable|integer|min:1|max:12',
+            'fields.*.type' => 'nullable|in:text,date,bullets',
         ], [
             'name.unique' => 'You already have a template with that name.',
         ]);

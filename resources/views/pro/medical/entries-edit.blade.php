@@ -163,7 +163,7 @@
             }
 
             function captureValues() {
-                fieldsHost.querySelectorAll('textarea[data-field-key]').forEach(function (el) {
+                fieldsHost.querySelectorAll('[data-field-key]').forEach(function (el) {
                     valueStore[el.getAttribute('data-field-key')] = el.value;
                 });
             }
@@ -175,6 +175,23 @@
                 return catalogue[0] || null;
             }
 
+            function fieldControl(field, val) {
+                var type = field.type || 'text';
+                var name = 'fields[' + escapeHtml(field.key) + ']';
+                var keyAttr = 'data-field-key="' + escapeHtml(field.key) + '"';
+                var style = 'width:100%;padding:0.65rem;border:1px solid var(--border-light);border-radius:var(--radius-md);';
+                if (type === 'date') {
+                    return '<input type="date" name="' + name + '" ' + keyAttr + ' value="' + escapeHtml(val) + '" max="{{ date('Y-m-d') }}" style="' + style + '">';
+                }
+                if (type === 'bullets') {
+                    return '<textarea name="' + name + '" ' + keyAttr + ' rows="4" placeholder="One item per line" style="' + style + '">' +
+                        escapeHtml(val) + '</textarea>' +
+                        '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">One item per line — saved as 1. 2. 3.</div>';
+                }
+                return '<textarea name="' + name + '" ' + keyAttr + ' rows="3" style="' + style + '">' +
+                    escapeHtml(val) + '</textarea>';
+            }
+
             function syncTemplateFields() {
                 captureValues();
                 var tpl = findTemplate(noteTemplate.value);
@@ -183,9 +200,7 @@
                     var val = valueStore[field.key] || '';
                     return '<div data-template-field="' + escapeHtml(field.key) + '">' +
                         '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.9rem;">' + escapeHtml(field.label) + '</label>' +
-                        '<textarea name="fields[' + escapeHtml(field.key) + ']" data-field-key="' + escapeHtml(field.key) + '" rows="' + (field.rows || 2) + '" ' +
-                        'style="width:100%;padding:0.65rem;border:1px solid var(--border-light);border-radius:var(--radius-md);">' +
-                        escapeHtml(val) + '</textarea></div>';
+                        fieldControl(field, val) + '</div>';
                 }).join('');
             }
 

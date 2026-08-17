@@ -37,13 +37,19 @@ class PatientController extends Controller
             ->get()
             ->groupBy('patient_id');
 
+        $latestEntry = ClinicalEntry::where('user_id', $user->id)
+            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->selectRaw('patient_id, MAX(entry_date) as last_seen')
+            ->groupBy('patient_id')
+            ->pluck('last_seen', 'patient_id');
+
         $attachmentCounts = ClinicalAttachment::where('user_id', $user->id)
             ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
             ->selectRaw('patient_id, COUNT(*) as total')
             ->groupBy('patient_id')
             ->pluck('total', 'patient_id');
 
-        $rows = $patients->map(function (Patient $patient) use ($key, $entryStats, $attachmentCounts) {
+        $rows = $patients->map(function (Patient $patient) use ($key, $entryStats, $attachmentCounts, $latestEntry) {
             try {
                 $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
             } catch (\Throwable) {
@@ -51,11 +57,24 @@ class PatientController extends Controller
             }
 
             $byType = ($entryStats->get($patient->id) ?? collect())->pluck('total', 'entry_type');
+            $dob = $payload['date_of_birth'] ?? null;
+            $dobFormatted = '';
+            if ($dob) {
+                try {
+                    $dobFormatted = \Illuminate\Support\Carbon::parse($dob)->format('d/m/Y');
+                } catch (\Throwable) {
+                    $dobFormatted = (string) $dob;
+                }
+            }
 
             return [
                 'model' => $patient,
                 'display_name' => $payload['display_name'] ?? 'Patient',
-                'date_of_birth' => $payload['date_of_birth'] ?? null,
+                'date_of_birth' => $dob,
+                'date_of_birth_fmt' => $dobFormatted,
+                'tel' => $payload['tel'] ?? '',
+                'id_card' => $payload['id_card'] ?? '',
+                'email' => $payload['email'] ?? '',
                 'notes' => $payload['notes'] ?? '',
                 'public_ref' => $patient->public_ref,
                 'linked' => (bool) $patient->billing_client_id,
@@ -65,6 +84,7 @@ class PatientController extends Controller
                 'referral_count' => (int) ($byType['referral'] ?? 0),
                 'certificate_count' => (int) ($byType['certificate'] ?? 0),
                 'attachment_count' => (int) ($attachmentCounts[$patient->id] ?? 0),
+                'last_seen' => $latestEntry[$patient->id] ?? null,
                 'created_ts' => optional($patient->created_at)->timestamp ?? $patient->id,
             ];
         });

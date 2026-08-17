@@ -12,7 +12,7 @@
             </p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
-            <a href="/pro/medical/vault/backup" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Backup</a>
+            <a href="/exports/backup" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Backup</a>
             <a href="/pro/medical/templates" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Templates</a>
             @if(strtolower(trim((string) (auth()->user()->email ?? ''))) === 'sarah.darmanin2@gmail.com')
                 <a href="/pro/medical/import" style="background: white; border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none; color: var(--primary-navy);">Import Word</a>
@@ -35,7 +35,7 @@
     @if($backupOverdue ?? false)
         <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: var(--radius-md); color: #991b1b; font-size: 0.85rem;">
             <strong>Backup overdue.</strong>
-            <a href="/pro/medical/vault/backup" style="color: #991b1b; font-weight: 700; border-bottom: 1px dotted #991b1b; text-decoration: none; margin-left: 0.25rem;">Download now</a>
+            <a href="/exports/backup#medical" style="color: #991b1b; font-weight: 700; border-bottom: 1px dotted #991b1b; text-decoration: none; margin-left: 0.25rem;">Download now</a>
         </div>
     @endif
 
@@ -72,7 +72,7 @@
                 <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: flex-end;">
                     <div style="flex: 1; min-width: 200px;">
                         <label for="patient-search" style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">Search</label>
-                        <input id="patient-search" type="search" placeholder="Search patients…"
+                        <input id="patient-search" type="search" placeholder="Name, ID, tel, DOB, ref…"
                                style="width: 100%; padding: 0.75rem 0.9rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.95rem;">
                     </div>
                     <button type="button" id="patient-advanced-toggle" aria-expanded="false" aria-controls="patient-advanced-filters"
@@ -103,6 +103,16 @@
                             </select>
                         </div>
                         <div>
+                            <label for="filter-seen-from" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Seen from</label>
+                            <input type="date" id="filter-seen-from" max="{{ date('Y-m-d') }}"
+                                   style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                        <div>
+                            <label for="filter-seen-to" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Seen to</label>
+                            <input type="date" id="filter-seen-to" max="{{ date('Y-m-d') }}"
+                                   style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        </div>
+                        <div>
                             <label for="filter-sort" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Sort</label>
                             <select id="filter-sort" style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
                                 <option value="newest">Newest first</option>
@@ -110,6 +120,7 @@
                                 <option value="name-asc">Name A–Z</option>
                                 <option value="name-desc">Name Z–A</option>
                                 <option value="dob">Date of birth</option>
+                                <option value="last-seen">Last seen</option>
                             </select>
                         </div>
                     </div>
@@ -129,6 +140,12 @@
                    data-ref="{{ strtolower($row['public_ref']) }}"
                    data-client="{{ strtolower($row['client_name'] ?? '') }}"
                    data-notes="{{ strtolower($row['notes'] ?? '') }}"
+                   data-tel="{{ preg_replace('/\D+/', '', (string) ($row['tel'] ?? '')) }}"
+                   data-idcard="{{ strtolower($row['id_card'] ?? '') }}"
+                   data-email="{{ strtolower($row['email'] ?? '') }}"
+                   data-dob="{{ $row['date_of_birth'] ?? '' }}"
+                   data-dob-fmt="{{ strtolower($row['date_of_birth_fmt'] ?? '') }}"
+                   data-last-seen="{{ $row['last_seen'] ?? '' }}"
                    data-linked="{{ $row['linked'] ? '1' : '0' }}"
                    data-journal="{{ $row['journal_count'] }}"
                    data-prescription="{{ $row['prescription_count'] }}"
@@ -136,7 +153,6 @@
                    data-certificate="{{ $row['certificate_count'] }}"
                    data-attachment="{{ $row['attachment_count'] }}"
                    data-created="{{ $row['created_ts'] }}"
-                   data-dob="{{ $row['date_of_birth'] ?? '' }}"
                    style="display: flex; justify-content: space-between; gap: 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
                     <div>
                         <div style="font-weight: 700; color: var(--primary-navy);">{{ $row['display_name'] }}</div>
@@ -169,6 +185,8 @@
             var link = document.getElementById('filter-link');
             var entry = document.getElementById('filter-entry');
             var sort = document.getElementById('filter-sort');
+            var seenFrom = document.getElementById('filter-seen-from');
+            var seenTo = document.getElementById('filter-seen-to');
             var reset = document.getElementById('patient-filter-reset');
             var list = document.getElementById('patient-list');
             var countEl = document.getElementById('patient-count-visible');
@@ -190,16 +208,32 @@
                 return Array.prototype.slice.call(list.querySelectorAll('.patient-row'));
             }
 
+            function digits(value) {
+                return String(value || '').replace(/\D+/g, '');
+            }
+
             function apply() {
                 var q = (search.value || '').trim().toLowerCase();
+                var qDigits = digits(q);
                 var linkMode = link.value;
                 var entryMode = entry.value;
+                var from = seenFrom ? seenFrom.value : '';
+                var to = seenTo ? seenTo.value : '';
                 var items = rows();
                 var visible = 0;
 
                 items.forEach(function (el) {
-                    var hay = [el.dataset.name, el.dataset.ref, el.dataset.client, el.dataset.notes].join(' ');
-                    var matchQ = !q || hay.indexOf(q) !== -1;
+                    var hay = [
+                        el.dataset.name,
+                        el.dataset.ref,
+                        el.dataset.client,
+                        el.dataset.notes,
+                        el.dataset.idcard,
+                        el.dataset.email,
+                        el.dataset.dob,
+                        el.dataset.dobFmt
+                    ].join(' ');
+                    var matchQ = !q || hay.indexOf(q) !== -1 || (qDigits && (el.dataset.tel || '').indexOf(qDigits) !== -1);
                     var matchLink = linkMode === 'all'
                         || (linkMode === 'linked' && el.dataset.linked === '1')
                         || (linkMode === 'unlinked' && el.dataset.linked === '0');
@@ -213,7 +247,12 @@
                         matchEntry = parseInt(el.dataset.journal, 10) + parseInt(el.dataset.prescription, 10) + parseInt(el.dataset.referral, 10) + parseInt(el.dataset.certificate, 10) === 0;
                     }
 
-                    var show = matchQ && matchLink && matchEntry;
+                    var lastSeen = el.dataset.lastSeen || '';
+                    var matchSeen = true;
+                    if (from && (!lastSeen || lastSeen < from)) matchSeen = false;
+                    if (to && (!lastSeen || lastSeen > to)) matchSeen = false;
+
+                    var show = matchQ && matchLink && matchEntry && matchSeen;
                     el.style.display = show ? 'flex' : 'none';
                     if (show) visible++;
                 });
@@ -224,6 +263,7 @@
                     if (mode === 'name-desc') return (b.dataset.name || '').localeCompare(a.dataset.name || '');
                     if (mode === 'oldest') return parseInt(a.dataset.created, 10) - parseInt(b.dataset.created, 10);
                     if (mode === 'dob') return (a.dataset.dob || '9999').localeCompare(b.dataset.dob || '9999');
+                    if (mode === 'last-seen') return (b.dataset.lastSeen || '').localeCompare(a.dataset.lastSeen || '');
                     return parseInt(b.dataset.created, 10) - parseInt(a.dataset.created, 10);
                 });
                 sorted.forEach(function (el) { list.appendChild(el); });
@@ -236,11 +276,15 @@
             link.addEventListener('change', apply);
             entry.addEventListener('change', apply);
             sort.addEventListener('change', apply);
+            if (seenFrom) seenFrom.addEventListener('change', apply);
+            if (seenTo) seenTo.addEventListener('change', apply);
             reset.addEventListener('click', function () {
                 search.value = '';
                 link.value = 'all';
                 entry.value = 'all';
                 sort.value = 'newest';
+                if (seenFrom) seenFrom.value = '';
+                if (seenTo) seenTo.value = '';
                 apply();
             });
             apply();

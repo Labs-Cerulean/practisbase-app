@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\ArchitectProject;
 use App\Models\Client;
-use App\Models\ClinicalEntry;
 use App\Models\EngineerProject;
 use App\Models\Invoice;
 use App\Models\MedicalVault;
@@ -12,6 +11,7 @@ use App\Models\Patient;
 use App\Models\Payment;
 use App\Support\FiscalReportEngine;
 use App\Support\MedicalVaultCrypto;
+use App\Support\PracticeGrowth;
 use App\Support\PracticeGuidance;
 use App\Support\TierPolicy;
 use Illuminate\Support\Facades\Auth;
@@ -67,12 +67,18 @@ class DashboardController extends Controller
         }
 
         $practiceDesk = null;
+        $growth = null;
         if ($hasPractice && $package === 'med' && $user->canAccessProPackage('med')) {
             $practiceDesk = $this->medicalDesk($userId);
+            $growth = PracticeGrowth::forMedical($userId);
         } elseif ($hasPractice && $package === 'arch' && $user->canAccessProPackage('arch')) {
             $practiceDesk = $this->architectDesk($userId);
+            $growth = PracticeGrowth::forClients($userId);
         } elseif ($hasPractice && $package === 'eng' && $user->canAccessProPackage('eng')) {
             $practiceDesk = $this->engineerDesk($userId);
+            $growth = PracticeGrowth::forClients($userId);
+        } elseif ($hasFinancial || $practiceOnly || ! $hasPractice) {
+            $growth = PracticeGrowth::forClients($userId);
         }
 
         $checklist = PracticeGuidance::firstWeekChecklist($user);
@@ -84,6 +90,9 @@ class DashboardController extends Controller
             $hasFinancial => 'standard',
             default => 'free',
         };
+
+        $backupOverdue = $user->isDataBackupOverdue()
+            || (($practiceDesk['backup_overdue'] ?? false) === true);
 
         return view('dashboard', [
             'user' => $user,
@@ -101,6 +110,8 @@ class DashboardController extends Controller
             'billing' => $billing,
             'glance' => $glance,
             'practiceDesk' => $practiceDesk,
+            'growth' => $growth,
+            'backupOverdue' => $backupOverdue,
             'checklist' => $checklist,
             'deadlines' => $deadlines,
         ]);
@@ -185,32 +196,15 @@ class DashboardController extends Controller
         $vaultUnlocked = $vault && MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null;
 
         $patientCount = Patient::where('user_id', $userId)->count();
-        $drafts = ClinicalEntry::where('user_id', $userId)
-            ->whereIn('entry_type', ClinicalEntry::STAMPABLE_TYPES)
-            ->whereNull('issued_at')
-            ->count();
-        $issuedYtd = ClinicalEntry::where('user_id', $userId)
-            ->whereNotNull('issued_at')
-            ->whereYear('issued_at', (int) date('Y'))
-            ->count();
-        $recentDrafts = ClinicalEntry::where('user_id', $userId)
-            ->whereIn('entry_type', ClinicalEntry::STAMPABLE_TYPES)
-            ->whereNull('issued_at')
-            ->orderByDesc('updated_at')
-            ->limit(5)
-            ->get(['id', 'patient_id', 'entry_type', 'entry_date', 'updated_at']);
 
         return [
             'kind' => 'med',
-            'title' => 'Clinical desk',
+            'title' => 'Practice growth',
             'vault' => $vault,
             'vault_unlocked' => $vaultUnlocked,
             'vault_setup' => (bool) $vault,
             'backup_overdue' => $vault ? $vault->isBackupOverdue() : false,
             'patient_count' => $patientCount,
-            'draft_stampables' => $drafts,
-            'issued_ytd' => $issuedYtd,
-            'recent_drafts' => $recentDrafts,
         ];
     }
 
