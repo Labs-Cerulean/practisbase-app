@@ -121,6 +121,21 @@
 
             <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save changes</button>
         </form>
+
+        @if($entry->isStampable() && $entry->isEditable())
+            <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry->id }}/issue"
+                  method="POST"
+                  style="margin-top: 0.85rem;"
+                  onsubmit="return confirm('Stamp and issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');">
+                @csrf
+                <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                    Stamp &amp; issue
+                </button>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.55rem 0 0; text-align: center;">
+                    Saves the lock now. PDF download starts on the patient page.
+                </p>
+            </form>
+        @endif
     </div>
 
     @if($isJournal)

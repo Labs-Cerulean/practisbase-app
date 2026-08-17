@@ -125,28 +125,32 @@
             line-height: 1.45;
         }
         .rx-detail {
-            font-size: 11px;
-            color: #334155;
-            margin-top: 3px;
+            font-size: 13px;
+            color: #0f172a;
+            margin-top: 2px;
             padding-left: 16px;
+            line-height: 1.45;
+        }
+        .rx-notes-line {
+            font-size: 13px;
+            color: #0f172a;
+            margin-top: 2px;
+            padding-left: 16px;
+            line-height: 1.45;
+            white-space: pre-wrap;
         }
         .notes {
             margin-top: 10px;
-            padding: 8px 10px;
-            border: 1px solid #cbd5e1;
-            background: #f8fafc;
-            font-size: 11px;
-            color: #334155;
+            font-size: 13px;
+            color: #0f172a;
             white-space: pre-wrap;
             line-height: 1.45;
         }
         .notes-label {
-            font-size: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-size: 13px;
             font-weight: bold;
-            color: #64748b;
-            margin-bottom: 4px;
+            color: #0f172a;
+            margin-bottom: 2px;
         }
         .sign-block {
             margin-top: 28px;
@@ -364,18 +368,11 @@
                                     {{ $med['dose'] }}
                                 @endif
                             </div>
-                            @if($med['quantity'] !== '' || $med['instructions'] !== '')
-                                <div class="rx-detail">
-                                    @if($med['quantity'] !== '')
-                                        Qty: {{ $med['quantity'] }}
-                                    @endif
-                                    @if($med['quantity'] !== '' && $med['instructions'] !== '')
-                                        ·
-                                    @endif
-                                    @if($med['instructions'] !== '')
-                                        {{ $med['instructions'] }}
-                                    @endif
-                                </div>
+                            @if($med['quantity'] !== '')
+                                <div class="rx-detail">Qty: {{ $med['quantity'] }}</div>
+                            @endif
+                            @if($med['instructions'] !== '')
+                                <div class="rx-notes-line">{{ $med['instructions'] }}</div>
                             @endif
                         </div>
                     @empty
@@ -384,7 +381,7 @@
 
                     @if($generalNotes !== '')
                         <div class="notes">
-                            <div class="notes-label">Notes for pharmacist / patient</div>
+                            <div class="notes-label">Notes</div>
                             {{ $generalNotes }}
                         </div>
                     @endif

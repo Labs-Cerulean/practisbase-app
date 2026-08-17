@@ -3,9 +3,15 @@
 @section('page_title', 'New entry')
 
 @section('content')
+    @php
+        $typeLocked = in_array($defaultType ?? '', array_keys($types), true);
+        $pageTitle = $typeLocked
+            ? ('New ' . strtolower($types[$defaultType] ?? 'entry'))
+            : 'New clinical entry';
+    @endphp
     <div style="max-width: 820px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
-            <h2 style="margin: 0; color: var(--primary-navy);">New clinical entry</h2>
+            <h2 style="margin: 0; color: var(--primary-navy);">{{ $pageTitle }}</h2>
             <a href="/pro/medical/patients/{{ $patient->id }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none;">Cancel</a>
         </div>
         @if($errors->any())
@@ -16,15 +22,26 @@
         <form action="/pro/medical/patients/{{ $patient->id }}/entries" method="POST" enctype="multipart/form-data" id="entry-form">
             @csrf
             <div style="margin-bottom: 1rem;">
-                <label style="display: inline-flex; align-items: center; font-weight: 600; margin-bottom: 0.4rem;">
-                    Type *
-                    @include('partials.help-tip', ['text' => 'Patient notes stay editable. Prescriptions, referrals, and certificates can be stamped later.'])
-                </label>
-                <select name="entry_type" id="entry_type" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                    @foreach($types as $key => $label)
-                        <option value="{{ $key }}" {{ ($defaultType ?? 'journal') === $key ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
+                @if($typeLocked)
+                    <label style="display: inline-flex; align-items: center; font-weight: 600; margin-bottom: 0.4rem;">
+                        Type
+                        @include('partials.help-tip', ['text' => 'Chosen from the patient page. Patient notes stay editable; stampables lock after Stamp & issue.'])
+                    </label>
+                    <input type="hidden" name="entry_type" id="entry_type" value="{{ $defaultType }}">
+                    <div style="padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #f8fafc; color: var(--primary-navy); font-weight: 600;">
+                        {{ $types[$defaultType] ?? $defaultType }}
+                    </div>
+                @else
+                    <label style="display: inline-flex; align-items: center; font-weight: 600; margin-bottom: 0.4rem;">
+                        Type *
+                        @include('partials.help-tip', ['text' => 'Patient notes stay editable. Prescriptions, referrals, and certificates can be stamped later.'])
+                    </label>
+                    <select name="entry_type" id="entry_type" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                        @foreach($types as $key => $label)
+                            <option value="{{ $key }}" {{ ($defaultType ?? 'journal') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                @endif
             </div>
 
             <div style="margin-bottom: 1rem;">
@@ -218,7 +235,9 @@
                 syncTemplateFields();
             }
 
-            typeEl.addEventListener('change', sync);
+            if (typeEl && typeEl.tagName === 'SELECT') {
+                typeEl.addEventListener('change', sync);
+            }
             if (noteTemplate) noteTemplate.addEventListener('change', syncTemplateFields);
             sync();
         })();
