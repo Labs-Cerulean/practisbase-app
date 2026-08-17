@@ -25,7 +25,21 @@
     </div>
 
     @if(session('success'))
-        <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">{{ session('success') }}</div>
+        <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+            <div style="font-weight: 700; margin-bottom: {{ session('issued_pdf_url') ? '0.65rem' : '0' }};">{{ session('success') }}</div>
+            @if(session('issued_pdf_url'))
+                @php
+                    $issuedType = session('issued_type', 'document');
+                    $issuedLabel = \App\Models\ClinicalEntry::TYPES[$issuedType] ?? 'Document';
+                @endphp
+                @include('pro.medical._issued-share', [
+                    'pdfUrl' => session('issued_pdf_url'),
+                    'issueCode' => session('issued_code', ''),
+                    'docLabel' => $issuedLabel,
+                    'patientTel' => $payload['tel'] ?? '',
+                ])
+            @endif
+        </div>
     @endif
     @if($errors->any())
         <div style="background: #fef2f2; color: #991b1b; padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
@@ -389,9 +403,9 @@
                     @if($entry['is_stampable'])
                         <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: {{ $chrome['soft'] }}; border: 1px solid {{ $chrome['border'] }}; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-main);">
                             @if($entry['is_issued'])
-                                Official PDF ready with issue code and date.
+                                Issued {{ $entry['issue_code'] }} — PDF ready to download or share.
                             @else
-                                After Stamp &amp; issue this locks and downloads as PDF.
+                                Stamp &amp; issue locks the document and starts the PDF download.
                             @endif
                         </div>
                     @endif
@@ -420,10 +434,12 @@
                         @endif
 
                         @if($entry['is_stampable'] && $entry['is_issued'])
-                            <a href="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/pdf"
-                               style="display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid {{ $chrome['accent'] }}; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; text-decoration: none;">
-                                Download issued PDF
-                            </a>
+                            @include('pro.medical._issued-share', [
+                                'pdfUrl' => '/pro/medical/patients/'.$patient->id.'/entries/'.$entry['model']->id.'/pdf',
+                                'issueCode' => $entry['issue_code'] ?? '',
+                                'docLabel' => $entryTypes[$entry['model']->entry_type] ?? 'Document',
+                                'patientTel' => $payload['tel'] ?? '',
+                            ])
                         @endif
                     </div>
 
@@ -524,4 +540,76 @@
             })();
         </script>
     @endif
+
+    <script>
+        (function () {
+            function sharePdf(url, label, code) {
+                try {
+                    var res = await fetch(url, { credentials: 'same-origin' });
+                    if (!res.ok) throw new Error('Download failed');
+                    var blob = await res.blob();
+                    var name = (code || 'document').replace(/[^\w\-]+/g, '_') + '.pdf';
+                    var file = new File([blob], name, { type: 'application/pdf' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: label || 'Issued document',
+                            text: code ? (label + ' · ' + code) : (label || 'Issued document')
+                        });
+                        return;
+                    }
+                } catch (err) {
+                    console.warn(err);
+                }
+                window.location = url;
+            }
+
+            document.querySelectorAll('.issued-share-actions').forEach(function (root) {
+                var url = root.getAttribute('data-pdf-url') || '';
+                var code = root.getAttribute('data-issue-code') || '';
+                var label = root.getAttribute('data-doc-label') || 'Document';
+
+                var shareBtn = root.querySelector('.share-native');
+                if (shareBtn) {
+                    shareBtn.addEventListener('click', function () {
+                        if (!url) return;
+                        sharePdf(url, label, code);
+                    });
+                }
+
+                var copyBtn = root.querySelector('.share-copy-code');
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', async function () {
+                        var value = copyBtn.getAttribute('data-code') || code;
+                        if (!value) return;
+                        try {
+                            await navigator.clipboard.writeText(value);
+                            var prev = copyBtn.textContent;
+                            copyBtn.textContent = 'Copied';
+                            setTimeout(function () { copyBtn.textContent = prev; }, 1200);
+                        } catch (e) {
+                            window.prompt('Copy issue code', value);
+                        }
+                    });
+                }
+            });
+
+            @if(session('issued_pdf_url'))
+            (function () {
+                var autoUrl = @json(session('issued_pdf_url'));
+                if (!autoUrl) return;
+                // Start PDF download without leaving the patient page (share actions stay visible).
+                setTimeout(function () {
+                    var frame = document.createElement('iframe');
+                    frame.style.display = 'none';
+                    frame.src = autoUrl;
+                    document.body.appendChild(frame);
+                    setTimeout(function () {
+                        try { frame.remove(); } catch (e) {}
+                    }, 60000);
+                }, 250);
+            })();
+            @endif
+        })();
+    </script>
 @endsection

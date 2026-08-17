@@ -234,8 +234,14 @@ class ClinicalEntryController extends Controller
         $entry->issue_code = IssueCode::allocateForClinicalEntry($entry->entry_type);
         $entry->save();
 
-        return redirect('/pro/medical/patients/' . $patient->id)
-            ->with('success', 'Document stamped and issued as ' . $entry->issue_code . '. Code and issue date are printed on the PDF. It is now locked.');
+        $pdfUrl = '/pro/medical/patients/'.$patient->id.'/entries/'.$entry->id.'/pdf';
+
+        return redirect('/pro/medical/patients/'.$patient->id)
+            ->with('success', 'Stamped and issued as '.$entry->issue_code.'.')
+            ->with('issued_pdf_url', $pdfUrl)
+            ->with('issued_entry_id', $entry->id)
+            ->with('issued_code', $entry->issue_code)
+            ->with('issued_type', $entry->entry_type);
     }
 
     private function validateEntryPayload(Request $request, \App\Models\User $user, bool $updating = false): array
