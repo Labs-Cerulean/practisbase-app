@@ -216,15 +216,15 @@
 
     @php
         $hubTabs = [
-            'prescription' => ['label' => 'Prescriptions', 'new' => '+ Prescription'],
             'journal' => ['label' => 'Patient notes', 'new' => '+ Note'],
+            'prescription' => ['label' => 'Prescriptions', 'new' => '+ Prescription'],
             'referral' => ['label' => 'Referrals', 'new' => '+ Referral'],
             'certificate' => ['label' => 'Certificates', 'new' => '+ Certificate'],
         ];
         $issuedTypeFlash = session('issued_type');
         $initialHubTab = in_array($issuedTypeFlash, array_keys($hubTabs), true)
             ? $issuedTypeFlash
-            : 'prescription';
+            : 'journal';
         $entriesByType = $entries->groupBy(fn ($row) => $row['model']->entry_type);
     @endphp
 
@@ -291,8 +291,8 @@
     <script>
         (function () {
             var tabChrome = {
-                prescription: '#0f766e',
                 journal: '#475569',
+                prescription: '#0f766e',
                 referral: '#1d4ed8',
                 certificate: '#15803d'
             };

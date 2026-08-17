@@ -122,6 +122,10 @@ class ClinicalEntryController extends Controller
             PrescriptionCatalogItem::rememberForUser($user->id, $validated['medicines']);
         }
 
+        if ($request->boolean('issue_now') && $entry->isStampable()) {
+            return $this->stampAndRedirect($patient, $entry, $user);
+        }
+
         $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
             ? 'Draft ' . (ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document') . ' saved.'
             : 'Patient note saved.';
@@ -204,6 +208,10 @@ class ClinicalEntryController extends Controller
             PrescriptionCatalogItem::rememberForUser($user->id, $validated['medicines']);
         }
 
+        if ($request->boolean('issue_now') && $entry->isStampable() && $entry->isEditable()) {
+            return $this->stampAndRedirect($patient, $entry, $user);
+        }
+
         return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$entry->entry_type)
             ->with('success', 'Entry updated.');
     }
@@ -230,10 +238,17 @@ class ClinicalEntryController extends Controller
             return back()->withErrors(['entry' => 'Already stamped and issued.']);
         }
 
-        $entry->issued_at = now();
-        $entry->issued_by_user_id = $user->id;
-        $entry->issue_code = IssueCode::allocateForClinicalEntry($entry->entry_type);
-        $entry->save();
+        return $this->stampAndRedirect($patient, $entry, $user);
+    }
+
+    private function stampAndRedirect(Patient $patient, ClinicalEntry $entry, $user)
+    {
+        if (! $entry->isIssued()) {
+            $entry->issued_at = now();
+            $entry->issued_by_user_id = $user->id;
+            $entry->issue_code = IssueCode::allocateForClinicalEntry($entry->entry_type);
+            $entry->save();
+        }
 
         $pdfUrl = '/pro/medical/patients/'.$patient->id.'/entries/'.$entry->id.'/pdf';
 

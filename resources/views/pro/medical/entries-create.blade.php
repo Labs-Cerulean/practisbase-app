@@ -99,11 +99,22 @@
                 <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
             </div>
 
+            <div id="stampable-actions" style="display: none;">
+                <button type="submit" name="issue_now" value="1" id="submit-issue"
+                        onclick="return confirm('Confirm, stamp, and lock this document? It cannot be edited afterwards. Share opens next.');"
+                        style="width: 100%; padding: 0.9rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; margin-bottom: 0.55rem;">
+                    Stamp &amp; issue
+                </button>
+                <button type="submit" name="issue_now" value="0" id="submit-draft"
+                        style="width: 100%; padding: 0.75rem; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                    Save draft
+                </button>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.65rem 0 0; text-align: center;">
+                    Stamp &amp; issue confirms now — Share is ready on the patient page.
+                </p>
+            </div>
             <button type="submit" id="submit-btn" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save entry</button>
-            <p id="stamp-note" style="display: none; font-size: 0.8rem; color: var(--text-muted); margin: 0.65rem 0 0; text-align: center;">
-                Editable until Stamp &amp; issue
-                @include('partials.help-tip', ['text' => 'The official PDF includes an authenticity code and issue date.'])
-            </p>
+            <p id="stamp-note" style="display: none; font-size: 0.8rem; color: var(--text-muted); margin: 0.65rem 0 0; text-align: center;"></p>
         </form>
     </div>
 
@@ -125,6 +136,7 @@
             var bodyInput = document.getElementById('body');
             var submitBtn = document.getElementById('submit-btn');
             var stampNote = document.getElementById('stamp-note');
+            var stampableActions = document.getElementById('stampable-actions');
             var kindEl = document.getElementById('certificate_kind');
             var subjectEl = document.getElementById('subject_name');
             var defaultSubject = @json($patientPayload['display_name'] ?? '');
@@ -183,7 +195,10 @@
                 rxFields.style.display = t === 'prescription' ? 'block' : 'none';
                 if (journalFields) journalFields.style.display = t === 'journal' ? 'block' : 'none';
                 attach.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription' || t === 'journal') ? 'block' : 'none';
-                stampNote.style.display = (t === 'certificate' || t === 'referral' || t === 'prescription') ? 'block' : 'none';
+                var isStampable = (t === 'certificate' || t === 'referral' || t === 'prescription');
+                if (stampableActions) stampableActions.style.display = isStampable ? 'block' : 'none';
+                if (submitBtn) submitBtn.style.display = isStampable ? 'none' : 'block';
+                stampNote.style.display = 'none';
                 if (kindEl) {
                     kindEl.value = 'medical_certificate';
                     kindEl.required = false;
@@ -208,14 +223,12 @@
                     dateLabel.textContent = 'Date *';
                     titleLabel.textContent = 'Title *';
                     bodyLabel.innerHTML = 'Details *';
-                    submitBtn.textContent = 'Save certificate draft';
                 } else if (t === 'prescription') {
                     titleWrap.style.display = 'none';
                     titleInput.required = false;
                     if (titleInput.value === 'Patient note') titleInput.value = '';
                     dateLabel.textContent = 'Date *';
                     bodyLabel.innerHTML = 'Notes';
-                    submitBtn.textContent = 'Save prescription draft';
                 } else if (t === 'referral') {
                     titleWrap.style.display = 'block';
                     titleInput.required = true;
@@ -223,7 +236,6 @@
                     dateLabel.textContent = 'Date *';
                     titleLabel.textContent = 'Title *';
                     bodyLabel.innerHTML = 'Details *';
-                    submitBtn.textContent = 'Save referral draft';
                 } else {
                     titleWrap.style.display = 'block';
                     titleInput.required = true;

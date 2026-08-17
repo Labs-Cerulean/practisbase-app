@@ -25,7 +25,7 @@
         </div>
         @if($entry->isStampable())
             <div style="background: #fffbeb; color: #92400e; padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.85rem;">
-                Draft — still editable until <strong>Stamp &amp; issue</strong>.
+                Draft — use <strong>Stamp &amp; issue</strong> when ready to confirm and share.
             </div>
         @endif
         @if($errors->any())
@@ -119,23 +119,25 @@
                 <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
             </div>
 
-            <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save changes</button>
+            <div style="display: grid; gap: 0.55rem;">
+                @if($entry->isStampable())
+                    <button type="submit" name="issue_now" value="1"
+                            onclick="return confirm('Confirm, stamp, and lock this document? It cannot be edited afterwards. Share opens next.');"
+                            style="width: 100%; padding: 0.9rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                        Stamp &amp; issue
+                    </button>
+                    <button type="submit" name="issue_now" value="0"
+                            style="width: 100%; padding: 0.75rem; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
+                        Save draft
+                    </button>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; text-align: center;">
+                        Stamp &amp; issue confirms now — Share is ready on the patient page.
+                    </p>
+                @else
+                    <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save changes</button>
+                @endif
+            </div>
         </form>
-
-        @if($entry->isStampable() && $entry->isEditable())
-            <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry->id }}/issue"
-                  method="POST"
-                  style="margin-top: 0.85rem;"
-                  onsubmit="return confirm('Stamp and issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');">
-                @csrf
-                <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">
-                    Stamp &amp; issue
-                </button>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.55rem 0 0; text-align: center;">
-                    Saves the lock now. PDF download starts on the patient page.
-                </p>
-            </form>
-        @endif
     </div>
 
     @if($isJournal)
