@@ -11,34 +11,13 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/medical/patients/{{ $patient->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit patient</a>
-            @php
-                $journalChrome = \App\Models\ClinicalEntry::typeChrome('journal');
-                $rxChrome = \App\Models\ClinicalEntry::typeChrome('prescription');
-                $refChrome = \App\Models\ClinicalEntry::typeChrome('referral');
-                $certChrome = \App\Models\ClinicalEntry::typeChrome('certificate');
-            @endphp
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=journal" style="background: {{ $journalChrome['soft'] }}; border: 1px solid {{ $journalChrome['border'] }}; color: {{ $journalChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Patient notes</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=prescription" style="background: {{ $rxChrome['badge_bg'] }}; color: {{ $rxChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Prescription</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=referral" style="background: {{ $refChrome['badge_bg'] }}; color: {{ $refChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Referral</a>
-            <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type=certificate" style="background: {{ $certChrome['badge_bg'] }}; color: {{ $certChrome['badge_fg'] }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none;">+ Certificate</a>
+            <a href="/pro/medical/stampables" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Documents</a>
         </div>
     </div>
 
     @if(session('success'))
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
-            <div style="font-weight: 700; margin-bottom: {{ session('issued_pdf_url') ? '0.65rem' : '0' }};">{{ session('success') }}</div>
-            @if(session('issued_pdf_url'))
-                @php
-                    $issuedType = session('issued_type', 'document');
-                    $issuedLabel = \App\Models\ClinicalEntry::TYPES[$issuedType] ?? 'Document';
-                @endphp
-                @include('pro.medical._issued-share', [
-                    'pdfUrl' => session('issued_pdf_url'),
-                    'issueCode' => session('issued_code', ''),
-                    'docLabel' => $issuedLabel,
-                    'patientTel' => $payload['tel'] ?? '',
-                ])
-            @endif
+            {{ session('success') }}
         </div>
     @endif
     @if($errors->any())
@@ -235,321 +214,129 @@
         </details>
     </div>
 
-    <h3 style="color: var(--primary-navy); margin-bottom: 0.35rem;">
-        Clinical entries
-        @include('partials.help-tip', ['text' => 'Prescriptions, referrals, and certificates stay editable until Stamp & issue. Patient notes stay editable. Browse all documents across patients in Documents.'])
-    </h3>
-    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.75rem;">
-        <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 700; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Documents</a>
-    </p>
-    @include('pro.medical._type-colour-key', ['includeJournal' => true, 'margin' => '0 0 1rem'])
-    @if($entries->isEmpty())
-        <p style="color: var(--text-muted);">No entries yet.</p>
-    @else
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
-            <div style="display: grid; gap: 0.65rem;">
-                <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: flex-end;">
-                    <div style="flex: 1; min-width: 180px;">
-                        <label for="entry-search" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Search</label>
-                        <input id="entry-search" type="search" placeholder="Search entries…"
-                               style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
-                    <button type="button" id="entry-advanced-toggle" aria-expanded="false" aria-controls="entry-advanced-filters"
-                            style="padding: 0.65rem 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 700; color: var(--primary-navy); cursor: pointer; font-size: 0.85rem;">
-                        Advanced
-                    </button>
-                </div>
-                <div id="entry-advanced-filters" style="display: none;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.65rem;">
-                        <div>
-                            <label for="entry-filter-type" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Type</label>
-                            <select id="entry-filter-type" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                                <option value="all">All types</option>
-                                @foreach(($entryTypes ?? []) as $typeKey => $typeLabel)
-                                    <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label for="entry-filter-status" style="display: block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem;">Status</label>
-                            <select id="entry-filter-status" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                                <option value="all">All</option>
-                                <option value="draft">Draft</option>
-                                <option value="issued">Issued</option>
-                                <option value="journal">Patient notes</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">
-                    Showing <strong id="entry-count-visible" style="color: var(--primary-navy);">{{ $entries->count() }}</strong> of {{ $entries->count() }}
-                    <button type="button" id="entry-filter-reset" style="margin-left: 0.75rem; background: none; border: none; color: var(--primary-cerulean); font-weight: 700; cursor: pointer; padding: 0;">Reset</button>
-                </div>
-            </div>
-        </div>
+    @php
+        $hubTabs = [
+            'prescription' => ['label' => 'Prescriptions', 'new' => '+ Prescription'],
+            'journal' => ['label' => 'Patient notes', 'new' => '+ Note'],
+            'referral' => ['label' => 'Referrals', 'new' => '+ Referral'],
+            'certificate' => ['label' => 'Certificates', 'new' => '+ Certificate'],
+        ];
+        $issuedTypeFlash = session('issued_type');
+        $initialHubTab = in_array($issuedTypeFlash, array_keys($hubTabs), true)
+            ? $issuedTypeFlash
+            : 'prescription';
+        $entriesByType = $entries->groupBy(fn ($row) => $row['model']->entry_type);
+    @endphp
 
-        <div id="entry-list" style="display: grid; gap: 0.75rem;">
-            @foreach($entries as $entry)
+    <div style="margin-top: 0.25rem; margin-bottom: 1rem;">
+        <div class="patient-hub-tabs" role="tablist" aria-label="Clinical document types"
+             style="display: flex; flex-wrap: wrap; gap: 0.15rem; border-bottom: 1px solid var(--border-light);">
+            @foreach($hubTabs as $tabKey => $tabMeta)
                 @php
-                    $type = $entry['model']->entry_type;
-                    $chrome = \App\Models\ClinicalEntry::typeChrome($type);
+                    $tabChrome = \App\Models\ClinicalEntry::typeChrome($tabKey);
+                    $tabCount = ($entriesByType->get($tabKey) ?? collect())->count();
                 @endphp
-                <div class="entry-row"
-                     data-title="{{ strtolower($entry['title']) }}"
-                     data-body="{{ strtolower($entry['body'] . ' ' . collect($entry['medicines'] ?? [])->pluck('name')->implode(' ')) }}"
-                     data-type="{{ $type }}"
-                     data-code="{{ strtolower($entry['issue_code'] ?? '') }}"
-                     data-status="{{ $entry['is_stampable'] ? ($entry['is_issued'] ? 'issued' : 'draft') : 'journal' }}"
-                     style="background: {{ $chrome['card_bg'] }}; border: 1px solid {{ $chrome['border'] }}; border-left: 6px solid {{ $chrome['accent'] }}; border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
-                        <div style="flex: 1; min-width: 180px;">
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.35rem;">
-                                <span style="display: inline-block; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.28rem 0.65rem; border-radius: 4px;">
-                                    {{ $entry['type_label'] }}
-                                </span>
-                                @if($entry['is_stampable'])
-                                    @if($entry['is_issued'])
-                                        <span style="font-size: 0.7rem; font-weight: 800; color: #065f46; text-transform: uppercase; background: #d1fae5; padding: 0.2rem 0.5rem; border-radius: 4px;">Issued</span>
-                                    @else
-                                        <span style="font-size: 0.7rem; font-weight: 800; color: #92400e; text-transform: uppercase; background: #fef3c7; padding: 0.2rem 0.5rem; border-radius: 4px;">Draft</span>
-                                    @endif
-                                @endif
-                            </div>
-                            <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['title'] }}</strong>
-                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
-                                {{ $entry['model']->entry_date->format('d M Y') }}
-                                @if($type === 'certificate' && !empty($entry['certificate_kind_label']))
-                                    · {{ $entry['certificate_kind_label'] }}
-                                @endif
-                                @if($type === 'certificate' && !empty($entry['subject_name']))
-                                    · Subject: {{ $entry['subject_name'] }}
-                                @endif
-                                @if($type === 'referral' && !empty($entry['referred_to']))
-                                    · To: {{ $entry['referred_to'] }}
-                                @endif
-                                @if(!empty($entry['expires_on']))
-                                    · Expires {{ \Illuminate\Support\Carbon::parse($entry['expires_on'])->format('d M Y') }}
-                                @endif
-                                @if($entry['is_issued'])
-                                    · Issued {{ $entry['issued_at']->format('d M Y H:i') }}
-                                    @if(!empty($entry['issue_code']))
-                                        · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: var(--primary-navy); font-weight: 700;">{{ $entry['issue_code'] }}</span>
-                                    @endif
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    @if($type === 'prescription' && ! empty($entry['medicines']))
-                        <div style="margin-top: 0.75rem; display: grid; gap: 0.55rem;">
-                            @foreach($entry['medicines'] as $mi => $med)
-                                <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.7rem 0.85rem;">
-                                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ $mi + 1 }}. Medicine</div>
-                                    <div style="font-weight: 700; color: var(--primary-navy); margin-top: 0.15rem;">
-                                        {{ $med['name'] }}
-                                        @if(($med['strength'] ?? '') !== '')
-                                            <span style="font-weight: 600; color: var(--text-muted);"> · {{ $med['strength'] }}</span>
-                                        @endif
-                                    </div>
-                                    @if(($med['dose'] ?? '') !== '')
-                                        <div style="font-size: 0.85rem; margin-top: 0.2rem;"><span style="color: var(--text-muted);">Dose:</span> {{ $med['dose'] }}</div>
-                                    @endif
-                                    @if(($med['quantity'] ?? '') !== '')
-                                        <div style="font-size: 0.85rem;"><span style="color: var(--text-muted);">Qty:</span> {{ $med['quantity'] }}</div>
-                                    @endif
-                                    @if(($med['instructions'] ?? '') !== '')
-                                        <div style="font-size: 0.85rem; white-space: pre-wrap;"><span style="color: var(--text-muted);">Directions:</span> {{ $med['instructions'] }}</div>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
-                        @if(! empty($entry['has_structured_medicines']) && trim((string) $entry['body']) !== '')
-                            <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">
-                                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Notes</span><br>
-                                {{ $entry['body'] }}
-                            </div>
-                        @endif
-                    @elseif(!empty($entry['fields']) && is_array($entry['fields']))
-                        @php
-                            $fieldDefs = [];
-                            if (!empty($entry['field_defs']) && is_array($entry['field_defs'])) {
-                                $fieldDefs = $entry['field_defs'];
-                            } else {
-                                $fieldDefs = \App\Support\ClinicalNoteTemplates::fieldsListFromMap(
-                                    \App\Support\ClinicalNoteTemplates::fields($entry['template'] ?? 'general')
-                                );
-                            }
-                            $templateLabel = $entry['template_name']
-                                ?? (\App\Support\ClinicalNoteTemplates::builtinOptions()[$entry['template'] ?? ''] ?? 'Consult');
-                        @endphp
-                        <div style="margin-top: 0.65rem; display: grid; gap: 0.55rem;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-                                {{ $templateLabel }}
-                            </div>
-                            @foreach($fieldDefs as $def)
-                                @php $fieldKey = is_array($def) ? ($def['key'] ?? '') : ''; @endphp
-                                @if($fieldKey !== '' && trim((string) ($entry['fields'][$fieldKey] ?? '')) !== '')
-                                    <div>
-                                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ $def['label'] ?? $fieldKey }}</div>
-                                        <div style="white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['fields'][$fieldKey] }}</div>
-                                    </div>
-                                @endif
-                            @endforeach
-                        </div>
-                    @else
-                        <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
-                    @endif
-
-                    @if($entry['is_stampable'])
-                        <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: {{ $chrome['soft'] }}; border: 1px solid {{ $chrome['border'] }}; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-main);">
-                            @if($entry['is_issued'])
-                                Issued {{ $entry['issue_code'] }} — PDF ready to download or share.
-                            @else
-                                Stamp &amp; issue locks the document and starts the PDF download.
-                            @endif
-                        </div>
-                    @endif
-
-                    <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                        @if($entry['is_editable'])
-                            <a href="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/edit"
-                               style="display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid var(--border-light); color: var(--primary-navy); border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; text-decoration: none;">
-                                Edit
-                            </a>
-                        @endif
-
-                        @if($entry['is_stampable'] && ! $entry['is_issued'])
-                            <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue"
-                                  method="post"
-                                  style="margin: 0; display: inline;">
-                                @csrf
-                                <button type="submit"
-                                        formmethod="post"
-                                        formaction="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/issue"
-                                        onclick="return confirm('Stamp and issue this document? A unique code and date will be printed on the PDF. It cannot be edited afterwards.');"
-                                        style="padding: 0.4rem 0.75rem; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">
-                                    Stamp &amp; issue
-                                </button>
-                            </form>
-                        @endif
-
-                        @if($entry['is_stampable'] && $entry['is_issued'])
-                            @include('pro.medical._issued-share', [
-                                'pdfUrl' => '/pro/medical/patients/'.$patient->id.'/entries/'.$entry['model']->id.'/pdf',
-                                'issueCode' => $entry['issue_code'] ?? '',
-                                'docLabel' => $entryTypes[$entry['model']->entry_type] ?? 'Document',
-                                'patientTel' => $payload['tel'] ?? '',
-                            ])
-                        @endif
-                    </div>
-
-                    @if(!empty($entry['attachments']) && count($entry['attachments']))
-                        <div style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border-light);">
-                            <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.4rem;">Attachments</div>
-                            <ul style="margin: 0; padding-left: 1.1rem;">
-                                @foreach($entry['attachments'] as $att)
-                                    <li style="margin-bottom: 0.25rem;">
-                                        <a href="/pro/medical/patients/{{ $patient->id }}/attachments/{{ $att['id'] }}/download"
-                                           style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">
-                                            {{ $att['name'] }}
-                                        </a>
-                                        <span style="font-size: 0.75rem; color: var(--text-muted);"> · {{ $att['mime'] }} · {{ number_format($att['byte_size'] / 1024, 1) }} KB ciphertext</span>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    @if($entry['is_editable'])
-                        <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/attachments"
-                              method="POST"
-                              enctype="multipart/form-data"
-                              style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border-light);">
-                            @csrf
-                            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">
-                                Add photo / scan
-                                @include('partials.help-tip', ['text' => 'JPEG, PNG, WebP, or PDF · max 10 MB. Stored encrypted in your vault.'])
-                            </label>
-                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                                <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" required
-                                       style="font-size: 0.85rem;">
-                                <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.45rem 0.85rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">
-                                    Attach
-                                </button>
-                            </div>
-                        </form>
-                    @endif
-                </div>
+                <button type="button"
+                        class="patient-hub-tab"
+                        role="tab"
+                        data-tab="{{ $tabKey }}"
+                        aria-selected="{{ $initialHubTab === $tabKey ? 'true' : 'false' }}"
+                        style="padding: 0.7rem 0.95rem; background: none; border: none; border-bottom: 2px solid {{ $initialHubTab === $tabKey ? $tabChrome['accent'] : 'transparent' }}; margin-bottom: -1px; font-weight: 700; font-size: 0.85rem; color: {{ $initialHubTab === $tabKey ? 'var(--primary-navy)' : 'var(--text-muted)' }}; cursor: pointer;">
+                    {{ $tabMeta['label'] }}
+                    <span style="font-weight: 600; color: var(--text-muted); margin-left: 0.25rem;">{{ $tabCount }}</span>
+                </button>
             @endforeach
         </div>
-        <div id="entry-empty-filter" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted); border: 2px dashed var(--border-light); border-radius: var(--radius-md); background: white; margin-top: 0.75rem;">
-            No entries match these filters.
+    </div>
+
+    @foreach($hubTabs as $tabKey => $tabMeta)
+        @php
+            $tabChrome = \App\Models\ClinicalEntry::typeChrome($tabKey);
+            $tabEntries = $entriesByType->get($tabKey) ?? collect();
+        @endphp
+        <div class="patient-hub-panel" data-tab-panel="{{ $tabKey }}" role="tabpanel"
+             style="display: {{ $initialHubTab === $tabKey ? 'block' : 'none' }};">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    @if($tabKey === 'journal')
+                        Notes stay editable.
+                    @else
+                        Drafts stay editable until Stamp &amp; issue.
+                    @endif
+                </div>
+                <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type={{ $tabKey }}"
+                   style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none; font-size: 0.85rem;">
+                    {{ $tabMeta['new'] }}
+                </a>
+            </div>
+
+            @if($tabEntries->isEmpty())
+                <p style="color: var(--text-muted); margin: 0 0 1.5rem;">Nothing here yet.</p>
+            @else
+                <div style="display: grid; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    @foreach($tabEntries as $entry)
+                        @include('pro.medical._patient-entry-card', [
+                            'entry' => $entry,
+                            'patient' => $patient,
+                            'payload' => $payload,
+                            'entryTypes' => $entryTypes ?? \App\Models\ClinicalEntry::TYPES,
+                            'expandShare' => (int) session('issued_entry_id') === (int) $entry['model']->id,
+                        ])
+                    @endforeach
+                </div>
+            @endif
         </div>
-
-        <script>
-            (function () {
-                var search = document.getElementById('entry-search');
-                var type = document.getElementById('entry-filter-type');
-                var status = document.getElementById('entry-filter-status');
-                var reset = document.getElementById('entry-filter-reset');
-                var list = document.getElementById('entry-list');
-                var countEl = document.getElementById('entry-count-visible');
-                var empty = document.getElementById('entry-empty-filter');
-                var advancedToggle = document.getElementById('entry-advanced-toggle');
-                var advancedPanel = document.getElementById('entry-advanced-filters');
-                if (!search || !list) return;
-
-                if (advancedToggle && advancedPanel) {
-                    advancedToggle.addEventListener('click', function () {
-                        var open = advancedPanel.style.display !== 'none';
-                        advancedPanel.style.display = open ? 'none' : 'block';
-                        advancedToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
-                        advancedToggle.textContent = open ? 'Advanced' : 'Hide filters';
-                    });
-                }
-
-                function apply() {
-                    var q = (search.value || '').trim().toLowerCase();
-                    var typeMode = type.value;
-                    var statusMode = status.value;
-                    var items = Array.prototype.slice.call(list.querySelectorAll('.entry-row'));
-                    var visible = 0;
-                    items.forEach(function (el) {
-                        var hay = [el.dataset.title, el.dataset.body, el.dataset.type, el.dataset.code || ''].join(' ');
-                        var matchQ = !q || hay.indexOf(q) !== -1;
-                        var matchType = typeMode === 'all' || el.dataset.type === typeMode;
-                        var matchStatus = statusMode === 'all' || el.dataset.status === statusMode;
-                        var show = matchQ && matchType && matchStatus;
-                        el.style.display = show ? 'block' : 'none';
-                        if (show) visible++;
-                    });
-                    countEl.textContent = String(visible);
-                    empty.style.display = visible === 0 ? 'block' : 'none';
-                }
-
-                search.addEventListener('input', apply);
-                type.addEventListener('change', apply);
-                status.addEventListener('change', apply);
-                reset.addEventListener('click', function () {
-                    search.value = '';
-                    type.value = 'all';
-                    status.value = 'all';
-                    apply();
-                });
-                apply();
-            })();
-        </script>
-    @endif
+    @endforeach
 
     <script>
         (function () {
-            function sharePdf(url, label, code) {
+            var tabChrome = {
+                prescription: '#0f766e',
+                journal: '#475569',
+                referral: '#1d4ed8',
+                certificate: '#15803d'
+            };
+
+            function activateTab(tab) {
+                document.querySelectorAll('.patient-hub-panel').forEach(function (panel) {
+                    panel.style.display = panel.getAttribute('data-tab-panel') === tab ? 'block' : 'none';
+                });
+                document.querySelectorAll('.patient-hub-tab').forEach(function (btn) {
+                    var on = btn.getAttribute('data-tab') === tab;
+                    var accent = tabChrome[btn.getAttribute('data-tab')] || 'var(--primary-cerulean)';
+                    btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                    btn.style.color = on ? 'var(--primary-navy)' : 'var(--text-muted)';
+                    btn.style.borderBottomColor = on ? accent : 'transparent';
+                });
+                if (history.replaceState) {
+                    history.replaceState(null, '', '#tab-' + tab);
+                }
+            }
+
+            document.querySelectorAll('.patient-hub-tab').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    activateTab(btn.getAttribute('data-tab'));
+                });
+            });
+
+            var hash = (location.hash || '').replace(/^#/, '');
+            if (hash.indexOf('tab-') === 0) {
+                var fromHash = hash.slice(4);
+                if (document.querySelector('.patient-hub-tab[data-tab="' + fromHash + '"]')) {
+                    activateTab(fromHash);
+                }
+            }
+
+            async function fetchPdfBlob(url) {
+                var res = await fetch(url, { credentials: 'same-origin' });
+                if (!res.ok) throw new Error('PDF fetch failed');
+                return await res.blob();
+            }
+
+            async function shareViaMessenger(url, label, code) {
                 try {
-                    var res = await fetch(url, { credentials: 'same-origin' });
-                    if (!res.ok) throw new Error('Download failed');
-                    var blob = await res.blob();
-                    var name = (code || 'document').replace(/[^\w\-]+/g, '_') + '.pdf';
-                    var file = new File([blob], name, { type: 'application/pdf' });
+                    var blob = await fetchPdfBlob(url);
+                    var file = new File([blob], (code || 'document').replace(/[^\w\-]+/g, '_') + '.pdf', { type: 'application/pdf' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
@@ -561,53 +348,101 @@
                 } catch (err) {
                     console.warn(err);
                 }
-                window.location = url;
+                // Fallback: download PDF, then open Messenger so the doctor can attach it.
+                window.open(url, '_blank');
+                window.open('https://www.messenger.com/', '_blank', 'noopener');
             }
 
-            document.querySelectorAll('.issued-share-actions').forEach(function (root) {
+            async function printPdf(url) {
+                try {
+                    var blob = await fetchPdfBlob(url);
+                    var objUrl = URL.createObjectURL(blob);
+                    var frame = document.createElement('iframe');
+                    frame.style.position = 'fixed';
+                    frame.style.right = '0';
+                    frame.style.bottom = '0';
+                    frame.style.width = '0';
+                    frame.style.height = '0';
+                    frame.style.border = '0';
+                    frame.src = objUrl;
+                    document.body.appendChild(frame);
+                    frame.onload = function () {
+                        try {
+                            frame.contentWindow.focus();
+                            frame.contentWindow.print();
+                        } catch (e) {
+                            window.open(objUrl, '_blank');
+                        }
+                        setTimeout(function () {
+                            try { frame.remove(); } catch (e2) {}
+                            URL.revokeObjectURL(objUrl);
+                        }, 60000);
+                    };
+                } catch (err) {
+                    console.warn(err);
+                    window.open(url, '_blank');
+                }
+            }
+
+            document.querySelectorAll('.issued-share').forEach(function (root) {
                 var url = root.getAttribute('data-pdf-url') || '';
                 var code = root.getAttribute('data-issue-code') || '';
                 var label = root.getAttribute('data-doc-label') || 'Document';
+                var toggle = root.querySelector('.share-toggle');
+                var menu = root.querySelector('.share-menu');
 
-                var shareBtn = root.querySelector('.share-native');
-                if (shareBtn) {
-                    shareBtn.addEventListener('click', function () {
-                        if (!url) return;
-                        sharePdf(url, label, code);
+                if (toggle && menu) {
+                    toggle.addEventListener('click', function () {
+                        var open = menu.style.display !== 'none' && !menu.hasAttribute('hidden');
+                        if (open) {
+                            menu.style.display = 'none';
+                            menu.setAttribute('hidden', 'hidden');
+                            toggle.setAttribute('aria-expanded', 'false');
+                        } else {
+                            menu.style.display = 'flex';
+                            menu.removeAttribute('hidden');
+                            toggle.setAttribute('aria-expanded', 'true');
+                        }
                     });
                 }
 
-                var copyBtn = root.querySelector('.share-copy-code');
-                if (copyBtn) {
-                    copyBtn.addEventListener('click', async function () {
-                        var value = copyBtn.getAttribute('data-code') || code;
-                        if (!value) return;
-                        try {
-                            await navigator.clipboard.writeText(value);
-                            var prev = copyBtn.textContent;
-                            copyBtn.textContent = 'Copied';
-                            setTimeout(function () { copyBtn.textContent = prev; }, 1200);
-                        } catch (e) {
-                            window.prompt('Copy issue code', value);
-                        }
+                var messenger = root.querySelector('.share-messenger');
+                if (messenger) {
+                    messenger.addEventListener('click', function () {
+                        if (!url) return;
+                        shareViaMessenger(url, label, code);
+                    });
+                }
+
+                var printBtn = root.querySelector('.share-print');
+                if (printBtn) {
+                    printBtn.addEventListener('click', function () {
+                        if (!url) return;
+                        printPdf(url);
+                    });
+                }
+
+                var emailBtn = root.querySelector('.share-email');
+                if (emailBtn && url) {
+                    emailBtn.addEventListener('click', function () {
+                        // Kick off PDF download so the doctor can attach it to the draft email.
+                        var frame = document.createElement('iframe');
+                        frame.style.display = 'none';
+                        frame.src = url;
+                        document.body.appendChild(frame);
+                        setTimeout(function () { try { frame.remove(); } catch (e) {} }, 60000);
                     });
                 }
             });
 
-            @if(session('issued_pdf_url'))
+            @if(session('issued_entry_id'))
             (function () {
-                var autoUrl = @json(session('issued_pdf_url'));
-                if (!autoUrl) return;
-                // Start PDF download without leaving the patient page (share actions stay visible).
-                setTimeout(function () {
-                    var frame = document.createElement('iframe');
-                    frame.style.display = 'none';
-                    frame.src = autoUrl;
-                    document.body.appendChild(frame);
+                var el = document.getElementById('entry-{{ (int) session('issued_entry_id') }}');
+                if (el) {
                     setTimeout(function () {
-                        try { frame.remove(); } catch (e) {}
-                    }, 60000);
-                }, 250);
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 120);
+                }
             })();
             @endif
         })();

@@ -123,10 +123,11 @@ class ClinicalEntryController extends Controller
         }
 
         $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
-            ? 'Draft ' . (ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document') . ' saved. Edit until Stamp & issue — then it locks and gets an issue code on the PDF.'
-            : 'Journal note saved encrypted in your vault.';
+            ? 'Draft ' . (ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document') . ' saved.'
+            : 'Patient note saved.';
 
-        return redirect('/pro/medical/patients/' . $patient->id)->with('success', $msg);
+        return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$validated['entry_type'])
+            ->with('success', $msg);
     }
 
     public function edit(Patient $patient, ClinicalEntry $entry)
@@ -203,7 +204,7 @@ class ClinicalEntryController extends Controller
             PrescriptionCatalogItem::rememberForUser($user->id, $validated['medicines']);
         }
 
-        return redirect('/pro/medical/patients/' . $patient->id)
+        return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$entry->entry_type)
             ->with('success', 'Entry updated.');
     }
 
@@ -236,8 +237,8 @@ class ClinicalEntryController extends Controller
 
         $pdfUrl = '/pro/medical/patients/'.$patient->id.'/entries/'.$entry->id.'/pdf';
 
-        return redirect('/pro/medical/patients/'.$patient->id)
-            ->with('success', 'Stamped and issued as '.$entry->issue_code.'.')
+        return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$entry->entry_type)
+            ->with('success', 'Stamped and issued as '.$entry->issue_code.'. Share when ready.')
             ->with('issued_pdf_url', $pdfUrl)
             ->with('issued_entry_id', $entry->id)
             ->with('issued_code', $entry->issue_code)
