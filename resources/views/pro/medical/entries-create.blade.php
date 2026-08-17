@@ -133,6 +133,7 @@
             var titleLabel = document.getElementById('title-label');
             var bodyLabel = document.getElementById('body-label');
             var titleInput = document.getElementById('title');
+            var bodyWrap = document.getElementById('body-wrap');
             var bodyInput = document.getElementById('body');
             var submitBtn = document.getElementById('submit-btn');
             var stampNote = document.getElementById('stamp-note');
@@ -207,7 +208,9 @@
                     subjectEl.value = defaultSubject;
                 }
                 bodyInput.required = (t !== 'prescription' && t !== 'journal');
-                bodyInput.rows = t === 'prescription' || t === 'journal' ? 3 : 8;
+                bodyInput.rows = t === 'journal' ? 3 : 8;
+                if (bodyWrap) bodyWrap.style.display = t === 'prescription' ? 'none' : 'block';
+                if (t === 'prescription') bodyInput.value = '';
 
                 if (t === 'journal') {
                     titleWrap.style.display = 'none';
@@ -228,7 +231,6 @@
                     titleInput.required = false;
                     if (titleInput.value === 'Patient note') titleInput.value = '';
                     dateLabel.textContent = 'Date *';
-                    bodyLabel.innerHTML = 'Notes';
                 } else if (t === 'referral') {
                     titleWrap.style.display = 'block';
                     titleInput.required = true;

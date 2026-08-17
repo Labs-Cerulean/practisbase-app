@@ -335,7 +335,8 @@ class ClinicalEntryController extends Controller
 
             $validated['medicines'] = $medicines;
             $validated['title'] = ClinicalEntry::prescriptionSummaryTitle($medicines, $validated['title'] ?? null);
-            $validated['body'] = trim((string) ($validated['body'] ?? ''));
+            // Per-medicine Directions/notes only — no separate bottom Notes field.
+            $validated['body'] = '';
         }
 
         if ($type === 'journal') {
