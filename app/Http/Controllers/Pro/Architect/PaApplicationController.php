@@ -36,8 +36,12 @@ class PaApplicationController extends Controller
             ...$validated,
         ]);
 
+        $phaseNote = $project->syncPhaseFromCase($pa)
+            ? ' Project phase advanced to match.'
+            : '';
+
         return redirect('/pro/architect/pa/'.$pa->id)
-            ->with('success', 'Case saved. You can add the number later if it is still pending.');
+            ->with('success', 'Case saved. You can add the number later if it is still pending.'.$phaseNote);
     }
 
     public function show(ArchitectPaApplication $pa)
@@ -75,9 +79,15 @@ class PaApplicationController extends Controller
         $this->assertPaOwned($pa);
         $validated = $this->validatePa($request, Auth::id(), $pa->id);
         $pa->update($validated);
+        $pa->refresh();
+
+        $project = $pa->project;
+        $phaseNote = $project && $project->syncPhaseFromCase($pa)
+            ? ' Project phase advanced to match.'
+            : '';
 
         return redirect('/pro/architect/pa/'.$pa->id)
-            ->with('success', 'Case updated.');
+            ->with('success', 'Case updated.'.$phaseNote);
     }
 
     private function validatePa(Request $request, int $userId, ?int $ignoreId = null): array

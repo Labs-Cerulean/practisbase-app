@@ -116,7 +116,7 @@ class ProjectController extends Controller
 
         $project = ArchitectProject::create([
             'user_id' => $user->id,
-            ...$validated,
+            ...ArchitectProject::applyProgressToPhase($validated),
         ]);
 
         return redirect('/pro/architect/projects/'.$project->id)
@@ -166,7 +166,7 @@ class ProjectController extends Controller
     {
         $this->assertOwned($project);
         $validated = $this->validateProject($request, Auth::id());
-        $project->update($validated);
+        $project->update(ArchitectProject::applyProgressToPhase($validated, $project));
 
         return redirect('/pro/architect/projects/'.$project->id)
             ->with('success', 'Project updated.');

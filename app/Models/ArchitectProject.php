@@ -46,9 +46,18 @@ class ArchitectProject extends Model
     public const PHASES = [
         'concept' => 'Concept',
         'permit' => 'Permit / PA',
+        'bca' => 'BCA / Method Statement',
         'construction' => 'Construction',
         'completion' => 'Completion',
-        'bca' => 'BCA / Method Statement',
+    ];
+
+    /** Natural perit sequence — used for auto-advance (never steps backwards). */
+    public const PHASE_ORDER = [
+        'concept',
+        'permit',
+        'bca',
+        'construction',
+        'completion',
     ];
 
     public static function engagementLabel(?string $key): string
@@ -66,6 +75,83 @@ class ArchitectProject extends Model
         'completed' => 'Completed',
         'archived' => 'Archived',
     ];
+
+    /**
+     * Move phase forward only (Concept → … → Completion). Returns true if changed.
+     */
+    public function advancePhaseTo(string $target): bool
+    {
+        if (! array_key_exists($target, self::PHASES)) {
+            return false;
+        }
+
+        $order = array_flip(self::PHASE_ORDER);
+        $currentIdx = $order[$this->phase] ?? -1;
+        $targetIdx = $order[$target] ?? -1;
+
+        if ($targetIdx < 0 || $targetIdx <= $currentIdx) {
+            return false;
+        }
+
+        $this->phase = $target;
+
+        return true;
+    }
+
+    /**
+     * Apply project status / commencement cues to phase.
+     * Soft rules only — never moves the phase backwards.
+     *
+     * @param  array{status?: ?string, commencement_date?: mixed, phase?: ?string}  $input
+     * @return array{status?: ?string, commencement_date?: mixed, phase?: ?string}
+     */
+    public static function applyProgressToPhase(array $input, ?self $existing = null): array
+    {
+        $phase = $input['phase'] ?? $existing?->phase ?? 'concept';
+        $status = $input['status'] ?? $existing?->status ?? 'active';
+        $commencement = $input['commencement_date'] ?? $existing?->commencement_date;
+
+        if ($status === 'completed') {
+            $phase = 'completion';
+        } elseif (filled($commencement)) {
+            $order = array_flip(self::PHASE_ORDER);
+            $currentIdx = $order[$phase] ?? 0;
+            $constructionIdx = $order['construction'] ?? 3;
+            if ($currentIdx < $constructionIdx) {
+                $phase = 'construction';
+            }
+        }
+
+        $input['phase'] = $phase;
+
+        return $input;
+    }
+
+    /**
+     * When a planning case moves forward, nudge the parent project phase.
+     */
+    public function syncPhaseFromCase(ArchitectPaApplication $case): bool
+    {
+        $changed = false;
+
+        if (in_array($case->status, ['decided', 'endorsed', 'fee_payment'], true)) {
+            $changed = $this->advancePhaseTo('bca') || $changed;
+        }
+
+        if ($case->works_commencement_date) {
+            $changed = $this->advancePhaseTo('construction') || $changed;
+        }
+
+        if (in_array($case->status, ['tracking', 'pending', 'recommended', 'active'], true)) {
+            $changed = $this->advancePhaseTo('permit') || $changed;
+        }
+
+        if ($changed) {
+            $this->save();
+        }
+
+        return $changed;
+    }
 
     public function user(): BelongsTo
     {
