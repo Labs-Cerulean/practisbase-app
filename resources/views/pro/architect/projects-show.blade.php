@@ -16,7 +16,8 @@
         </div>
         <div class="eng-desktop-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/pro/architect/projects/{{ $project->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit</a>
-            <a href="/pro/architect/projects/{{ $project->id }}/pa/create" style="background: #3f6212; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ PA</a>
+            <a href="/pro/architect/projects/{{ $project->id }}/pa/create" style="background: #3f6212; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">+ Case</a>
+            <a href="{{ $mapServerUrl }}" target="_blank" rel="noopener noreferrer" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">PA MapServer ↗</a>
             <a href="/pro/architect/templates" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Templates</a>
         </div>
     </div>
@@ -36,8 +37,8 @@
             <span>Drawing / upload</span>
         </a>
         <a href="/pro/architect/projects/{{ $project->id }}/pa/create">
-            PA
-            <span>Number optional</span>
+            Case
+            <span>PA / PC / DN</span>
         </a>
     </nav>
 
@@ -47,18 +48,29 @@
 
     <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.25rem;" class="arch-split">
         <div style="display: grid; gap: 1.25rem;">
+            @if($project->hasMapPin())
+                <section>
+                    @include('pro.architect.partials.portfolio-map', [
+                        'mapId' => 'arch-project-map',
+                        'pins' => [array_merge($project->mapPinPayload(), ['name' => $project->name])],
+                        'height' => '240px',
+                        'mapServerUrl' => $mapServerUrl,
+                    ])
+                </section>
+            @endif
+
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
-                <h2 style="margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--primary-navy);">PA applications</h2>
+                <h2 style="margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--primary-navy);">Planning cases</h2>
                 @if($project->paApplications->isEmpty())
                     <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-                        No PA yet — that is fine. Start the project now and add the PA number when Planning Authority issues it.
+                        No PA / PC / DN yet — that is fine. Start the project now and add the case number when Planning Authority issues it.
                     </p>
                 @else
                     <div style="display: grid; gap: 0.5rem;">
                         @foreach($project->paApplications as $pa)
                             <a href="/pro/architect/pa/{{ $pa->id }}" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; text-decoration: none;">
                                 <div style="font-weight: 700; color: var(--primary-navy);">{{ $pa->displayLabel() }}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ $pa->title ?: 'No title' }} · {{ $statuses[$pa->status] ?? $pa->status }}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ $pa->title ?: 'No title' }} · {{ $paStatuses[$pa->status] ?? $pa->statusLabel() }}</div>
                             </a>
                         @endforeach
                     </div>

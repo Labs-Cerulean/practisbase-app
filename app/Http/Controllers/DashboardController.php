@@ -73,7 +73,7 @@ class DashboardController extends Controller
             $growth = PracticeGrowth::forMedical($userId);
         } elseif ($hasPractice && $package === 'arch' && $user->canAccessProPackage('arch')) {
             $practiceDesk = $this->architectDesk($userId);
-            $growth = PracticeGrowth::forClients($userId);
+            $growth = null;
         } elseif ($hasPractice && $package === 'eng' && $user->canAccessProPackage('eng')) {
             $practiceDesk = $this->engineerDesk($userId);
             $growth = PracticeGrowth::forClients($userId);
@@ -214,19 +214,50 @@ class DashboardController extends Controller
     private function architectDesk(int $userId): array
     {
         $projects = ArchitectProject::where('user_id', $userId)
-            ->with('client')
+            ->with(['client', 'paApplications'])
             ->orderByDesc('updated_at')
-            ->limit(5)
+            ->limit(8)
             ->get();
+
+        $attentionCases = \App\Models\ArchitectPaApplication::where('user_id', $userId)
+            ->whereIn('status', \App\Models\ArchitectPaApplication::OPEN_STATUSES)
+            ->with('project')
+            ->orderByDesc('updated_at')
+            ->limit(8)
+            ->get();
+
+        $mapPins = ArchitectProject::where('user_id', $userId)
+            ->with('client')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->orderByDesc('updated_at')
+            ->limit(200)
+            ->get()
+            ->map(fn (ArchitectProject $p) => $p->mapPinPayload())
+            ->filter()
+            ->values()
+            ->all();
+
+        $endorsedReady = \App\Models\ArchitectPaApplication::where('user_id', $userId)
+            ->where('status', 'endorsed')
+            ->count();
 
         return [
             'kind' => 'arch',
-            'title' => 'Studio desk',
+            'title' => 'Studio portfolio',
             'client_count' => \App\Models\Client::where('user_id', $userId)->count(),
             'project_count' => ArchitectProject::where('user_id', $userId)->count(),
             'pa_count' => \App\Models\ArchitectPaApplication::where('user_id', $userId)->count(),
+            'open_pa_count' => \App\Models\ArchitectPaApplication::where('user_id', $userId)
+                ->whereIn('status', \App\Models\ArchitectPaApplication::OPEN_STATUSES)
+                ->count(),
+            'pinned_count' => count($mapPins),
+            'endorsed_count' => $endorsedReady,
             'active_count' => ArchitectProject::where('user_id', $userId)->where('status', 'active')->count(),
             'recent_projects' => $projects,
+            'attention_cases' => $attentionCases,
+            'map_pins' => $mapPins,
+            'map_server_url' => \App\Support\Architect\MapServerLink::home(),
         ];
     }
 

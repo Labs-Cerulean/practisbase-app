@@ -1,0 +1,51 @@
+{{-- Read-only portfolio map. Expects: $mapId, $pins (array), optional $height, $mapServerUrl --}}
+@php
+    $mapId = $mapId ?? 'arch-map';
+    $pins = $pins ?? [];
+    $height = $height ?? '320px';
+    $mapServerUrl = $mapServerUrl ?? \App\Support\Architect\MapServerLink::home();
+@endphp
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border-light);">
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--primary-navy);">
+            {{ count($pins) }} site{{ count($pins) === 1 ? '' : 's' }} on map
+        </div>
+        <a href="{{ $mapServerUrl }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-decoration: none;">Open PA MapServer ↗</a>
+    </div>
+    <div id="{{ $mapId }}" style="height: {{ $height }}; width: 100%; background: #e8eef5;"></div>
+    @if(count($pins) === 0)
+        <div style="padding: 0.65rem 0.85rem; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border-light);">
+            Pin a site when editing a project — drop a marker on Malta or Gozo.
+        </div>
+    @endif
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+(function () {
+    var el = document.getElementById(@json($mapId));
+    if (!el || typeof L === 'undefined') return;
+    var pins = @json($pins);
+    var map = L.map(el, { scrollWheelZoom: false }).setView([35.94, 14.38], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    var bounds = [];
+    pins.forEach(function (pin) {
+        var m = L.marker([pin.lat, pin.lng]).addTo(map);
+        var label = '<strong>' + (pin.name || 'Project') + '</strong>';
+        if (pin.client) label += '<br>' + pin.client;
+        if (pin.locality) label += '<br>' + pin.locality;
+        label += '<br><a href="' + pin.href + '">Open project</a>';
+        m.bindPopup(label);
+        bounds.push([pin.lat, pin.lng]);
+    });
+    if (bounds.length === 1) {
+        map.setView(bounds[0], 15);
+    } else if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+    }
+    setTimeout(function () { map.invalidateSize(); }, 80);
+})();
+</script>

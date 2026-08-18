@@ -306,6 +306,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::put('/projects/{project}', [ArchitectProjectController::class, 'update']);
         Route::post('/projects/{project}/parties', [ArchitectProjectController::class, 'storeParty']);
         Route::delete('/projects/{project}/parties/{party}', [ArchitectProjectController::class, 'destroyParty']);
+        Route::get('/geocode/reverse', [ArchitectProjectController::class, 'reverseGeocode']);
 
         Route::get('/projects/{project}/pa/create', [ArchitectPaController::class, 'create']);
         Route::post('/projects/{project}/pa', [ArchitectPaController::class, 'store']);
