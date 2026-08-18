@@ -129,7 +129,7 @@ class VaultController extends Controller
             ->with('success', 'Recovery code save confirmed. Keep weekly backups — Labs cannot reset a lost code.');
     }
 
-    public function unlockForm()
+    public function unlockForm(Request $request)
     {
         $user = Auth::user();
         $vault = MedicalVault::activeForUser($user->id);
@@ -143,12 +143,13 @@ class VaultController extends Controller
                 return redirect('/pro/medical/vault/reveal');
             }
 
-            return redirect('/pro/medical/patients');
+            return redirect($this->safeReturnPath($request->query('return'), '/pro/medical/patients'));
         }
 
         return view('pro.medical.vault-unlock', [
             'vault' => $vault,
             'backupOverdue' => $vault->isBackupOverdue(),
+            'returnPath' => $this->safeReturnPath($request->query('return'), null),
         ]);
     }
 
@@ -163,6 +164,7 @@ class VaultController extends Controller
 
         $request->validate([
             'recovery_code' => 'required|string|max:100',
+            'return' => 'nullable|string|max:255',
         ]);
 
         if (! MedicalVaultCrypto::matches($request->recovery_code, $vault->recovery_verifier)) {
@@ -180,9 +182,32 @@ class VaultController extends Controller
             return redirect('/pro/medical/vault/reveal');
         }
 
-        return redirect('/pro/medical/patients')
+        $dest = $this->safeReturnPath($request->input('return'), '/pro/medical/patients');
+
+        return redirect($dest)
             ->with('success', 'Medical vault unlocked for this session.')
             ->with('offer_device_trust', true);
+    }
+
+    /**
+     * Allow only same-site relative paths (optionally with a hash).
+     */
+    private function safeReturnPath(mixed $path, ?string $fallback): ?string
+    {
+        if (! is_string($path)) {
+            return $fallback;
+        }
+
+        $path = trim($path);
+        if ($path === '' || ! str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            return $fallback;
+        }
+
+        if (preg_match('/[\x00-\x1f\x7f]/', $path)) {
+            return $fallback;
+        }
+
+        return $path;
     }
 
     /**

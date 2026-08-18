@@ -12,7 +12,7 @@
 
         @if($backupOverdue ?? false)
             <div style="background: #fef2f2; color: #991b1b; padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem; border-left: 4px solid #ef4444; font-size: 0.85rem;">
-                Weekly backup is overdue (or never done). After unlock, download a backup from Patients.
+                Weekly backup is overdue (or never done). After unlock, download a backup from Backup.
             </div>
         @endif
 
@@ -44,6 +44,9 @@
 
         <form action="/pro/medical/vault/unlock" method="POST" id="vault-unlock-form" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other">
             @csrf
+            @if(! empty($returnPath))
+                <input type="hidden" name="return" value="{{ $returnPath }}">
+            @endif
             <label for="recovery_code" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Medical vault recovery code</label>
             <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
                 <input type="text"
@@ -129,7 +132,9 @@
                     }
                     return result;
                 }).then(function (result) {
-                    window.location.href = (result && result.redirect) ? result.redirect : '/pro/medical/patients';
+                    var fallback = '/pro/medical/patients';
+                    var preferred = @json($returnPath ?? null);
+                    window.location.href = preferred || ((result && result.redirect) ? result.redirect : fallback);
                 }).catch(function (e) {
                     err.textContent = e.message || 'Device unlock failed.';
                     err.style.display = 'block';

@@ -83,10 +83,6 @@ class ClinicalNoteTemplateController extends Controller
             return back()->withErrors(['fields' => 'Add at least one labelled field.'])->withInput();
         }
 
-        if ($this->nameTaken($user->id, $validated['name'])) {
-            return back()->withErrors(['name' => 'You already have a template with that name.'])->withInput();
-        }
-
         $maxSort = (int) ClinicalNoteTemplate::where('user_id', $user->id)->max('sort_order');
 
         ClinicalNoteTemplate::create([

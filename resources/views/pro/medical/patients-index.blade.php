@@ -158,6 +158,12 @@
                         <div style="font-weight: 700; color: var(--primary-navy);">{{ $row['display_name'] }}</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
                             Patient ref {{ $row['public_ref'] }}
+                            @if(! empty($row['id_card']))
+                                · ID {{ $row['id_card'] }}
+                            @endif
+                            @if(! empty($row['tel']))
+                                · {{ $row['tel'] }}
+                            @endif
                             @if($row['date_of_birth'])
                                 · DOB {{ \Illuminate\Support\Carbon::parse($row['date_of_birth'])->format('d M Y') }}
                             @endif

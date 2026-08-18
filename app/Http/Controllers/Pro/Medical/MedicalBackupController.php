@@ -30,17 +30,23 @@ class MedicalBackupController extends Controller
             return redirect('/pro/medical/vault/setup');
         }
 
-        $request->validate([
-            'recovery_code' => 'required|string|max:100',
-        ]);
+        $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
 
-        if (! MedicalVaultCrypto::matches($request->recovery_code, $vault->recovery_verifier)) {
-            return back()->withErrors([
-                'recovery_code' => 'That recovery code does not match this vault. No backup was created.',
+        if (! $key) {
+            $request->validate([
+                'recovery_code' => 'required|string|max:100',
             ]);
+
+            if (! MedicalVaultCrypto::matches($request->recovery_code, $vault->recovery_verifier)) {
+                return back()->withErrors([
+                    'recovery_code' => 'That recovery code does not match this vault. No backup was created.',
+                ]);
+            }
+
+            $key = MedicalVaultCrypto::deriveKey($request->recovery_code);
+            $request->session()->put('medical_vault_key', base64_encode($key));
         }
 
-        $key = MedicalVaultCrypto::deriveKey($request->recovery_code);
         $zip = new SimpleZipWriter;
 
         $patients = Patient::where('user_id', $user->id)
