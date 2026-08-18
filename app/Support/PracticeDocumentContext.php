@@ -110,10 +110,11 @@ class PracticeDocumentContext
         };
 
         $commencement = '';
-        if ($project->commencement_date) {
-            $commencement = 'Commencement '.$project->commencement_date->format('d/m/Y');
-        } elseif ($pa?->works_commencement_date) {
-            $commencement = 'Commencement '.$pa->works_commencement_date->format('d/m/Y');
+        if ($pa?->works_commencement_date) {
+            $commencement = 'Works on site from '.$pa->works_commencement_date->format('d/m/Y');
+        } elseif ($project->commencement_date) {
+            // Legacy project-level date (no longer collected on the form).
+            $commencement = 'Works on site from '.$project->commencement_date->format('d/m/Y');
         }
 
         return [

@@ -303,7 +303,6 @@ class ProjectController extends Controller
             'site_address' => 'nullable|string|max:2000',
             'latitude' => 'nullable|numeric|between:35.7,36.2',
             'longitude' => 'nullable|numeric|between:14.1,14.7',
-            'commencement_date' => 'nullable|date|before_or_equal:today',
             'notes' => 'nullable|string|max:5000',
         ]);
 
