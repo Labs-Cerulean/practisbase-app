@@ -213,7 +213,7 @@
                         <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['project_count'] }}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted);">Open cases</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">PAs in process</div>
                         <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['open_pa_count'] ?? 0 }}</div>
                     </div>
                     <div>
@@ -236,9 +236,9 @@
                         ])
                     </div>
                     <div>
-                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.55rem;">Needs attention</div>
+                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.55rem;">PAs in process</div>
                         @if(($practiceDesk['attention_cases'] ?? collect())->isEmpty())
-                            <p style="margin: 0 0 0.85rem; color: var(--text-muted); font-size: 0.88rem;">No open PA/PC/DN cases waiting. Add a case on a project when submitted.</p>
+                            <p style="margin: 0 0 0.85rem; color: var(--text-muted); font-size: 0.88rem;">No PA/PC/DN cases in process. Add a case on a project when submitted.</p>
                         @else
                             <div style="display: grid; gap: 0.35rem; margin-bottom: 0.85rem;">
                                 @foreach($practiceDesk['attention_cases'] as $case)
