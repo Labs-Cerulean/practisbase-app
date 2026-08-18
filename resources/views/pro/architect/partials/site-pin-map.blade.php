@@ -14,7 +14,7 @@
             <a href="{{ $mapServerUrl }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-decoration: none;">PA MapServer ↗</a>
         </div>
     </div>
-    <p style="margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--text-muted);">Click the map to drop a pin. Street and locality fill from the map point when empty.</p>
+    <p style="margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--text-muted);">Click or drag the pin — street and locality update from the map point (edit afterwards if needed).</p>
     <div id="arch-site-pin-map" style="height: 280px; width: 100%; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #e8eef5;"></div>
     <input type="hidden" name="latitude" id="site_latitude" value="{{ $pinLat }}">
     <input type="hidden" name="longitude" id="site_longitude" value="{{ $pinLng }}">
