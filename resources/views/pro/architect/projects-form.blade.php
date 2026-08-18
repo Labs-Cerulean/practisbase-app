@@ -132,11 +132,17 @@
             if (!field || !btn || !clientSelect) return;
 
             var lastGenerated = '';
-            var autoFollow = isCreate && !field.value.trim();
+            var manualEdit = false;
+            var reqSeq = 0;
             var timer = null;
 
             function setGuide(text) {
                 if (guide) guide.textContent = text;
+            }
+
+            function isAutoValue() {
+                var current = field.value.trim();
+                return current === '' || current === lastGenerated;
             }
 
             function buildQuery() {
@@ -149,64 +155,80 @@
                 return params.toString();
             }
 
-            function applySuggestion(data, force) {
-                if (!data || !data.reference_code) return;
-                var next = data.reference_code;
-                if (force || autoFollow || !field.value.trim() || field.value.trim() === lastGenerated) {
+            function applySuggestion(data, seq) {
+                if (seq !== reqSeq) return;
+                if (!data || !data.ok || !data.reference_code) {
+                    setGuide('Could not generate reference — enter one manually.');
+                    return;
+                }
+                var next = String(data.reference_code);
+                if (!manualEdit || isAutoValue()) {
                     field.value = next;
                     lastGenerated = next;
-                    autoFollow = true;
+                    manualEdit = false;
                 }
-                setGuide('Next: ' + next + ' — 4-letter parts + number. Edit freely or click Generate.');
+                setGuide('Next: ' + next + ' — updates with client/locality. Edit freely or click Generate.');
             }
 
-            function fetchSuggestion(force) {
+            function fetchSuggestion() {
+                var seq = ++reqSeq;
                 btn.disabled = true;
                 fetch(suggestUrl + '?' + buildQuery(), {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    credentials: 'same-origin'
+                    credentials: 'same-origin',
+                    cache: 'no-store'
                 })
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (data && data.ok) applySuggestion(data, !!force);
-                        else setGuide('Could not generate reference — enter one manually.');
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('suggest failed');
+                        return r.json();
                     })
+                    .then(function (data) { applySuggestion(data, seq); })
                     .catch(function () {
+                        if (seq !== reqSeq) return;
                         setGuide('Could not generate reference — enter one manually.');
                     })
-                    .finally(function () { btn.disabled = false; });
+                    .finally(function () {
+                        if (seq === reqSeq) btn.disabled = false;
+                    });
             }
 
-            function scheduleSuggest() {
-                if (!autoFollow && field.value.trim() && field.value.trim() !== lastGenerated) {
+            function scheduleSuggest(force) {
+                if (!force && manualEdit && !isAutoValue()) {
                     setGuide('Manual reference kept. Click Generate to replace (4-letter parts + number).');
                     return;
                 }
+                if (force) manualEdit = false;
                 clearTimeout(timer);
-                timer = setTimeout(function () { fetchSuggestion(false); }, 280);
+                timer = setTimeout(fetchSuggestion, 180);
             }
 
             btn.addEventListener('click', function () {
-                autoFollow = true;
-                fetchSuggestion(true);
+                manualEdit = false;
+                scheduleSuggest(true);
             });
 
             field.addEventListener('input', function () {
-                if (field.value.trim() === '' || field.value.trim() === lastGenerated) {
-                    autoFollow = true;
-                } else {
-                    autoFollow = false;
-                }
+                var current = field.value.trim();
+                manualEdit = current !== '' && current !== lastGenerated;
             });
 
-            clientSelect.addEventListener('change', scheduleSuggest);
+            clientSelect.addEventListener('change', function () {
+                scheduleSuggest(false);
+            });
             if (localityInput) {
-                localityInput.addEventListener('input', scheduleSuggest);
-                localityInput.addEventListener('change', scheduleSuggest);
+                localityInput.addEventListener('input', function () {
+                    scheduleSuggest(false);
+                });
+                localityInput.addEventListener('change', function () {
+                    scheduleSuggest(false);
+                });
             }
 
             if (isCreate && !field.value.trim()) {
-                fetchSuggestion(true);
+                manualEdit = false;
+                fetchSuggestion();
+            } else if (field.value.trim()) {
+                lastGenerated = field.value.trim();
             }
         })();
         </script>
