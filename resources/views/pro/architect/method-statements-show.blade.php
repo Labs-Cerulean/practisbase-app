@@ -53,7 +53,7 @@
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; font-size: 0.88rem;">
                 <div><div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">ISSUED</div>{{ $statement->issued_on->format('d M Y') }}</div>
-                <div><div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">COMMENCEMENT</div>{{ $statement->commencement_note ?: '—' }}</div>
+                <div><div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">WORKS START</div>{{ $statement->commencement_note ?: '—' }}</div>
                 @if($statement->paApplication)
                     <div><div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">PA</div>{{ $statement->paApplication->displayLabel() }}</div>
                 @endif

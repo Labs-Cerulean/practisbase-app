@@ -55,25 +55,36 @@
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Phase</label>
-                        <select name="phase" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <select name="phase" id="project_phase" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                             @foreach($phases as $key => $label)
                                 <option value="{{ $key }}" @selected(old('phase', $project->phase ?? 'concept') === $key)>{{ $label }}</option>
                             @endforeach
                         </select>
+                        <div id="phase_hint" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Natural order: Concept → Permit → BCA → Construction → Completion.</div>
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Status</label>
-                        <select name="status" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <select name="status" id="project_status" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                             @foreach($statuses as $key => $label)
                                 <option value="{{ $key }}" @selected(old('status', $project->status ?? 'active') === $key)>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Commencement</label>
-                        <input type="date" name="commencement_date" max="{{ date('Y-m-d') }}" value="{{ old('commencement_date', optional($project->commencement_date ?? null)->format('Y-m-d')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
                 </div>
+                <script>
+                (function () {
+                    var phase = document.getElementById('project_phase');
+                    var status = document.getElementById('project_status');
+                    var hint = document.getElementById('phase_hint');
+                    if (!phase || !status) return;
+                    status.addEventListener('change', function () {
+                        if (status.value === 'completed') {
+                            phase.value = 'completion';
+                            if (hint) hint.textContent = 'Completed projects sit in Completion. Construction starts when a PA case records works on site.';
+                        }
+                    });
+                })();
+                </script>
                 <div style="padding-top: 0.35rem; border-top: 1px solid #e2e8f0;">
                     <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.55rem;">Site</div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;">

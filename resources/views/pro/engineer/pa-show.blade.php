@@ -31,7 +31,7 @@
     <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); margin-bottom: 1rem;">
         <div style="font-size: 0.8rem; color: var(--text-muted);">
             Site: {{ $project->siteAddressLine() ?: 'Not set' }}
-            @if($pa->works_commencement_date) · Works from {{ $pa->works_commencement_date->format('d M Y') }} @endif
+            @if($pa->works_commencement_date) · Works on site from {{ $pa->works_commencement_date->format('d M Y') }} @endif
         </div>
         @if($pa->notes)
             <div style="margin-top: 0.85rem; font-size: 0.92rem; white-space: pre-wrap; color: var(--primary-navy);">{{ $pa->notes }}</div>

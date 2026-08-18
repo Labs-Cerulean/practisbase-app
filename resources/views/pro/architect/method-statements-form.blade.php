@@ -79,8 +79,18 @@
                     <input type="date" name="issued_on" max="{{ date('Y-m-d') }}" value="{{ old('issued_on', optional($statement->issued_on ?? null)->format('Y-m-d') ?: date('Y-m-d')) }}" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Commencement note</label>
-                    <input type="text" name="commencement_note" id="fieldCommencement" value="{{ old('commencement_note', $statement->commencement_note ?? ($context['commencement_note'] ?? '')) }}" placeholder="Optional" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    @php
+                        $msType = old('statement_type', $starterKey ?? $statement->statement_type ?? 'excavation');
+                        $worksStartLabel = match ($msType) {
+                            'demolition' => 'Demolition start note',
+                            'excavation' => 'Excavation start note',
+                            'building' => 'Construction start note',
+                            default => 'Works start note',
+                        };
+                    @endphp
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">{{ $worksStartLabel }}</label>
+                    <input type="text" name="commencement_note" id="fieldCommencement" value="{{ old('commencement_note', $statement->commencement_note ?? ($context['commencement_note'] ?? '')) }}" placeholder="e.g. 12/03/2026 or after CNF" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">For this method statement only — not the whole project.</div>
                 </div>
             </div>
         </section>
