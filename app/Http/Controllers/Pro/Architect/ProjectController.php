@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Pro\Architect;
 
 use App\Http\Controllers\Controller;
+use App\Models\ArchitectLicenceContact;
 use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
 use App\Models\ArchitectSiteParty;
@@ -252,21 +253,20 @@ class ProjectController extends Controller
             ...$validated,
         ]);
 
-        if (! empty($validated['licence_type']) || filled($validated['licence_number'] ?? null)) {
-            \App\Models\ArchitectLicenceContact::create([
-                'user_id' => Auth::id(),
-                'licence_type' => $validated['licence_type'] ?: 'contractor',
-                'licence_number' => $validated['licence_number'] ?? null,
-                'full_name' => $validated['full_name'],
-                'company_name' => $validated['company_name'] ?? null,
-                'mobile' => $validated['mobile'] ?? null,
-                'source' => 'site_team',
-                'last_used_at' => now(),
-            ]);
-        }
+        ArchitectLicenceContact::rememberForUser((int) Auth::id(), [
+            'full_name' => $validated['full_name'],
+            'company_name' => $validated['company_name'] ?? null,
+            'mobile' => $validated['mobile'] ?? null,
+            'email' => $validated['email'] ?? null,
+            'id_card' => $validated['id_card'] ?? null,
+            'licence_type' => $validated['licence_type'] ?? null,
+            'licence_number' => $validated['licence_number'] ?? null,
+            'preferred_role_key' => $validated['role_key'],
+            'source' => 'site_team',
+        ]);
 
         return redirect('/pro/architect/projects/'.$project->id.'#site-team')
-            ->with('success', 'Site party added.');
+            ->with('success', 'Site party added. Details saved for reuse on other projects.');
     }
 
     public function destroyParty(ArchitectProject $project, ArchitectSiteParty $party)

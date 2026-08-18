@@ -177,14 +177,17 @@
 
             <form method="POST" action="/pro/architect/projects/{{ $project->id }}/parties" style="display: grid; gap: 0.65rem; border-top: 1px solid #e2e8f0; padding-top: 0.85rem;">
                 @csrf
-                <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary-navy);">Add site party</div>
-                <select name="role_key" required style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--primary-navy);">Add site party</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Type a name to reuse someone you already used on another project.</div>
+                </div>
+                <select name="role_key" id="partyRole" required style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     @foreach($roles as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
                 </select>
-                <input type="text" name="full_name" id="partyName" required placeholder="Full name *" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                <div id="licenceSuggest" hidden style="border: 1px solid #cbd5e1; border-radius: var(--radius-md); background: #fff; max-height: 180px; overflow: auto;"></div>
+                <input type="text" name="full_name" id="partyName" required placeholder="Full name *" autocomplete="off" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <div id="licenceSuggest" hidden style="border: 1px solid #cbd5e1; border-radius: var(--radius-md); background: #fff; max-height: 220px; overflow: auto; box-shadow: var(--shadow-sm);"></div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem;">
                     <select name="licence_type" id="partyLicenceType" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         <option value="">Licence type</option>
@@ -196,6 +199,7 @@
                 </div>
                 <input type="text" name="company_name" id="partyCompany" placeholder="Company" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 <input type="text" name="mobile" id="partyMobile" placeholder="Mobile" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <input type="email" name="email" id="partyEmail" placeholder="Email" style="width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 <button type="submit" style="background: #3f6212; color: white; border: none; padding: 0.6rem 0.9rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Add to site team</button>
             </form>
         </section>
@@ -207,38 +211,72 @@
     <script>
         (function () {
             var nameInput = document.getElementById('partyName');
+            var roleSelect = document.getElementById('partyRole');
             var box = document.getElementById('licenceSuggest');
             if (!nameInput || !box) return;
             var timer = null;
+
+            function fillFrom(item) {
+                nameInput.value = item.full_name || '';
+                document.getElementById('partyLicenceNo').value = item.licence_number || '';
+                document.getElementById('partyCompany').value = item.company_name || '';
+                document.getElementById('partyMobile').value = item.mobile || '';
+                var email = document.getElementById('partyEmail');
+                if (email) email.value = item.email || '';
+                if (item.licence_type) document.getElementById('partyLicenceType').value = item.licence_type;
+                if (item.preferred_role_key && roleSelect) roleSelect.value = item.preferred_role_key;
+                box.hidden = true;
+            }
+
+            function renderItems(items) {
+                box.innerHTML = '';
+                if (!items || !items.length) {
+                    box.hidden = true;
+                    return;
+                }
+                items.forEach(function (item) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.style.cssText = 'display:block;width:100%;text-align:left;padding:0.6rem 0.75rem;border:none;border-bottom:1px solid #e2e8f0;background:#fff;cursor:pointer;';
+                    var meta = [];
+                    if (item.licence_number) meta.push(item.licence_number);
+                    if (item.company_name) meta.push(item.company_name);
+                    if (item.mobile) meta.push(item.mobile);
+                    if (item.source === 'past_project') meta.push('from past project');
+                    btn.innerHTML = '<div style="font-weight:650;color:var(--primary-navy);">' + (item.full_name || '') + '</div>'
+                        + (meta.length ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.15rem;">' + meta.join(' · ') + '</div>' : '');
+                    btn.addEventListener('click', function () { fillFrom(item); });
+                    box.appendChild(btn);
+                });
+                box.hidden = false;
+            }
+
+            function search(q) {
+                var type = document.getElementById('partyLicenceType').value;
+                var role = roleSelect ? roleSelect.value : '';
+                var url = '/pro/architect/licences/search?limit=12';
+                if (q) url += '&q=' + encodeURIComponent(q);
+                if (type) url += '&licence_type=' + encodeURIComponent(type);
+                if (role) url += '&role_key=' + encodeURIComponent(role);
+                fetch(url, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                }).then(function (r) { return r.json(); }).then(function (data) {
+                    renderItems(data.items || []);
+                }).catch(function () { box.hidden = true; });
+            }
+
+            nameInput.addEventListener('focus', function () {
+                var q = nameInput.value.trim();
+                search(q);
+            });
             nameInput.addEventListener('input', function () {
                 clearTimeout(timer);
                 var q = nameInput.value.trim();
-                if (q.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
-                timer = setTimeout(function () {
-                    var type = document.getElementById('partyLicenceType').value;
-                    fetch('/pro/architect/licences/search?q=' + encodeURIComponent(q) + (type ? '&licence_type=' + encodeURIComponent(type) : ''), {
-                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                        credentials: 'same-origin'
-                    }).then(function (r) { return r.json(); }).then(function (data) {
-                        box.innerHTML = '';
-                        (data.items || []).forEach(function (item) {
-                            var btn = document.createElement('button');
-                            btn.type = 'button';
-                            btn.style.cssText = 'display:block;width:100%;text-align:left;padding:0.55rem 0.7rem;border:none;border-bottom:1px solid #e2e8f0;background:#fff;cursor:pointer;';
-                            btn.textContent = item.full_name + (item.licence_number ? ' · ' + item.licence_number : '') + (item.company_name ? ' · ' + item.company_name : '');
-                            btn.addEventListener('click', function () {
-                                nameInput.value = item.full_name || '';
-                                document.getElementById('partyLicenceNo').value = item.licence_number || '';
-                                document.getElementById('partyCompany').value = item.company_name || '';
-                                document.getElementById('partyMobile').value = item.mobile || '';
-                                if (item.licence_type) document.getElementById('partyLicenceType').value = item.licence_type;
-                                box.hidden = true;
-                            });
-                            box.appendChild(btn);
-                        });
-                        box.hidden = !(data.items && data.items.length);
-                    }).catch(function () { box.hidden = true; });
-                }, 200);
+                timer = setTimeout(function () { search(q); }, 180);
+            });
+            document.addEventListener('click', function (e) {
+                if (!box.contains(e.target) && e.target !== nameInput) box.hidden = true;
             });
         })();
     </script>

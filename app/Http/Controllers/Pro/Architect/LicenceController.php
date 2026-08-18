@@ -18,13 +18,15 @@ class LicenceController extends Controller
         $validated = $request->validate([
             'q' => 'nullable|string|max:120',
             'licence_type' => 'nullable|in:'.implode(',', array_keys(ArchitectSiteParty::LICENCE_TYPES)),
+            'role_key' => 'nullable|in:'.implode(',', array_keys(ArchitectSiteParty::ROLES)),
             'limit' => 'nullable|integer|min:1|max:20',
         ]);
 
         $q = trim((string) ($validated['q'] ?? ''));
-        $limit = (int) ($validated['limit'] ?? 10);
+        $limit = (int) ($validated['limit'] ?? 12);
+        $roleKey = $validated['role_key'] ?? null;
 
-        $items = ArchitectLicenceContact::query()
+        $contacts = ArchitectLicenceContact::query()
             ->where('user_id', $user->id)
             ->when(! empty($validated['licence_type']), fn ($query) => $query->where('licence_type', $validated['licence_type']))
             ->when($q !== '', function ($query) use ($q) {
@@ -33,27 +35,81 @@ class LicenceController extends Controller
                     $inner->where('full_name', 'ilike', $like)
                         ->orWhere('company_name', 'ilike', $like)
                         ->orWhere('licence_number', 'ilike', $like)
+                        ->orWhere('mobile', 'ilike', $like)
+                        ->orWhere('email', 'ilike', $like)
                         ->orWhere('locality', 'ilike', $like);
                 });
+            })
+            ->when($roleKey, function ($query) use ($roleKey) {
+                $query->orderByRaw('CASE WHEN preferred_role_key = ? THEN 0 ELSE 1 END', [$roleKey]);
             })
             ->orderByDesc('last_used_at')
             ->orderBy('full_name')
             ->limit($limit)
             ->get()
-            ->map(fn (ArchitectLicenceContact $c) => [
-                'id' => $c->id,
-                'licence_type' => $c->licence_type,
-                'licence_number' => $c->licence_number,
-                'full_name' => $c->full_name,
-                'company_name' => $c->company_name,
-                'mobile' => $c->mobile,
-                'locality' => $c->locality,
-            ]);
+            ->map(fn (ArchitectLicenceContact $c) => $c->toSuggestPayload());
+
+        $seen = [];
+        foreach ($contacts as $item) {
+            $seen[mb_strtolower($item['full_name']).'|'.mb_strtolower((string) ($item['licence_number'] ?? ''))] = true;
+        }
+
+        $partyQuery = ArchitectSiteParty::query()
+            ->where('user_id', $user->id)
+            ->when($q !== '', function ($query) use ($q) {
+                $like = '%'.$q.'%';
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('full_name', 'ilike', $like)
+                        ->orWhere('company_name', 'ilike', $like)
+                        ->orWhere('licence_number', 'ilike', $like)
+                        ->orWhere('mobile', 'ilike', $like)
+                        ->orWhere('email', 'ilike', $like);
+                });
+            })
+            ->when($roleKey, function ($query) use ($roleKey) {
+                $query->orderByRaw('CASE WHEN role_key = ? THEN 0 ELSE 1 END', [$roleKey]);
+            })
+            ->orderByDesc('updated_at')
+            ->limit($limit * 3)
+            ->get();
+
+        $fromParties = [];
+        foreach ($partyQuery as $party) {
+            $key = mb_strtolower((string) $party->full_name).'|'.mb_strtolower((string) ($party->licence_number ?? ''));
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $fromParties[] = [
+                'id' => 'party-'.$party->id,
+                'full_name' => (string) $party->full_name,
+                'company_name' => $party->company_name,
+                'mobile' => $party->mobile,
+                'email' => $party->email,
+                'id_card' => $party->id_card,
+                'licence_type' => $party->licence_type,
+                'licence_number' => $party->licence_number,
+                'preferred_role_key' => $party->role_key,
+                'locality' => null,
+                'source' => 'past_project',
+            ];
+            if (count($fromParties) + $contacts->count() >= $limit) {
+                break;
+            }
+        }
+
+        $items = $contacts->values()->all();
+        foreach ($fromParties as $row) {
+            if (count($items) >= $limit) {
+                break;
+            }
+            $items[] = $row;
+        }
 
         return response()->json([
             'items' => $items,
             'registers' => BcaTemplateCatalog::REGISTER_URLS,
-            'note' => 'Live BCA registers are linked for verification. Save licence contacts here for fast reuse on site teams.',
+            'note' => 'Saved team members reuse across projects. Live BCA registers stay available for licence checks.',
         ]);
     }
 
@@ -61,22 +117,23 @@ class LicenceController extends Controller
     {
         $user = Auth::user();
         $validated = $request->validate([
-            'licence_type' => 'required|in:'.implode(',', array_keys(ArchitectSiteParty::LICENCE_TYPES)),
+            'licence_type' => 'nullable|in:'.implode(',', array_keys(ArchitectSiteParty::LICENCE_TYPES)),
             'licence_number' => 'nullable|string|max:120',
             'full_name' => 'required|string|max:255',
             'company_name' => 'nullable|string|max:255',
             'mobile' => 'nullable|string|max:64',
+            'email' => 'nullable|email|max:255',
+            'id_card' => 'nullable|string|max:64',
+            'preferred_role_key' => 'nullable|in:'.implode(',', array_keys(ArchitectSiteParty::ROLES)),
             'locality' => 'nullable|string|max:120',
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $contact = ArchitectLicenceContact::create([
-            'user_id' => $user->id,
+        $contact = ArchitectLicenceContact::rememberForUser($user->id, [
             ...$validated,
             'source' => 'manual',
-            'last_used_at' => now(),
         ]);
 
-        return response()->json(['item' => $contact], 201);
+        return response()->json(['item' => $contact->toSuggestPayload()], 201);
     }
 }
