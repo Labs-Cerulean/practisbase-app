@@ -301,6 +301,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     Route::middleware('pro:arch')->prefix('pro/architect')->group(function () {
         Route::get('/projects', [ArchitectProjectController::class, 'index']);
         Route::get('/projects/create', [ArchitectProjectController::class, 'create']);
+        Route::get('/projects/suggest-reference', [ArchitectProjectController::class, 'suggestReference']);
         Route::post('/projects', [ArchitectProjectController::class, 'store']);
         Route::get('/projects/{project}', [ArchitectProjectController::class, 'show']);
         Route::get('/projects/{project}/edit', [ArchitectProjectController::class, 'edit']);
