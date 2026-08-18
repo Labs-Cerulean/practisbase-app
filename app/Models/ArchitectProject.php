@@ -21,6 +21,8 @@ class ArchitectProject extends Model
         'site_street',
         'site_locality',
         'site_address',
+        'latitude',
+        'longitude',
         'commencement_date',
     ];
 
@@ -28,6 +30,8 @@ class ArchitectProject extends Model
     {
         return [
             'commencement_date' => 'date',
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
@@ -111,5 +115,34 @@ class ArchitectProject extends Model
         ]);
 
         return implode(', ', $parts);
+    }
+
+    public function hasMapPin(): bool
+    {
+        return $this->latitude !== null
+            && $this->longitude !== null
+            && is_finite((float) $this->latitude)
+            && is_finite((float) $this->longitude);
+    }
+
+    /**
+     * @return array{id: int, name: string, lat: float, lng: float, locality: string, client: string, href: string, status: string}|null
+     */
+    public function mapPinPayload(): ?array
+    {
+        if (! $this->hasMapPin()) {
+            return null;
+        }
+
+        return [
+            'id' => $this->id,
+            'name' => (string) $this->name,
+            'lat' => (float) $this->latitude,
+            'lng' => (float) $this->longitude,
+            'locality' => trim((string) ($this->site_locality ?? '')),
+            'client' => (string) ($this->client->name ?? ''),
+            'href' => '/pro/architect/projects/'.$this->id,
+            'status' => (string) $this->status,
+        ];
     }
 }

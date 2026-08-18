@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Pro\Architect;
 
 use App\Http\Controllers\Controller;
+use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
 use App\Models\ArchitectSiteParty;
 use App\Models\Client;
+use App\Support\Architect\MapServerLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class ProjectController extends Controller
 {
@@ -15,6 +18,11 @@ class ProjectController extends Controller
     {
         $user = Auth::user();
         $q = trim((string) $request->query('q', ''));
+        $locality = trim((string) $request->query('locality', ''));
+        $clientId = (int) $request->query('client_id', 0);
+        $status = trim((string) $request->query('status', ''));
+        $paStatus = trim((string) $request->query('pa_status', ''));
+        $caseType = strtoupper(trim((string) $request->query('case_type', '')));
 
         $projects = ArchitectProject::query()
             ->where('user_id', $user->id)
@@ -29,16 +37,57 @@ class ProjectController extends Controller
                         ->orWhere('site_address', 'ilike', $like)
                         ->orWhere('site_street', 'ilike', $like)
                         ->orWhereHas('client', fn ($c) => $c->where('name', 'ilike', $like))
-                        ->orWhereHas('paApplications', fn ($p) => $p->where('pa_number', 'ilike', $like));
+                        ->orWhereHas('paApplications', function ($p) use ($like) {
+                            $p->where('pa_number', 'ilike', $like)
+                                ->orWhere('case_number', 'ilike', $like)
+                                ->orWhere('title', 'ilike', $like);
+                        });
                 });
+            })
+            ->when($locality !== '', fn ($query) => $query->where('site_locality', 'ilike', $locality))
+            ->when($clientId > 0, fn ($query) => $query->where('client_id', $clientId))
+            ->when($status !== '' && array_key_exists($status, ArchitectProject::STATUSES), fn ($query) => $query->where('status', $status))
+            ->when($paStatus !== '' && array_key_exists($paStatus, ArchitectPaApplication::STATUSES), function ($query) use ($paStatus) {
+                $query->whereHas('paApplications', fn ($p) => $p->where('status', $paStatus));
+            })
+            ->when($caseType !== '' && array_key_exists($caseType, ArchitectPaApplication::CASE_TYPES), function ($query) use ($caseType) {
+                $query->whereHas('paApplications', fn ($p) => $p->where('case_type', $caseType));
             })
             ->orderByDesc('updated_at')
             ->get();
 
+        $mapPins = $projects
+            ->map(fn (ArchitectProject $p) => $p->mapPinPayload())
+            ->filter()
+            ->values()
+            ->all();
+
+        $clients = Client::where('user_id', $user->id)->orderBy('name')->get(['id', 'name']);
+        $localities = ArchitectProject::where('user_id', $user->id)
+            ->whereNotNull('site_locality')
+            ->where('site_locality', '!=', '')
+            ->distinct()
+            ->orderBy('site_locality')
+            ->pluck('site_locality');
+
         return view('pro.architect.projects-index', [
             'projects' => $projects,
             'phases' => ArchitectProject::PHASES,
-            'q' => $q,
+            'statuses' => ArchitectProject::STATUSES,
+            'paStatuses' => ArchitectPaApplication::STATUSES,
+            'caseTypes' => ArchitectPaApplication::CASE_TYPES,
+            'clients' => $clients,
+            'localities' => $localities,
+            'mapPins' => $mapPins,
+            'mapServerUrl' => MapServerLink::home(),
+            'filters' => [
+                'q' => $q,
+                'locality' => $locality,
+                'client_id' => $clientId > 0 ? $clientId : '',
+                'status' => $status,
+                'pa_status' => $paStatus,
+                'case_type' => $caseType,
+            ],
         ]);
     }
 
@@ -55,6 +104,7 @@ class ProjectController extends Controller
             'phases' => ArchitectProject::PHASES,
             'statuses' => ArchitectProject::STATUSES,
             'preselectClientId' => $preselect ?: null,
+            'mapServerUrl' => MapServerLink::home(),
         ]);
     }
 
@@ -69,7 +119,7 @@ class ProjectController extends Controller
         ]);
 
         return redirect('/pro/architect/projects/'.$project->id)
-            ->with('success', 'Project created. Add a PA number later when it is issued.');
+            ->with('success', 'Project created. Pin the site on the map and add a PA/PC/DN case when ready.');
     }
 
     public function show(ArchitectProject $project)
@@ -88,8 +138,10 @@ class ProjectController extends Controller
             'project' => $project,
             'phases' => ArchitectProject::PHASES,
             'statuses' => ArchitectProject::STATUSES,
+            'paStatuses' => ArchitectPaApplication::STATUSES,
             'roles' => ArchitectSiteParty::ROLES,
             'licenceTypes' => ArchitectSiteParty::LICENCE_TYPES,
+            'mapServerUrl' => MapServerLink::home(),
         ]);
     }
 
@@ -105,6 +157,7 @@ class ProjectController extends Controller
             'phases' => ArchitectProject::PHASES,
             'statuses' => ArchitectProject::STATUSES,
             'preselectClientId' => $project->client_id,
+            'mapServerUrl' => MapServerLink::home(),
         ]);
     }
 
@@ -116,6 +169,54 @@ class ProjectController extends Controller
 
         return redirect('/pro/architect/projects/'.$project->id)
             ->with('success', 'Project updated.');
+    }
+
+    public function reverseGeocode(Request $request)
+    {
+        $validated = $request->validate([
+            'lat' => 'required|numeric|between:35.7,36.2',
+            'lng' => 'required|numeric|between:14.1,14.7',
+        ]);
+
+        try {
+            $response = Http::timeout(8)
+                ->withHeaders([
+                    'User-Agent' => 'PractisBase/1.0 (architect site pin; contact support@practisbase.com)',
+                    'Accept' => 'application/json',
+                ])
+                ->get('https://nominatim.openstreetmap.org/reverse', [
+                    'format' => 'jsonv2',
+                    'lat' => $validated['lat'],
+                    'lon' => $validated['lng'],
+                    'addressdetails' => 1,
+                    'zoom' => 18,
+                ]);
+        } catch (\Throwable) {
+            return response()->json(['ok' => false, 'message' => 'Map lookup unavailable right now.'], 502);
+        }
+
+        if (! $response->ok()) {
+            return response()->json(['ok' => false, 'message' => 'Map lookup failed.'], 502);
+        }
+
+        $address = $response->json('address') ?? [];
+        $street = trim(implode(' ', array_filter([
+            $address['house_number'] ?? null,
+            $address['road'] ?? $address['pedestrian'] ?? $address['path'] ?? null,
+        ])));
+        $locality = $address['village']
+            ?? $address['town']
+            ?? $address['city']
+            ?? $address['suburb']
+            ?? $address['municipality']
+            ?? '';
+
+        return response()->json([
+            'ok' => true,
+            'street' => $street,
+            'locality' => is_string($locality) ? $locality : '',
+            'display_name' => (string) ($response->json('display_name') ?? ''),
+        ]);
     }
 
     public function storeParty(Request $request, ArchitectProject $project)
@@ -182,6 +283,13 @@ class ProjectController extends Controller
 
     private function validateProject(Request $request, int $userId): array
     {
+        $lat = $request->input('latitude');
+        $lng = $request->input('longitude');
+        $request->merge([
+            'latitude' => ($lat === '' || $lat === null) ? null : $lat,
+            'longitude' => ($lng === '' || $lng === null) ? null : $lng,
+        ]);
+
         $validated = $request->validate([
             'client_id' => 'required|integer',
             'name' => 'required|string|max:255',
@@ -193,6 +301,8 @@ class ProjectController extends Controller
             'site_street' => 'nullable|string|max:255',
             'site_locality' => 'nullable|string|max:120',
             'site_address' => 'nullable|string|max:2000',
+            'latitude' => 'nullable|numeric|between:35.7,36.2',
+            'longitude' => 'nullable|numeric|between:14.1,14.7',
             'commencement_date' => 'nullable|date|before_or_equal:today',
             'notes' => 'nullable|string|max:5000',
         ]);
@@ -202,6 +312,11 @@ class ProjectController extends Controller
             ->exists();
         if (! $ownsClient) {
             abort(403);
+        }
+
+        if (($validated['latitude'] ?? null) === null || ($validated['longitude'] ?? null) === null) {
+            $validated['latitude'] = null;
+            $validated['longitude'] = null;
         }
 
         return $validated;

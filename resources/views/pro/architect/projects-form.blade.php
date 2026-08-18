@@ -94,6 +94,7 @@
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Full site address (optional override)</label>
                         <textarea name="site_address" rows="2" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('site_address', $project->site_address ?? '') }}</textarea>
                     </div>
+                    @include('pro.architect.partials.site-pin-map', ['project' => $project, 'mapServerUrl' => $mapServerUrl ?? null])
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Notes</label>

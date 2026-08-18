@@ -40,8 +40,8 @@
                     <a href="/pro/medical/vault/setup" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Set up vault</a>
                 @endif
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'arch')
-                <a href="/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
-                <a href="/pro/architect/templates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">BCA templates</a>
+                <a href="/pro/architect/projects/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Project</a>
+                <a href="/pro/architect/projects" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Portfolio map</a>
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
                 <a href="/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
                 <a href="/pro/engineer/certificates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Field certificates</a>
@@ -142,6 +142,8 @@
                 </div>
                 @if(($practiceDesk['kind'] ?? null) === 'med')
                     <a href="/pro/medical/patients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open patients →</a>
+                @elseif(($practiceDesk['kind'] ?? null) === 'arch')
+                    <a href="/pro/architect/projects" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open portfolio →</a>
                 @elseif($practiceDesk)
                     <a href="/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
                 @endif
@@ -200,7 +202,61 @@
                         <a href="/exports/backup#medical" style="font-size: 0.8rem; color: #b45309; font-weight: 600; text-decoration: none;">Vault backup overdue</a>
                     @endif
                 </div>
-            @elseif($practiceDesk && (($practiceDesk['kind'] ?? null) === 'arch' || ($practiceDesk['kind'] ?? null) === 'eng'))
+            @elseif(($practiceDesk['kind'] ?? null) === 'arch')
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">Projects</div>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['project_count'] }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">Open cases</div>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['open_pa_count'] ?? 0 }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">Endorsed</div>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['endorsed_count'] ?? 0 }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">Mapped</div>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['pinned_count'] ?? 0 }}</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 1rem; align-items: start;" class="arch-desk-grid">
+                    <div>
+                        @include('pro.architect.partials.portfolio-map', [
+                            'mapId' => 'arch-desk-map',
+                            'pins' => $practiceDesk['map_pins'] ?? [],
+                            'height' => '260px',
+                            'mapServerUrl' => $practiceDesk['map_server_url'] ?? null,
+                        ])
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.55rem;">Needs attention</div>
+                        @if(($practiceDesk['attention_cases'] ?? collect())->isEmpty())
+                            <p style="margin: 0 0 0.85rem; color: var(--text-muted); font-size: 0.88rem;">No open PA/PC/DN cases waiting. Add a case on a project when submitted.</p>
+                        @else
+                            <div style="display: grid; gap: 0.35rem; margin-bottom: 0.85rem;">
+                                @foreach($practiceDesk['attention_cases'] as $case)
+                                    <a href="/pro/architect/pa/{{ $case->id }}" style="display: block; padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none;">
+                                        <div style="font-weight: 650; color: var(--primary-navy); font-size: 0.88rem;">{{ $case->displayLabel() }}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted);">{{ $case->statusLabel() }}@if($case->project) · {{ $case->project->name }}@endif</div>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <a href="/pro/architect/projects" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.82rem;">All projects</a>
+                            <a href="/pro/architect/templates" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.82rem;">BCA templates</a>
+                        </div>
+                    </div>
+                </div>
+                <style>
+                    @media (max-width: 860px) {
+                        .arch-desk-grid { grid-template-columns: 1fr !important; }
+                    }
+                </style>
+            @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                     <div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">Projects</div>
@@ -217,12 +273,8 @@
                 @else
                     @foreach($practiceDesk['recent_projects'] as $project)
                         @php
-                            $phaseLabel = $practiceDesk['kind'] === 'arch'
-                                ? (\App\Models\ArchitectProject::PHASES[$project->phase] ?? $project->phase)
-                                : (\App\Models\EngineerProject::PHASES[$project->phase] ?? $project->phase);
-                            $projectHref = $practiceDesk['kind'] === 'arch'
-                                ? '/pro/architect/projects/'.$project->id
-                                : '/pro/engineer/projects/'.$project->id;
+                            $phaseLabel = \App\Models\EngineerProject::PHASES[$project->phase] ?? $project->phase;
+                            $projectHref = '/pro/engineer/projects/'.$project->id;
                         @endphp
                         <a href="{{ $projectHref }}" style="display: flex; justify-content: space-between; gap: 1rem; padding: 0.45rem 0; border-bottom: 1px dashed var(--border-light); font-size: 0.9rem; text-decoration: none;">
                             <span style="font-weight: 600; color: var(--primary-navy);">{{ $project->name }}</span>
@@ -441,9 +493,10 @@
                             <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
                             <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Documents</a>
                         @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'arch')
-                            <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
+                            <a href="/pro/architect/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Portfolio & map</a>
                             <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>
                             <a href="/pro/architect/method-statements" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Method statements</a>
+                            <a href="/pro/architect/templates" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">BCA templates</a>
                         @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'eng')
                             <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering clients</a>
                             <a href="/pro/engineer/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Engineering projects</a>
@@ -468,7 +521,7 @@
                     <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
                     <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Documents</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'arch')
-                    <a href="/clients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Architect clients</a>
+                    <a href="/pro/architect/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Portfolio & map</a>
                     <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>
                     <a href="/pro/architect/method-statements" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Method statements</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'eng')
