@@ -475,7 +475,8 @@ class ClinicalNoteTemplates
                 continue;
             }
             $line = preg_replace('/^\d+[\.\)]\s*/', '', $line) ?? $line;
-            $line = preg_replace('/^[\-\*\u2022]\s*/u', '', $line) ?? $line;
+            // PCRE2 needs \x{2022} for the bullet character (not \u2022).
+            $line = preg_replace('/^[\-\*\x{2022}]\s*/u', '', $line) ?? $line;
             $out[] = $n . '. ' . trim($line);
             $n++;
         }

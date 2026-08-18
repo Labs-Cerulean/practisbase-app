@@ -133,6 +133,7 @@
             var titleLabel = document.getElementById('title-label');
             var bodyLabel = document.getElementById('body-label');
             var titleInput = document.getElementById('title');
+            var bodyWrap = document.getElementById('body-wrap');
             var bodyInput = document.getElementById('body');
             var submitBtn = document.getElementById('submit-btn');
             var stampNote = document.getElementById('stamp-note');
@@ -182,12 +183,81 @@
                     return '<input type="date" name="' + name + '" ' + keyAttr + ' value="' + escapeHtml(val) + '" max="{{ date('Y-m-d') }}" style="' + style + '">';
                 }
                 if (type === 'bullets') {
-                    return '<textarea name="' + name + '" ' + keyAttr + ' rows="4" placeholder="One item per line" style="' + style + '">' +
-                        escapeHtml(val) + '</textarea>' +
-                        '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">One item per line — saved as 1. 2. 3.</div>';
+                    var seed = val && String(val).trim() !== '' ? val : '1. ';
+                    return '<textarea name="' + name + '" ' + keyAttr + ' data-bullet-field="1" rows="4" placeholder="1. First item" style="' + style + '">' +
+                        escapeHtml(seed) + '</textarea>' +
+                        '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Numbers update as you type. Enter for the next item.</div>';
                 }
                 return '<textarea name="' + name + '" ' + keyAttr + ' rows="3" style="' + style + '">' +
                     escapeHtml(val) + '</textarea>';
+            }
+
+            function stripBulletPrefix(line) {
+                return String(line || '')
+                    .replace(/^\s*\d+[\.\)]\s*/, '')
+                    .replace(/^\s*[-*•]\s*/, '');
+            }
+
+            function renumberBulletTextarea(el) {
+                var sel = el.selectionStart;
+                var value = el.value;
+                var lines = value.split('\n');
+                var out = [];
+                var n = 1;
+                var newSel = sel;
+                var offset = 0;
+
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    var lineStart = offset;
+                    var trailingEmpty = (i === lines.length - 1 && line === '');
+                    var nextLine;
+
+                    if (trailingEmpty) {
+                        nextLine = '';
+                    } else if (line.trim() === '') {
+                        nextLine = '';
+                    } else {
+                        var stripped = stripBulletPrefix(line);
+                        nextLine = n + '. ' + stripped;
+                        n++;
+                    }
+
+                    if (sel >= lineStart && sel <= lineStart + line.length) {
+                        var oldPrefix = line.length - stripBulletPrefix(line).length;
+                        var newPrefix = nextLine === '' ? 0 : nextLine.length - stripBulletPrefix(nextLine).length;
+                        var inLine = sel - lineStart;
+                        if (inLine <= oldPrefix) {
+                            newSel = lineStart + newPrefix;
+                        } else {
+                            newSel = lineStart + newPrefix + (inLine - oldPrefix);
+                        }
+                    }
+
+                    out.push(nextLine);
+                    offset += line.length + 1;
+                }
+
+                var next = out.join('\n');
+                if (next === value) return;
+                el.value = next;
+                try {
+                    el.setSelectionRange(newSel, newSel);
+                } catch (e) {}
+            }
+
+            function bindBulletFields() {
+                if (!fieldsHost) return;
+                fieldsHost.querySelectorAll('textarea[data-bullet-field]').forEach(function (el) {
+                    if (el.getAttribute('data-bullet-bound') === '1') return;
+                    el.setAttribute('data-bullet-bound', '1');
+                    el.addEventListener('input', function () {
+                        renumberBulletTextarea(el);
+                    });
+                    el.addEventListener('blur', function () {
+                        renumberBulletTextarea(el);
+                    });
+                });
             }
 
             function syncTemplateFields() {
@@ -201,6 +271,7 @@
                         '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.9rem;">' + escapeHtml(field.label) + '</label>' +
                         fieldControl(field, val) + '</div>';
                 }).join('');
+                bindBulletFields();
             }
 
             function sync() {
@@ -222,7 +293,9 @@
                     subjectEl.value = defaultSubject;
                 }
                 bodyInput.required = (t !== 'prescription' && t !== 'journal');
-                bodyInput.rows = t === 'prescription' || t === 'journal' ? 3 : 8;
+                bodyInput.rows = t === 'journal' ? 3 : 8;
+                if (bodyWrap) bodyWrap.style.display = t === 'prescription' ? 'none' : 'block';
+                if (t === 'prescription') bodyInput.value = '';
 
                 if (t === 'journal') {
                     titleWrap.style.display = 'none';
@@ -243,7 +316,6 @@
                     titleInput.required = false;
                     if (titleInput.value === 'Patient note') titleInput.value = '';
                     dateLabel.textContent = 'Date *';
-                    bodyLabel.innerHTML = 'Notes';
                 } else if (t === 'referral') {
                     titleWrap.style.display = 'block';
                     titleInput.required = true;

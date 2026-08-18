@@ -274,8 +274,6 @@
 <body>
     @php
         $medicines = \App\Models\ClinicalEntry::medicinesFromPayload($entryPayload ?? []);
-        $hasStructured = ! empty($entryPayload['medicines']) && is_array($entryPayload['medicines']);
-        $generalNotes = $hasStructured ? trim((string) ($entryPayload['body'] ?? '')) : '';
         $dispenseMode = strtolower(trim((string) ($entryPayload['dispense_mode'] ?? 'single')));
         if (! in_array($dispenseMode, ['single', 'repeat'], true)) {
             $dispenseMode = 'single';
@@ -378,13 +376,6 @@
                     @empty
                         <div class="rx-text" style="white-space: pre-wrap;">{{ $entryPayload['body'] ?? '' }}</div>
                     @endforelse
-
-                    @if($generalNotes !== '')
-                        <div class="notes">
-                            <div class="notes-label">Notes</div>
-                            {{ $generalNotes }}
-                        </div>
-                    @endif
                 </td>
             </tr>
         </table>

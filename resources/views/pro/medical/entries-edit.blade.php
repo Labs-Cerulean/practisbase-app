@@ -14,7 +14,6 @@
             $medicines = [['name' => '', 'strength' => '', 'dose' => '', 'quantity' => '', 'instructions' => '']];
         }
         $rxTitle = $hasStructuredMeds ? ($payload['title'] ?? '') : '';
-        $rxNotes = $hasStructuredMeds ? ($payload['body'] ?? '') : '';
         $certKind = old('certificate_kind', $payload['certificate_kind'] ?? 'medical_certificate');
         $subjectDefault = old('subject_name', $payload['subject_name'] ?? ($patientPayload['display_name'] ?? ''));
     @endphp
@@ -89,8 +88,9 @@
             @if($isJournal)
                 <input type="hidden" name="title" value="{{ old('title', $payload['title'] ?? 'Patient note') }}">
             @elseif($isRx)
-                {{-- Title auto-derived from medicines on save --}}
+                {{-- Title auto-derived from medicines on save; notes live on each medicine --}}
                 <input type="hidden" name="title" value="{{ old('title', $rxTitle) }}">
+                <input type="hidden" name="body" value="">
             @else
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Title *</label>
@@ -99,17 +99,18 @@
                 </div>
             @endif
 
+            @unless($isRx)
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">
                     @if($entry->entry_type === 'certificate') Details *
-                    @elseif($isRx) Notes
                     @elseif($isJournal) Additional notes
                     @else Details *
                     @endif
                 </label>
-                <textarea name="body" rows="{{ ($isRx || $isJournal) ? 3 : 8 }}" {{ ($isRx || $isJournal) ? '' : 'required' }}
-                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isRx ? $rxNotes : ($isJournal ? ($payload['extra'] ?? '') : ($payload['body'] ?? ''))) }}</textarea>
+                <textarea name="body" rows="{{ $isJournal ? 3 : 8 }}" {{ $isJournal ? '' : 'required' }}
+                          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('body', $isJournal ? ($payload['extra'] ?? '') : ($payload['body'] ?? '')) }}</textarea>
             </div>
+            @endunless
 
             <div style="margin-bottom: 1.25rem;">
                 <label style="display: inline-flex; align-items: center; font-weight: 600; margin-bottom: 0.4rem;">
@@ -184,12 +185,81 @@
                     return '<input type="date" name="' + name + '" ' + keyAttr + ' value="' + escapeHtml(val) + '" max="{{ date('Y-m-d') }}" style="' + style + '">';
                 }
                 if (type === 'bullets') {
-                    return '<textarea name="' + name + '" ' + keyAttr + ' rows="4" placeholder="One item per line" style="' + style + '">' +
-                        escapeHtml(val) + '</textarea>' +
-                        '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">One item per line — saved as 1. 2. 3.</div>';
+                    var seed = val && String(val).trim() !== '' ? val : '1. ';
+                    return '<textarea name="' + name + '" ' + keyAttr + ' data-bullet-field="1" rows="4" placeholder="1. First item" style="' + style + '">' +
+                        escapeHtml(seed) + '</textarea>' +
+                        '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Numbers update as you type. Enter for the next item.</div>';
                 }
                 return '<textarea name="' + name + '" ' + keyAttr + ' rows="3" style="' + style + '">' +
                     escapeHtml(val) + '</textarea>';
+            }
+
+            function stripBulletPrefix(line) {
+                return String(line || '')
+                    .replace(/^\s*\d+[\.\)]\s*/, '')
+                    .replace(/^\s*[-*•]\s*/, '');
+            }
+
+            function renumberBulletTextarea(el) {
+                var sel = el.selectionStart;
+                var value = el.value;
+                var lines = value.split('\n');
+                var out = [];
+                var n = 1;
+                var newSel = sel;
+                var offset = 0;
+
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i];
+                    var lineStart = offset;
+                    var trailingEmpty = (i === lines.length - 1 && line === '');
+                    var nextLine;
+
+                    if (trailingEmpty) {
+                        nextLine = '';
+                    } else if (line.trim() === '') {
+                        nextLine = '';
+                    } else {
+                        var stripped = stripBulletPrefix(line);
+                        nextLine = n + '. ' + stripped;
+                        n++;
+                    }
+
+                    if (sel >= lineStart && sel <= lineStart + line.length) {
+                        var oldPrefix = line.length - stripBulletPrefix(line).length;
+                        var newPrefix = nextLine === '' ? 0 : nextLine.length - stripBulletPrefix(nextLine).length;
+                        var inLine = sel - lineStart;
+                        if (inLine <= oldPrefix) {
+                            newSel = lineStart + newPrefix;
+                        } else {
+                            newSel = lineStart + newPrefix + (inLine - oldPrefix);
+                        }
+                    }
+
+                    out.push(nextLine);
+                    offset += line.length + 1;
+                }
+
+                var next = out.join('\n');
+                if (next === value) return;
+                el.value = next;
+                try {
+                    el.setSelectionRange(newSel, newSel);
+                } catch (e) {}
+            }
+
+            function bindBulletFields() {
+                if (!fieldsHost) return;
+                fieldsHost.querySelectorAll('textarea[data-bullet-field]').forEach(function (el) {
+                    if (el.getAttribute('data-bullet-bound') === '1') return;
+                    el.setAttribute('data-bullet-bound', '1');
+                    el.addEventListener('input', function () {
+                        renumberBulletTextarea(el);
+                    });
+                    el.addEventListener('blur', function () {
+                        renumberBulletTextarea(el);
+                    });
+                });
             }
 
             function syncTemplateFields() {
@@ -202,6 +272,7 @@
                         '<label style="display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.9rem;">' + escapeHtml(field.label) + '</label>' +
                         fieldControl(field, val) + '</div>';
                 }).join('');
+                bindBulletFields();
             }
 
             noteTemplate.addEventListener('change', syncTemplateFields);

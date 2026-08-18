@@ -154,8 +154,9 @@
                     unlockBtn.disabled = true;
                     unlockBtn.textContent = 'Waiting for fingerprint / Face ID…';
                     PractisVaultDevice.unlockWithDevice().then(function (result) {
+                        var dekReady = Promise.resolve(result);
                         if (window.PractisBaseVaultCrypto) {
-                            return fetch('/pro/medical/vault/client-dek', {
+                            dekReady = fetch('/pro/medical/vault/client-dek', {
                                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                                 credentials: 'same-origin'
                             }).then(function (res) {
@@ -167,9 +168,14 @@
                                 return result;
                             }).catch(function () { return result; });
                         }
-                        return result;
+                        // Don't let a hung DEK fetch leave the button stuck waiting.
+                        return Promise.race([
+                            dekReady,
+                            new Promise(function (resolve) { setTimeout(function () { resolve(result); }, 2500); })
+                        ]);
                     }).then(function () {
-                        window.location.href = '/exports/backup#medical';
+                        // Same-path + hash alone does not reload; force a fresh Backup page.
+                        window.location.replace('/exports/backup?unlocked=1#medical');
                     }).catch(function (e) {
                         err.textContent = e.message || 'Device unlock failed.';
                         err.style.display = 'block';
