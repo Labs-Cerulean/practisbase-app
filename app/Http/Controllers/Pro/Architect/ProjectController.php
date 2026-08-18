@@ -9,6 +9,7 @@ use App\Models\ArchitectProject;
 use App\Models\ArchitectSiteParty;
 use App\Models\Client;
 use App\Support\Architect\MapServerLink;
+use App\Support\Architect\ProjectReference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -106,6 +107,59 @@ class ProjectController extends Controller
             'statuses' => ArchitectProject::STATUSES,
             'preselectClientId' => $preselect ?: null,
             'mapServerUrl' => MapServerLink::home(),
+            'practiceName' => (string) $user->name,
+            'suggestReferenceUrl' => url('/pro/architect/projects/suggest-reference'),
+        ]);
+    }
+
+    public function suggestReference(Request $request)
+    {
+        $user = Auth::user();
+        $validated = $request->validate([
+            'client_id' => 'nullable|integer',
+            'site_locality' => 'nullable|string|max:120',
+            'exclude_project_id' => 'nullable|integer',
+        ]);
+
+        $client = null;
+        if (! empty($validated['client_id'])) {
+            $client = Client::where('user_id', $user->id)
+                ->where('id', $validated['client_id'])
+                ->first();
+            if (! $client) {
+                abort(403);
+            }
+        }
+
+        $excludeId = null;
+        if (! empty($validated['exclude_project_id'])) {
+            $owns = ArchitectProject::where('user_id', $user->id)
+                ->where('id', $validated['exclude_project_id'])
+                ->exists();
+            if (! $owns) {
+                abort(403);
+            }
+            $excludeId = (int) $validated['exclude_project_id'];
+        }
+
+        $reference = ProjectReference::suggest(
+            $user,
+            $client,
+            $validated['site_locality'] ?? '',
+            $excludeId
+        );
+
+        $prefix = ProjectReference::prefix(
+            (string) $user->name,
+            $client?->name ?? '',
+            $validated['site_locality'] ?? ''
+        );
+
+        return response()->json([
+            'ok' => true,
+            'reference_code' => $reference,
+            'prefix' => $prefix,
+            'practice_base' => ProjectReference::slugPart((string) $user->name, ProjectReference::PART_MAX, preferMeaningful: true),
         ]);
     }
 
@@ -113,6 +167,17 @@ class ProjectController extends Controller
     {
         $user = Auth::user();
         $validated = $this->validateProject($request, $user->id);
+
+        if (trim((string) ($validated['reference_code'] ?? '')) === '') {
+            $client = Client::where('user_id', $user->id)
+                ->where('id', $validated['client_id'])
+                ->first();
+            $validated['reference_code'] = ProjectReference::suggest(
+                $user,
+                $client,
+                $validated['site_locality'] ?? ''
+            );
+        }
 
         $project = ArchitectProject::create([
             'user_id' => $user->id,
@@ -159,6 +224,8 @@ class ProjectController extends Controller
             'statuses' => ArchitectProject::STATUSES,
             'preselectClientId' => $project->client_id,
             'mapServerUrl' => MapServerLink::home(),
+            'practiceName' => (string) Auth::user()->name,
+            'suggestReferenceUrl' => url('/pro/architect/projects/suggest-reference'),
         ]);
     }
 

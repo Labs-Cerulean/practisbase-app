@@ -67,7 +67,10 @@
                 return;
             }
             if (streetInput && data.street) streetInput.value = data.street;
-            if (localityInput && data.locality) localityInput.value = data.locality;
+            if (localityInput && data.locality) {
+                localityInput.value = data.locality;
+                localityInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             hint.textContent = data.street || data.locality
                 ? 'Updated from map point (edit if needed).'
                 : 'Pin set — add street manually if needed.';
