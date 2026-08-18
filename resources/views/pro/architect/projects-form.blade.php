@@ -43,7 +43,7 @@
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Internal reference</label>
                         <div style="display: flex; gap: 0.45rem; align-items: stretch;">
-                            <input type="text" name="reference_code" id="referenceCodeField" value="{{ old('reference_code', $project->reference_code ?? '') }}" placeholder="CAMI-BORG-SLIE-001" maxlength="100" style="flex: 1; min-width: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <input type="text" name="reference_code" id="referenceCodeField" value="{{ old('reference_code', $project->reference_code ?? '') }}" placeholder="e.g. CAMI-VASS-SLIE-001" maxlength="100" autocomplete="off" style="flex: 1; min-width: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                             <button type="button" id="generateReferenceBtn" style="flex-shrink: 0; background: #f1f5f9; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 0.75rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.78rem; cursor: pointer; white-space: nowrap;">Generate</button>
                         </div>
                         <div id="referenceGuide" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Practice + client + locality (4 letters each) + next number. Editable anytime.</div>
@@ -121,7 +121,8 @@
 
         <script>
         (function () {
-            var suggestUrl = @json($suggestReferenceUrl ?? url('/pro/architect/projects/suggest-reference'));
+            var suggestUrl = @json($suggestReferenceUrl ?? '/pro/architect/projects/suggest-reference');
+            var practiceName = @json($practiceName ?? '');
             var excludeId = @json($project->id ?? null);
             var isCreate = @json(!$project);
             var field = document.getElementById('referenceCodeField');
@@ -131,6 +132,11 @@
             var localityInput = document.getElementById('projectSiteLocality');
             if (!field || !btn || !clientSelect) return;
 
+            var noise = {
+                THE: 1, AND: 1, OF: 1, A: 1, AN: 1, FOR: 1,
+                STUDIO: 1, ARCHITECTURE: 1, ARCHITECT: 1, ARCHITECTS: 1, PERIT: 1, PERITI: 1,
+                LTD: 1, LIMITED: 1, CO: 1, COMPANY: 1, PRACTICE: 1, OFFICE: 1, GROUP: 1
+            };
             var lastGenerated = '';
             var manualEdit = false;
             var reqSeq = 0;
@@ -143,6 +149,47 @@
             function isAutoValue() {
                 var current = field.value.trim();
                 return current === '' || current === lastGenerated;
+            }
+
+            function slugPart(text, maxLen, preferMeaningful) {
+                maxLen = maxLen || 4;
+                var raw = String(text || '').toUpperCase().replace(/['’`]/g, '');
+                raw = raw.replace(/[^A-Z0-9]+/g, ' ').trim();
+                if (!raw) return '';
+                var words = raw.split(/\s+/).filter(Boolean);
+                if (preferMeaningful) {
+                    var meaningful = words.filter(function (w) { return !noise[w]; });
+                    if (meaningful.length) words = meaningful;
+                }
+                var joined = words.join('');
+                if (joined.length <= maxLen) return joined;
+                var last = words[words.length - 1] || '';
+                if (!preferMeaningful && last.length >= 3) return last.slice(0, maxLen);
+                return joined.slice(0, maxLen);
+            }
+
+            function localPrefix() {
+                var clientName = '';
+                if (clientSelect.selectedIndex >= 0) {
+                    clientName = clientSelect.options[clientSelect.selectedIndex].text || '';
+                }
+                var locality = localityInput ? localityInput.value.trim() : '';
+                var parts = [
+                    slugPart(practiceName, 4, true),
+                    slugPart(clientName, 4, false),
+                    slugPart(locality, 4, false)
+                ].filter(Boolean);
+                return parts.length ? parts.join('-') : 'PROJ';
+            }
+
+            function applyLocalFallback() {
+                var next = localPrefix() + '-001';
+                if (!manualEdit || isAutoValue()) {
+                    field.value = next;
+                    lastGenerated = next;
+                    manualEdit = false;
+                }
+                return next;
             }
 
             function buildQuery() {
@@ -158,7 +205,8 @@
             function applySuggestion(data, seq) {
                 if (seq !== reqSeq) return;
                 if (!data || !data.ok || !data.reference_code) {
-                    setGuide('Could not generate reference — enter one manually.');
+                    applyLocalFallback();
+                    setGuide('Using local suggestion — save will confirm the next free number.');
                     return;
                 }
                 var next = String(data.reference_code);
@@ -172,6 +220,7 @@
 
             function fetchSuggestion() {
                 var seq = ++reqSeq;
+                applyLocalFallback();
                 btn.disabled = true;
                 fetch(suggestUrl + '?' + buildQuery(), {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -179,13 +228,24 @@
                     cache: 'no-store'
                 })
                     .then(function (r) {
-                        if (!r.ok) throw new Error('suggest failed');
-                        return r.json();
+                        return r.json().then(function (data) {
+                            return { okHttp: r.ok, data: data };
+                        }).catch(function () {
+                            return { okHttp: false, data: null };
+                        });
                     })
-                    .then(function (data) { applySuggestion(data, seq); })
+                    .then(function (result) {
+                        if (seq !== reqSeq) return;
+                        if (result.okHttp && result.data) applySuggestion(result.data, seq);
+                        else {
+                            applyLocalFallback();
+                            setGuide('Using local suggestion — save will confirm the next free number.');
+                        }
+                    })
                     .catch(function () {
                         if (seq !== reqSeq) return;
-                        setGuide('Could not generate reference — enter one manually.');
+                        applyLocalFallback();
+                        setGuide('Using local suggestion — save will confirm the next free number.');
                     })
                     .finally(function () {
                         if (seq === reqSeq) btn.disabled = false;
@@ -199,7 +259,7 @@
                 }
                 if (force) manualEdit = false;
                 clearTimeout(timer);
-                timer = setTimeout(fetchSuggestion, 180);
+                timer = setTimeout(fetchSuggestion, 120);
             }
 
             btn.addEventListener('click', function () {
