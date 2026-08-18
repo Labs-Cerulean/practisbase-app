@@ -5,6 +5,7 @@
     $mapServerUrl = $mapServerUrl ?? \App\Support\Architect\MapServerLink::home();
 @endphp
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+@include('pro.architect.partials.map-pin-assets')
 <div style="margin-top: 0.85rem;">
     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.45rem;">
         <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Site pin</div>
@@ -23,7 +24,7 @@
 <script>
 (function () {
     var el = document.getElementById('arch-site-pin-map');
-    if (!el || typeof L === 'undefined') return;
+    if (!el || typeof L === 'undefined' || !window.pbArchMapPin) return;
     var latInput = document.getElementById('site_latitude');
     var lngInput = document.getElementById('site_longitude');
     var streetInput = document.querySelector('input[name="site_street"]');
@@ -39,6 +40,7 @@
         attribution: basemap.attribution,
         subdomains: 'abcd'
     }).addTo(map);
+    var pinIcon = window.pbArchMapPin.icon({ color: '#3f6212' });
     var marker = null;
     function setPin(lat, lng, doGeocode) {
         latInput.value = Number(lat).toFixed(7);
@@ -46,7 +48,7 @@
         if (marker) {
             marker.setLatLng([lat, lng]);
         } else {
-            marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+            marker = L.marker([lat, lng], { icon: pinIcon, draggable: true }).addTo(map);
             marker.on('dragend', function () {
                 var p = marker.getLatLng();
                 setPin(p.lat, p.lng, true);

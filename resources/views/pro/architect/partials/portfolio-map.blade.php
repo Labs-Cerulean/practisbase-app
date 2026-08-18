@@ -6,6 +6,7 @@
     $mapServerUrl = $mapServerUrl ?? \App\Support\Architect\MapServerLink::home();
 @endphp
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+@include('pro.architect.partials.map-pin-assets')
 <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm);">
     <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border-light);">
         <div style="font-size: 0.78rem; font-weight: 700; color: var(--primary-navy);">
@@ -24,7 +25,7 @@
 <script>
 (function () {
     var el = document.getElementById(@json($mapId));
-    if (!el || typeof L === 'undefined') return;
+    if (!el || typeof L === 'undefined' || !window.pbArchMapPin) return;
     var pins = @json($pins);
     var map = L.map(el, { scrollWheelZoom: false }).setView([35.94, 14.38], 10);
     var basemap = @json(\App\Support\Architect\MapBasemap::leafletConfig());
@@ -33,14 +34,11 @@
         attribution: basemap.attribution,
         subdomains: 'abcd'
     }).addTo(map);
+    var icon = window.pbArchMapPin.icon({ color: '#3f6212' });
     var bounds = [];
     pins.forEach(function (pin) {
-        var m = L.marker([pin.lat, pin.lng]).addTo(map);
-        var label = '<strong>' + (pin.name || 'Project') + '</strong>';
-        if (pin.client) label += '<br>' + pin.client;
-        if (pin.locality) label += '<br>' + pin.locality;
-        label += '<br><a href="' + pin.href + '">Open project</a>';
-        m.bindPopup(label);
+        var m = L.marker([pin.lat, pin.lng], { icon: icon }).addTo(map);
+        m.bindPopup(window.pbArchMapPin.popupHtml(pin));
         bounds.push([pin.lat, pin.lng]);
     });
     if (bounds.length === 1) {
