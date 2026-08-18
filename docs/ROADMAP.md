@@ -84,7 +84,8 @@ Pricing/onboarding copy should match the desks above. Soft launch still needs a 
 ├─────────────────────────────────────────────────────────────────┤
 │ 4. Specialised Profession Tooling                               │
 │    Medical ⚕️ soft-launch ready (+ unlock polish)                │
-│    Architect 📐 soft-launch ready (+ CR + method statements)    │
+│    Architect 📐 CR/MS shipped; portfolio/map/PA programme        │
+│              → see docs/ARCHITECT_PHASING.md                     │
 │    Engineer ⚙️ E1–E5 shipped (BOQ / Spec is the remaining gap) │
 ├─────────────────────────────────────────────────────────────────┤
 │ 5. BOQ & Specification Suite                                    │
@@ -92,6 +93,8 @@ Pricing/onboarding copy should match the desks above. Soft launch still needs a 
 │    5.2 AI top-up (Gemini)                    POST soft launch   │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Architect growth programme (post CR/MS):** full phasing for portfolio command centre, map, PA/eApps (leading-zero safe), neighbours, BCA mobilisation, reference library, and field tools lives in [`docs/ARCHITECT_PHASING.md`](ARCHITECT_PHASING.md). Phase 1 (projects + PA status + map) is the sellable front door; MapServer is deep-link only unless an official API appears.
 
 ---
 
@@ -207,8 +210,9 @@ Soft launch does **not** need every line from every legacy job — it needs a **
 
 ### SL-A / SL-M / SL-G
 
-- **SL-A:** Keep Arch green; neighbour condition reports + method statements (DMS/EMS/CMS) shipped.  
-- **SL-M:** WebAuthn reliability only; recovery code sacred.  
+- **SL-A (soft-launch freeze):** Keep Arch green — Client → Project → PA + DMS + BCA templates + condition reports + method statements (DMS/EMS/CMS) shipped and frozen against regression.
+- **SL-A+ (growth programme):** Portfolio / map / PA lifecycle / neighbours / BCA mobilisation — **not** a soft-launch blocker; phased in [`docs/ARCHITECT_PHASING.md`](ARCHITECT_PHASING.md). Start with Phase 1 (dashboard = projects + PAs + map; padded eApps links; MapServer deep link only).
+- **SL-M:** WebAuthn reliability only; recovery code sacred.
 - **SL-G checklist:** SL-E + SL-B met; fiscal / Med / Arch smokes green; Eng smoke includes BOQ add + Spec export; pricing matches reality; Stripe still optional.
 
 ---
@@ -364,6 +368,8 @@ Gemini 1.5 Flash: scope → draft BOQ; PDF/scan → structured BOQ; `ai_usage_lo
 | 9 | Pricing/onboarding copy sync | marketing Blade | Low |
 | 10 | Optional Med WebAuthn polish | Med | Low |
 | 11 | Soft-launch checklist | docs | None |
+
+**After soft launch (or in parallel if capacity allows):** Architect portfolio programme per [`docs/ARCHITECT_PHASING.md`](ARCHITECT_PHASING.md) — map + PA/eApps (5-digit pad) → DMS reader → neighbours + radius → reference library → mobilisation → field/email → eApps status pull.
 
 B0 (NotebookLM) runs **outside** git until curated JSON is ready to commit (steps 6–8). Fiscal freezes: no feature PRs unless a beta-blocking bug.
 
