@@ -99,27 +99,19 @@ class ArchitectProject extends Model
     }
 
     /**
-     * Apply project status / commencement cues to phase.
-     * Soft rules only — never moves the phase backwards.
+     * Soft phase cues from project status only — never moves backwards.
+     * Construction advance comes from PA “works started on site”, not a project date.
      *
-     * @param  array{status?: ?string, commencement_date?: mixed, phase?: ?string}  $input
-     * @return array{status?: ?string, commencement_date?: mixed, phase?: ?string}
+     * @param  array{status?: ?string, phase?: ?string}  $input
+     * @return array{status?: ?string, phase?: ?string}
      */
     public static function applyProgressToPhase(array $input, ?self $existing = null): array
     {
         $phase = $input['phase'] ?? $existing?->phase ?? 'concept';
         $status = $input['status'] ?? $existing?->status ?? 'active';
-        $commencement = $input['commencement_date'] ?? $existing?->commencement_date;
 
         if ($status === 'completed') {
             $phase = 'completion';
-        } elseif (filled($commencement)) {
-            $order = array_flip(self::PHASE_ORDER);
-            $currentIdx = $order[$phase] ?? 0;
-            $constructionIdx = $order['construction'] ?? 3;
-            if ($currentIdx < $constructionIdx) {
-                $phase = 'construction';
-            }
         }
 
         $input['phase'] = $phase;

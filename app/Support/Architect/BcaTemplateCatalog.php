@@ -82,9 +82,9 @@ class BcaTemplateCatalog
                 'type' => 'text',
             ],
             'commencement_override' => [
-                'label' => 'Works commencement date (override)',
+                'label' => 'Works started on site (override)',
                 'type' => 'date',
-                'help' => 'Leave blank to use the project / PA commencement date.',
+                'help' => 'Leave blank to use the PA case “works started on site” date.',
             ],
         ];
     }
@@ -441,8 +441,8 @@ class BcaTemplateCatalog
             'site_premises' => $project?->site_premises,
             'site_street' => $project?->site_street,
             'site_locality' => $project?->site_locality,
-            'commencement_date' => $project?->commencement_date?->format('d/m/Y')
-                ?? $pa?->works_commencement_date?->format('d/m/Y'),
+            'commencement_date' => $pa?->works_commencement_date?->format('d/m/Y')
+                ?? $project?->commencement_date?->format('d/m/Y'),
             'pa' => $pa,
             'pa_number' => $pa?->pa_number,
             'pa_title' => $pa?->title,

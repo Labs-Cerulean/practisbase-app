@@ -39,8 +39,9 @@
                     </select>
                 </div>
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Works commencement</label>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Works started on site</label>
                     <input type="date" name="works_commencement_date" max="{{ date('Y-m-d') }}" value="{{ old('works_commencement_date', optional($pa->works_commencement_date ?? null)->format('Y-m-d')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">First day physical works under this permit began.</div>
                 </div>
             </div>
             <div>

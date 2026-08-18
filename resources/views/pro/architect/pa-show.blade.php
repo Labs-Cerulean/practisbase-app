@@ -56,7 +56,7 @@
             </div>
         </div>
         @if($pa->works_commencement_date)
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">Works from {{ $pa->works_commencement_date->format('d M Y') }}</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">Works on site from {{ $pa->works_commencement_date->format('d M Y') }}</div>
         @endif
     </div>
 

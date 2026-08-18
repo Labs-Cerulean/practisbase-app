@@ -136,7 +136,6 @@ class ProjectController extends Controller
             'site_street' => 'nullable|string|max:255',
             'site_locality' => 'nullable|string|max:120',
             'site_address' => 'nullable|string|max:2000',
-            'commencement_date' => 'nullable|date|before_or_equal:today',
             'notes' => 'nullable|string|max:5000',
         ]);
 

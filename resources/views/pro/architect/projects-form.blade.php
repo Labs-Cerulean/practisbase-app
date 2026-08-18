@@ -70,38 +70,19 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Commencement</label>
-                        <input type="date" name="commencement_date" id="project_commencement" max="{{ date('Y-m-d') }}" value="{{ old('commencement_date', optional($project->commencement_date ?? null)->format('Y-m-d')) }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    </div>
                 </div>
                 <script>
                 (function () {
                     var phase = document.getElementById('project_phase');
                     var status = document.getElementById('project_status');
-                    var commence = document.getElementById('project_commencement');
                     var hint = document.getElementById('phase_hint');
                     if (!phase || !status) return;
-                    var order = ['concept', 'permit', 'bca', 'construction', 'completion'];
-                    function advanceTo(target) {
-                        var cur = order.indexOf(phase.value);
-                        var next = order.indexOf(target);
-                        if (next > cur) {
-                            phase.value = target;
-                            if (hint) hint.textContent = 'Phase moved to match progress (you can still change it).';
-                        }
-                    }
-                    function syncFromStatus() {
+                    status.addEventListener('change', function () {
                         if (status.value === 'completed') {
                             phase.value = 'completion';
-                            if (hint) hint.textContent = 'Completed projects sit in Completion.';
+                            if (hint) hint.textContent = 'Completed projects sit in Completion. Construction starts when a PA case records works on site.';
                         }
-                    }
-                    function syncFromCommencement() {
-                        if (commence && commence.value) advanceTo('construction');
-                    }
-                    status.addEventListener('change', syncFromStatus);
-                    if (commence) commence.addEventListener('change', syncFromCommencement);
+                    });
                 })();
                 </script>
                 <div style="padding-top: 0.35rem; border-top: 1px solid #e2e8f0;">

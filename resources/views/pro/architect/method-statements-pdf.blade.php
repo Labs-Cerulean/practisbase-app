@@ -44,7 +44,7 @@
         {{ $statement->typeLabel() }}
         @if($statement->statement_number) · Ref. {{ $statement->statement_number }} @endif
         · Document date {{ $statement->issued_on->format('d M Y') }}
-        @if($statement->commencement_note) · Commencement: {{ $statement->commencement_note }} @endif
+        @if($statement->commencement_note) · Works start: {{ $statement->commencement_note }} @endif
         · Issue code {{ $statement->issue_code }}
     </div>
 
