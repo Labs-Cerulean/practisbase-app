@@ -60,9 +60,11 @@
                             <li>
                                 <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
                             </li>
-                            <li>
-                                <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
-                            </li>
+                            @unless(auth()->user()->canAccessProPackage('arch'))
+                                <li>
+                                    <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
+                                </li>
+                            @endunless
                             <li>
                                 <a href="/exports/backup" class="nav-link {{ request()->is('exports/backup*') ? 'active' : '' }}">Backup</a>
                             </li>
@@ -95,17 +97,27 @@
                                 <li><a href="/pro/engineer/equipment/due" class="nav-link {{ request()->is('pro/engineer/equipment/due') ? 'active' : '' }}">Due board</a></li>
                             @endif
 
-                            @if(auth()->user()->canAccessReports())
-                                <li class="nav-section-label" aria-hidden="true">Money</li>
+                            @if(auth()->user()->canAccessProPackage('arch') || auth()->user()->canAccessReports() || auth()->user()->hasStandardFinancial() || auth()->user()->isPracticeOnly())
+                                <li class="nav-section-label" aria-hidden="true">Accounts</li>
                                 <li>
-                                    <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Tax &amp; VAT</a>
+                                    <a href="/accounts" class="nav-link {{ request()->is('accounts') ? 'active' : '' }}">Accounts desk</a>
                                 </li>
-                                <li>
-                                    <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">Expenses</a>
-                                </li>
-                                <li>
-                                    <a href="/exports/accountant" class="nav-link {{ request()->is('exports/accountant*') ? 'active' : '' }}">For accountant</a>
-                                </li>
+                                @if(auth()->user()->canAccessProPackage('arch'))
+                                    <li>
+                                        <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
+                                    </li>
+                                @endif
+                                @if(auth()->user()->canAccessReports())
+                                    <li>
+                                        <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Tax &amp; VAT</a>
+                                    </li>
+                                    <li>
+                                        <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">Expenses</a>
+                                    </li>
+                                    <li>
+                                        <a href="/exports/accountant" class="nav-link {{ request()->is('exports/accountant*') ? 'active' : '' }}">For accountant</a>
+                                    </li>
+                                @endif
                             @endif
 
                             <li class="nav-section-label" aria-hidden="true">Community</li>

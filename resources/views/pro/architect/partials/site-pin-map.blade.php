@@ -33,9 +33,11 @@
     var startLng = parseFloat(lngInput.value);
     var hasStart = !isNaN(startLat) && !isNaN(startLng);
     var map = L.map(el).setView(hasStart ? [startLat, startLng] : [35.94, 14.38], hasStart ? 16 : 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
+    var basemap = @json(\App\Support\Architect\MapBasemap::leafletConfig());
+    L.tileLayer(basemap.url, {
+        maxZoom: basemap.maxZoom,
+        attribution: basemap.attribution,
+        subdomains: 'abcd'
     }).addTo(map);
     var marker = null;
     function setPin(lat, lng, doGeocode) {

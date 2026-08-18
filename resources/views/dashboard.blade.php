@@ -11,17 +11,20 @@
             'eng' => '#0c4a6e',
             default => 'var(--primary-cerulean)',
         };
-        $subtitle = match ($mode) {
-            'practice' => match ($package) {
+        $subtitle = match (true) {
+            ($peritHome ?? false) => 'Projects, planning cases, and sites — day to day for the practice.',
+            $mode === 'practice' => match ($package) {
                 'med' => 'Clinical tools first. Free invoicing sits underneath.',
-                'arch' => 'Studio tools first. Free invoicing sits underneath.',
+                'arch' => 'Projects, planning cases, and sites — day to day for the practice.',
                 'eng' => 'Technical tools first. Free invoicing sits underneath.',
                 default => 'Practice tools first. Free invoicing sits underneath.',
             },
-            'pro' => 'Practice desk and Tax and VAT in one place.',
-            'standard' => 'Your '.$year.' accounts at a glance. Official invoices only count for tax.',
+            $mode === 'pro' && ($package ?? null) === 'arch' => 'Studio desk first. Billing and tax live under Accounts.',
+            $mode === 'pro' => 'Practice desk and Tax and VAT in one place.',
+            $mode === 'standard' => 'Your '.$year.' accounts at a glance. Official invoices only count for tax.',
             default => 'Free invoicing layer. Upgrade when you need Tax and VAT or profession tools.',
         };
+        $showMoneyOnOverview = $showMoneyOnOverview ?? ! ($peritHome ?? false);
     @endphp
 
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
@@ -42,19 +45,20 @@
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'arch')
                 <a href="/pro/architect/projects/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Project</a>
                 <a href="/pro/architect/projects" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Portfolio map</a>
+                <a href="/accounts" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Accounts</a>
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
                 <a href="/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
                 <a href="/pro/engineer/certificates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Field certificates</a>
             @endif
 
-            @if($hasFinancial || $mode === 'free')
+            @if($showMoneyOnOverview && ($hasFinancial || $mode === 'free'))
                 <a href="/ledger/create" style="background: {{ $hasPractice && ! $hasFinancial ? 'white' : 'var(--primary-cerulean)' }}; color: {{ $hasPractice && ! $hasFinancial ? 'var(--primary-navy)' : 'white' }}; border: {{ $hasPractice && ! $hasFinancial ? '1px solid var(--border-light)' : 'none' }}; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
                 <a href="/clients/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">{{ $hasPractice ? '+ Billing client' : '+ Client' }}</a>
-            @elseif($practiceOnly)
+            @elseif($showMoneyOnOverview && $practiceOnly)
                 <a href="/ledger/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
             @endif
 
-            @if($hasFinancial)
+            @if($showMoneyOnOverview && $hasFinancial)
                 <a href="/expenses/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Expense</a>
             @endif
         </div>
@@ -72,7 +76,7 @@
         </div>
     @endif
 
-    @if($practiceOnly)
+    @if($showMoneyOnOverview && $practiceOnly)
         <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
             <div>
                 <div style="font-weight: 700; color: var(--primary-navy);">Free billing layer</div>
@@ -286,59 +290,61 @@
         </div>
     @endif
 
-    @if(!empty($deadlines))
-        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
-            @foreach($deadlines as $chip)
-                <a href="{{ $chip['href'] }}" style="display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none; background: {{ $chip['urgent'] ? '#fffbeb' : 'white' }}; border: 1px solid {{ $chip['urgent'] ? '#fde68a' : 'var(--border-light)' }}; color: {{ $chip['urgent'] ? '#92400e' : 'var(--primary-navy)' }}; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-size: 0.8rem; box-shadow: var(--shadow-sm);">
-                    <strong style="font-weight: 700;">{{ $chip['label'] }}</strong>
-                    <span style="opacity: 0.85;">{{ $chip['hint'] }}</span>
-                </a>
-            @endforeach
-        </div>
-    @endif
-
-    @if($glance)
-        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">{{ $year }} at a glance</div>
-                <a href="/reports" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Open Tax and VAT →</a>
+    @if($showMoneyOnOverview)
+        @if(!empty($deadlines))
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
+                @foreach($deadlines as $chip)
+                    <a href="{{ $chip['href'] }}" style="display: inline-flex; align-items: center; gap: 0.45rem; text-decoration: none; background: {{ $chip['urgent'] ? '#fffbeb' : 'white' }}; border: 1px solid {{ $chip['urgent'] ? '#fde68a' : 'var(--border-light)' }}; color: {{ $chip['urgent'] ? '#92400e' : 'var(--primary-navy)' }}; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-size: 0.8rem; box-shadow: var(--shadow-sm);">
+                        <strong style="font-weight: 700;">{{ $chip['label'] }}</strong>
+                        <span style="opacity: 0.85;">{{ $chip['hint'] }}</span>
+                    </a>
+                @endforeach
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Billed (fiscal)</div>
-                    <div style="font-size: 1.35rem; font-weight: 700; color: #0369a1;">€{{ number_format($glance['fiscal_revenue'], 2) }}</div>
+        @endif
+
+        @if($glance)
+            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">{{ $year }} at a glance</div>
+                    <a href="/reports" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Open Tax and VAT →</a>
                 </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Profit so far</div>
-                    <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($glance['net_profit'], 2) }}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">Income tax still to set aside</div>
-                    <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['tax_only_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['tax_only_set_aside'], 2) }}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">SSC still to set aside</div>
-                    <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['ssc_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['ssc_set_aside'], 2) }}</div>
-                </div>
-                @if($glance['has_article_10'])
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
                     <div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">VAT balance</div>
-                        <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['vat_balance'] > 0 ? '#dc2626' : '#059669' }};">
-                            {{ $glance['vat_balance'] < 0 ? 'Refund ' : '' }}€{{ number_format(abs($glance['vat_balance']), 2) }}
-                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Billed (fiscal)</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: #0369a1;">€{{ number_format($glance['fiscal_revenue'], 2) }}</div>
                     </div>
-                @endif
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Profit so far</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($glance['net_profit'], 2) }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Income tax still to set aside</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['tax_only_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['tax_only_set_aside'], 2) }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">SSC still to set aside</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['ssc_set_aside'] > 0 ? '#b45309' : '#059669' }};">€{{ number_format($glance['ssc_set_aside'], 2) }}</div>
+                    </div>
+                    @if($glance['has_article_10'])
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">VAT balance</div>
+                            <div style="font-size: 1.35rem; font-weight: 700; color: {{ $glance['vat_balance'] > 0 ? '#dc2626' : '#059669' }};">
+                                {{ $glance['vat_balance'] < 0 ? 'Refund ' : '' }}€{{ number_format(abs($glance['vat_balance']), 2) }}
+                            </div>
+                        </div>
+                    @endif
+                </div>
+                <p style="margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+                    Live draft from your invoices and expenses. Open Tax and VAT for the full breakdown.
+                    @if(!empty($glance['ssc_minimum_band']))
+                        The SSC figure is the Class 2 minimum band (weekly rate × 52), which can apply even at €0 profit. If your maximum SSC is already paid through primary employment, tick that in Settings → tax setup.
+                    @endif
+                </p>
             </div>
-            <p style="margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
-                Live draft from your invoices and expenses. Open Tax and VAT for the full breakdown.
-                @if(!empty($glance['ssc_minimum_band']))
-                    The SSC figure is the Class 2 minimum band (weekly rate × 52), which can apply even at €0 profit. If your maximum SSC is already paid through primary employment, tick that in Settings → tax setup.
-                @endif
-            </p>
-        </div>
+        @endif
     @endif
 
-    @if(!($checklist['all_done'] ?? true))
+    @if($showMoneyOnOverview && !($checklist['all_done'] ?? true))
         <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
                 <div>
@@ -359,6 +365,7 @@
         </div>
     @endif
 
+    @if($showMoneyOnOverview)
     {{-- Practice-only: compact free billing strip (not the full finance cockpit) --}}
     @if($practiceOnly && $billing)
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.15rem 1.35rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
@@ -534,6 +541,7 @@
                 <a href="/settings#plan" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--text-muted); font-weight: 600; font-size: 0.9rem;">Upgrade for Tax and VAT</a>
             </div>
         </div>
+    @endif
     @endif
 
     <style>
