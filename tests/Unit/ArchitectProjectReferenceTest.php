@@ -7,38 +7,32 @@ use PHPUnit\Framework\TestCase;
 
 class ArchitectProjectReferenceTest extends TestCase
 {
-    public function test_slug_strips_noise_for_practice_name(): void
+    public function test_slug_strips_noise_and_truncates_to_four(): void
     {
         $this->assertSame(
-            'CAMILLERI',
-            ProjectReference::slugPart('Camilleri Architecture Studio', 16, preferMeaningful: true)
+            'CAMI',
+            ProjectReference::slugPart('Camilleri Architecture Studio', preferMeaningful: true)
         );
         $this->assertSame(
-            'CERULEANLABS',
-            ProjectReference::slugPart('Cerulean Labs Limited', 16, preferMeaningful: true)
+            'CERU',
+            ProjectReference::slugPart('Cerulean Labs Limited', preferMeaningful: true)
         );
+        $this->assertSame(4, strlen(ProjectReference::slugPart('Camilleri Architecture Studio', preferMeaningful: true)));
     }
 
-    public function test_slug_client_and_locality(): void
+    public function test_slug_client_and_locality_max_four(): void
     {
-        $this->assertSame('MARIABORG', ProjectReference::slugPart('Maria Borg', 16, preferMeaningful: false));
-        $this->assertSame('SLIEMA', ProjectReference::slugPart('Sliema', 12, preferMeaningful: false));
-        $this->assertSame('STJULIANS', ProjectReference::slugPart("St. Julian's", 12, preferMeaningful: false));
-        // Multi-word over max → last word when it fits
-        $this->assertSame(
-            'WORDS',
-            ProjectReference::slugPart('Very Long Name Here Extra Words', 16, preferMeaningful: false)
-        );
-        $this->assertSame(
-            'SUPERCALIFRAGILI',
-            ProjectReference::slugPart('Supercalifragilistic', 16, preferMeaningful: false)
-        );
+        $this->assertSame('BORG', ProjectReference::slugPart('Maria Borg'));
+        $this->assertSame('SLIE', ProjectReference::slugPart('Sliema'));
+        $this->assertSame('JULI', ProjectReference::slugPart("St. Julian's"));
+        $this->assertSame('WORD', ProjectReference::slugPart('Very Long Name Here Extra Words'));
+        $this->assertSame('SUPE', ProjectReference::slugPart('Supercalifragilistic'));
     }
 
-    public function test_prefix_joins_practice_client_locality(): void
+    public function test_prefix_joins_truncated_parts(): void
     {
         $this->assertSame(
-            'CAMILLERI-MARIABORG-SLIEMA',
+            'CAMI-BORG-SLIE',
             ProjectReference::prefix('Camilleri Architecture', 'Maria Borg', 'Sliema')
         );
     }
@@ -46,7 +40,7 @@ class ArchitectProjectReferenceTest extends TestCase
     public function test_prefix_omits_empty_locality(): void
     {
         $this->assertSame(
-            'CAMILLERI-BORG',
+            'CAMI-BORG',
             ProjectReference::prefix('Camilleri Architecture', 'Borg', '')
         );
     }
@@ -54,15 +48,15 @@ class ArchitectProjectReferenceTest extends TestCase
     public function test_next_sequence_from_codes(): void
     {
         $codes = [
-            'CAMILLERI-BORG-SLIEMA-001',
-            'CAMILLERI-BORG-SLIEMA-003',
+            'CAMI-BORG-SLIE-001',
+            'CAMI-BORG-SLIE-003',
             'OTHER-001',
-            'CAMILLERI-BORG-SLIEMA-002',
+            'CAMI-BORG-SLIE-002',
         ];
 
-        $this->assertSame(4, ProjectReference::nextSequenceFromCodes($codes, 'CAMILLERI-BORG-SLIEMA'));
-        $this->assertSame(1, ProjectReference::nextSequenceFromCodes([], 'CAMILLERI-BORG-SLIEMA'));
-        $this->assertSame(2, ProjectReference::nextSequenceFromCodes(['CAMILLERI-BORG-SLIEMA-001'], 'CAMILLERI-BORG-SLIEMA'));
+        $this->assertSame(4, ProjectReference::nextSequenceFromCodes($codes, 'CAMI-BORG-SLIE'));
+        $this->assertSame(1, ProjectReference::nextSequenceFromCodes([], 'CAMI-BORG-SLIE'));
+        $this->assertSame(2, ProjectReference::nextSequenceFromCodes(['CAMI-BORG-SLIE-001'], 'CAMI-BORG-SLIE'));
     }
 
     public function test_format_sequence_pads_three_digits(): void

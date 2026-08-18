@@ -43,10 +43,10 @@
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Internal reference</label>
                         <div style="display: flex; gap: 0.45rem; align-items: stretch;">
-                            <input type="text" name="reference_code" id="referenceCodeField" value="{{ old('reference_code', $project->reference_code ?? '') }}" placeholder="Practice-Client-Locality-001" maxlength="100" style="flex: 1; min-width: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <input type="text" name="reference_code" id="referenceCodeField" value="{{ old('reference_code', $project->reference_code ?? '') }}" placeholder="CAMI-BORG-SLIE-001" maxlength="100" style="flex: 1; min-width: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                             <button type="button" id="generateReferenceBtn" style="flex-shrink: 0; background: #f1f5f9; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 0.75rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.78rem; cursor: pointer; white-space: nowrap;">Generate</button>
                         </div>
-                        <div id="referenceGuide" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Practice name + client + locality + next number. Editable anytime.</div>
+                        <div id="referenceGuide" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Practice + client + locality (4 letters each) + next number. Editable anytime.</div>
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Engagement type</label>
@@ -146,7 +146,7 @@
                     lastGenerated = next;
                     autoFollow = true;
                 }
-                setGuide('Next: ' + next + ' — practice + client + locality + number. Edit freely or click Generate.');
+                setGuide('Next: ' + next + ' — 4-letter parts + number. Edit freely or click Generate.');
             }
 
             function fetchSuggestion(force) {
@@ -168,7 +168,7 @@
 
             function scheduleSuggest() {
                 if (!autoFollow && field.value.trim() && field.value.trim() !== lastGenerated) {
-                    setGuide('Manual reference kept. Click Generate to replace with practice + client + locality + number.');
+                    setGuide('Manual reference kept. Click Generate to replace (4-letter parts + number).');
                     return;
                 }
                 clearTimeout(timer);
