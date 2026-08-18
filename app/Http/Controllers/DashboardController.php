@@ -39,31 +39,19 @@ class DashboardController extends Controller
         $clientCap = $user->hasUnlimitedClients() ? null : $user->freeClientCap();
         $clientsUsed = (int) ($user->clients_created_count ?? $clientCount);
 
-        $billing = null;
-        if ($hasFinancial || $practiceOnly || ! $hasPractice) {
-            $billing = $this->billingSnapshot($userId, $year);
-        }
+        $peritHome = $hasPractice && $package === 'arch' && $user->canAccessProPackage('arch');
 
+        $billing = null;
         $glance = null;
-        if ($hasFinancial) {
-            $report = FiscalReportEngine::compute($user, $year);
-            $taxDue = (float) ($report['totalTaxLiability'] ?? 0);
-            $sscDue = (float) ($report['sscLiability'] ?? 0);
-            $taxPaid = (float) ($report['ptTaxPaid'] ?? 0);
-            $sscPaid = (float) ($report['ptSscPaid'] ?? 0);
-            $netProfit = (float) ($report['netProfit'] ?? 0);
-            $glance = [
-                'fiscal_revenue' => (float) ($report['fiscalRevenue'] ?? 0),
-                'net_profit' => $netProfit,
-                'tax_set_aside' => max(0, ($taxDue + $sscDue) - ($taxPaid + $sscPaid)),
-                'tax_only_set_aside' => max(0, $taxDue - $taxPaid),
-                'ssc_set_aside' => max(0, $sscDue - $sscPaid),
-                'tax_due' => $taxDue,
-                'ssc_due' => $sscDue,
-                'ssc_minimum_band' => $netProfit <= 0.009 && $sscDue > 0.009,
-                'vat_balance' => (float) ($report['vatBalance'] ?? 0),
-                'has_article_10' => (bool) ($report['hasArticle10'] ?? $report['isArticle10'] ?? false),
-            ];
+        $deadlines = [];
+        if (! $peritHome) {
+            if ($hasFinancial || $practiceOnly || ! $hasPractice) {
+                $billing = $this->billingSnapshot($userId, $year);
+            }
+            if ($hasFinancial) {
+                $glance = $this->fiscalGlance($user, $year);
+                $deadlines = PracticeGuidance::softDeadlines($user, $year);
+            }
         }
 
         $practiceDesk = null;
@@ -71,7 +59,7 @@ class DashboardController extends Controller
         if ($hasPractice && $package === 'med' && $user->canAccessProPackage('med')) {
             $practiceDesk = $this->medicalDesk($userId);
             $growth = PracticeGrowth::forMedical($userId);
-        } elseif ($hasPractice && $package === 'arch' && $user->canAccessProPackage('arch')) {
+        } elseif ($peritHome) {
             $practiceDesk = $this->architectDesk($userId);
             $growth = null;
         } elseif ($hasPractice && $package === 'eng' && $user->canAccessProPackage('eng')) {
@@ -81,8 +69,9 @@ class DashboardController extends Controller
             $growth = PracticeGrowth::forClients($userId);
         }
 
-        $checklist = PracticeGuidance::firstWeekChecklist($user);
-        $deadlines = $hasFinancial ? PracticeGuidance::softDeadlines($user, $year) : [];
+        $checklist = $peritHome
+            ? ['all_done' => true, 'complete' => 0, 'total' => 0, 'items' => []]
+            : PracticeGuidance::firstWeekChecklist($user);
 
         $mode = match (true) {
             $practiceOnly => 'practice',
@@ -103,6 +92,8 @@ class DashboardController extends Controller
             'hasFinancial' => $hasFinancial,
             'hasPractice' => $hasPractice,
             'practiceOnly' => $practiceOnly,
+            'peritHome' => $peritHome,
+            'showMoneyOnOverview' => ! $peritHome,
             'clientCount' => $clientCount,
             'archivedCount' => $archivedCount,
             'clientCap' => $clientCap,
@@ -115,6 +106,83 @@ class DashboardController extends Controller
             'checklist' => $checklist,
             'deadlines' => $deadlines,
         ]);
+    }
+
+    public function accounts()
+    {
+        $user = Auth::user();
+
+        if ($user->canAccessCompanyBooks()) {
+            return redirect('/company/accounts');
+        }
+
+        $userId = $user->id;
+        $year = (int) date('Y');
+        $hasFinancial = $user->hasStandardFinancial();
+        $hasPractice = $user->hasPracticeTools();
+        $practiceOnly = $user->isPracticeOnly();
+        $package = $user->proPackage();
+
+        $clientCount = Client::where('user_id', $userId)->count();
+        $archivedCount = Client::onlyTrashed()->where('user_id', $userId)->count();
+        $clientCap = $user->hasUnlimitedClients() ? null : $user->freeClientCap();
+        $clientsUsed = (int) ($user->clients_created_count ?? $clientCount);
+
+        $billing = $this->billingSnapshot($userId, $year);
+        $glance = $hasFinancial ? $this->fiscalGlance($user, $year) : null;
+        $deadlines = $hasFinancial ? PracticeGuidance::softDeadlines($user, $year) : [];
+
+        $mode = match (true) {
+            $practiceOnly => 'practice',
+            $hasPractice && $hasFinancial => 'pro',
+            $hasFinancial => 'standard',
+            default => 'free',
+        };
+
+        return view('accounts', [
+            'user' => $user,
+            'year' => $year,
+            'mode' => $mode,
+            'package' => $package,
+            'tierLabel' => TierPolicy::label($user->tier ?? 'free'),
+            'hasFinancial' => $hasFinancial,
+            'hasPractice' => $hasPractice,
+            'practiceOnly' => $practiceOnly,
+            'clientCount' => $clientCount,
+            'archivedCount' => $archivedCount,
+            'clientCap' => $clientCap,
+            'clientsUsed' => $clientsUsed,
+            'billing' => $billing,
+            'glance' => $glance,
+            'deadlines' => $deadlines,
+            'practiceDesk' => null,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fiscalGlance($user, int $year): array
+    {
+        $report = FiscalReportEngine::compute($user, $year);
+        $taxDue = (float) ($report['totalTaxLiability'] ?? 0);
+        $sscDue = (float) ($report['sscLiability'] ?? 0);
+        $taxPaid = (float) ($report['ptTaxPaid'] ?? 0);
+        $sscPaid = (float) ($report['ptSscPaid'] ?? 0);
+        $netProfit = (float) ($report['netProfit'] ?? 0);
+
+        return [
+            'fiscal_revenue' => (float) ($report['fiscalRevenue'] ?? 0),
+            'net_profit' => $netProfit,
+            'tax_set_aside' => max(0, ($taxDue + $sscDue) - ($taxPaid + $sscPaid)),
+            'tax_only_set_aside' => max(0, $taxDue - $taxPaid),
+            'ssc_set_aside' => max(0, $sscDue - $sscPaid),
+            'tax_due' => $taxDue,
+            'ssc_due' => $sscDue,
+            'ssc_minimum_band' => $netProfit <= 0.009 && $sscDue > 0.009,
+            'vat_balance' => (float) ($report['vatBalance'] ?? 0),
+            'has_article_10' => (bool) ($report['hasArticle10'] ?? $report['isArticle10'] ?? false),
+        ];
     }
 
     /**

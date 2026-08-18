@@ -170,6 +170,7 @@ Route::post('/pro/medical/vault/devices/unlock', [VaultDeviceController::class, 
 
 Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/accounts', [DashboardController::class, 'accounts']);
 
     Route::get('/clients', [ClientController::class, 'index']);
     Route::get('/clients/create', [ClientController::class, 'create']);

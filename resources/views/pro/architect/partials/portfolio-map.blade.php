@@ -27,9 +27,11 @@
     if (!el || typeof L === 'undefined') return;
     var pins = @json($pins);
     var map = L.map(el, { scrollWheelZoom: false }).setView([35.94, 14.38], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
+    var basemap = @json(\App\Support\Architect\MapBasemap::leafletConfig());
+    L.tileLayer(basemap.url, {
+        maxZoom: basemap.maxZoom,
+        attribution: basemap.attribution,
+        subdomains: 'abcd'
     }).addTo(map);
     var bounds = [];
     pins.forEach(function (pin) {
