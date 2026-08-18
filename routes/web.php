@@ -303,15 +303,15 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/projects/create', [ArchitectProjectController::class, 'create']);
         Route::get('/projects/suggest-reference', [ArchitectProjectController::class, 'suggestReference']);
         Route::post('/projects', [ArchitectProjectController::class, 'store']);
-        Route::get('/projects/{project}', [ArchitectProjectController::class, 'show']);
-        Route::get('/projects/{project}/edit', [ArchitectProjectController::class, 'edit']);
-        Route::put('/projects/{project}', [ArchitectProjectController::class, 'update']);
-        Route::post('/projects/{project}/parties', [ArchitectProjectController::class, 'storeParty']);
-        Route::delete('/projects/{project}/parties/{party}', [ArchitectProjectController::class, 'destroyParty']);
+        Route::get('/projects/{project}', [ArchitectProjectController::class, 'show'])->whereNumber('project');
+        Route::get('/projects/{project}/edit', [ArchitectProjectController::class, 'edit'])->whereNumber('project');
+        Route::put('/projects/{project}', [ArchitectProjectController::class, 'update'])->whereNumber('project');
+        Route::post('/projects/{project}/parties', [ArchitectProjectController::class, 'storeParty'])->whereNumber('project');
+        Route::delete('/projects/{project}/parties/{party}', [ArchitectProjectController::class, 'destroyParty'])->whereNumber('project');
         Route::get('/geocode/reverse', [ArchitectProjectController::class, 'reverseGeocode']);
 
-        Route::get('/projects/{project}/pa/create', [ArchitectPaController::class, 'create']);
-        Route::post('/projects/{project}/pa', [ArchitectPaController::class, 'store']);
+        Route::get('/projects/{project}/pa/create', [ArchitectPaController::class, 'create'])->whereNumber('project');
+        Route::post('/projects/{project}/pa', [ArchitectPaController::class, 'store'])->whereNumber('project');
         Route::get('/pa/{pa}', [ArchitectPaController::class, 'show']);
         Route::get('/pa/{pa}/edit', [ArchitectPaController::class, 'edit']);
         Route::put('/pa/{pa}', [ArchitectPaController::class, 'update']);

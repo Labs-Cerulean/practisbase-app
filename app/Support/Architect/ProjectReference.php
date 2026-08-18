@@ -78,7 +78,8 @@ class ProjectReference
             ->where('user_id', $userId)
             ->when($excludeProjectId, fn ($q) => $q->where('id', '!=', $excludeProjectId))
             ->whereNotNull('reference_code')
-            ->where('reference_code', 'ilike', $needle.'%')
+            ->where('reference_code', '!=', '')
+            ->whereRaw('UPPER(reference_code) LIKE ?', [strtoupper($needle).'%'])
             ->pluck('reference_code');
 
         return self::nextSequenceFromCodes($codes->all(), $prefix);
