@@ -30,7 +30,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.85rem;">
                     <div style="font-weight: 700; color: var(--primary-navy);">
                         Fields
-                        @include('partials.help-tip', ['text' => 'Drag to reorder. Field keys are generated automatically from labels.'])
+                        @include('partials.help-tip', ['text' => 'Drag to reorder. Choose Free text, Date, or Numbered list for each field.'])
                     </div>
                     <button type="button" id="add-field-btn" style="padding: 0.45rem 0.85rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.85rem;">+ Add field</button>
                 </div>
@@ -51,14 +51,26 @@
     var addBtn = document.getElementById('add-field-btn');
     var initial = @json($fields);
 
+    function typeOptions(selected) {
+        var types = [
+            { value: 'text', label: 'Free text' },
+            { value: 'date', label: 'Date' },
+            { value: 'bullets', label: 'Numbered list' }
+        ];
+        return types.map(function (t) {
+            return '<option value="' + t.value + '"' + (selected === t.value ? ' selected' : '') + '>' + t.label + '</option>';
+        }).join('');
+    }
+
     function rowHtml(field, index) {
+        var type = field.type || 'text';
         return '' +
-            '<div class="tpl-field-row" draggable="true" style="display:grid; grid-template-columns: 1fr 90px auto; gap:0.5rem; align-items:end; padding:0.75rem; background:#f8fafc; border:1px solid var(--border-light); border-radius:var(--radius-md);">' +
+            '<div class="tpl-field-row" draggable="true" style="display:grid; grid-template-columns: 1fr 150px auto; gap:0.5rem; align-items:end; padding:0.75rem; background:#f8fafc; border:1px solid var(--border-light); border-radius:var(--radius-md);">' +
             '<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--text-muted);margin-bottom:0.25rem;">Label *</label>' +
             '<input type="text" name="fields[' + index + '][label]" value="' + escapeAttr(field.label || '') + '" required maxlength="80" placeholder="Field label" style="width:100%;padding:0.55rem;border:1px solid var(--border-light);border-radius:var(--radius-md);"></div>' +
             '<input type="hidden" name="fields[' + index + '][key]" value="' + escapeAttr(field.key || '') + '">' +
-            '<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--text-muted);margin-bottom:0.25rem;">Rows</label>' +
-            '<input type="number" name="fields[' + index + '][rows]" value="' + (field.rows || 2) + '" min="1" max="12" style="width:100%;padding:0.55rem;border:1px solid var(--border-light);border-radius:var(--radius-md);"></div>' +
+            '<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--text-muted);margin-bottom:0.25rem;">Type</label>' +
+            '<select name="fields[' + index + '][type]" style="width:100%;padding:0.55rem;border:1px solid var(--border-light);border-radius:var(--radius-md);background:white;">' + typeOptions(type) + '</select></div>' +
             '<button type="button" data-remove style="padding:0.55rem 0.7rem;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:var(--radius-md);font-weight:700;cursor:pointer;">✕</button>' +
             '</div>';
     }
@@ -75,7 +87,7 @@
             return {
                 label: row.querySelector('[name$="[label]"]').value,
                 key: row.querySelector('[name$="[key]"]').value,
-                rows: parseInt(row.querySelector('[name$="[rows]"]').value, 10) || 2
+                type: row.querySelector('[name$="[type]"]').value || 'text'
             };
         });
     }
@@ -114,13 +126,13 @@
 
     addBtn.addEventListener('click', function () {
         var fields = readFields();
-        fields.push({ label: '', key: '', rows: 2 });
+        fields.push({ label: '', key: '', type: 'text' });
         render(fields);
         var inputs = list.querySelectorAll('[name$="[label]"]');
         if (inputs.length) inputs[inputs.length - 1].focus();
     });
 
-    render(initial && initial.length ? initial : [{ label: '', key: '', rows: 2 }]);
+    render(initial && initial.length ? initial : [{ label: '', key: '', type: 'text' }]);
 })();
 </script>
 @endpush

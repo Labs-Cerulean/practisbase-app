@@ -191,8 +191,14 @@
                         <div class="form-group" style="margin-bottom: 1.25rem;">
                             <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Default clinical note template</label>
                             <select name="clinical_note_template" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                @php
+                                    $selectedNoteTpl = old(
+                                        'clinical_note_template',
+                                        \App\Support\ClinicalNoteTemplates::normalizeForUser($user, $user->clinical_note_template ?? null)
+                                    );
+                                @endphp
                                 @foreach(\App\Support\ClinicalNoteTemplates::optionsForUser($user) as $key => $label)
-                                    <option value="{{ $key }}" {{ old('clinical_note_template', $user->clinical_note_template ?? 'general') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    <option value="{{ $key }}" {{ $selectedNoteTpl === $key ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
                             </select>
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
@@ -609,10 +615,10 @@
             <div id="data-backup" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
                 <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">Backup</h3>
                 <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
-                    Weekly ZIP of your clients, invoices, payments, and expenses. Clinical vault journals use the medical backup.
+                    Practice data and medical vault from one page. Separate ZIPs — vault needs your recovery code.
                 </p>
                 <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Last backup:
+                    Last practice backup:
                     <strong style="color: var(--primary-navy);">
                         {{ $user->last_data_backup_at ? $user->last_data_backup_at->format('d M Y H:i') : 'Never' }}
                     </strong>
@@ -622,9 +628,6 @@
                 </div>
                 <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
                     <a href="/exports/backup" style="background: var(--primary-cerulean); color: white; padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.9rem; text-decoration: none;">Open backup</a>
-                    @if($user->canAccessProPackage('med'))
-                        <a href="/pro/medical/vault/backup" style="color: var(--primary-navy); font-weight: 600; font-size: 0.85rem; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">Medical vault backup</a>
-                    @endif
                 </div>
             </div>
         </div>

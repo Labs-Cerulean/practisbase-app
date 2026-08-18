@@ -6,9 +6,11 @@ use App\Models\CapitalAsset;
 use App\Models\Client;
 use App\Models\Expense;
 use App\Models\Invoice;
+use App\Models\MedicalVault;
 use App\Models\Payment;
 use App\Models\TaxPayment;
 use App\Models\UserRegimeSegment;
+use App\Support\MedicalVaultCrypto;
 use App\Support\SimpleZipWriter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,10 +27,23 @@ class DataBackupController extends Controller
             return redirect('/company');
         }
 
+        $vault = null;
+        $vaultOverdue = false;
+        $vaultUnlocked = false;
+        if ($user->canAccessProPackage('med')) {
+            $vault = MedicalVault::activeForUser($user->id);
+            $vaultOverdue = $vault ? $vault->isBackupOverdue() : false;
+            $vaultUnlocked = $vault && MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null;
+        }
+
         return view('exports.data-backup', [
             'user' => $user,
             'backupOverdue' => $user->isDataBackupOverdue(),
             'lastBackupAt' => $user->last_data_backup_at,
+            'vault' => $vault,
+            'vaultOverdue' => $vaultOverdue,
+            'vaultUnlocked' => $vaultUnlocked,
+            'anyOverdue' => $user->isDataBackupOverdue() || $vaultOverdue,
         ]);
     }
 

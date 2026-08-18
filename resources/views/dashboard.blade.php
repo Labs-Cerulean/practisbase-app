@@ -85,18 +85,15 @@
         </div>
     @endif
 
-    @if($user->isDataBackupOverdue())
+    @if($backupOverdue ?? $user->isDataBackupOverdue())
         <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-left: 4px solid var(--primary-cerulean); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
             <div>
                 <div style="font-weight: 700; color: var(--primary-navy);">Weekly backup reminder</div>
                 <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.2rem;">
-                    Download a ZIP of your own PractisBase data. Takes a moment.
-                    @if($user->canAccessProPackage('med'))
-                        Doctors: medical vault backup is separate.
-                    @endif
+                    Download practice data@if($user->canAccessProPackage('med')) and medical vault@endif from one place.
                 </div>
             </div>
-            <a href="/exports/backup" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Download backup</a>
+            <a href="/exports/backup" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Open backup</a>
         </div>
     @endif
 
@@ -137,43 +134,60 @@
         })();
     </script>
 
-    @if($practiceDesk)
+    @if($growth || $practiceDesk)
         <div style="background: white; border: 1px solid var(--border-light); border-left: 5px solid {{ $deskAccent }}; border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                <div style="font-size: 0.75rem; font-weight: 700; color: {{ $deskAccent }}; text-transform: uppercase; letter-spacing: 0.04em;">{{ $practiceDesk['title'] }}</div>
+                <div style="font-size: 0.75rem; font-weight: 700; color: {{ $deskAccent }}; text-transform: uppercase; letter-spacing: 0.04em;">
+                    {{ $practiceDesk['title'] ?? 'Practice growth' }}
+                </div>
                 @if(($practiceDesk['kind'] ?? null) === 'med')
                     <a href="/pro/medical/patients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open patients →</a>
-                @elseif(($practiceDesk['kind'] ?? null) === 'arch')
-                    <a href="/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
-                @else
+                @elseif($practiceDesk)
                     <a href="/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
                 @endif
             </div>
 
-            @if(($practiceDesk['kind'] ?? null) === 'med')
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            @if($growth)
+                @php
+                    $maxBar = max(1, ...array_column($growth['monthly'], 'count'));
+                    $delta = (int) $growth['growth_delta'];
+                    $deltaLabel = $delta === 0 ? 'same as last month' : (($delta > 0 ? '+' : '').$delta.' vs last month');
+                @endphp
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.15rem;">
                     <div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Patients</div>
-                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['patient_count'] }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">{{ $growth['panel_label'] }}</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: var(--primary-navy);">{{ number_format($growth['panel_size']) }}</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">Last 12 months</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">Vault</div>
-                        <div style="font-size: 1.05rem; font-weight: 700; color: var(--primary-navy); margin-top: 0.2rem;">
-                            @if(! $practiceDesk['vault_setup'])
-                                Not set up
-                            @elseif($practiceDesk['vault_unlocked'])
-                                Unlocked
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">{{ $growth['return_label'] }}</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: var(--primary-navy);">
+                            @if($growth['return_rate'] === null)
+                                —
                             @else
-                                Locked
+                                {{ number_format($growth['return_rate'], 0) }}%
                             @endif
                         </div>
-                        @if($practiceDesk['vault_setup'] && $practiceDesk['backup_overdue'])
-                            <div style="font-size: 0.75rem; color: #b45309; margin-top: 0.2rem;">Backup overdue</div>
-                        @endif
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">Second visit within 90 days</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">New this month</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: var(--primary-navy);">{{ number_format($growth['new_this_month']) }}</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">{{ $deltaLabel }}</div>
                     </div>
                 </div>
+                <div style="display: flex; align-items: flex-end; gap: 0.45rem; height: 56px; margin-bottom: 1rem;">
+                    @foreach($growth['monthly'] as $bar)
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; height: 100%; justify-content: flex-end;">
+                            <div style="width: 100%; max-width: 28px; background: {{ $deskAccent }}; opacity: 0.85; border-radius: 3px 3px 0 0; height: {{ max(4, (int) round(40 * ($bar['count'] / $maxBar))) }}px;" title="{{ $bar['count'] }}"></div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted);">{{ $bar['label'] }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
 
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0;">
+            @if(($practiceDesk['kind'] ?? null) === 'med')
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
                     @if($practiceDesk['vault_unlocked'])
                         <a href="/pro/medical/patients" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Patients</a>
                         <a href="/pro/medical/stampables" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Documents</a>
@@ -182,23 +196,20 @@
                     @else
                         <a href="/pro/medical/vault/setup" style="padding: 0.55rem 0.85rem; background: {{ $deskAccent }}; color: white; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem;">Set up vault</a>
                     @endif
-                </div>
-            @else
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                    @if(($practiceDesk['kind'] ?? null) === 'arch' || ($practiceDesk['kind'] ?? null) === 'eng')
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Clients</div>
-                            <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['client_count'] ?? 0 }}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Projects</div>
-                            <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['project_count'] }}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">PA applications</div>
-                            <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['pa_count'] ?? 0 }}</div>
-                        </div>
+                    @if($practiceDesk['vault_setup'] && $practiceDesk['backup_overdue'])
+                        <a href="/exports/backup#medical" style="font-size: 0.8rem; color: #b45309; font-weight: 600; text-decoration: none;">Vault backup overdue</a>
                     @endif
+                </div>
+            @elseif($practiceDesk && (($practiceDesk['kind'] ?? null) === 'arch' || ($practiceDesk['kind'] ?? null) === 'eng'))
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Projects</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['project_count'] }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">PA applications</div>
+                        <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['pa_count'] ?? 0 }}</div>
+                    </div>
                 </div>
 
                 @if($practiceDesk['recent_projects']->isEmpty())

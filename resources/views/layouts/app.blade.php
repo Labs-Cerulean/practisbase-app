@@ -64,7 +64,7 @@
                                 <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
                             </li>
                             <li>
-                                <a href="/exports/backup" class="nav-link {{ request()->is('exports/backup*') ? 'active' : '' }}">Data backup</a>
+                                <a href="/exports/backup" class="nav-link {{ request()->is('exports/backup*') ? 'active' : '' }}">Backup</a>
                             </li>
                             @if(auth()->user()->canAccessDocumentStamper())
                                 <li>
