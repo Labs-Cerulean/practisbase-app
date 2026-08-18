@@ -90,7 +90,7 @@
             <div>
                 <div style="font-weight: 700; color: var(--primary-navy);">Weekly backup reminder</div>
                 <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.2rem;">
-                    Download practice data@if($user->canAccessProPackage('med')) and medical vault@endif from one place.
+                    Download practice data{{ $user->canAccessProPackage('med') ? ' and medical vault' : '' }} from one place.
                 </div>
             </div>
             <a href="/exports/backup" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">Open backup</a>
