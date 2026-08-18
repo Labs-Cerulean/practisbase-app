@@ -66,8 +66,16 @@
                 hint.textContent = 'Could not fill street automatically — type it in.';
                 return;
             }
+<<<<<<< HEAD
             if (streetInput && data.street) streetInput.value = data.street;
             if (localityInput && data.locality) localityInput.value = data.locality;
+=======
+            if (streetInput && !streetInput.value.trim() && data.street) streetInput.value = data.street;
+            if (localityInput && !localityInput.value.trim() && data.locality) {
+                localityInput.value = data.locality;
+                localityInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+>>>>>>> 7871d29d (Auto-generate architect project internal references)
             hint.textContent = data.street || data.locality
                 ? 'Updated from map point (edit if needed).'
                 : 'Pin set — add street manually if needed.';

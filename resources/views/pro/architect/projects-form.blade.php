@@ -29,7 +29,7 @@
             <div style="display: grid; gap: 0.85rem;">
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Client *</label>
-                    <select name="client_id" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <select name="client_id" id="projectClientId" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         @foreach($clients as $c)
                             <option value="{{ $c->id }}" @selected(old('client_id', $preselectClientId) == $c->id)>{{ $c->name }}</option>
                         @endforeach
@@ -42,7 +42,11 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;">
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Internal reference</label>
-                        <input type="text" name="reference_code" value="{{ old('reference_code', $project->reference_code ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        <div style="display: flex; gap: 0.45rem; align-items: stretch;">
+                            <input type="text" name="reference_code" id="referenceCodeField" value="{{ old('reference_code', $project->reference_code ?? '') }}" placeholder="Practice-Client-Locality-001" maxlength="100" style="flex: 1; min-width: 0; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <button type="button" id="generateReferenceBtn" style="flex-shrink: 0; background: #f1f5f9; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 0.75rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.78rem; cursor: pointer; white-space: nowrap;">Generate</button>
+                        </div>
+                        <div id="referenceGuide" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Practice name + client + locality + next number. Editable anytime.</div>
                     </div>
                     <div>
                         <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Engagement type</label>
@@ -98,7 +102,7 @@
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Locality</label>
-                            <input type="text" name="site_locality" value="{{ old('site_locality', $project->site_locality ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <input type="text" name="site_locality" id="projectSiteLocality" value="{{ old('site_locality', $project->site_locality ?? '') }}" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         </div>
                     </div>
                     <div style="margin-top: 0.85rem;">
@@ -114,5 +118,97 @@
                 <button type="submit" style="background: #3f6212; color: white; border: none; padding: 0.75rem 1.1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; width: fit-content;">Save project</button>
             </div>
         </form>
+
+        <script>
+        (function () {
+            var suggestUrl = @json($suggestReferenceUrl ?? url('/pro/architect/projects/suggest-reference'));
+            var excludeId = @json($project->id ?? null);
+            var isCreate = @json(!$project);
+            var field = document.getElementById('referenceCodeField');
+            var btn = document.getElementById('generateReferenceBtn');
+            var guide = document.getElementById('referenceGuide');
+            var clientSelect = document.getElementById('projectClientId');
+            var localityInput = document.getElementById('projectSiteLocality');
+            if (!field || !btn || !clientSelect) return;
+
+            var lastGenerated = '';
+            var autoFollow = isCreate && !field.value.trim();
+            var timer = null;
+
+            function setGuide(text) {
+                if (guide) guide.textContent = text;
+            }
+
+            function buildQuery() {
+                var params = new URLSearchParams();
+                if (clientSelect.value) params.set('client_id', clientSelect.value);
+                if (localityInput && localityInput.value.trim()) {
+                    params.set('site_locality', localityInput.value.trim());
+                }
+                if (excludeId) params.set('exclude_project_id', String(excludeId));
+                return params.toString();
+            }
+
+            function applySuggestion(data, force) {
+                if (!data || !data.reference_code) return;
+                var next = data.reference_code;
+                if (force || autoFollow || !field.value.trim() || field.value.trim() === lastGenerated) {
+                    field.value = next;
+                    lastGenerated = next;
+                    autoFollow = true;
+                }
+                setGuide('Next: ' + next + ' — practice + client + locality + number. Edit freely or click Generate.');
+            }
+
+            function fetchSuggestion(force) {
+                btn.disabled = true;
+                fetch(suggestUrl + '?' + buildQuery(), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data && data.ok) applySuggestion(data, !!force);
+                        else setGuide('Could not generate reference — enter one manually.');
+                    })
+                    .catch(function () {
+                        setGuide('Could not generate reference — enter one manually.');
+                    })
+                    .finally(function () { btn.disabled = false; });
+            }
+
+            function scheduleSuggest() {
+                if (!autoFollow && field.value.trim() && field.value.trim() !== lastGenerated) {
+                    setGuide('Manual reference kept. Click Generate to replace with practice + client + locality + number.');
+                    return;
+                }
+                clearTimeout(timer);
+                timer = setTimeout(function () { fetchSuggestion(false); }, 280);
+            }
+
+            btn.addEventListener('click', function () {
+                autoFollow = true;
+                fetchSuggestion(true);
+            });
+
+            field.addEventListener('input', function () {
+                if (field.value.trim() === '' || field.value.trim() === lastGenerated) {
+                    autoFollow = true;
+                } else {
+                    autoFollow = false;
+                }
+            });
+
+            clientSelect.addEventListener('change', scheduleSuggest);
+            if (localityInput) {
+                localityInput.addEventListener('input', scheduleSuggest);
+                localityInput.addEventListener('change', scheduleSuggest);
+            }
+
+            if (isCreate && !field.value.trim()) {
+                fetchSuggestion(true);
+            }
+        })();
+        </script>
     @endif
 @endsection
