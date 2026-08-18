@@ -66,10 +66,10 @@
                 hint.textContent = 'Could not fill street automatically — type it in.';
                 return;
             }
-            if (streetInput && !streetInput.value.trim() && data.street) streetInput.value = data.street;
-            if (localityInput && !localityInput.value.trim() && data.locality) localityInput.value = data.locality;
+            if (streetInput && data.street) streetInput.value = data.street;
+            if (localityInput && data.locality) localityInput.value = data.locality;
             hint.textContent = data.street || data.locality
-                ? 'Filled from map point (edit if needed).'
+                ? 'Updated from map point (edit if needed).'
                 : 'Pin set — add street manually if needed.';
         }).catch(function () {
             hint.textContent = 'Could not fill street automatically — type it in.';
