@@ -159,7 +159,7 @@ class ProjectController extends Controller
             'ok' => true,
             'reference_code' => $reference,
             'prefix' => $prefix,
-            'practice_base' => ProjectReference::slugPart((string) $user->name, 16, preferMeaningful: true),
+            'practice_base' => ProjectReference::slugPart((string) $user->name, ProjectReference::PART_MAX, preferMeaningful: true),
         ]);
     }
 

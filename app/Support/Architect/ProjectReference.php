@@ -8,11 +8,14 @@ use App\Models\User;
 
 /**
  * Internal project references: PRACTICE-CLIENT-LOCALITY-NNN
+ * Each name part is truncated to PART_MAX (4) characters.
  * Practice base comes from Settings → Full Name / Practice Name.
  */
 class ProjectReference
 {
     public const SEQUENCE_WIDTH = 3;
+
+    public const PART_MAX = 4;
 
     /** @var list<string> */
     private const NOISE_WORDS = [
@@ -38,13 +41,13 @@ class ProjectReference
     }
 
     /**
-     * PRACTICE-CLIENT-LOCALITY (no sequence).
+     * PRACTICE-CLIENT-LOCALITY (no sequence). Each segment ≤ PART_MAX chars.
      */
     public static function prefix(string $practiceName, string $clientName, ?string $locality): string
     {
-        $practice = self::slugPart($practiceName, 16, preferMeaningful: true);
-        $client = self::slugPart($clientName, 16, preferMeaningful: false);
-        $place = self::slugPart((string) $locality, 12, preferMeaningful: false);
+        $practice = self::slugPart($practiceName, self::PART_MAX, preferMeaningful: true);
+        $client = self::slugPart($clientName, self::PART_MAX, preferMeaningful: false);
+        $place = self::slugPart((string) $locality, self::PART_MAX, preferMeaningful: false);
 
         $parts = array_values(array_filter([$practice, $client, $place], fn ($p) => $p !== ''));
 
@@ -105,14 +108,18 @@ class ProjectReference
 
     /**
      * Uppercase alphanumeric slug from a name (noise words stripped when preferMeaningful).
+     * Always capped at $maxLen (default PART_MAX = 4).
      */
-    public static function slugPart(string $text, int $maxLen = 16, bool $preferMeaningful = false): string
+    public static function slugPart(string $text, int $maxLen = self::PART_MAX, bool $preferMeaningful = false): string
     {
+        $maxLen = max(1, $maxLen);
         $raw = strtoupper(trim($text));
         if ($raw === '') {
             return '';
         }
 
+        // Keep letters in names like St. Julian's / O'Brien together.
+        $raw = str_replace(["'", '’', '`'], '', $raw);
         $raw = preg_replace('/[^A-Z0-9]+/', ' ', $raw) ?? '';
         $words = array_values(array_filter(explode(' ', $raw), fn ($w) => $w !== ''));
 
@@ -135,27 +142,10 @@ class ProjectReference
             return $joined;
         }
 
-        // Prefer last word for person/place names when it fits; else truncate.
+        // Prefer last word for person/place names (truncate if still long).
         $last = end($words) ?: '';
-        if ($preferMeaningful === false && strlen($last) >= 3 && strlen($last) <= $maxLen) {
-            return $last;
-        }
-
-        // Initials of words if many, else hard truncate.
-        if (count($words) >= 2) {
-            $initials = implode('', array_map(fn ($w) => $w[0], $words));
-            if (strlen($initials) >= 2 && strlen($initials) <= $maxLen) {
-                // Prefer initials + remainder of last word for uniqueness
-                $hybrid = $initials;
-                if (strlen($last) > 1) {
-                    $hybrid = implode('', array_map(fn ($w) => $w[0], array_slice($words, 0, -1))).$last;
-                }
-                if (strlen($hybrid) <= $maxLen) {
-                    return $hybrid;
-                }
-
-                return substr($joined, 0, $maxLen);
-            }
+        if ($preferMeaningful === false && strlen($last) >= 3) {
+            return substr($last, 0, $maxLen);
         }
 
         return substr($joined, 0, $maxLen);
