@@ -62,7 +62,7 @@
         @include('pro.architect.partials.portfolio-map', [
             'mapId' => 'arch-portfolio-map',
             'pins' => $mapPins,
-            'height' => '340px',
+            'height' => '420px',
             'mapServerUrl' => $mapServerUrl,
         ])
     </div>
