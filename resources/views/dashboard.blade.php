@@ -213,7 +213,7 @@
                         <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['project_count'] }}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted);">PAs in process</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">PA's in process</div>
                         <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-navy);">{{ $practiceDesk['open_pa_count'] ?? 0 }}</div>
                     </div>
                     <div>
@@ -226,21 +226,21 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1.15fr 1fr; gap: 1rem; align-items: start;" class="arch-desk-grid">
-                    <div>
+                <div style="display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(240px, 0.9fr); gap: 1rem; align-items: stretch;" class="arch-desk-grid">
+                    <div style="min-width: 0;">
                         @include('pro.architect.partials.portfolio-map', [
                             'mapId' => 'arch-desk-map',
                             'pins' => $practiceDesk['map_pins'] ?? [],
-                            'height' => '260px',
+                            'height' => '420px',
                             'mapServerUrl' => $practiceDesk['map_server_url'] ?? null,
                         ])
                     </div>
-                    <div>
-                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.55rem;">PAs in process</div>
+                    <div style="min-width: 0;">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.02em; margin-bottom: 0.55rem;">PA's in process</div>
                         @if(($practiceDesk['attention_cases'] ?? collect())->isEmpty())
                             <p style="margin: 0 0 0.85rem; color: var(--text-muted); font-size: 0.88rem;">No PA/PC/DN cases in process. Add a case on a project when submitted.</p>
                         @else
-                            <div style="display: grid; gap: 0.35rem; margin-bottom: 0.85rem;">
+                            <div style="display: grid; gap: 0.35rem; margin-bottom: 0.85rem; max-height: 360px; overflow: auto;">
                                 @foreach($practiceDesk['attention_cases'] as $case)
                                     <a href="/pro/architect/pa/{{ $case->id }}" style="display: block; padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none;">
                                         <div style="font-weight: 650; color: var(--primary-navy); font-size: 0.88rem;">{{ $case->displayLabel() }}</div>
@@ -256,8 +256,9 @@
                     </div>
                 </div>
                 <style>
-                    @media (max-width: 860px) {
+                    @media (max-width: 960px) {
                         .arch-desk-grid { grid-template-columns: 1fr !important; }
+                        #arch-desk-map { height: 300px !important; }
                     }
                 </style>
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
