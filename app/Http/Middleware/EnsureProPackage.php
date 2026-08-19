@@ -16,6 +16,10 @@ class EnsureProPackage
         $user = $request->user();
 
         if (! $user) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['ok' => false, 'message' => 'Unauthenticated.'], 401);
+            }
+
             return redirect('/login');
         }
 
@@ -33,6 +37,13 @@ class EnsureProPackage
             if ($user->canAccessProPackage($package)) {
                 return $next($request);
             }
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'That feature requires a matching profession and an active Practice or Pro plan.',
+            ], 403);
         }
 
         return redirect('/settings')->with(
