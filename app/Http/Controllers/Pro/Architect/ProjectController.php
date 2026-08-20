@@ -25,6 +25,18 @@ class ProjectController extends Controller
         $status = trim((string) $request->query('status', ''));
         $paStatus = trim((string) $request->query('pa_status', ''));
         $caseType = strtoupper(trim((string) $request->query('case_type', '')));
+        $sort = trim((string) $request->query('sort', 'updated'));
+        $dir = strtolower(trim((string) $request->query('dir', 'desc'))) === 'asc' ? 'asc' : 'desc';
+        $groupBy = trim((string) $request->query('group', ''));
+
+        $allowedSorts = ['updated', 'name', 'client', 'locality', 'phase', 'status', 'reference'];
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'updated';
+        }
+        $allowedGroups = ['', 'client', 'locality', 'status', 'phase'];
+        if (! in_array($groupBy, $allowedGroups, true)) {
+            $groupBy = '';
+        }
 
         $projects = ArchitectProject::query()
             ->where('user_id', $user->id)
@@ -55,8 +67,31 @@ class ProjectController extends Controller
             ->when($caseType !== '' && array_key_exists($caseType, ArchitectPaApplication::CASE_TYPES), function ($query) use ($caseType) {
                 $query->whereHas('paApplications', fn ($p) => $p->where('case_type', $caseType));
             })
-            ->orderByDesc('updated_at')
+            ->when($sort === 'name', fn ($query) => $query->orderBy('name', $dir))
+            ->when($sort === 'locality', fn ($query) => $query->orderBy('site_locality', $dir)->orderBy('name'))
+            ->when($sort === 'phase', fn ($query) => $query->orderBy('phase', $dir)->orderBy('name'))
+            ->when($sort === 'status', fn ($query) => $query->orderBy('status', $dir)->orderBy('name'))
+            ->when($sort === 'reference', fn ($query) => $query->orderBy('reference_code', $dir)->orderBy('name'))
+            ->when($sort === 'client', function ($query) use ($dir) {
+                $query->leftJoin('clients', 'clients.id', '=', 'architect_projects.client_id')
+                    ->orderBy('clients.name', $dir)
+                    ->orderBy('architect_projects.name')
+                    ->select('architect_projects.*');
+            })
+            ->when($sort === 'updated', fn ($query) => $query->orderBy('updated_at', $dir))
             ->get();
+
+        if ($groupBy !== '') {
+            $projects = $projects->sortBy(function (ArchitectProject $p) use ($groupBy) {
+                return match ($groupBy) {
+                    'client' => mb_strtolower((string) ($p->client->name ?? 'zzz')),
+                    'locality' => mb_strtolower((string) ($p->site_locality ?: 'zzz')),
+                    'status' => (string) $p->status,
+                    'phase' => (string) $p->phase,
+                    default => '',
+                };
+            }, SORT_NATURAL)->values();
+        }
 
         $mapPins = $projects
             ->map(fn (ArchitectProject $p) => $p->mapPinPayload())
@@ -89,6 +124,9 @@ class ProjectController extends Controller
                 'status' => $status,
                 'pa_status' => $paStatus,
                 'case_type' => $caseType,
+                'sort' => $sort,
+                'dir' => $dir,
+                'group' => $groupBy,
             ],
         ]);
     }
