@@ -17,7 +17,7 @@ Everything below is additive. Soft-launch work **must not** regress:
 | Tax & VAT engine (brackets, TA22, SSC, Art 10/11, PT, year lock) | Legal correctness |
 | Accountant ZIP export | Existing accountant handoff |
 | Medical vault crypto + recovery code + stampables/prescriptions | Patient safety / GDPR |
-| Architect Client → Project → PA + DMS + BCA template fill + stamper | Already usable Practice Arch path |
+| Architect Client → Project → PA + Documents + BCA template fill + stamper | Already usable Practice Arch path |
 | Shared certificate stamp/issue/PDF flow | Works for Arch/Eng today — extend, don’t rewrite |
 | Tier gates (`TierPolicy`, `pro:*` middleware) | Entitlement model is stable |
 | Cerulean company books (internal flag) | Operator-only; ignore for soft launch |
@@ -33,7 +33,7 @@ Engineer E1–E5 and Architect CR/MS are shipped. Soft launch still needs the sh
 | Surface | Medical | Architect | Engineer |
 |---|---|---|---|
 | Project / case workspace | Patients + journals | Client → Project → PA (deep) | Client → Project → PA + project desk |
-| Field / clinical capture | Journals, attachments, Rx, referrals | DMS, BCA, condition reports + method statements (DMS/EMS/CMS) + Field strip | Field certs + specialised reports; mobile Field strip + camera capture |
+| Field / clinical capture | Journals, attachments, Rx, referrals | Documents, BCA, condition reports + method statements (DMS/EMS/CMS) + Field strip | Field certs + specialised reports; mobile Field strip + camera capture |
 | Stamp / warrant PDFs | Stampables under patient | Stamper + condition reports + method statements + simple certs | Shared Certificates + Eng field certs/reports |
 | Mobile-first site workflow | N/A (clinic) | Field strip + camera on CR/MS forms | Field strip + camera cert/report forms |
 | BOQ / Spec library | N/A | **Pre soft launch (shared Arch/Eng)** | **Pre soft launch (shared Arch/Eng)** |
@@ -106,7 +106,7 @@ Pricing/onboarding copy should match the desks above. Soft launch still needs a 
 |---|---|
 | **Standard / Pro financial** | Already met — keep green |
 | **Practice / Pro Medical** | Vault unlock reliable; stampables/Rx work |
-| **Practice / Pro Architect** | PA/DMS/BCA/stamper green **+** can build a BOQ from library and export matching Spec |
+| **Practice / Pro Architect** | PA/Documents/BCA/stamper green **+** can build a BOQ from library and export matching Spec |
 | **Practice / Pro Engineer** | SL-E exit criteria **+** same BOQ/Spec library usable on Eng projects |
 
 Out of soft launch: team seats, accountant read-only portal, **AI** BOQ features, Medical clinical seats, selling Ltd books.
@@ -210,7 +210,7 @@ Soft launch does **not** need every line from every legacy job — it needs a **
 
 ### SL-A / SL-M / SL-G
 
-- **SL-A (soft-launch freeze):** Keep Arch green — Client → Project → PA + DMS + BCA templates + condition reports + method statements (DMS/EMS/CMS) shipped and frozen against regression.
+- **SL-A (soft-launch freeze):** Keep Arch green — Client → Project → PA + Documents + BCA templates + condition reports + method statements (DMS/EMS/CMS) shipped and frozen against regression.
 - **SL-A+ (growth programme):** Portfolio / map / PA lifecycle / neighbours / BCA mobilisation — **not** a soft-launch blocker; phased in [`docs/ARCHITECT_PHASING.md`](ARCHITECT_PHASING.md). Start with Phase 1 (dashboard = projects + PAs + map; padded eApps links; MapServer deep link only).
 - **SL-M:** WebAuthn reliability only; recovery code sacred.
 - **SL-G checklist:** SL-E + SL-B met; fiscal / Med / Arch smokes green; Eng smoke includes BOQ add + Spec export; pricing matches reality; Stripe still optional.
@@ -369,7 +369,7 @@ Gemini 1.5 Flash: scope → draft BOQ; PDF/scan → structured BOQ; `ai_usage_lo
 | 10 | Optional Med WebAuthn polish | Med | Low |
 | 11 | Soft-launch checklist | docs | None |
 
-**After soft launch (or in parallel if capacity allows):** Architect portfolio programme per [`docs/ARCHITECT_PHASING.md`](ARCHITECT_PHASING.md) — map + PA/eApps (5-digit pad) → DMS reader → neighbours + radius → reference library → mobilisation → field/email → eApps status pull.
+**After soft launch (or in parallel if capacity allows):** Architect portfolio programme per [`docs/ARCHITECT_PHASING.md`](ARCHITECT_PHASING.md) — map + PA/eApps (5-digit pad) → document library reader → neighbours + radius → reference library → mobilisation → field/email → eApps status pull.
 
 B0 (NotebookLM) runs **outside** git until curated JSON is ready to commit (steps 6–8). Fiscal freezes: no feature PRs unless a beta-blocking bug.
 

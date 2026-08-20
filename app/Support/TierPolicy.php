@@ -349,7 +349,7 @@ class TierPolicy
         }
 
         if ($fromPractice && ! $toPractice) {
-            $notes[] = 'Practice tools become inaccessible (patients, stampables, DMS, stamper, certificates). Medical vault ciphertext stays retained and locked — re-upgrade later still needs your recovery code.';
+            $notes[] = 'Practice tools become inaccessible (patients, stampables, document library, stamper, certificates). Medical vault ciphertext stays retained and locked — re-upgrade later still needs your recovery code.';
             $notes[] = 'Vault unlock and medical backup stay unavailable until you return to a Medical practice or Pro plan.';
         }
 

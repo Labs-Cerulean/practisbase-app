@@ -3,7 +3,9 @@
 Natural perit workflow: **site → PA cases → BCA mobilisation → neighbours / CR → clearances → works → close**.  
 Sellable front door: **projects + PA status + map**. Paperwork (CR / MS / BCA templates) stays the depth behind the pin.
 
-Soft-launch freeze still applies: extend Architect Client → Project → PA + DMS + BCA + CR/MS; do not regress them. Schema changes = manual PostgreSQL under `database/manual/`.
+**Naming:** In Malta, **DMS** means Demolition Method Statement (with EMS / CMS). Never use “DMS” for the file store — call it **Documents** / **document library**.
+
+Soft-launch freeze still applies: extend Architect Client → Project → PA + Documents + BCA + CR/MS; do not regress them. Schema changes = manual PostgreSQL under `database/manual/`.
 
 ---
 
@@ -65,7 +67,7 @@ Rules when building the eApps URL (and when normalising stored case numbers for 
 
 ## Phase 1.5 — Project document library polish
 
-Reuse existing DMS (`architect_documents` + `architect_document_revisions`).
+Reuse the existing document library (`architect_documents` + `architect_document_revisions`).
 
 | Ship | Detail |
 |---|---|
@@ -172,7 +174,7 @@ CNF / works under clearance, guarantee release, project complete — still proje
 |---|---|---|
 | 1 | Project lat/long + map + filters + Arch dashboard | Med (new map stack) |
 | 2 | PA/PC/DN model + lifecycle + **padded eApps URL** + MapServer deep link | Low–med |
-| 3 | DMS library polish + in-app PDF reader | Low |
+| 3 | Document library polish + in-app PDF reader | Low |
 | 4 | Neighbour register + tracker + CR attach | Med |
 | 5 | Impact radius on zoomed map | Low–med |
 | 6 | Reference library + reader | Low |

@@ -48,7 +48,7 @@
     If you lose your password and recovery codes, your clinical data is irreversibly lost. The User accepts this absolute risk.
 </p>
 <p>
-    <strong>Studio &amp; Technical Desks:</strong> Any document management systems (DMS), certificate templates, or digital stampables are structural aids.
+    <strong>Studio &amp; Technical Desks:</strong> Any document libraries, certificate templates, or digital stampables are structural aids.
     You are solely responsible for ensuring that all documents signed, stamped, or exported using the platform meet local regulatory and warrant requirements
     (e.g., KTP, Chamber of Engineers). We assume zero liability for structural defects, project delays, or compliance failures.
 </p>

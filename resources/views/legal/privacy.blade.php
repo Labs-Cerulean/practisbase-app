@@ -43,7 +43,7 @@
     <p>5.1. The PractisBase Medical Vault allows medical professionals to store special category personal data (e.g., patient health records).</p>
     <p>5.2. <strong>Your Controllership:</strong> You are strictly the Data Controller for this data. You must ensure you have a lawful basis to process your patients&rsquo; health data.</p>
     <p>5.3. <strong>Vault Encryption:</strong> The Medical Vault uses client-side cryptography. We do not hold the decryption keys and cannot read plaintext clinical content. If you lose your recovery codes, your vault data is irreversibly lost.</p>
-    <p>5.4. <strong>Architect/Engineer DMS:</strong> Files uploaded to the Studio and Technical desks remain your intellectual property. We process them solely to provide document management and stamping features.</p>
+    <p>5.4. <strong>Architect/Engineer documents:</strong> Files uploaded to the Studio and Technical desks remain your intellectual property. We process them solely to provide document library and stamping features.</p>
 
     <h2>6. Accountant Pack and Third-Party Access</h2>
     <p>6.1. PractisBase provides an accountant export pack that you may download and share with your warranted accountant or tax advisor. You choose what to share; there is currently no separate accountant login seat on the platform.</p>
