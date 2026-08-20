@@ -29,6 +29,7 @@ use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateCo
 use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
 use App\Http\Controllers\Pro\Architect\ConditionReportController as ArchitectConditionReportController;
 use App\Http\Controllers\Pro\Architect\MethodStatementController as ArchitectMethodStatementController;
+use App\Http\Controllers\Pro\Architect\NeighbourController as ArchitectNeighbourController;
 use App\Http\Controllers\Pro\CertificateController;
 use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
 use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
@@ -308,6 +309,10 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::put('/projects/{project}', [ArchitectProjectController::class, 'update'])->whereNumber('project');
         Route::post('/projects/{project}/parties', [ArchitectProjectController::class, 'storeParty'])->whereNumber('project');
         Route::delete('/projects/{project}/parties/{party}', [ArchitectProjectController::class, 'destroyParty'])->whereNumber('project');
+        Route::post('/projects/{project}/neighbours', [ArchitectNeighbourController::class, 'store'])->whereNumber('project');
+        Route::put('/projects/{project}/neighbours/{neighbour}', [ArchitectNeighbourController::class, 'update'])->whereNumber('project')->whereNumber('neighbour');
+        Route::delete('/projects/{project}/neighbours/{neighbour}', [ArchitectNeighbourController::class, 'destroy'])->whereNumber('project')->whereNumber('neighbour');
+        Route::post('/projects/{project}/neighbours/{neighbour}/link-report', [ArchitectNeighbourController::class, 'linkReport'])->whereNumber('project')->whereNumber('neighbour');
         Route::get('/geocode/reverse', [ArchitectProjectController::class, 'reverseGeocode']);
 
         Route::get('/projects/{project}/pa/create', [ArchitectPaController::class, 'create'])->whereNumber('project');

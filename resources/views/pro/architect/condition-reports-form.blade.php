@@ -29,7 +29,7 @@
     @unless($isEdit)
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
             @foreach($starters as $key => $starter)
-                <a href="/pro/architect/condition-reports/create?starter={{ $key }}&amp;project_id={{ $prefill['project_id'] }}{{ ($prefill['pa_id'] ?? null) ? '&pa_id='.$prefill['pa_id'] : '' }}"
+                <a href="/pro/architect/condition-reports/create?starter={{ $key }}&amp;project_id={{ $prefill['project_id'] }}{{ ($prefill['pa_id'] ?? null) ? '&pa_id='.$prefill['pa_id'] : '' }}{{ ($prefill['neighbour_id'] ?? null) ? '&neighbour_id='.$prefill['neighbour_id'] : '' }}"
                    style="padding: 0.45rem 0.75rem; border-radius: var(--radius-md); text-decoration: none; font-size: 0.82rem; font-weight: 600; {{ $starterKey === $key ? 'background: #3f6212; color: white;' : 'background: white; color: var(--primary-navy); border: 1px solid var(--border-light);' }}">
                     {{ $starter['label'] }}
                 </a>
@@ -47,9 +47,17 @@
         @csrf
         @if($isEdit) @method('PUT') @endif
         <input type="hidden" name="report_type" value="{{ old('report_type', $starterKey ?? $report->report_type ?? 'seventh_schedule') }}">
+        <input type="hidden" name="architect_neighbour_id" value="{{ old('architect_neighbour_id', $prefill['neighbour_id'] ?? ($report->architect_neighbour_id ?? '')) }}">
 
         <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); display: grid; gap: 0.75rem;">
             <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Project &amp; header</h2>
+            @if(!empty($neighbour))
+                <div style="background: #f7fee7; border: 1px solid #d9f99d; border-radius: var(--radius-md); padding: 0.7rem 0.85rem; font-size: 0.88rem; color: #3f6212;">
+                    Linked neighbour: <strong>{{ $neighbour->owner_occupier_name ?: 'Unnamed' }}</strong>
+                    · {{ $neighbour->addressLine() }}
+                    · {{ $neighbour->relationLabel() }}
+                </div>
+            @endif
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Project *</label>
@@ -113,7 +121,7 @@
             </div>
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Inspected property address (neighbour)</label>
-                <input type="text" name="inspected_address" value="{{ old('inspected_address', $report->inspected_address ?? '') }}" placeholder="Third-party property being surveyed" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                <input type="text" name="inspected_address" value="{{ old('inspected_address', $report->inspected_address ?? ($context['inspected_address'] ?? '')) }}" placeholder="Third-party property being surveyed" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
             </div>
         </section>
 

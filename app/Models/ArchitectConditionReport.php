@@ -13,6 +13,7 @@ class ArchitectConditionReport extends Model
         'user_id',
         'architect_project_id',
         'architect_pa_application_id',
+        'architect_neighbour_id',
         'title',
         'report_type',
         'report_number',
@@ -51,6 +52,11 @@ class ArchitectConditionReport extends Model
     public function paApplication(): BelongsTo
     {
         return $this->belongsTo(ArchitectPaApplication::class, 'architect_pa_application_id');
+    }
+
+    public function neighbour(): BelongsTo
+    {
+        return $this->belongsTo(ArchitectNeighbour::class, 'architect_neighbour_id');
     }
 
     public function photos(): HasMany

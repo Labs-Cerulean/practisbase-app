@@ -24,9 +24,13 @@
 
     <nav class="eng-field-strip" aria-label="On-site field actions">
         <div class="eng-field-strip-label">Field strip · on site</div>
-        <a class="eng-field-primary" href="/pro/architect/condition-reports/create?project_id={{ $project->id }}&amp;starter=seventh_schedule#photos" style="background: #3f6212; border-color: #3f6212;">
+        <a class="eng-field-primary" href="#neighbours" style="background: #3f6212; border-color: #3f6212;">
+            Neighbours
+            <span>Register + tracker</span>
+        </a>
+        <a href="/pro/architect/condition-reports/create?project_id={{ $project->id }}&amp;starter=seventh_schedule#photos">
             Condition report
-            <span>Neighbour + photo</span>
+            <span>Seventh Schedule</span>
         </a>
         <a href="/pro/architect/method-statements/create?project_id={{ $project->id }}&amp;starter=excavation">
             Method statement
@@ -92,6 +96,8 @@
                     </div>
                 @endif
             </section>
+
+            @include('pro.architect.partials.neighbour-register')
 
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
                 <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
