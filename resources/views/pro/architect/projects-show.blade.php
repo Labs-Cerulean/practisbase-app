@@ -78,17 +78,21 @@
             </section>
 
             <section style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm);">
-                <h2 style="margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--primary-navy);">Project documents</h2>
-                @if($project->documents->isEmpty())
-                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">No project-level documents yet. PA-level docs appear under each PA.</p>
-                @else
-                    <div style="display: grid; gap: 0.5rem;">
-                        @foreach($project->documents as $doc)
-                            <a href="/pro/architect/documents/{{ $doc->id }}" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; text-decoration: none;">
-                                <div style="font-weight: 650; color: var(--primary-navy);">{{ $doc->title }}</div>
-                                <div style="font-size: 0.78rem; color: var(--text-muted);">Rev {{ $doc->current_revision }} · {{ $doc->category }} · {{ $doc->status }}</div>
-                            </a>
-                        @endforeach
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Project library</h2>
+                    <a href="/pro/architect/documents/create?project_id={{ $project->id }}" style="font-size: 0.82rem; font-weight: 600; color: #3f6212; text-decoration: none;">+ Upload</a>
+                </div>
+                @include('pro.architect.partials.document-library', [
+                    'documents' => $project->documents,
+                    'emptyCopy' => 'No project-level files yet. Upload plans, surveys, or PA docs for this job.',
+                ])
+                @if(($project->paDocuments ?? collect())->isNotEmpty())
+                    <div style="margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid #e2e8f0;">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.55rem;">Attached to PA cases</div>
+                        @include('pro.architect.partials.document-library', [
+                            'documents' => $project->paDocuments,
+                            'emptyCopy' => '',
+                        ])
                     </div>
                 @endif
             </section>

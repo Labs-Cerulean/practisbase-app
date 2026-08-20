@@ -36,4 +36,17 @@ class ArchitectDocumentRevision extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by_user_id');
     }
+
+    public function isInlineViewable(): bool
+    {
+        $mime = strtolower((string) ($this->mime_type ?? ''));
+        if ($mime === 'application/pdf' || str_starts_with($mime, 'image/')) {
+            return true;
+        }
+
+        $name = strtolower((string) ($this->original_name ?? ''));
+
+        return str_ends_with($name, '.pdf')
+            || preg_match('/\.(jpe?g|png|gif|webp)$/', $name) === 1;
+    }
 }

@@ -319,10 +319,11 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/documents', [ArchitectDocumentController::class, 'index']);
         Route::get('/documents/create', [ArchitectDocumentController::class, 'create']);
         Route::post('/documents', [ArchitectDocumentController::class, 'store']);
-        Route::get('/documents/{document}', [ArchitectDocumentController::class, 'show']);
-        Route::put('/documents/{document}', [ArchitectDocumentController::class, 'update']);
-        Route::post('/documents/{document}/revisions', [ArchitectDocumentController::class, 'uploadRevision']);
-        Route::get('/documents/{document}/revisions/{revision}/download', [ArchitectDocumentController::class, 'download']);
+        Route::get('/documents/{document}', [ArchitectDocumentController::class, 'show'])->whereNumber('document');
+        Route::put('/documents/{document}', [ArchitectDocumentController::class, 'update'])->whereNumber('document');
+        Route::post('/documents/{document}/revisions', [ArchitectDocumentController::class, 'uploadRevision'])->whereNumber('document');
+        Route::get('/documents/{document}/revisions/{revision}/view', [ArchitectDocumentController::class, 'view'])->whereNumber('document')->whereNumber('revision');
+        Route::get('/documents/{document}/revisions/{revision}/download', [ArchitectDocumentController::class, 'download'])->whereNumber('document')->whereNumber('revision');
 
         Route::get('/condition-reports', [ArchitectConditionReportController::class, 'index']);
         Route::get('/condition-reports/create', [ArchitectConditionReportController::class, 'create']);

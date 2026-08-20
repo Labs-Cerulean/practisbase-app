@@ -243,11 +243,22 @@ class ProjectController extends Controller
         $project->load([
             'client',
             'paApplications' => fn ($q) => $q->orderByDesc('updated_at'),
-            'documents' => fn ($q) => $q->whereNull('architect_pa_application_id')->orderByDesc('updated_at'),
+            'documents' => fn ($q) => $q->whereNull('architect_pa_application_id')
+                ->with(['revisions' => fn ($r) => $r->orderByDesc('revision_no')->limit(3), 'paApplication'])
+                ->orderByDesc('updated_at'),
             'siteParties' => fn ($q) => $q->orderBy('role_key'),
             'conditionReports' => fn ($q) => $q->orderByDesc('updated_at'),
             'methodStatements' => fn ($q) => $q->orderByDesc('updated_at'),
         ]);
+
+        $paDocuments = \App\Models\ArchitectDocument::query()
+            ->where('user_id', Auth::id())
+            ->where('architect_project_id', $project->id)
+            ->whereNotNull('architect_pa_application_id')
+            ->with(['revisions' => fn ($r) => $r->orderByDesc('revision_no')->limit(3), 'paApplication'])
+            ->orderByDesc('updated_at')
+            ->get();
+        $project->setRelation('paDocuments', $paDocuments);
 
         return view('pro.architect.projects-show', [
             'project' => $project,
