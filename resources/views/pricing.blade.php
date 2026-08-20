@@ -643,7 +643,7 @@
                 <ul>
                     <li>Condition reports and method statements</li>
                     <li>BCA template catalog + blank downloads</li>
-                    <li>Architect document management (DMS)</li>
+                    <li>Architect document library</li>
                     <li>Project records and phase tracking</li>
                     <li>Document Stamper for PDF overlays</li>
                     <li>Practice branding on exports</li>

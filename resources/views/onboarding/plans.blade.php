@@ -174,7 +174,7 @@
                                 <li>Document Stamper (PDF)</li>
                             @elseif($pkg === 'arch')
                                 <li>Condition reports &amp; method statements</li>
-                                <li>BCA catalog + Architect DMS</li>
+                                <li>BCA catalog + Architect documents</li>
                                 <li>Document Stamper + project phases</li>
                             @else
                                 <li>Field certificates &amp; specialised reports</li>
@@ -213,7 +213,7 @@
                             @if($pkg === 'med')
                                 <li>Patients, prescriptions, referrals</li>
                             @elseif($pkg === 'arch')
-                                <li>Condition reports, method statements, DMS</li>
+                                <li>Condition reports, method statements, document library</li>
                             @else
                                 <li>Field certificates, reports &amp; projects</li>
                             @endif
