@@ -49,7 +49,7 @@ class PaApplicationController extends Controller
         $this->assertPaOwned($pa);
         $pa->load([
             'project.client',
-            'documents' => fn ($q) => $q->orderByDesc('updated_at'),
+            'documents' => fn ($q) => $q->with(['revisions' => fn ($r) => $r->orderByDesc('revision_no')->limit(3), 'paApplication'])->orderByDesc('updated_at'),
         ]);
 
         return view('pro.architect.pa-show', [

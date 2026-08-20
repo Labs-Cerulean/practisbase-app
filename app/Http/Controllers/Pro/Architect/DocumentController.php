@@ -21,6 +21,7 @@ class DocumentController extends Controller
         $user = Auth::user();
         $q = trim((string) $request->query('q', ''));
         $scope = $request->query('scope');
+        $docType = trim((string) $request->query('doc_type', ''));
 
         $documents = ArchitectDocument::query()
             ->where('user_id', $user->id)
@@ -37,6 +38,7 @@ class DocumentController extends Controller
             ->when($scope === 'client', fn ($q) => $q->whereNotNull('client_id')->whereNull('architect_project_id'))
             ->when($scope === 'project', fn ($q) => $q->whereNotNull('architect_project_id')->whereNull('architect_pa_application_id'))
             ->when($scope === 'pa', fn ($q) => $q->whereNotNull('architect_pa_application_id'))
+            ->when($docType !== '' && array_key_exists($docType, ArchitectDocument::DOC_TYPES), fn ($q) => $q->where('doc_type', $docType))
             ->orderByDesc('updated_at')
             ->limit(200)
             ->get();
@@ -45,6 +47,8 @@ class DocumentController extends Controller
             'documents' => $documents,
             'q' => $q,
             'scope' => $scope,
+            'docType' => $docType,
+            'docTypes' => ArchitectDocument::DOC_TYPES,
             'categories' => ArchitectDocument::CATEGORIES,
             'statuses' => ArchitectDocument::STATUSES,
         ]);
@@ -59,6 +63,7 @@ class DocumentController extends Controller
             'clients' => Client::where('user_id', $user->id)->orderBy('name')->get(),
             'projects' => ArchitectProject::where('user_id', $user->id)->with('client')->orderBy('name')->get(),
             'pas' => ArchitectPaApplication::where('user_id', $user->id)->orderBy('pa_number')->get(),
+            'docTypes' => ArchitectDocument::DOC_TYPES,
             'categories' => ArchitectDocument::CATEGORIES,
             'statuses' => ArchitectDocument::STATUSES,
             'prefill' => [
@@ -87,7 +92,7 @@ class DocumentController extends Controller
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
             'title' => $validated['title'],
             'doc_type' => $validated['doc_type'],
-            'category' => $validated['category'],
+            'category' => ArchitectDocument::categoryForDocType($validated['doc_type']),
             'status' => $validated['status'],
             'doc_code' => $validated['doc_code'] ?? null,
             'notes' => $validated['notes'] ?? null,
@@ -103,12 +108,18 @@ class DocumentController extends Controller
     public function show(ArchitectDocument $document)
     {
         $this->assertOwned($document);
-        $document->load(['client', 'project.client', 'paApplication', 'revisions']);
+        $document->load(['client', 'project.client', 'project.paApplications', 'paApplication', 'revisions']);
+        $latest = $document->revisions->first();
 
         return view('pro.architect.documents-show', [
             'document' => $document,
+            'latestRevision' => $latest,
+            'docTypes' => ArchitectDocument::DOC_TYPES,
             'categories' => ArchitectDocument::CATEGORIES,
             'statuses' => ArchitectDocument::STATUSES,
+            'projectPas' => $document->project
+                ? $document->project->paApplications->sortByDesc('updated_at')->values()
+                : collect(),
         ]);
     }
 
@@ -117,12 +128,27 @@ class DocumentController extends Controller
         $this->assertOwned($document);
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'doc_type' => 'required|string|max:80',
-            'category' => 'required|in:'.implode(',', array_keys(ArchitectDocument::CATEGORIES)),
+            'doc_type' => 'required|in:'.implode(',', array_keys(ArchitectDocument::DOC_TYPES)),
             'status' => 'required|in:'.implode(',', array_keys(ArchitectDocument::STATUSES)),
             'doc_code' => 'nullable|string|max:80',
             'notes' => 'nullable|string|max:5000',
+            'architect_pa_application_id' => 'nullable|integer',
         ]);
+
+        $paId = $validated['architect_pa_application_id'] ?? null;
+        if ($paId) {
+            $pa = ArchitectPaApplication::where('user_id', Auth::id())
+                ->where('id', $paId)
+                ->first();
+            if (! $pa || (int) $pa->architect_project_id !== (int) $document->architect_project_id) {
+                abort(403);
+            }
+            $validated['architect_pa_application_id'] = $pa->id;
+        } else {
+            $validated['architect_pa_application_id'] = null;
+        }
+
+        $validated['category'] = ArchitectDocument::categoryForDocType($validated['doc_type']);
         $document->update($validated);
 
         return redirect('/pro/architect/documents/'.$document->id)
@@ -147,6 +173,33 @@ class DocumentController extends Controller
 
         return redirect('/pro/architect/documents/'.$document->id)
             ->with('success', 'Revision '.$next.' uploaded.');
+    }
+
+    public function view(ArchitectDocument $document, ArchitectDocumentRevision $revision)
+    {
+        $this->assertOwned($document);
+        if ($revision->architect_document_id !== $document->id || $revision->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $disk = TenantStorage::disk();
+        if (! $disk->exists($revision->file_path)) {
+            abort(404);
+        }
+
+        if (! $revision->isInlineViewable()) {
+            return $disk->download($revision->file_path, $revision->original_name);
+        }
+
+        $mime = $revision->mime_type ?: 'application/octet-stream';
+        if (str_ends_with(strtolower((string) $revision->original_name), '.pdf') && ! str_contains(strtolower($mime), 'pdf')) {
+            $mime = 'application/pdf';
+        }
+
+        return $disk->response($revision->file_path, $revision->original_name, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.$revision->original_name.'"',
+        ]);
     }
 
     public function download(ArchitectDocument $document, ArchitectDocumentRevision $revision): StreamedResponse
@@ -198,8 +251,7 @@ class DocumentController extends Controller
     {
         return $request->validate([
             'title' => 'required|string|max:255',
-            'doc_type' => 'required|string|max:80',
-            'category' => 'required|in:'.implode(',', array_keys(ArchitectDocument::CATEGORIES)),
+            'doc_type' => 'required|in:'.implode(',', array_keys(ArchitectDocument::DOC_TYPES)),
             'status' => 'required|in:'.implode(',', array_keys(ArchitectDocument::STATUSES)),
             'doc_code' => 'nullable|string|max:80',
             'notes' => 'nullable|string|max:5000',

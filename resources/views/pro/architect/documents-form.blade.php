@@ -6,6 +6,7 @@
     <div style="margin-bottom: 1.25rem;">
         <a href="/pro/architect/documents" style="color: var(--text-muted); text-decoration: none; font-weight: 600;">← Documents</a>
         <h1 style="margin: 0.5rem 0 0; color: var(--primary-navy); font-size: 1.5rem;">Upload document</h1>
+        <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.88rem;">Files live under a client, project, or PA case — with revision history.</p>
     </div>
 
     @if($errors->any())
@@ -25,16 +26,12 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.85rem;">
                 <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Category</label>
-                    <select name="category" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                        @foreach($categories as $key => $label)
-                            <option value="{{ $key }}" @selected(old('category', 'document') === $key)>{{ $label }}</option>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Type *</label>
+                    <select name="doc_type" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                        @foreach($docTypes as $key => $label)
+                            <option value="{{ $key }}" @selected(old('doc_type', 'plans') === $key)>{{ $label }}</option>
                         @endforeach
                     </select>
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Type / tag</label>
-                    <input type="text" name="doc_type" value="{{ old('doc_type', 'general') }}" required style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Status</label>
@@ -55,7 +52,7 @@
                 <select name="scope_level" id="scopeLevel" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     <option value="client" @selected(($prefill['client_id'] ?? null) && !($prefill['project_id'] ?? null) && !($prefill['pa_id'] ?? null))>Client level</option>
                     <option value="project" @selected(($prefill['project_id'] ?? null) && !($prefill['pa_id'] ?? null))>Project level</option>
-                    <option value="pa" @selected($prefill['pa_id'] ?? null)>PA level</option>
+                    <option value="pa" @selected($prefill['pa_id'] ?? null)>PA case</option>
                 </select>
             </div>
             <div id="scopeClient">
@@ -77,11 +74,11 @@
                 </select>
             </div>
             <div id="scopePa">
-                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">PA application</label>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">PA / PC / DN case</label>
                 <select name="architect_pa_application_id" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     <option value="">Select…</option>
                     @foreach($pas as $pa)
-                        <option value="{{ $pa->id }}" @selected(old('architect_pa_application_id', $prefill['pa_id'] ?? '') == $pa->id)>{{ $pa->pa_number }}</option>
+                        <option value="{{ $pa->id }}" @selected(old('architect_pa_application_id', $prefill['pa_id'] ?? '') == $pa->id)>{{ $pa->canonicalNumber() ?: ($pa->pa_number ?: 'Case #'.$pa->id) }}</option>
                     @endforeach
                 </select>
             </div>
@@ -89,7 +86,7 @@
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">File *</label>
                 <input type="file" name="file" required style="width: 100%; padding: 0.45rem 0; ">
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Up to 20 MB. Drawings, PDFs, photos, Word.</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Up to 20 MB. PDFs and images open in-app; other types download.</div>
             </div>
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Revision note</label>

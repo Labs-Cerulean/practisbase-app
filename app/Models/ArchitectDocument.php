@@ -30,6 +30,15 @@ class ArchitectDocument extends Model
         ];
     }
 
+    public const DOC_TYPES = [
+        'plans' => 'Plans',
+        'survey' => 'Survey',
+        'structural' => 'Structural',
+        'pa_docs' => 'PA docs',
+        'photos' => 'Photos',
+        'other' => 'Other PDF / file',
+    ];
+
     public const CATEGORIES = [
         'document' => 'Document',
         'drawing' => 'Drawing',
@@ -45,6 +54,31 @@ class ArchitectDocument extends Model
         'superseded' => 'Superseded',
         'archived' => 'Archived',
     ];
+
+    /** Map curated types onto legacy category buckets. */
+    public static function categoryForDocType(string $docType): string
+    {
+        return match ($docType) {
+            'plans', 'structural' => 'drawing',
+            'photos' => 'photo',
+            'survey', 'pa_docs', 'other' => 'document',
+            default => 'document',
+        };
+    }
+
+    public static function typeLabelFor(?string $docType): string
+    {
+        if ($docType === null || $docType === '') {
+            return 'Other';
+        }
+
+        return self::DOC_TYPES[$docType] ?? $docType;
+    }
+
+    public function typeLabel(): string
+    {
+        return self::typeLabelFor($this->doc_type);
+    }
 
     public function user(): BelongsTo
     {

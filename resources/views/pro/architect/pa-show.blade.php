@@ -60,17 +60,12 @@
         @endif
     </div>
 
-    <h2 style="margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--primary-navy);">Case documents</h2>
-    @if($pa->documents->isEmpty())
-        <div style="background: white; border: 1px dashed var(--border-light); border-radius: var(--radius-md); padding: 1.25rem; color: var(--text-muted);">No documents on this case yet.</div>
-    @else
-        <div style="display: grid; gap: 0.55rem;">
-            @foreach($pa->documents as $doc)
-                <a href="/pro/architect/documents/{{ $doc->id }}" style="display: block; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.85rem 1rem; text-decoration: none; box-shadow: var(--shadow-sm);">
-                    <div style="font-weight: 700; color: var(--primary-navy);">{{ $doc->title }}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">Rev {{ $doc->current_revision }} · {{ $doc->category }} · {{ $doc->status }}</div>
-                </a>
-            @endforeach
-        </div>
-    @endif
+    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+        <h2 style="margin: 0; font-size: 1.05rem; color: var(--primary-navy);">Case library</h2>
+        <a href="/pro/architect/documents/create?pa_id={{ $pa->id }}" style="font-size: 0.82rem; font-weight: 600; color: #3f6212; text-decoration: none;">+ Upload</a>
+    </div>
+    @include('pro.architect.partials.document-library', [
+        'documents' => $pa->documents,
+        'emptyCopy' => 'No documents on this case yet.',
+    ])
 @endsection
