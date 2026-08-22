@@ -48,39 +48,33 @@
             <input type="checkbox" id="{{ $mapId }}-bands" style="accent-color: #3f6212;">
             Show ½ / 1½ offsets
         </label>
+        <button type="button" id="{{ $mapId }}-street-toggle" disabled style="margin-left: auto; padding: 0.35rem 0.65rem; border-radius: var(--radius-md); font-size: 0.75rem; font-weight: 650; cursor: pointer; border: 1px solid var(--border-light); background: white; color: var(--text-muted);">Street View</button>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; min-height: {{ $height }};" class="arch-impact-split">
+    <div id="{{ $mapId }}-split" style="display: grid; grid-template-columns: 1fr; min-height: {{ $height }};" class="arch-impact-split">
         <div id="{{ $mapId }}" style="height: {{ $height }}; width: 100%; background: #1e293b; cursor: crosshair; min-height: 280px;"></div>
-        <div id="{{ $mapId }}-street-wrap" style="display: flex; flex-direction: column; border-left: 1px solid var(--border-light); background: #f8fafc; min-height: 280px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.45rem 0.65rem; background: white; border-bottom: 1px solid var(--border-light);">
-                <div style="font-size: 0.72rem; font-weight: 700; color: var(--primary-navy);">Street View</div>
-                <div style="font-size: 0.65rem; font-weight: 650; color: #3f6212;">€0 · no API key</div>
-            </div>
-            <div id="{{ $mapId }}-street-panel" style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.75rem; padding: 1rem 0.9rem;">
-                <div id="{{ $mapId }}-street-label" style="font-size: 0.88rem; font-weight: 650; color: var(--primary-navy); line-height: 1.35;">
-                    Click a neighbour on the map to load Street View here.
+        <div id="{{ $mapId }}-street-wrap" hidden style="display: none; flex-direction: column; border-left: 1px solid var(--border-light); background: #0f172a; min-height: 280px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.4rem 0.65rem; background: #111827; border-bottom: 1px solid #1f2937;">
+                <div id="{{ $mapId }}-street-label" style="font-size: 0.72rem; font-weight: 700; color: #e2e8f0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Street View</div>
+                <div style="display: flex; gap: 0.55rem; align-items: center; flex-shrink: 0;">
+                    <a id="{{ $mapId }}-street-external" href="{{ \App\Support\Architect\StreetView::mapsUrl((float) $pin['lat'], (float) $pin['lng']) }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.68rem; font-weight: 650; color: #86efac; text-decoration: none;">Open in Google ↗</a>
+                    <button type="button" id="{{ $mapId }}-street-close" style="background: none; border: none; color: #cbd5e1; font-weight: 700; cursor: pointer; font-size: 0.78rem; padding: 0;">Close</button>
                 </div>
-                <div id="{{ $mapId }}-street-coords" style="font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums;"></div>
-                <a id="{{ $mapId }}-street-open" href="{{ \App\Support\Architect\StreetView::mapsUrl((float) $pin['lat'], (float) $pin['lng']) }}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; justify-content: center; align-self: start; background: #3f6212; color: white; text-decoration: none; font-weight: 650; font-size: 0.85rem; padding: 0.55rem 0.9rem; border-radius: var(--radius-md);">
-                    Open Street View ↗
-                </a>
-                <p id="{{ $mapId }}-street-note" style="margin: 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
-                    Opens Google’s public map in a new tab. PractisBase does not use Google Maps Platform, Mapbox, or any billed map API.
-                </p>
             </div>
+            <iframe id="{{ $mapId }}-street" title="Street View" src="about:blank" style="flex: 1; width: 100%; border: 0; min-height: 240px; background: #0f172a;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
     </div>
     <style>
         @media (max-width: 900px) {
-            .arch-impact-split { grid-template-columns: 1fr !important; }
+            .arch-impact-split.is-split { grid-template-columns: 1fr !important; }
+            .arch-impact-split.is-split iframe { min-height: 220px !important; }
         }
     </style>
 
     <div style="padding: 0.75rem 0.9rem; border-top: 1px solid var(--border-light);">
         <div id="{{ $mapId }}-hint" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.55rem;">
             @if($boundary)
-                Site outline loaded. Click a neighbour — the Street View panel updates (opens Google publicly, no API key). Then Quick add or Open details.
+                Site outline loaded. Click a neighbour, then choose Street View to split this map in half — or Quick add / Open details.
             @else
                 No site outline yet — impact uses the pin as a fallback. Draw the site, then click neighbours and choose an action.
             @endif
@@ -117,10 +111,15 @@
     var finishBtn = document.getElementById(mapId + '-finish');
     var undoBtn = document.getElementById(mapId + '-undo');
     var clearBtn = document.getElementById(mapId + '-clear');
-    var streetOpen = document.getElementById(mapId + '-street-open');
-    var streetNote = document.getElementById(mapId + '-street-note');
+    var splitEl = document.getElementById(mapId + '-split');
+    var streetWrap = document.getElementById(mapId + '-street-wrap');
+    var streetFrame = document.getElementById(mapId + '-street');
     var streetLabel = document.getElementById(mapId + '-street-label');
-    var streetCoords = document.getElementById(mapId + '-street-coords');
+    var streetExternal = document.getElementById(mapId + '-street-external');
+    var streetClose = document.getElementById(mapId + '-street-close');
+    var streetToggle = document.getElementById(mapId + '-street-toggle');
+    var selectedPoint = null;
+    var streetOpen = false;
 
     function streetTpl(template, lat, lng) {
         return String(template)
@@ -128,20 +127,79 @@
             .replace(/\{lng\}/g, Number(lng).toFixed(7));
     }
 
-    function updateStreetView(lat, lng, label) {
-        var href = streetTpl(streetCfg.mapsTemplate, lat, lng);
-        if (streetOpen) streetOpen.href = href;
+    function setStreetToggleEnabled(on) {
+        if (!streetToggle) return;
+        streetToggle.disabled = !on;
+        if (on) {
+            streetToggle.style.color = 'var(--primary-navy)';
+            streetToggle.style.borderColor = 'var(--border-light)';
+            streetToggle.style.cursor = 'pointer';
+        } else {
+            streetToggle.style.color = 'var(--text-muted)';
+            streetToggle.style.cursor = 'not-allowed';
+        }
+    }
+
+    function closeStreetView() {
+        streetOpen = false;
+        if (splitEl) {
+            splitEl.style.gridTemplateColumns = '1fr';
+            splitEl.classList.remove('is-split');
+        }
+        if (streetWrap) {
+            streetWrap.hidden = true;
+            streetWrap.style.display = 'none';
+        }
+        if (streetFrame) streetFrame.src = 'about:blank';
+        if (streetToggle) streetToggle.textContent = 'Street View';
+        setTimeout(function () { map.invalidateSize(); }, 80);
+    }
+
+    function openStreetView(lat, lng, label) {
+        selectedPoint = { lat: lat, lng: lng, label: label || '' };
+        setStreetToggleEnabled(true);
+        streetOpen = true;
+        if (splitEl) {
+            splitEl.style.gridTemplateColumns = '1fr 1fr';
+            splitEl.classList.add('is-split');
+        }
+        if (streetWrap) {
+            streetWrap.hidden = false;
+            streetWrap.style.display = 'flex';
+        }
+        if (streetFrame) {
+            streetFrame.src = streetTpl(streetCfg.embedTemplate, lat, lng);
+        }
+        if (streetExternal) {
+            streetExternal.href = streetTpl(streetCfg.mapsTemplate, lat, lng);
+        }
         if (streetLabel) {
-            streetLabel.textContent = label
-                ? ('Selected: ' + label)
-                : 'Click a neighbour on the map to load Street View here.';
+            streetLabel.textContent = label ? ('Street View · ' + label) : 'Street View';
         }
-        if (streetCoords) {
-            streetCoords.textContent = Number(lat).toFixed(6) + ', ' + Number(lng).toFixed(6);
+        if (streetToggle) streetToggle.textContent = 'Close Street View';
+        setTimeout(function () { map.invalidateSize(); }, 80);
+        setTimeout(function () { map.invalidateSize(); }, 320);
+        setHint('Street View open beside the map. Close it anytime from the panel or toolbar.');
+    }
+
+    function rememberPoint(lat, lng, label) {
+        selectedPoint = { lat: lat, lng: lng, label: label || '' };
+        setStreetToggleEnabled(true);
+        if (streetOpen) {
+            openStreetView(lat, lng, label);
         }
-        if (streetNote) {
-            streetNote.textContent = 'Opens Google’s public map in a new tab. PractisBase does not use Google Maps Platform, Mapbox, or any billed map API.';
-        }
+    }
+
+    if (streetClose) streetClose.addEventListener('click', closeStreetView);
+    if (streetToggle) {
+        streetToggle.addEventListener('click', function () {
+            if (streetOpen) {
+                closeStreetView();
+                return;
+            }
+            if (!selectedPoint) return;
+            openStreetView(selectedPoint.lat, selectedPoint.lng, selectedPoint.label);
+        });
     }
 
     var map = L.map(el, {
@@ -429,7 +487,15 @@
                         || ('/pro/architect/projects/' + projectId + '?focus_neighbour=' + item.neighbourId + '#neighbour-' + item.neighbourId);
                     window.location.assign(href);
                 });
+                var streetBtnDone = document.createElement('button');
+                streetBtnDone.type = 'button';
+                streetBtnDone.textContent = 'Street View';
+                streetBtnDone.style.cssText = 'background:white;color:var(--primary-navy);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:0.4rem 0.75rem;font-weight:650;font-size:0.78rem;cursor:pointer;';
+                streetBtnDone.addEventListener('click', function () {
+                    openStreetView(item.lat, item.lng, item.address || item.display || '');
+                });
                 actions.appendChild(done);
+                actions.appendChild(streetBtnDone);
                 actions.appendChild(openReg);
             } else {
                 var quick = document.createElement('button');
@@ -439,6 +505,15 @@
                 quick.title = 'Add address to the register now — fill owner/contact later';
                 quick.addEventListener('click', function () { quickAddNeighbour(item, quick); });
 
+                var streetBtn = document.createElement('button');
+                streetBtn.type = 'button';
+                streetBtn.textContent = 'Street View';
+                streetBtn.style.cssText = 'background:white;color:var(--primary-navy);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:0.4rem 0.75rem;font-weight:650;font-size:0.78rem;cursor:pointer;';
+                streetBtn.title = 'Split the map and show Street View beside it';
+                streetBtn.addEventListener('click', function () {
+                    openStreetView(item.lat, item.lng, item.address || item.display || '');
+                });
+
                 var details = document.createElement('button');
                 details.type = 'button';
                 details.textContent = 'Open details';
@@ -447,6 +522,7 @@
                 details.addEventListener('click', function () { fillNeighbourForm(item); });
 
                 actions.appendChild(quick);
+                actions.appendChild(streetBtn);
                 actions.appendChild(details);
             }
 
@@ -483,8 +559,8 @@
             suggestions.push(item);
             if (suggestions.length > 6) suggestions.shift();
             renderSuggestions();
-            updateStreetView(lat, lng, address);
-            setHint('Address ready — choose Quick add (stay here) or Open details (form below). Street View updated beside the map.');
+            rememberPoint(lat, lng, address);
+            setHint('Address ready — choose Street View (split map), Quick add, or Open details.');
         }).catch(function () {
             setHint('Could not resolve address — type it manually in the register.');
         });
@@ -612,7 +688,7 @@
         }
         if (clickMarker) map.removeLayer(clickMarker);
         clickMarker = L.marker([lat, lng], { icon: clickIcon }).addTo(map);
-        updateStreetView(lat, lng, 'Selected map point');
+        rememberPoint(lat, lng, 'Selected map point');
         reverseGeocode(lat, lng, measure);
     });
 
