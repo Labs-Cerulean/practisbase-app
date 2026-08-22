@@ -248,7 +248,7 @@ class ProjectController extends Controller
                 ->with(['revisions' => fn ($r) => $r->orderByDesc('revision_no')->limit(3), 'paApplication'])
                 ->orderByDesc('updated_at'),
             'siteParties' => fn ($q) => $q->orderBy('role_key'),
-            'neighbours' => fn ($q) => $q->with('conditionReport')->orderBy('sort_order')->orderBy('id'),
+            'neighbours' => fn ($q) => $q->with(['conditionReports', 'conditionReport'])->orderBy('sort_order')->orderBy('id'),
             'conditionReports' => fn ($q) => $q->orderByDesc('updated_at'),
             'methodStatements' => fn ($q) => $q->orderByDesc('updated_at'),
         ]);

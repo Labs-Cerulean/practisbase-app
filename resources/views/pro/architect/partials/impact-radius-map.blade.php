@@ -55,9 +55,9 @@
     <div style="padding: 0.75rem 0.9rem; border-top: 1px solid var(--border-light);">
         <div id="{{ $mapId }}-hint" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.55rem;">
             @if($boundary)
-                Site outline loaded. Offset follows the boundary. Click outside the site (in the amber band) to suggest a neighbour address.
+                Site outline loaded. Click a neighbouring property in the amber band — then choose Quick add or Open details (no jump until you pick).
             @else
-                No site outline yet — impact uses the pin as a fallback. Click <strong>Draw site</strong>, tap corners on the satellite view, then <strong>Finish outline</strong>.
+                No site outline yet — impact uses the pin as a fallback. Draw the site, then click neighbours and choose an action.
             @endif
         </div>
         <div id="{{ $mapId }}-suggestions" style="display: grid; gap: 0.4rem;"></div>
@@ -73,8 +73,9 @@
 
     var pin = @json($pin);
     var savedBoundary = @json($boundary);
-    var saveUrl = @json($saveBoundaryUrl);
+    var quickUrl = @json('/pro/architect/projects/'.$project->id.'/neighbours/quick');
     var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    var saveUrl = @json($saveBoundaryUrl);
     var streets = @json(\App\Support\Architect\MapBasemap::streetsConfig());
     var satellite = @json(\App\Support\Architect\MapBasemap::satelliteConfig());
 
@@ -300,7 +301,45 @@
             form.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (address) address.focus();
         }
-        setHint('Address filled in Add neighbour — edit if needed, then save.', true);
+        setHint('Details opened below — edit owner/contact when ready, then save. Multiple CRs can be added later for flats.', true);
+    }
+
+    function quickAddNeighbour(item, btn) {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Adding…';
+        }
+        fetch(quickUrl, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                address: item.address || item.display || '',
+                street: item.street || '',
+                locality: item.locality || '',
+                latitude: item.lat,
+                longitude: item.lng,
+                relation: 'abutting'
+            })
+        }).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+        .then(function (res) {
+            if (!res.ok || !res.data || !res.data.ok) {
+                setHint((res.data && res.data.message) || 'Quick add failed — try Open details.');
+                if (btn) { btn.disabled = false; btn.textContent = 'Quick add'; }
+                return;
+            }
+            item.added = true;
+            item.neighbourId = res.data.neighbour && res.data.neighbour.id;
+            renderSuggestions();
+            setHint(res.data.message || 'Quick-added. Stay on the map or open the register when ready.', true);
+        }).catch(function () {
+            setHint('Quick add failed — check your connection.');
+            if (btn) { btn.disabled = false; btn.textContent = 'Quick add'; }
+        });
     }
 
     function renderSuggestions() {
@@ -308,9 +347,7 @@
         suggestionsEl.innerHTML = '';
         suggestions.slice().reverse().forEach(function (item) {
             var row = document.createElement('div');
-            row.style.cssText = 'display:flex;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;align-items:center;border:1px solid var(--border-light);border-radius:var(--radius-md);padding:0.55rem 0.7rem;background:#fffbeb;';
-            var left = document.createElement('div');
-            left.style.cssText = 'min-width:0;flex:1;';
+            row.style.cssText = 'display:grid;gap:0.45rem;border:1px solid var(--border-light);border-radius:var(--radius-md);padding:0.65rem 0.75rem;background:#fffbeb;';
             var title = document.createElement('div');
             title.style.cssText = 'font-weight:650;color:var(--primary-navy);font-size:0.85rem;';
             title.textContent = item.address || item.display || 'Map point';
@@ -319,16 +356,45 @@
             var fromLabel = item.from === 'boundary' ? 'from site boundary' : 'from pin';
             meta.textContent = Math.round(item.distanceM) + ' m ' + fromLabel +
                 (item.onSite ? ' · on site' : '') +
-                (item.outside ? ' · outside offset — confirm on site' : '');
-            left.appendChild(title);
-            left.appendChild(meta);
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = 'Use in form';
-            btn.style.cssText = 'background:#3f6212;color:white;border:none;border-radius:var(--radius-md);padding:0.4rem 0.75rem;font-weight:650;font-size:0.78rem;cursor:pointer;';
-            btn.addEventListener('click', function () { fillNeighbourForm(item); });
-            row.appendChild(left);
-            row.appendChild(btn);
+                (item.outside ? ' · outside offset — confirm on site' : '') +
+                (item.added ? ' · in register' : '');
+            var actions = document.createElement('div');
+            actions.style.cssText = 'display:flex;gap:0.4rem;flex-wrap:wrap;';
+
+            if (item.added) {
+                var done = document.createElement('span');
+                done.style.cssText = 'font-size:0.78rem;font-weight:650;color:#3f6212;';
+                done.textContent = 'Quick-added';
+                var openReg = document.createElement('a');
+                openReg.href = item.neighbourId
+                    ? ('/pro/architect/projects/' + @json($project->id) + '#neighbour-' + item.neighbourId)
+                    : '#neighbours';
+                openReg.textContent = 'Open in register';
+                openReg.style.cssText = 'font-size:0.78rem;font-weight:650;color:var(--primary-navy);';
+                actions.appendChild(done);
+                actions.appendChild(openReg);
+            } else {
+                var quick = document.createElement('button');
+                quick.type = 'button';
+                quick.textContent = 'Quick add';
+                quick.style.cssText = 'background:#3f6212;color:white;border:none;border-radius:var(--radius-md);padding:0.4rem 0.75rem;font-weight:650;font-size:0.78rem;cursor:pointer;';
+                quick.title = 'Add address to the register now — fill owner/contact later';
+                quick.addEventListener('click', function () { quickAddNeighbour(item, quick); });
+
+                var details = document.createElement('button');
+                details.type = 'button';
+                details.textContent = 'Open details';
+                details.style.cssText = 'background:white;color:var(--primary-navy);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:0.4rem 0.75rem;font-weight:650;font-size:0.78rem;cursor:pointer;';
+                details.title = 'Fill the form below to edit before saving';
+                details.addEventListener('click', function () { fillNeighbourForm(item); });
+
+                actions.appendChild(quick);
+                actions.appendChild(details);
+            }
+
+            row.appendChild(title);
+            row.appendChild(meta);
+            row.appendChild(actions);
             suggestionsEl.appendChild(row);
         });
     }
@@ -353,12 +419,13 @@
                 distanceM: measure.distanceM,
                 outside: measure.outside,
                 onSite: measure.onSite,
-                from: measure.from
+                from: measure.from,
+                added: false
             };
             suggestions.push(item);
             if (suggestions.length > 6) suggestions.shift();
             renderSuggestions();
-            fillNeighbourForm(item);
+            setHint('Address ready — choose Quick add (stay here) or Open details (form below).');
         }).catch(function () {
             setHint('Could not resolve address — type it manually in the register.');
         });
