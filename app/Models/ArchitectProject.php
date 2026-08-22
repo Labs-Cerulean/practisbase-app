@@ -23,6 +23,7 @@ class ArchitectProject extends Model
         'site_address',
         'latitude',
         'longitude',
+        'site_boundary_geojson',
         'commencement_date',
     ];
 
@@ -32,6 +33,7 @@ class ArchitectProject extends Model
             'commencement_date' => 'date',
             'latitude' => 'float',
             'longitude' => 'float',
+            'site_boundary_geojson' => 'array',
         ];
     }
 
@@ -206,6 +208,31 @@ class ArchitectProject extends Model
             && $this->longitude !== null
             && is_finite((float) $this->latitude)
             && is_finite((float) $this->longitude);
+    }
+
+    public function hasSiteBoundary(): bool
+    {
+        $geo = $this->site_boundary_geojson;
+        if (! is_array($geo) || ($geo['type'] ?? '') !== 'Polygon') {
+            return false;
+        }
+        $ring = $geo['coordinates'][0] ?? null;
+
+        return is_array($ring) && count($ring) >= 4;
+    }
+
+    /**
+     * GeoJSON Polygon for the drawn site outline, or null.
+     *
+     * @return array{type: string, coordinates: list<list<list<float>>>}|null
+     */
+    public function siteBoundaryPolygon(): ?array
+    {
+        if (! $this->hasSiteBoundary()) {
+            return null;
+        }
+
+        return $this->site_boundary_geojson;
     }
 
     /**

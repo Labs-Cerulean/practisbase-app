@@ -304,6 +304,55 @@ class ProjectController extends Controller
             ->with('success', 'Project updated.');
     }
 
+    public function saveSiteBoundary(Request $request, ArchitectProject $project)
+    {
+        $this->assertOwned($project);
+
+        $validated = $request->validate([
+            'geojson' => 'required|array',
+            'geojson.type' => 'required|in:Polygon',
+            'geojson.coordinates' => 'required|array|size:1',
+            'geojson.coordinates.0' => 'required|array|min:4|max:80',
+            'geojson.coordinates.0.*' => 'required|array|size:2',
+            'geojson.coordinates.0.*.0' => 'required|numeric|between:14.1,14.7',
+            'geojson.coordinates.0.*.1' => 'required|numeric|between:35.7,36.2',
+        ]);
+
+        $ring = $validated['geojson']['coordinates'][0];
+        $first = $ring[0];
+        $last = $ring[count($ring) - 1];
+        if ((float) $first[0] !== (float) $last[0] || (float) $first[1] !== (float) $last[1]) {
+            $ring[] = $first;
+        }
+        if (count($ring) < 4) {
+            return response()->json(['ok' => false, 'message' => 'Draw at least 3 corners for the site outline.'], 422);
+        }
+
+        $project->site_boundary_geojson = [
+            'type' => 'Polygon',
+            'coordinates' => [$ring],
+        ];
+        $project->save();
+
+        return response()->json([
+            'ok' => true,
+            'geojson' => $project->site_boundary_geojson,
+            'message' => 'Site boundary saved. Impact offset now follows the outline.',
+        ]);
+    }
+
+    public function clearSiteBoundary(ArchitectProject $project)
+    {
+        $this->assertOwned($project);
+        $project->site_boundary_geojson = null;
+        $project->save();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Site boundary cleared. Impact falls back to the site pin.',
+        ]);
+    }
+
     public function reverseGeocode(Request $request)
     {
         $validated = $request->validate([
