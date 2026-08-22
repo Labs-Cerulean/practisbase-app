@@ -24,7 +24,11 @@
 
     <nav class="eng-field-strip" aria-label="On-site field actions">
         <div class="eng-field-strip-label">Field strip · on site</div>
-        <a class="eng-field-primary" href="#neighbours" style="background: #3f6212; border-color: #3f6212;">
+        <a class="eng-field-primary" href="#impact-radius" style="background: #3f6212; border-color: #3f6212;">
+            Impact map
+            <span>Radius + suggest</span>
+        </a>
+        <a href="#neighbours">
             Neighbours
             <span>Register + tracker</span>
         </a>
@@ -53,11 +57,12 @@
     <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.25rem;" class="arch-split">
         <div style="display: grid; gap: 1.25rem;">
             @if($project->hasMapPin())
-                <section>
-                    @include('pro.architect.partials.portfolio-map', [
-                        'mapId' => 'arch-project-map',
-                        'pins' => [array_merge($project->mapPinPayload(), ['name' => $project->name])],
-                        'height' => '240px',
+                <section id="impact-radius">
+                    @include('pro.architect.partials.impact-radius-map', [
+                        'project' => $project,
+                        'mapId' => 'arch-impact-map',
+                        'height' => '380px',
+                        'defaultRadiusM' => 20,
                         'mapServerUrl' => $mapServerUrl,
                     ])
                 </section>

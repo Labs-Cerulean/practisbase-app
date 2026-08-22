@@ -128,13 +128,17 @@
         </div>
     @endif
 
-    <form method="POST" action="/pro/architect/projects/{{ $project->id }}/neighbours" style="display: grid; gap: 0.55rem; border-top: 1px solid #e2e8f0; padding-top: 0.85rem;">
+    <form id="neighbour-add-form" method="POST" action="/pro/architect/projects/{{ $project->id }}/neighbours" style="display: grid; gap: 0.55rem; border-top: 1px solid #e2e8f0; padding-top: 0.85rem;">
         @csrf
+        <input type="hidden" name="street" id="neighbour-add-street" value="{{ old('street') }}">
+        <input type="hidden" name="locality" id="neighbour-add-locality" value="{{ old('locality') }}">
+        <input type="hidden" name="latitude" id="neighbour-add-latitude" value="{{ old('latitude') }}">
+        <input type="hidden" name="longitude" id="neighbour-add-longitude" value="{{ old('longitude') }}">
         <div style="font-size: 0.78rem; font-weight: 700; color: var(--primary-navy);">Add neighbour</div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.45rem;">
             <div style="grid-column: 1 / -1;">
                 <label style="display: block; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.2rem;">Address *</label>
-                <input type="text" name="address" value="{{ old('address') }}" required placeholder="Third-party property address" style="width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.88rem;">
+                <input type="text" name="address" id="neighbour-add-address" value="{{ old('address') }}" required placeholder="Third-party property address — or click the impact map" style="width: 100%; padding: 0.5rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.88rem;">
             </div>
             <div>
                 <label style="display: block; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.2rem;">Owner / occupier</label>
