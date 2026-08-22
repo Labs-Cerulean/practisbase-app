@@ -80,6 +80,13 @@ class NeighbourController extends Controller
 
     private function validateNeighbour(Request $request, ArchitectProject $project, bool $updating = false): array
     {
+        $lat = $request->input('latitude');
+        $lng = $request->input('longitude');
+        $request->merge([
+            'latitude' => ($lat === '' || $lat === null) ? null : $lat,
+            'longitude' => ($lng === '' || $lng === null) ? null : $lng,
+        ]);
+
         $validated = $request->validate([
             'address' => ($updating ? 'sometimes|' : '').'required|string|max:2000',
             'premises' => 'nullable|string|max:255',
@@ -95,6 +102,8 @@ class NeighbourController extends Controller
             'architect_pa_application_id' => 'nullable|integer',
             'architect_condition_report_id' => 'nullable|integer',
             'sort_order' => 'nullable|integer|min:0|max:9999',
+            'latitude' => 'nullable|numeric|between:35.7,36.2',
+            'longitude' => 'nullable|numeric|between:14.1,14.7',
         ]);
 
         if (! empty($validated['architect_pa_application_id'])) {
@@ -125,6 +134,13 @@ class NeighbourController extends Controller
 
         if (($validated['appointment_on'] ?? null) === '') {
             $validated['appointment_on'] = null;
+        }
+
+        $lat = $validated['latitude'] ?? null;
+        $lng = $validated['longitude'] ?? null;
+        if ($lat === null || $lng === null || $lat === '' || $lng === '') {
+            $validated['latitude'] = null;
+            $validated['longitude'] = null;
         }
 
         return $validated;

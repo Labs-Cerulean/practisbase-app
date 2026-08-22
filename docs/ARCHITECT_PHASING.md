@@ -90,7 +90,7 @@ Reuse the existing document library (`architect_documents` + `architect_document
 | Tracker | Identified → Contacted → Appointment booked → Survey done → Report drafted → Sent → Accepted / Objected → Filed for BCA |
 | Desk cues | Missing email, overdue appointment, objections, pack completeness |
 | Attach CR | Reuse existing condition-report builder + photos/PDF on the neighbour row |
-| Impact radius tool | On **zoomed project map**: buffer from pin / outer shell (default e.g. 20 m; optional depth→radius bands). Working aid only — label *confirm on site / title*; feeds “add neighbour” |
+| Impact radius tool | Satellite-first project map: buffer from pin (default 20 m; ½/1½ rings). Click → reverse-geocode → prefill neighbour form. Working aid only — label *confirm on site / title*. Not legal boundaries; PA MapServer deep link for parcels. |
 
 Manual SQL: `database/manual/architect_neighbours_postgresql.sql`.
 
