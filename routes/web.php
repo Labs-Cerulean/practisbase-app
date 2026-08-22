@@ -307,6 +307,8 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/projects/{project}', [ArchitectProjectController::class, 'show'])->whereNumber('project');
         Route::get('/projects/{project}/edit', [ArchitectProjectController::class, 'edit'])->whereNumber('project');
         Route::put('/projects/{project}', [ArchitectProjectController::class, 'update'])->whereNumber('project');
+        Route::put('/projects/{project}/site-boundary', [ArchitectProjectController::class, 'saveSiteBoundary'])->whereNumber('project');
+        Route::delete('/projects/{project}/site-boundary', [ArchitectProjectController::class, 'clearSiteBoundary'])->whereNumber('project');
         Route::post('/projects/{project}/parties', [ArchitectProjectController::class, 'storeParty'])->whereNumber('project');
         Route::delete('/projects/{project}/parties/{party}', [ArchitectProjectController::class, 'destroyParty'])->whereNumber('project');
         Route::post('/projects/{project}/neighbours', [ArchitectNeighbourController::class, 'store'])->whereNumber('project');
