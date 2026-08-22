@@ -85,7 +85,7 @@ class NeighbourController extends Controller
             'neighbour' => [
                 'id' => $neighbour->id,
                 'address' => $neighbour->addressLine(),
-                'edit_href' => '/pro/architect/projects/'.$project->id.'#neighbour-'.$neighbour->id,
+                'edit_href' => '/pro/architect/projects/'.$project->id.'?focus_neighbour='.$neighbour->id.'#neighbour-'.$neighbour->id,
             ],
             'message' => 'Quick-added to the register. Fill details when ready — you can attach multiple condition reports later (e.g. flats).',
         ]);

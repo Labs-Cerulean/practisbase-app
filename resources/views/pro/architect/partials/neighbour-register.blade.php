@@ -199,3 +199,19 @@
         <button type="submit" style="justify-self: start; background: #3f6212; color: white; border: none; border-radius: var(--radius-md); padding: 0.5rem 1rem; font-weight: 650; font-size: 0.88rem; cursor: pointer;">Add to register</button>
     </form>
 </section>
+<script>
+(function () {
+    var focusId = @json((int) request('focus_neighbour') ?: null);
+    var el = null;
+    if (focusId) {
+        el = document.getElementById('neighbour-' + focusId);
+    } else if (location.hash && location.hash.indexOf('#neighbour-') === 0) {
+        el = document.querySelector(location.hash);
+    }
+    if (!el) return;
+    el.style.boxShadow = '0 0 0 2px #3f6212';
+    setTimeout(function () {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
+})();
+</script>

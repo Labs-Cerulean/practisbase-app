@@ -50,12 +50,30 @@
         </label>
     </div>
 
-    <div id="{{ $mapId }}" style="height: {{ $height }}; width: 100%; background: #1e293b; cursor: crosshair;"></div>
+    <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; min-height: {{ $height }};" class="arch-impact-split">
+        <div id="{{ $mapId }}" style="height: {{ $height }}; width: 100%; background: #1e293b; cursor: crosshair; min-height: 280px;"></div>
+        <div id="{{ $mapId }}-street-wrap" style="display: flex; flex-direction: column; border-left: 1px solid var(--border-light); background: #0f172a; min-height: 280px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.45rem 0.65rem; background: #111827; border-bottom: 1px solid #1f2937;">
+                <div style="font-size: 0.72rem; font-weight: 700; color: #e2e8f0;">Street View</div>
+                <a id="{{ $mapId }}-street-open" href="{{ \App\Support\Architect\StreetView::mapsUrl((float) $pin['lat'], (float) $pin['lng']) }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.7rem; font-weight: 650; color: #86efac; text-decoration: none;">Open full ↗</a>
+            </div>
+            <iframe id="{{ $mapId }}-street" title="Street View at selected point" src="{{ \App\Support\Architect\StreetView::embedUrl((float) $pin['lat'], (float) $pin['lng']) }}" style="flex: 1; width: 100%; border: 0; min-height: 240px; background: #0f172a;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+            <div id="{{ $mapId }}-street-note" style="padding: 0.4rem 0.65rem; font-size: 0.68rem; color: #94a3b8; line-height: 1.35; border-top: 1px solid #1f2937;">
+                Updates when you click a neighbour on the map. Coverage varies — use Open full if the panel is blank.
+            </div>
+        </div>
+    </div>
+    <style>
+        @media (max-width: 900px) {
+            .arch-impact-split { grid-template-columns: 1fr !important; }
+            .arch-impact-split iframe { min-height: 220px !important; }
+        }
+    </style>
 
     <div style="padding: 0.75rem 0.9rem; border-top: 1px solid var(--border-light);">
         <div id="{{ $mapId }}-hint" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.55rem;">
             @if($boundary)
-                Site outline loaded. Click a neighbouring property in the amber band — then choose Quick add or Open details (no jump until you pick).
+                Site outline loaded. Click a neighbour — Street View updates beside the map. Then Quick add or Open details.
             @else
                 No site outline yet — impact uses the pin as a fallback. Draw the site, then click neighbours and choose an action.
             @endif
@@ -73,9 +91,11 @@
 
     var pin = @json($pin);
     var savedBoundary = @json($boundary);
+    var projectId = @json($project->id);
     var quickUrl = @json('/pro/architect/projects/'.$project->id.'/neighbours/quick');
     var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
     var saveUrl = @json($saveBoundaryUrl);
+    var streetCfg = @json(\App\Support\Architect\StreetView::clientConfig());
     var streets = @json(\App\Support\Architect\MapBasemap::streetsConfig());
     var satellite = @json(\App\Support\Architect\MapBasemap::satelliteConfig());
 
@@ -90,6 +110,29 @@
     var finishBtn = document.getElementById(mapId + '-finish');
     var undoBtn = document.getElementById(mapId + '-undo');
     var clearBtn = document.getElementById(mapId + '-clear');
+    var streetFrame = document.getElementById(mapId + '-street');
+    var streetOpen = document.getElementById(mapId + '-street-open');
+    var streetNote = document.getElementById(mapId + '-street-note');
+
+    function streetTpl(template, lat, lng) {
+        return String(template)
+            .replace(/\{lat\}/g, Number(lat).toFixed(7))
+            .replace(/\{lng\}/g, Number(lng).toFixed(7));
+    }
+
+    function updateStreetView(lat, lng, label) {
+        if (streetFrame) {
+            streetFrame.src = streetTpl(streetCfg.embedTemplate, lat, lng);
+        }
+        if (streetOpen) {
+            streetOpen.href = streetTpl(streetCfg.mapsTemplate, lat, lng);
+        }
+        if (streetNote) {
+            streetNote.textContent = label
+                ? ('Street View for: ' + label + ' — coverage varies; Open full if blank.')
+                : 'Updates when you click a neighbour on the map. Coverage varies — use Open full if the panel is blank.';
+        }
+    }
 
     var map = L.map(el, {
         scrollWheelZoom: true,
@@ -334,6 +377,8 @@
             }
             item.added = true;
             item.neighbourId = res.data.neighbour && res.data.neighbour.id;
+            item.editHref = (res.data.neighbour && res.data.neighbour.edit_href)
+                || ('/pro/architect/projects/' + projectId + '?focus_neighbour=' + item.neighbourId + '#neighbour-' + item.neighbourId);
             renderSuggestions();
             setHint(res.data.message || 'Quick-added. Stay on the map or open the register when ready.', true);
         }).catch(function () {
@@ -365,12 +410,15 @@
                 var done = document.createElement('span');
                 done.style.cssText = 'font-size:0.78rem;font-weight:650;color:#3f6212;';
                 done.textContent = 'Quick-added';
-                var openReg = document.createElement('a');
-                openReg.href = item.neighbourId
-                    ? ('/pro/architect/projects/' + @json($project->id) + '#neighbour-' + item.neighbourId)
-                    : '#neighbours';
+                var openReg = document.createElement('button');
+                openReg.type = 'button';
                 openReg.textContent = 'Open in register';
-                openReg.style.cssText = 'font-size:0.78rem;font-weight:650;color:var(--primary-navy);';
+                openReg.style.cssText = 'background:white;color:var(--primary-navy);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:0.4rem 0.75rem;font-weight:650;font-size:0.78rem;cursor:pointer;';
+                openReg.addEventListener('click', function () {
+                    var href = item.editHref
+                        || ('/pro/architect/projects/' + projectId + '?focus_neighbour=' + item.neighbourId + '#neighbour-' + item.neighbourId);
+                    window.location.assign(href);
+                });
                 actions.appendChild(done);
                 actions.appendChild(openReg);
             } else {
@@ -425,7 +473,8 @@
             suggestions.push(item);
             if (suggestions.length > 6) suggestions.shift();
             renderSuggestions();
-            setHint('Address ready — choose Quick add (stay here) or Open details (form below).');
+            updateStreetView(lat, lng, address);
+            setHint('Address ready — choose Quick add (stay here) or Open details (form below). Street View updated beside the map.');
         }).catch(function () {
             setHint('Could not resolve address — type it manually in the register.');
         });
@@ -553,11 +602,13 @@
         }
         if (clickMarker) map.removeLayer(clickMarker);
         clickMarker = L.marker([lat, lng], { icon: clickIcon }).addTo(map);
+        updateStreetView(lat, lng, 'Selected map point');
         reverseGeocode(lat, lng, measure);
     });
 
     redrawImpact();
     setTimeout(function () { map.invalidateSize(); }, 80);
+    setTimeout(function () { map.invalidateSize(); }, 320);
 })();
 </script>
 @endif
