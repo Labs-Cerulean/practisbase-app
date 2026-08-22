@@ -7,7 +7,8 @@
         </span>
     </div>
     <p style="margin: 0 0 0.85rem; font-size: 0.82rem; color: var(--text-muted); line-height: 1.45;">
-        Third-party register for this site — track contact through survey, report, and BCA filing. Attach a Seventh Schedule condition report on each row.
+        Third-party register for this site — track contact through survey, report, and BCA filing.
+        One neighbour property can hold <strong>multiple condition reports</strong> (e.g. a block of flats — one CR per unit).
     </p>
 
     @if(!empty($neighbourDesk['cues']) && $neighbourDesk['total'] > 0)
@@ -28,7 +29,7 @@
                 @php
                     $rowWarn = $neighbour->missingEmail() || $neighbour->appointmentOverdue() || $neighbour->isObjected();
                 @endphp
-                <div style="border: 1px solid {{ $rowWarn ? '#fed7aa' : 'var(--border-light)' }}; border-radius: var(--radius-md); padding: 0.85rem 0.9rem; background: {{ $neighbour->isObjected() ? '#fff7ed' : 'white' }};">
+                <div id="neighbour-{{ $neighbour->id }}" style="border: 1px solid {{ $rowWarn ? '#fed7aa' : 'var(--border-light)' }}; border-radius: var(--radius-md); padding: 0.85rem 0.9rem; background: {{ $neighbour->isObjected() ? '#fff7ed' : 'white' }};">
                     <form method="POST" action="/pro/architect/projects/{{ $project->id }}/neighbours/{{ $neighbour->id }}" style="display: grid; gap: 0.55rem;">
                         @csrf
                         @method('PUT')
@@ -44,13 +45,6 @@
                                 @endif
                                 @if($neighbour->appointmentOverdue())
                                     <span style="font-size: 0.68rem; font-weight: 700; color: #9a3412;">Overdue</span>
-                                @endif
-                                @if($neighbour->conditionReport)
-                                    <a href="/pro/architect/condition-reports/{{ $neighbour->conditionReport->id }}" style="font-size: 0.78rem; font-weight: 650; color: #3f6212; text-decoration: none;">
-                                        CR {{ $neighbour->conditionReport->isStamped() ? $neighbour->conditionReport->issue_code : 'draft' }}
-                                    </a>
-                                @else
-                                    <a href="/pro/architect/condition-reports/create?project_id={{ $project->id }}&amp;neighbour_id={{ $neighbour->id }}&amp;starter=seventh_schedule" style="font-size: 0.78rem; font-weight: 650; color: #3f6212; text-decoration: none;">+ Build CR</a>
                                 @endif
                             </div>
                         </div>
@@ -108,21 +102,50 @@
                         @method('DELETE')
                     </form>
 
-                    @if($project->conditionReports->isNotEmpty() && ! $neighbour->architect_condition_report_id)
-                        <form method="POST" action="/pro/architect/projects/{{ $project->id }}/neighbours/{{ $neighbour->id }}/link-report" style="display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: end; margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid #e2e8f0;">
-                            @csrf
-                            <div style="flex: 1; min-width: 160px;">
-                                <label style="display: block; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.2rem;">Link existing CR</label>
-                                <select name="architect_condition_report_id" required style="width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem;">
-                                    <option value="">Choose report…</option>
-                                    @foreach($project->conditionReports as $cr)
-                                        <option value="{{ $cr->id }}">{{ $cr->title }} · {{ $cr->isStamped() ? $cr->issue_code : 'Draft' }}</option>
-                                    @endforeach
-                                </select>
+                    @php
+                        $linkedReports = $neighbour->conditionReports;
+                        if ($linkedReports->isEmpty() && $neighbour->conditionReport) {
+                            $linkedReports = collect([$neighbour->conditionReport]);
+                        }
+                        $linkedIds = $linkedReports->pluck('id')->all();
+                        $linkableReports = $project->conditionReports->filter(fn ($cr) => ! in_array($cr->id, $linkedIds, true));
+                    @endphp
+                    <div style="margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid #e2e8f0; display: grid; gap: 0.45rem;">
+                        <div style="display: flex; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; align-items: baseline;">
+                            <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                                Condition reports
+                                <span style="font-weight: 600; text-transform: none; color: var(--text-muted);">({{ $linkedReports->count() }} — add more for flats / units)</span>
                             </div>
-                            <button type="submit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); border-radius: var(--radius-md); padding: 0.45rem 0.75rem; font-weight: 650; font-size: 0.82rem; cursor: pointer;">Link</button>
-                        </form>
-                    @endif
+                            <a href="/pro/architect/condition-reports/create?project_id={{ $project->id }}&amp;neighbour_id={{ $neighbour->id }}&amp;starter=seventh_schedule" style="font-size: 0.78rem; font-weight: 650; color: #3f6212; text-decoration: none;">+ Build another CR</a>
+                        </div>
+                        @if($linkedReports->isEmpty())
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">No reports yet. A block of flats can have one CR per unit — keep adding as needed.</p>
+                        @else
+                            <div style="display: grid; gap: 0.35rem;">
+                                @foreach($linkedReports as $cr)
+                                    <a href="/pro/architect/condition-reports/{{ $cr->id }}" style="display: block; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.45rem 0.6rem; text-decoration: none;">
+                                        <div style="font-size: 0.82rem; font-weight: 650; color: var(--primary-navy);">{{ $cr->title }}</div>
+                                        <div style="font-size: 0.72rem; color: var(--text-muted);">{{ $cr->isStamped() ? $cr->issue_code : 'Draft' }}@if($cr->inspected_address) · {{ \Illuminate\Support\Str::limit($cr->inspected_address, 40) }}@endif</div>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                        @if($linkableReports->isNotEmpty())
+                            <form method="POST" action="/pro/architect/projects/{{ $project->id }}/neighbours/{{ $neighbour->id }}/link-report" style="display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: end;">
+                                @csrf
+                                <div style="flex: 1; min-width: 160px;">
+                                    <label style="display: block; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.2rem;">Link existing CR</label>
+                                    <select name="architect_condition_report_id" required style="width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem;">
+                                        <option value="">Choose report…</option>
+                                        @foreach($linkableReports as $cr)
+                                            <option value="{{ $cr->id }}">{{ $cr->title }} · {{ $cr->isStamped() ? $cr->issue_code : 'Draft' }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <button type="submit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); border-radius: var(--radius-md); padding: 0.45rem 0.75rem; font-weight: 650; font-size: 0.82rem; cursor: pointer;">Link</button>
+                            </form>
+                        @endif
+                    </div>
                 </div>
             @endforeach
         </div>

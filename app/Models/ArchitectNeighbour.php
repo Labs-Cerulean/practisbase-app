@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 class ArchitectNeighbour extends Model
@@ -90,6 +91,15 @@ class ArchitectNeighbour extends Model
         return $this->belongsTo(ArchitectConditionReport::class, 'architect_condition_report_id');
     }
 
+    /**
+     * A neighbour property can hold many condition reports (e.g. a block of flats).
+     */
+    public function conditionReports(): HasMany
+    {
+        return $this->hasMany(ArchitectConditionReport::class, 'architect_neighbour_id')
+            ->orderByDesc('updated_at');
+    }
+
     public function relationLabel(): string
     {
         return self::RELATIONS[$this->relation] ?? $this->relation;
@@ -142,6 +152,14 @@ class ArchitectNeighbour extends Model
     {
         if (! in_array($this->status, ['accepted', 'filed_bca'], true)) {
             return false;
+        }
+
+        if ($this->relationLoaded('conditionReports')) {
+            return $this->conditionReports->contains(fn ($r) => $r->stamped_at !== null);
+        }
+
+        if ($this->conditionReports()->whereNotNull('stamped_at')->exists()) {
+            return true;
         }
 
         $report = $this->conditionReport;

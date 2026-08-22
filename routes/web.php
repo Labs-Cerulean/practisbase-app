@@ -312,6 +312,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/projects/{project}/parties', [ArchitectProjectController::class, 'storeParty'])->whereNumber('project');
         Route::delete('/projects/{project}/parties/{party}', [ArchitectProjectController::class, 'destroyParty'])->whereNumber('project');
         Route::post('/projects/{project}/neighbours', [ArchitectNeighbourController::class, 'store'])->whereNumber('project');
+        Route::post('/projects/{project}/neighbours/quick', [ArchitectNeighbourController::class, 'quickStore'])->whereNumber('project');
         Route::put('/projects/{project}/neighbours/{neighbour}', [ArchitectNeighbourController::class, 'update'])->whereNumber('project')->whereNumber('neighbour');
         Route::delete('/projects/{project}/neighbours/{neighbour}', [ArchitectNeighbourController::class, 'destroy'])->whereNumber('project')->whereNumber('neighbour');
         Route::post('/projects/{project}/neighbours/{neighbour}/link-report', [ArchitectNeighbourController::class, 'linkReport'])->whereNumber('project')->whereNumber('neighbour');

@@ -17,14 +17,78 @@ class NeighbourController extends Controller
         $this->assertProjectOwned($project);
         $validated = $this->validateNeighbour($request, $project);
 
-        ArchitectNeighbour::create([
+        $neighbour = ArchitectNeighbour::create([
             'user_id' => Auth::id(),
             'architect_project_id' => $project->id,
             ...$validated,
         ]);
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'ok' => true,
+                'neighbour' => [
+                    'id' => $neighbour->id,
+                    'address' => $neighbour->addressLine(),
+                ],
+                'message' => 'Neighbour added to the register.',
+            ]);
+        }
+
         return redirect('/pro/architect/projects/'.$project->id.'#neighbours')
             ->with('success', 'Neighbour added to the register.');
+    }
+
+    /**
+     * Map quick-add: address + pin only; details filled later in the register.
+     */
+    public function quickStore(Request $request, ArchitectProject $project)
+    {
+        $this->assertProjectOwned($project);
+
+        $lat = $request->input('latitude');
+        $lng = $request->input('longitude');
+        $request->merge([
+            'latitude' => ($lat === '' || $lat === null) ? null : $lat,
+            'longitude' => ($lng === '' || $lng === null) ? null : $lng,
+        ]);
+
+        $validated = $request->validate([
+            'address' => 'required|string|max:2000',
+            'street' => 'nullable|string|max:255',
+            'locality' => 'nullable|string|max:120',
+            'relation' => 'nullable|in:'.implode(',', array_keys(ArchitectNeighbour::RELATIONS)),
+            'latitude' => 'nullable|numeric|between:35.7,36.2',
+            'longitude' => 'nullable|numeric|between:14.1,14.7',
+            'notes' => 'nullable|string|max:5000',
+        ]);
+
+        if (($validated['latitude'] ?? null) === null || ($validated['longitude'] ?? null) === null) {
+            $validated['latitude'] = null;
+            $validated['longitude'] = null;
+        }
+
+        $neighbour = ArchitectNeighbour::create([
+            'user_id' => Auth::id(),
+            'architect_project_id' => $project->id,
+            'address' => $validated['address'],
+            'street' => $validated['street'] ?? null,
+            'locality' => $validated['locality'] ?? null,
+            'relation' => $validated['relation'] ?? 'abutting',
+            'status' => 'identified',
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'neighbour' => [
+                'id' => $neighbour->id,
+                'address' => $neighbour->addressLine(),
+                'edit_href' => '/pro/architect/projects/'.$project->id.'#neighbour-'.$neighbour->id,
+            ],
+            'message' => 'Quick-added to the register. Fill details when ready — you can attach multiple condition reports later (e.g. flats).',
+        ]);
     }
 
     public function update(Request $request, ArchitectProject $project, ArchitectNeighbour $neighbour)
@@ -74,8 +138,8 @@ class NeighbourController extends Controller
         }
         $report->save();
 
-        return redirect('/pro/architect/projects/'.$project->id.'#neighbours')
-            ->with('success', 'Condition report linked to neighbour.');
+        return redirect('/pro/architect/projects/'.$project->id.'#neighbour-'.$neighbour->id)
+            ->with('success', 'Condition report linked. You can still add more reports for this property (e.g. other flats).');
     }
 
     private function validateNeighbour(Request $request, ArchitectProject $project, bool $updating = false): array
