@@ -52,28 +52,35 @@
 
     <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; min-height: {{ $height }};" class="arch-impact-split">
         <div id="{{ $mapId }}" style="height: {{ $height }}; width: 100%; background: #1e293b; cursor: crosshair; min-height: 280px;"></div>
-        <div id="{{ $mapId }}-street-wrap" style="display: flex; flex-direction: column; border-left: 1px solid var(--border-light); background: #0f172a; min-height: 280px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.45rem 0.65rem; background: #111827; border-bottom: 1px solid #1f2937;">
-                <div style="font-size: 0.72rem; font-weight: 700; color: #e2e8f0;">Street View</div>
-                <a id="{{ $mapId }}-street-open" href="{{ \App\Support\Architect\StreetView::mapsUrl((float) $pin['lat'], (float) $pin['lng']) }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.7rem; font-weight: 650; color: #86efac; text-decoration: none;">Open full ↗</a>
+        <div id="{{ $mapId }}-street-wrap" style="display: flex; flex-direction: column; border-left: 1px solid var(--border-light); background: #f8fafc; min-height: 280px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.45rem 0.65rem; background: white; border-bottom: 1px solid var(--border-light);">
+                <div style="font-size: 0.72rem; font-weight: 700; color: var(--primary-navy);">Street View</div>
+                <div style="font-size: 0.65rem; font-weight: 650; color: #3f6212;">€0 · no API key</div>
             </div>
-            <iframe id="{{ $mapId }}-street" title="Street View at selected point" src="{{ \App\Support\Architect\StreetView::embedUrl((float) $pin['lat'], (float) $pin['lng']) }}" style="flex: 1; width: 100%; border: 0; min-height: 240px; background: #0f172a;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-            <div id="{{ $mapId }}-street-note" style="padding: 0.4rem 0.65rem; font-size: 0.68rem; color: #94a3b8; line-height: 1.35; border-top: 1px solid #1f2937;">
-                Updates when you click a neighbour on the map. Coverage varies — use Open full if the panel is blank.
+            <div id="{{ $mapId }}-street-panel" style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.75rem; padding: 1rem 0.9rem;">
+                <div id="{{ $mapId }}-street-label" style="font-size: 0.88rem; font-weight: 650; color: var(--primary-navy); line-height: 1.35;">
+                    Click a neighbour on the map to load Street View here.
+                </div>
+                <div id="{{ $mapId }}-street-coords" style="font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums;"></div>
+                <a id="{{ $mapId }}-street-open" href="{{ \App\Support\Architect\StreetView::mapsUrl((float) $pin['lat'], (float) $pin['lng']) }}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; justify-content: center; align-self: start; background: #3f6212; color: white; text-decoration: none; font-weight: 650; font-size: 0.85rem; padding: 0.55rem 0.9rem; border-radius: var(--radius-md);">
+                    Open Street View ↗
+                </a>
+                <p id="{{ $mapId }}-street-note" style="margin: 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
+                    Opens Google’s public map in a new tab. PractisBase does not use Google Maps Platform, Mapbox, or any billed map API.
+                </p>
             </div>
         </div>
     </div>
     <style>
         @media (max-width: 900px) {
             .arch-impact-split { grid-template-columns: 1fr !important; }
-            .arch-impact-split iframe { min-height: 220px !important; }
         }
     </style>
 
     <div style="padding: 0.75rem 0.9rem; border-top: 1px solid var(--border-light);">
         <div id="{{ $mapId }}-hint" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.55rem;">
             @if($boundary)
-                Site outline loaded. Click a neighbour — Street View updates beside the map. Then Quick add or Open details.
+                Site outline loaded. Click a neighbour — the Street View panel updates (opens Google publicly, no API key). Then Quick add or Open details.
             @else
                 No site outline yet — impact uses the pin as a fallback. Draw the site, then click neighbours and choose an action.
             @endif
@@ -110,9 +117,10 @@
     var finishBtn = document.getElementById(mapId + '-finish');
     var undoBtn = document.getElementById(mapId + '-undo');
     var clearBtn = document.getElementById(mapId + '-clear');
-    var streetFrame = document.getElementById(mapId + '-street');
     var streetOpen = document.getElementById(mapId + '-street-open');
     var streetNote = document.getElementById(mapId + '-street-note');
+    var streetLabel = document.getElementById(mapId + '-street-label');
+    var streetCoords = document.getElementById(mapId + '-street-coords');
 
     function streetTpl(template, lat, lng) {
         return String(template)
@@ -121,16 +129,18 @@
     }
 
     function updateStreetView(lat, lng, label) {
-        if (streetFrame) {
-            streetFrame.src = streetTpl(streetCfg.embedTemplate, lat, lng);
+        var href = streetTpl(streetCfg.mapsTemplate, lat, lng);
+        if (streetOpen) streetOpen.href = href;
+        if (streetLabel) {
+            streetLabel.textContent = label
+                ? ('Selected: ' + label)
+                : 'Click a neighbour on the map to load Street View here.';
         }
-        if (streetOpen) {
-            streetOpen.href = streetTpl(streetCfg.mapsTemplate, lat, lng);
+        if (streetCoords) {
+            streetCoords.textContent = Number(lat).toFixed(6) + ', ' + Number(lng).toFixed(6);
         }
         if (streetNote) {
-            streetNote.textContent = label
-                ? ('Street View for: ' + label + ' — coverage varies; Open full if blank.')
-                : 'Updates when you click a neighbour on the map. Coverage varies — use Open full if the panel is blank.';
+            streetNote.textContent = 'Opens Google’s public map in a new tab. PractisBase does not use Google Maps Platform, Mapbox, or any billed map API.';
         }
     }
 

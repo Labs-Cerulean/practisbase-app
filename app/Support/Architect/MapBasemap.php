@@ -3,8 +3,8 @@
 namespace App\Support\Architect;
 
 /**
- * Free basemap tiles for practice maps (no API key).
- * Streets: CARTO Voyager. Satellite: Esri World Imagery (impact / site work).
+ * Free basemap tiles for practice maps — no API keys, no Mapbox, no billing account.
+ * Streets: CARTO Voyager (OSM). Satellite: Esri World Imagery public tiles (attribution only).
  */
 class MapBasemap
 {
