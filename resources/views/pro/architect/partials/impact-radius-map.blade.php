@@ -54,14 +54,21 @@
     <div id="{{ $mapId }}-split" style="display: grid; grid-template-columns: 1fr; min-height: {{ $height }};" class="arch-impact-split">
         <div id="{{ $mapId }}" style="height: {{ $height }}; width: 100%; background: #1e293b; cursor: crosshair; min-height: 280px;"></div>
         <div id="{{ $mapId }}-street-wrap" hidden style="display: none; flex-direction: column; border-left: 1px solid var(--border-light); background: #0f172a; min-height: 280px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.4rem 0.65rem; background: #111827; border-bottom: 1px solid #1f2937;">
-                <div id="{{ $mapId }}-street-label" style="font-size: 0.72rem; font-weight: 700; color: #e2e8f0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Street View</div>
-                <div style="display: flex; gap: 0.55rem; align-items: center; flex-shrink: 0;">
-                    <a id="{{ $mapId }}-street-external" href="{{ \App\Support\Architect\StreetView::mapsUrl((float) $pin['lat'], (float) $pin['lng']) }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.68rem; font-weight: 650; color: #86efac; text-decoration: none;">Open in Google ↗</a>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding: 0.4rem 0.65rem; background: #111827; border-bottom: 1px solid #1f2937;">
+                <div id="{{ $mapId }}-street-label" style="font-size: 0.72rem; font-weight: 700; color: #e2e8f0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">Street View</div>
+                <div style="display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; flex-wrap: wrap;">
+                    <button type="button" id="{{ $mapId }}-look-left" title="Look left" style="background: #1f2937; border: 1px solid #334155; color: #e2e8f0; border-radius: var(--radius-md); padding: 0.28rem 0.5rem; font-weight: 700; font-size: 0.75rem; cursor: pointer;">◀</button>
+                    <button type="button" id="{{ $mapId }}-look-site" title="Look toward site" style="background: #1f2937; border: 1px solid #334155; color: #86efac; border-radius: var(--radius-md); padding: 0.28rem 0.5rem; font-weight: 650; font-size: 0.7rem; cursor: pointer;">Toward site</button>
+                    <button type="button" id="{{ $mapId }}-look-right" title="Look right" style="background: #1f2937; border: 1px solid #334155; color: #e2e8f0; border-radius: var(--radius-md); padding: 0.28rem 0.5rem; font-weight: 700; font-size: 0.75rem; cursor: pointer;">▶</button>
+                    <span id="{{ $mapId }}-look-deg" style="font-size: 0.68rem; color: #94a3b8; min-width: 2.4rem; text-align: center; font-variant-numeric: tabular-nums;"></span>
+                    <a id="{{ $mapId }}-street-external" href="{{ \App\Support\Architect\StreetView::mapsUrl((float) $pin['lat'], (float) $pin['lng']) }}" target="_blank" rel="noopener noreferrer" style="font-size: 0.68rem; font-weight: 650; color: #86efac; text-decoration: none;">Open ↗</a>
                     <button type="button" id="{{ $mapId }}-street-close" style="background: none; border: none; color: #cbd5e1; font-weight: 700; cursor: pointer; font-size: 0.78rem; padding: 0;">Close</button>
                 </div>
             </div>
             <iframe id="{{ $mapId }}-street" title="Street View" src="about:blank" style="flex: 1; width: 100%; border: 0; min-height: 240px; background: #0f172a;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+            <div style="padding: 0.35rem 0.65rem; font-size: 0.65rem; color: #94a3b8; border-top: 1px solid #1f2937; line-height: 1.35;">
+                Amber cone on the map shows where you’re looking. Use ◀ ▶ to turn — the cone and Street View stay aligned. (Looking around inside Street View itself won’t move the cone.)
+            </div>
         </div>
     </div>
     <style>
@@ -118,13 +125,106 @@
     var streetExternal = document.getElementById(mapId + '-street-external');
     var streetClose = document.getElementById(mapId + '-street-close');
     var streetToggle = document.getElementById(mapId + '-street-toggle');
+    var lookLeftBtn = document.getElementById(mapId + '-look-left');
+    var lookRightBtn = document.getElementById(mapId + '-look-right');
+    var lookSiteBtn = document.getElementById(mapId + '-look-site');
+    var lookDegEl = document.getElementById(mapId + '-look-deg');
     var selectedPoint = null;
     var streetOpen = false;
+    var lookHeading = 0;
+    var lookCone = null;
+    var lookDot = null;
+    var aimTarget = { lat: pin.lat, lng: pin.lng };
 
-    function streetTpl(template, lat, lng) {
+    if (savedBoundary) {
+        try {
+            var c = turf.centroid(savedBoundary);
+            if (c && c.geometry && c.geometry.coordinates) {
+                aimTarget = { lng: c.geometry.coordinates[0], lat: c.geometry.coordinates[1] };
+            }
+        } catch (e) {}
+    }
+
+    function streetTpl(template, lat, lng, heading) {
+        var h = ((Number(heading) % 360) + 360) % 360;
         return String(template)
             .replace(/\{lat\}/g, Number(lat).toFixed(7))
-            .replace(/\{lng\}/g, Number(lng).toFixed(7));
+            .replace(/\{lng\}/g, Number(lng).toFixed(7))
+            .replace(/\{heading\}/g, h.toFixed(1));
+    }
+
+    function bearingTo(lat1, lng1, lat2, lng2) {
+        var toRad = Math.PI / 180;
+        var φ1 = lat1 * toRad;
+        var φ2 = lat2 * toRad;
+        var Δλ = (lng2 - lng1) * toRad;
+        var y = Math.sin(Δλ) * Math.cos(φ2);
+        var x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+        return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+    }
+
+    function destinationPoint(lat, lng, bearingDeg, distanceM) {
+        var R = 6371000;
+        var δ = distanceM / R;
+        var θ = bearingDeg * Math.PI / 180;
+        var φ1 = lat * Math.PI / 180;
+        var λ1 = lng * Math.PI / 180;
+        var φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+        var λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
+        return [φ2 * 180 / Math.PI, ((λ2 * 180 / Math.PI + 540) % 360) - 180];
+    }
+
+    function buildLookCone(lat, lng, heading, fovDeg, radiusM) {
+        var half = fovDeg / 2;
+        var pts = [[lat, lng]];
+        for (var a = heading - half; a <= heading + half + 0.01; a += 4) {
+            pts.push(destinationPoint(lat, lng, a, radiusM));
+        }
+        pts.push([lat, lng]);
+        return pts;
+    }
+
+    function clearLookCone() {
+        if (lookCone) { map.removeLayer(lookCone); lookCone = null; }
+        if (lookDot) { map.removeLayer(lookDot); lookDot = null; }
+    }
+
+    function redrawLookCone() {
+        if (!streetOpen || !selectedPoint) return;
+        clearLookCone();
+        var pts = buildLookCone(selectedPoint.lat, selectedPoint.lng, lookHeading, 70, 32);
+        lookCone = L.polygon(pts, {
+            color: '#f59e0b',
+            weight: 2,
+            fillColor: '#fbbf24',
+            fillOpacity: 0.35,
+            interactive: false
+        }).addTo(map);
+        lookDot = L.circleMarker([selectedPoint.lat, selectedPoint.lng], {
+            radius: 5,
+            color: '#b45309',
+            weight: 2,
+            fillColor: '#f59e0b',
+            fillOpacity: 1,
+            interactive: false
+        }).addTo(map);
+        if (lookDegEl) lookDegEl.textContent = Math.round(lookHeading) + '°';
+    }
+
+    function applyLookHeading(heading, reloadStreet) {
+        lookHeading = ((Number(heading) % 360) + 360) % 360;
+        redrawLookCone();
+        if (!selectedPoint) return;
+        if (reloadStreet && streetFrame) {
+            streetFrame.src = streetTpl(streetCfg.embedTemplate, selectedPoint.lat, selectedPoint.lng, lookHeading);
+        }
+        if (streetExternal) {
+            streetExternal.href = streetTpl(streetCfg.mapsTemplate, selectedPoint.lat, selectedPoint.lng, lookHeading);
+        }
+    }
+
+    function headingTowardSite(lat, lng) {
+        return bearingTo(lat, lng, aimTarget.lat, aimTarget.lng);
     }
 
     function setStreetToggleEnabled(on) {
@@ -142,6 +242,7 @@
 
     function closeStreetView() {
         streetOpen = false;
+        clearLookCone();
         if (splitEl) {
             splitEl.style.gridTemplateColumns = '1fr';
             splitEl.classList.remove('is-split');
@@ -159,6 +260,7 @@
         selectedPoint = { lat: lat, lng: lng, label: label || '' };
         setStreetToggleEnabled(true);
         streetOpen = true;
+        lookHeading = headingTowardSite(lat, lng);
         if (splitEl) {
             splitEl.style.gridTemplateColumns = '1fr 1fr';
             splitEl.classList.add('is-split');
@@ -167,19 +269,14 @@
             streetWrap.hidden = false;
             streetWrap.style.display = 'flex';
         }
-        if (streetFrame) {
-            streetFrame.src = streetTpl(streetCfg.embedTemplate, lat, lng);
-        }
-        if (streetExternal) {
-            streetExternal.href = streetTpl(streetCfg.mapsTemplate, lat, lng);
-        }
+        applyLookHeading(lookHeading, true);
         if (streetLabel) {
             streetLabel.textContent = label ? ('Street View · ' + label) : 'Street View';
         }
         if (streetToggle) streetToggle.textContent = 'Close Street View';
         setTimeout(function () { map.invalidateSize(); }, 80);
         setTimeout(function () { map.invalidateSize(); }, 320);
-        setHint('Street View open beside the map. Close it anytime from the panel or toolbar.');
+        setHint('Amber cone on the map shows the look direction. Use ◀ ▶ or Toward site to turn — cone and Street View stay aligned.');
     }
 
     function rememberPoint(lat, lng, label) {
@@ -191,6 +288,14 @@
     }
 
     if (streetClose) streetClose.addEventListener('click', closeStreetView);
+    if (lookLeftBtn) lookLeftBtn.addEventListener('click', function () { applyLookHeading(lookHeading - 25, true); });
+    if (lookRightBtn) lookRightBtn.addEventListener('click', function () { applyLookHeading(lookHeading + 25, true); });
+    if (lookSiteBtn) {
+        lookSiteBtn.addEventListener('click', function () {
+            if (!selectedPoint) return;
+            applyLookHeading(headingTowardSite(selectedPoint.lat, selectedPoint.lng), true);
+        });
+    }
     if (streetToggle) {
         streetToggle.addEventListener('click', function () {
             if (streetOpen) {
