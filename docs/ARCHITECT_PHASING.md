@@ -92,6 +92,8 @@ Reuse the existing document library (`architect_documents` + `architect_document
 | Attach CR | Reuse existing condition-report builder + photos/PDF on the neighbour row |
 | Impact radius tool | On **zoomed project map**: buffer from pin / outer shell (default e.g. 20 m; optional depth→radius bands). Working aid only — label *confirm on site / title*; feeds “add neighbour” |
 
+Manual SQL: `database/manual/architect_neighbours_postgresql.sql`.
+
 Office flow first — no phone field tool yet.
 
 **Exit:** Perit runs a neighbour list to BCA-ready without a spreadsheet.

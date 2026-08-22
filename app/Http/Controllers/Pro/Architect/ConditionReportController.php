@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Pro\Architect;
 use App\Http\Controllers\Controller;
 use App\Models\ArchitectConditionReport;
 use App\Models\ArchitectConditionReportPhoto;
+use App\Models\ArchitectNeighbour;
 use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
 use App\Support\ArchitectConditionReportBlueprint;
@@ -69,7 +70,19 @@ class ConditionReportController extends Controller
             ->get();
         $pa = $paId > 0 ? $pas->firstWhere('id', $paId) : null;
 
+        $neighbourId = (int) $request->query('neighbour_id');
+        $neighbour = null;
+        if ($neighbourId > 0) {
+            $neighbour = ArchitectNeighbour::where('user_id', Auth::id())
+                ->where('architect_project_id', $projectId)
+                ->where('id', $neighbourId)
+                ->first();
+        }
+
         $context = PracticeDocumentContext::architectPrefill($project, $pa, 'CR');
+        if ($neighbour) {
+            $context['inspected_address'] = $neighbour->addressLine();
+        }
 
         return view('pro.architect.condition-reports-form', [
             'report' => null,
@@ -82,8 +95,10 @@ class ConditionReportController extends Controller
             'prefill' => [
                 'project_id' => $projectId,
                 'pa_id' => $pa?->id,
+                'neighbour_id' => $neighbour?->id,
             ],
             'context' => $context,
+            'neighbour' => $neighbour,
             'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'arch', 'CR'),
             'commonDefects' => ArchitectConditionReportBlueprint::commonDefectLabels(),
             'photoLinkOptions' => ArchitectConditionReportBlueprint::photoLinkOptions($starter['payload']),
@@ -107,6 +122,7 @@ class ConditionReportController extends Controller
             'user_id' => Auth::id(),
             'architect_project_id' => $scope['architect_project_id'],
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
+            'architect_neighbour_id' => $scope['architect_neighbour_id'],
             'title' => $validated['title'],
             'report_type' => $validated['report_type'] ?? null,
             'report_number' => $reportNumber,
@@ -119,6 +135,10 @@ class ConditionReportController extends Controller
             'development_address' => $validated['development_address'] ?? null,
             'payload' => ArchitectConditionReportBlueprint::normalize($validated['payload'] ?? []),
         ]);
+
+        if ($scope['architect_neighbour_id']) {
+            $this->syncNeighbourReportLink($scope['architect_neighbour_id'], $report);
+        }
 
         $this->storePhotos($request, $report);
 
@@ -159,6 +179,7 @@ class ConditionReportController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
+        $report->load('neighbour');
         $payload = $report->normalizedPayload();
 
         return view('pro.architect.condition-reports-form', [
@@ -172,6 +193,7 @@ class ConditionReportController extends Controller
             'prefill' => [
                 'project_id' => $report->architect_project_id,
                 'pa_id' => $report->architect_pa_application_id,
+                'neighbour_id' => $report->architect_neighbour_id,
             ],
             'context' => [
                 'client_name' => $report->client_name,
@@ -181,6 +203,7 @@ class ConditionReportController extends Controller
                 'inspected_address' => $report->inspected_address,
                 'suggested_ref' => $report->report_number,
             ],
+            'neighbour' => $report->neighbour,
             'projectOptions' => PracticeDocumentContext::projectOptionsPayload($projects, 'arch', 'CR'),
             'commonDefects' => ArchitectConditionReportBlueprint::commonDefectLabels(),
             'photoLinkOptions' => ArchitectConditionReportBlueprint::photoLinkOptions($payload),
@@ -210,6 +233,7 @@ class ConditionReportController extends Controller
         $report->update([
             'architect_project_id' => $scope['architect_project_id'],
             'architect_pa_application_id' => $scope['architect_pa_application_id'],
+            'architect_neighbour_id' => $scope['architect_neighbour_id'],
             'title' => $validated['title'],
             'report_type' => $validated['report_type'] ?? $report->report_type,
             'report_number' => $reportNumber,
@@ -222,6 +246,10 @@ class ConditionReportController extends Controller
             'development_address' => $validated['development_address'] ?? null,
             'payload' => ArchitectConditionReportBlueprint::normalize($validated['payload'] ?? []),
         ]);
+
+        if ($scope['architect_neighbour_id']) {
+            $this->syncNeighbourReportLink($scope['architect_neighbour_id'], $report);
+        }
 
         $this->storePhotos($request, $report);
 
@@ -242,6 +270,17 @@ class ConditionReportController extends Controller
         $report->stamped_at = now();
         $report->issue_code = IssueCode::allocateForArchitectConditionReport();
         $report->save();
+
+        if ($report->architect_neighbour_id) {
+            $neighbour = ArchitectNeighbour::where('user_id', Auth::id())
+                ->where('id', $report->architect_neighbour_id)
+                ->first();
+            if ($neighbour) {
+                $neighbour->architect_condition_report_id = $report->id;
+                $neighbour->advanceStatusTo('sent');
+                $neighbour->save();
+            }
+        }
 
         return redirect('/pro/architect/condition-reports/'.$report->id)
             ->with('success', 'Condition report stamped and issued as '.$report->issue_code.'. It is now locked.');
@@ -304,6 +343,7 @@ class ConditionReportController extends Controller
             'development_address' => 'nullable|string|max:2000',
             'architect_project_id' => 'required|integer',
             'architect_pa_application_id' => 'nullable|integer',
+            'architect_neighbour_id' => 'nullable|integer',
             'payload' => 'nullable|array',
             'payload.sketch_ref' => 'nullable|string|max:1000',
             'payload.legal_footer' => 'nullable|string|max:5000',
@@ -328,12 +368,13 @@ class ConditionReportController extends Controller
 
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{architect_project_id: int, architect_pa_application_id: ?int}
+     * @return array{architect_project_id: int, architect_pa_application_id: ?int, architect_neighbour_id: ?int}
      */
     private function resolveScope(int $userId, array $validated): array
     {
         $projectId = (int) ($validated['architect_project_id'] ?? 0);
         $paId = (int) ($validated['architect_pa_application_id'] ?? 0);
+        $neighbourId = (int) ($validated['architect_neighbour_id'] ?? 0);
 
         $project = ArchitectProject::where('user_id', $userId)->where('id', $projectId)->first();
         if (! $project) {
@@ -348,10 +389,37 @@ class ConditionReportController extends Controller
             }
         }
 
+        $neighbour = null;
+        if ($neighbourId > 0) {
+            $neighbour = ArchitectNeighbour::where('user_id', $userId)
+                ->where('id', $neighbourId)
+                ->where('architect_project_id', $project->id)
+                ->first();
+            if (! $neighbour) {
+                abort(403);
+            }
+        }
+
         return [
             'architect_project_id' => $project->id,
             'architect_pa_application_id' => $pa?->id,
+            'architect_neighbour_id' => $neighbour?->id,
         ];
+    }
+
+    private function syncNeighbourReportLink(int $neighbourId, ArchitectConditionReport $report): void
+    {
+        $neighbour = ArchitectNeighbour::where('user_id', Auth::id())
+            ->where('id', $neighbourId)
+            ->where('architect_project_id', $report->architect_project_id)
+            ->first();
+        if (! $neighbour) {
+            return;
+        }
+
+        $neighbour->architect_condition_report_id = $report->id;
+        $neighbour->advanceStatusTo('report_drafted');
+        $neighbour->save();
     }
 
     private function storePhotos(Request $request, ArchitectConditionReport $report): void

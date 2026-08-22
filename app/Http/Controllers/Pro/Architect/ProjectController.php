@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pro\Architect;
 
 use App\Http\Controllers\Controller;
 use App\Models\ArchitectLicenceContact;
+use App\Models\ArchitectNeighbour;
 use App\Models\ArchitectPaApplication;
 use App\Models\ArchitectProject;
 use App\Models\ArchitectSiteParty;
@@ -247,6 +248,7 @@ class ProjectController extends Controller
                 ->with(['revisions' => fn ($r) => $r->orderByDesc('revision_no')->limit(3), 'paApplication'])
                 ->orderByDesc('updated_at'),
             'siteParties' => fn ($q) => $q->orderBy('role_key'),
+            'neighbours' => fn ($q) => $q->with('conditionReport')->orderBy('sort_order')->orderBy('id'),
             'conditionReports' => fn ($q) => $q->orderByDesc('updated_at'),
             'methodStatements' => fn ($q) => $q->orderByDesc('updated_at'),
         ]);
@@ -267,6 +269,9 @@ class ProjectController extends Controller
             'paStatuses' => ArchitectPaApplication::STATUSES,
             'roles' => ArchitectSiteParty::ROLES,
             'licenceTypes' => ArchitectSiteParty::LICENCE_TYPES,
+            'neighbourRelations' => ArchitectNeighbour::RELATIONS,
+            'neighbourStatuses' => ArchitectNeighbour::STATUSES,
+            'neighbourDesk' => ArchitectNeighbour::deskSummary($project->neighbours),
             'mapServerUrl' => MapServerLink::home(),
         ]);
     }

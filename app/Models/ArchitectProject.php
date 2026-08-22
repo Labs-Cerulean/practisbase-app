@@ -180,6 +180,11 @@ class ArchitectProject extends Model
         return $this->hasMany(ArchitectMethodStatement::class, 'architect_project_id');
     }
 
+    public function neighbours(): HasMany
+    {
+        return $this->hasMany(ArchitectNeighbour::class, 'architect_project_id');
+    }
+
     public function siteAddressLine(): string
     {
         if (filled($this->site_address)) {
