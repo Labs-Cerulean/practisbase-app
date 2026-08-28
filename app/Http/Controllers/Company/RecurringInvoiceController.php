@@ -131,6 +131,14 @@ class RecurringInvoiceController extends Controller
         return redirect('/company/recurring#schedule-'.$schedule->id)->with('success', $msg);
     }
 
+    public function generateDueGet()
+    {
+        return redirect('/company/recurring')->with(
+            'error',
+            'Use the Catch up / Generate button on this page — opening that link directly does not issue proformas.'
+        );
+    }
+
     public function generateDue()
     {
         $user = Auth::user();
@@ -156,7 +164,7 @@ class RecurringInvoiceController extends Controller
             $msg .= ' '.$emailed.' emailed.';
         }
 
-        return back()->with('success', $msg);
+        return redirect('/company/recurring')->with('success', $msg);
     }
 
     public function toggle(int $schedule)
