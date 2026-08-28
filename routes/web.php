@@ -488,6 +488,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
 
         Route::get('/recurring', [CompanyRecurringInvoiceController::class, 'index']);
         Route::post('/recurring', [CompanyRecurringInvoiceController::class, 'store']);
+        Route::get('/recurring/generate', [CompanyRecurringInvoiceController::class, 'generateDueGet']);
         Route::post('/recurring/generate', [CompanyRecurringInvoiceController::class, 'generateDue']);
         Route::post('/recurring/reminders', [CompanyRecurringInvoiceController::class, 'sendDueReminders']);
         Route::post('/recurring/{schedule}/toggle', [CompanyRecurringInvoiceController::class, 'toggle']);
