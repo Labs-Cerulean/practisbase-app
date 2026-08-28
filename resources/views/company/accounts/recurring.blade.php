@@ -29,6 +29,9 @@
     @if(session('success'))
         <div style="background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1rem; font-size: 0.9rem;">{{ session('success') }}</div>
     @endif
+    @if(session('error'))
+        <div style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1rem; font-size: 0.9rem;">{{ session('error') }}</div>
+    @endif
     @if($errors->any())
         <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1rem; font-size: 0.9rem;">
             <ul style="margin: 0; padding-left: 1.1rem;">
