@@ -7,7 +7,9 @@ use App\Models\CompanyExpense;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyPayment;
 use App\Support\CompanyBooks;
+use App\Support\CompanyComplianceCalendar;
 use App\Support\CompanyLedger;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class DeskController extends Controller
@@ -101,6 +103,24 @@ class DeskController extends Controller
                 \App\Models\CompanyGlAccount::where('user_id', $userId)->where('account_code', '1000')->firstOrFail(),
                 (float) (CompanyLedger::accountBalances($userId, $asOf)['1000'] ?? 0)
             ),
+            'complianceUpcoming' => CompanyComplianceCalendar::upcoming($profile, 8),
+        ]);
+    }
+
+    public function compliance(Request $request)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        $year = (int) $request->input('year', date('Y'));
+        if ($year < 2020 || $year > 2100) {
+            $year = (int) date('Y');
+        }
+
+        return view('company.compliance', [
+            'profile' => $profile,
+            'year' => $year,
+            'events' => CompanyComplianceCalendar::events($profile, $year),
+            'upcoming' => CompanyComplianceCalendar::upcoming($profile, 12),
         ]);
     }
 }

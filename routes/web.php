@@ -442,6 +442,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
 
     Route::middleware('company_books')->prefix('company')->group(function () {
         Route::get('/', [CompanyDeskController::class, 'index']);
+        Route::get('/compliance', [CompanyDeskController::class, 'compliance']);
         Route::get('/platform', [CompanyPlatformDashboardController::class, 'index']);
         Route::post('/platform/users/{id}/kpi-cohort', [CompanyPlatformDashboardController::class, 'setKpiCohort'])->whereNumber('id');
         Route::get('/profile', [CompanyProfileController::class, 'edit']);

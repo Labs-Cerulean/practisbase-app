@@ -35,6 +35,7 @@
                         @if($companyMode)
                             <li class="nav-section-label">Cerulean Labs Ltd</li>
                             <li><a href="/company" class="nav-link {{ request()->is('company') ? 'active' : '' }}">Desk</a></li>
+                            <li><a href="/company/compliance" class="nav-link {{ request()->is('company/compliance*') ? 'active' : '' }}">Compliance</a></li>
                             <li><a href="/company/platform" class="nav-link {{ request()->is('company/platform*') ? 'active' : '' }}">PractisBase dashboard</a></li>
                             <li><a href="/company/accounts" class="nav-link {{ request()->is('company/accounts*') ? 'active' : '' }}">Accounts</a></li>
                             <li><a href="/company/invoices" class="nav-link {{ request()->is('company/invoices*') ? 'active' : '' }}">Invoices</a></li>

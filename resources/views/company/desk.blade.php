@@ -17,7 +17,7 @@
             </div>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <a href="/company/invoices/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
+            <a href="/company/invoices/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Proforma (RFP)</a>
             <a href="/company/expenses/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Expense</a>
             <a href="/company/clients/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
         </div>
@@ -25,6 +25,7 @@
 
     <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #1e3a8a; line-height: 1.45;">
         This login is locked to Cerulean Labs Ltd company books (Art 10 double-entry ledger). Sole-trader Tax &amp; VAT / SSC screens stay off so you cannot mix the two.
+        Billing is <strong>proforma until paid</strong> — RFPs hold €0 fiscal weight; output VAT commits only when converted to a tax invoice (automatic on full payment).
     </div>
 
     @if(! $profile->shareCapitalReceived())
@@ -48,7 +49,7 @@
         <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #991b1b; line-height: 1.45;">
             VAT number not on file yet.
             <a href="/company/profile" style="color: #991b1b; font-weight: 700;">Add it in Company profile</a>
-            before issuing tax invoices with 18% VAT. RFPs are fine meanwhile.
+            before converting paid RFPs to tax invoices with 18% VAT. Proformas are fine meanwhile.
         </div>
     @endif
 
@@ -94,10 +95,36 @@
         </p>
     </div>
 
+    <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem 1.4rem; box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.85rem;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Compliance · next deadlines</div>
+            <a href="/company/compliance" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none; border-bottom: 1px dotted var(--primary-cerulean);">Full calendar</a>
+        </div>
+        @if(empty($complianceUpcoming))
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">No VAT/tax items in the next 60 days. <a href="/company/compliance" style="color: var(--primary-cerulean); font-weight: 600;">Browse the year</a>.</p>
+        @else
+            <div style="display: grid; gap: 0.5rem;">
+                @foreach($complianceUpcoming as $item)
+                    <a href="{{ $item['href'] }}" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; text-decoration: none; padding: 0.55rem 0.7rem; border-radius: var(--radius-md); border: 1px solid {{ $item['overdue'] ? '#fecaca' : 'var(--border-light)' }}; background: {{ $item['overdue'] ? '#fef2f2' : '#f8fafc' }};">
+                        <div>
+                            <div style="font-weight: 600; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }}; font-size: 0.9rem;">{{ $item['label'] }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">{{ ucfirst($item['category']) }}@if($item['overdue']) · overdue@elseif($item['urgent']) · due soon@endif</div>
+                        </div>
+                        <div style="font-weight: 700; font-variant-numeric: tabular-nums; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }}; white-space: nowrap;">{{ \Illuminate\Support\Carbon::parse($item['due'])->format('d M') }}</div>
+                    </a>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
         <a href="/company/platform" style="background: #0b1f33; border: 1px solid #0b1f33; border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: white;">PractisBase dashboard</div>
             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">Users · plans · usage · access economics</div>
+        </a>
+        <a href="/company/compliance" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Compliance calendar</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">VAT · provisional tax · CT return · FYE · MBR</div>
         </a>
         <a href="/company/accounts" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Accounts</div>
@@ -105,11 +132,11 @@
         </a>
         <a href="/company/invoices" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Invoices &amp; RFPs</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Bill B2B clients · convert RFPs · PDF</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Proforma until paid · auto-convert · PDF</div>
         </a>
         <a href="/company/recurring" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Monthly billing</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Recurring B2B invoice schedules</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Recurring proforma schedules</div>
         </a>
         <a href="/company/expenses" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Expenses</div>

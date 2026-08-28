@@ -1,19 +1,24 @@
 @extends('layouts.app')
 
-@section('page_title', 'New company document')
+@section('page_title', 'New proforma (RFP)')
 
 @section('content')
     <div style="max-width: 800px; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h1 style="font-size: 1.3rem; color: var(--primary-navy); margin: 0;">New company document</h1>
+            <h1 style="font-size: 1.3rem; color: var(--primary-navy); margin: 0;">New proforma (RFP)</h1>
             <a href="/company/invoices" style="color: var(--text-muted); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Cancel</a>
+        </div>
+
+        <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid var(--primary-cerulean); border-radius: var(--radius-md); color: #1e3a8a; font-size: 0.9rem; line-height: 1.45;">
+            Cerulean billing is <strong>proforma until paid</strong>. This RFP has €0 fiscal weight and does not commit output VAT.
+            When the client pays in full, it auto-converts to a tax invoice (or convert manually earlier if needed).
         </div>
 
         @if(! $profile->hasVatNumber())
             <div style="margin-bottom: 1.25rem; padding: 0.85rem 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: var(--radius-md); color: #92400e; font-size: 0.9rem; line-height: 1.45;">
-                Company VAT number not set yet. RFPs are fine.
+                Company VAT number not set yet. Proformas are fine.
                 <a href="/company/profile" style="color: #92400e; font-weight: 700;">Add VAT number</a>
-                before tax invoices or charging 18%.
+                before conversion can post 18% output VAT.
             </div>
         @endif
 
@@ -25,15 +30,7 @@
 
         <form action="/company/invoices" method="POST" id="companyInvoiceForm">
             @csrf
-
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: #f8fafc; padding: 0.4rem; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-                <label style="flex: 1; text-align: center; padding: 0.7rem; border-radius: 6px; cursor: pointer; font-weight: 600; background: white; border: 1px solid var(--border-light); color: var(--primary-cerulean);" id="lbl_invoice">
-                    <input type="radio" name="type" value="invoice" checked onchange="syncType()" style="display: none;"> Tax invoice
-                </label>
-                <label style="flex: 1; text-align: center; padding: 0.7rem; border-radius: 6px; cursor: pointer; font-weight: 600; color: var(--text-muted);" id="lbl_rfp">
-                    <input type="radio" name="type" value="rfp" onchange="syncType()" style="display: none;"> RFP
-                </label>
-            </div>
+            <input type="hidden" name="type" value="rfp">
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 0.75rem;">
                 <div>
@@ -53,7 +50,7 @@
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Supply date</label>
                     <input type="hidden" id="supplyTouched" value="{{ old('supply_date') ? '1' : '' }}">
                     <input type="date" name="supply_date" id="supplyDate" value="{{ old('supply_date', old('issue_date', date('Y-m-d'))) }}" max="{{ date('Y-m-d') }}" min="{{ $profile->first_period_start->format('Y-m-d') }}" required onchange="document.getElementById('supplyTouched').value='1'" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">Required if different from issue date.</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">Used on the tax invoice at conversion.</div>
                 </div>
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Due date</label>
@@ -75,10 +72,11 @@
             <button type="button" onclick="addRow()" style="background: transparent; color: var(--primary-cerulean); border: 2px dashed var(--primary-cerulean); padding: 0.65rem; width: 100%; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; margin-bottom: 1.5rem;">+ Line</button>
 
             <div style="background: #f8fafc; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-bottom: 1.25rem;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; margin-bottom: 0.75rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; margin-bottom: 0.35rem;">
                     <input type="checkbox" name="apply_vat" id="vatToggle" value="1" checked onchange="calc()" style="width: 1.15rem; height: 1.15rem;">
-                    Charge 18% VAT (Article 10)
+                    Show 18% VAT estimate on this proforma
                 </label>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4;">Estimate only — VAT posts to the ledger when the RFP converts to a tax invoice.</div>
                 <textarea name="notes" rows="2" placeholder="Notes…" style="width: 100%; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 0.75rem;">{{ old('notes') }}</textarea>
                 <div style="display: flex; justify-content: flex-end; gap: 1.5rem; font-size: 0.95rem; flex-wrap: wrap;">
                     <div>Taxable amount <strong id="subEl">€0.00</strong></div>
@@ -87,27 +85,16 @@
                 </div>
             </div>
 
-            <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.75rem 1.35rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Create document</button>
+            <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.75rem 1.35rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Create proforma</button>
         </form>
     </div>
 
     <script>
         var clientMeta = @json($clientMeta);
 
-        function syncType() {
-            var isInv = document.querySelector('input[name="type"]:checked').value === 'invoice';
-            document.getElementById('lbl_invoice').style.background = isInv ? 'white' : 'transparent';
-            document.getElementById('lbl_invoice').style.border = isInv ? '1px solid var(--border-light)' : 'none';
-            document.getElementById('lbl_invoice').style.color = isInv ? 'var(--primary-cerulean)' : 'var(--text-muted)';
-            document.getElementById('lbl_rfp').style.background = !isInv ? 'white' : 'transparent';
-            document.getElementById('lbl_rfp').style.border = !isInv ? '1px solid var(--border-light)' : 'none';
-            document.getElementById('lbl_rfp').style.color = !isInv ? 'var(--primary-cerulean)' : 'var(--text-muted)';
-            checkClient();
-        }
         function checkClient() {
             var warn = document.getElementById('clientWarning');
             var id = document.getElementById('clientSelect').value;
-            var isInv = document.querySelector('input[name="type"]:checked').value === 'invoice';
             if (!id || !clientMeta[id]) {
                 warn.style.display = 'none';
                 return;
@@ -116,12 +103,9 @@
             var missing = [];
             if (!meta.has_address) missing.push('billing address');
             if (!meta.has_vat) missing.push('VAT number');
-            if (missing.length && isInv) {
+            if (missing.length) {
                 warn.style.display = 'block';
-                warn.innerHTML = 'Tax invoices need client <strong>' + missing.join(' and ') + '</strong>. <a href="/company/clients/' + id + '/edit" style="color:#9a3412;font-weight:700;">Edit client</a> before saving.';
-            } else if (missing.length) {
-                warn.style.display = 'block';
-                warn.innerHTML = 'This client is missing ' + missing.join(' and ') + '. Fine for an RFP; required before converting to a tax invoice.';
+                warn.innerHTML = 'This client is missing ' + missing.join(' and ') + '. Fine for a proforma; required before converting to a tax invoice on payment.';
             } else {
                 warn.style.display = 'none';
             }
@@ -148,10 +132,6 @@
             document.getElementById('vatEl').textContent = '€' + vat.toFixed(2);
             document.getElementById('totEl').textContent = '€' + (sub + vat).toFixed(2);
         }
-        document.querySelectorAll('input[name="type"]').forEach(function (el) {
-            el.addEventListener('change', syncType);
-        });
-        syncType();
         calc();
         checkClient();
     </script>
