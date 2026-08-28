@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\EstateHubBilling;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,6 +20,16 @@ class CompanyRecurringInvoice extends Model
         'is_active',
         'last_generated_on',
         'last_invoice_id',
+        'package_sections',
+        'agreed_rate_os',
+        'agreed_rate_plant',
+        'agreed_rate_sales',
+        'start_date',
+        'sla_path',
+        'sla_original_name',
+        'auto_email',
+        'auto_reminders',
+        'reminder_include_statement',
     ];
 
     protected function casts(): array
@@ -28,8 +39,16 @@ class CompanyRecurringInvoice extends Model
             'due_days' => 'integer',
             'next_issue_on' => 'date',
             'last_generated_on' => 'date',
+            'start_date' => 'date',
             'items' => 'array',
+            'package_sections' => 'array',
             'is_active' => 'boolean',
+            'auto_email' => 'boolean',
+            'auto_reminders' => 'boolean',
+            'reminder_include_statement' => 'boolean',
+            'agreed_rate_os' => 'decimal:2',
+            'agreed_rate_plant' => 'decimal:2',
+            'agreed_rate_sales' => 'decimal:2',
         ];
     }
 
@@ -46,5 +65,20 @@ class CompanyRecurringInvoice extends Model
     public function lastInvoice(): BelongsTo
     {
         return $this->belongsTo(CompanyInvoice::class, 'last_invoice_id');
+    }
+
+    public function hasSla(): bool
+    {
+        return filled($this->sla_path);
+    }
+
+    public function packageLabel(): string
+    {
+        return EstateHubBilling::packageLabel($this->package_sections ?? []);
+    }
+
+    public function monthlySubtotal(): float
+    {
+        return EstateHubBilling::itemsSubtotal($this->items ?? []);
     }
 }
