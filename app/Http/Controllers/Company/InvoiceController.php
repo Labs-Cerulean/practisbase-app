@@ -347,6 +347,7 @@ class InvoiceController extends Controller
             'company_client_id' => $locked->company_client_id,
             'parent_document_id' => null,
             'linked_document_id' => $locked->id,
+            'company_recurring_invoice_id' => $locked->company_recurring_invoice_id,
             'type' => 'invoice',
             'document_number' => $number,
             'issue_date' => $issueDate,

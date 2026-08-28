@@ -23,6 +23,7 @@ class CompanyInvoice extends Model
         'status',
         'type',
         'linked_document_id',
+        'company_recurring_invoice_id',
         'items',
         'notes',
     ];
@@ -74,6 +75,11 @@ class CompanyInvoice extends Model
     public function linkedDocument(): BelongsTo
     {
         return $this->belongsTo(self::class, 'linked_document_id');
+    }
+
+    public function recurringSchedule(): BelongsTo
+    {
+        return $this->belongsTo(CompanyRecurringInvoice::class, 'company_recurring_invoice_id');
     }
 
     public function balance(): float
