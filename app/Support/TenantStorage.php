@@ -79,4 +79,9 @@ class TenantStorage
     {
         return 'tenants/' . $userId . '/company/branding';
     }
+
+    public static function companySlaPath(int $userId): string
+    {
+        return 'tenants/' . $userId . '/company/sla';
+    }
 }

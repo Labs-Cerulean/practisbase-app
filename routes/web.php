@@ -489,7 +489,13 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/recurring', [CompanyRecurringInvoiceController::class, 'index']);
         Route::post('/recurring', [CompanyRecurringInvoiceController::class, 'store']);
         Route::post('/recurring/generate', [CompanyRecurringInvoiceController::class, 'generateDue']);
+        Route::post('/recurring/reminders', [CompanyRecurringInvoiceController::class, 'sendDueReminders']);
         Route::post('/recurring/{schedule}/toggle', [CompanyRecurringInvoiceController::class, 'toggle']);
+        Route::post('/recurring/{schedule}/settings', [CompanyRecurringInvoiceController::class, 'updateSettings']);
+        Route::post('/recurring/{schedule}/sla', [CompanyRecurringInvoiceController::class, 'uploadSla']);
+        Route::get('/recurring/{schedule}/sla', [CompanyRecurringInvoiceController::class, 'downloadSla']);
+        Route::get('/recurring/{schedule}/statement', [CompanyRecurringInvoiceController::class, 'statementPdf']);
+        Route::post('/recurring/{schedule}/remind', [CompanyRecurringInvoiceController::class, 'sendReminder']);
 
         Route::get('/beta-invites', [CompanyBetaInviteController::class, 'index']);
         Route::post('/beta-invites', [CompanyBetaInviteController::class, 'store']);
