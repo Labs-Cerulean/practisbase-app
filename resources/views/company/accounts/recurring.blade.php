@@ -6,11 +6,11 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
         <div>
             <h1 style="font-size: 1.4rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Monthly billing</h1>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Recurring B2B invoices · auto-posted to the ledger when generated</p>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Recurring proformas · VAT commits when paid and converted to a tax invoice</p>
         </div>
         <form method="POST" action="/company/recurring/generate">
             @csrf
-            <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer;">Generate due invoices</button>
+            <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer;">Generate due proformas</button>
         </form>
     </div>
 

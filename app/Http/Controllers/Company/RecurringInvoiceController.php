@@ -7,7 +7,6 @@ use App\Models\CompanyClient;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyRecurringInvoice;
 use App\Support\CompanyBooks;
-use App\Support\CompanyLedger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -73,7 +72,7 @@ class RecurringInvoiceController extends Controller
             'is_active' => true,
         ]);
 
-        return back()->with('success', 'Monthly invoicing schedule saved. Subtotal base €'.number_format($subtotal, 2).' + VAT when issued.');
+        return back()->with('success', 'Monthly proforma schedule saved. Subtotal base €'.number_format($subtotal, 2).' (+ VAT estimate). Tax invoice / VAT commits when paid.');
     }
 
     public function generateDue()
@@ -95,12 +94,13 @@ class RecurringInvoiceController extends Controller
                 $subtotal = round(collect($items)->sum(fn ($row) => (float) ($row['line_total'] ?? 0)), 2);
                 $vat = $profile->isArticle10() ? round($subtotal * 0.18, 2) : 0.0;
                 $total = round($subtotal + $vat, 2);
-                $number = CompanyBooks::nextDocumentNumber($user->id, 'invoice', (int) $schedule->next_issue_on->format('Y'));
+                // Proforma-first: recurring bills as RFP until paid (no output VAT until convert).
+                $number = CompanyBooks::nextDocumentNumber($user->id, 'rfp', (int) $schedule->next_issue_on->format('Y'));
 
-                $invoice = CompanyInvoice::create([
+                $rfp = CompanyInvoice::create([
                     'user_id' => $user->id,
                     'company_client_id' => $schedule->company_client_id,
-                    'type' => 'invoice',
+                    'type' => 'rfp',
                     'document_number' => $number,
                     'issue_date' => $issueDate,
                     'supply_date' => $issueDate,
@@ -111,16 +111,13 @@ class RecurringInvoiceController extends Controller
                     'amount_paid' => 0,
                     'status' => 'unpaid',
                     'items' => $items,
-                    'notes' => trim(($schedule->notes ? $schedule->notes."\n" : '').'Recurring: '.$schedule->title),
+                    'notes' => trim(($schedule->notes ? $schedule->notes."\n" : '').'Recurring proforma: '.$schedule->title),
                 ]);
-
-                CompanyLedger::ensureChart($user);
-                CompanyLedger::postInvoiceIssued($invoice);
 
                 $next = $schedule->next_issue_on->copy()->addMonthNoOverflow()->day(min((int) $schedule->day_of_month, 28));
                 $schedule->update([
                     'last_generated_on' => $issueDate,
-                    'last_invoice_id' => $invoice->id,
+                    'last_invoice_id' => $rfp->id,
                     'next_issue_on' => $next->toDateString(),
                 ]);
                 $created++;
@@ -128,8 +125,8 @@ class RecurringInvoiceController extends Controller
         }
 
         return back()->with('success', $created === 0
-            ? 'No recurring invoices were due today.'
-            : $created.' recurring invoice(s) generated and posted.');
+            ? 'No recurring proformas were due today.'
+            : $created.' recurring proforma(s) generated (VAT commits when paid and converted).');
     }
 
     public function toggle(int $schedule)
