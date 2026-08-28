@@ -108,7 +108,7 @@
                     <a href="{{ $item['href'] }}" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; text-decoration: none; padding: 0.55rem 0.7rem; border-radius: var(--radius-md); border: 1px solid {{ $item['overdue'] ? '#fecaca' : 'var(--border-light)' }}; background: {{ $item['overdue'] ? '#fef2f2' : '#f8fafc' }};">
                         <div>
                             <div style="font-weight: 600; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }}; font-size: 0.9rem;">{{ $item['label'] }}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">{{ ucfirst($item['category']) }}@if($item['overdue']) · overdue@elseif($item['urgent']) · due soon@endif</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">{{ ucfirst($item['category']) }}{{ $item['overdue'] ? ' · overdue' : ($item['urgent'] ? ' · due soon' : '') }}</div>
                         </div>
                         <div style="font-weight: 700; font-variant-numeric: tabular-nums; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }}; white-space: nowrap;">{{ \Illuminate\Support\Carbon::parse($item['due'])->format('d M') }}</div>
                     </a>
