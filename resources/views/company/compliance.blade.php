@@ -42,7 +42,7 @@
                         </div>
                         <div style="text-align: right; flex-shrink: 0;">
                             <div style="font-weight: 700; font-variant-numeric: tabular-nums; color: {{ $item['overdue'] ? '#991b1b' : $c['fg'] }};">{{ \Illuminate\Support\Carbon::parse($item['due'])->format('d M Y') }}</div>
-                            <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: {{ $c['fg'] }}; margin-top: 0.2rem;">{{ $item['category'] }}@if($item['overdue']) · overdue@elseif($item['urgent']) · due soon@endif</div>
+                            <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: {{ $c['fg'] }}; margin-top: 0.2rem;">{{ $item['category'] }}{{ $item['overdue'] ? ' · overdue' : ($item['urgent'] ? ' · due soon' : '') }}</div>
                         </div>
                     </a>
                 @endforeach
