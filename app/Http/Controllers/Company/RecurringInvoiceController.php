@@ -257,16 +257,16 @@ class RecurringInvoiceController extends Controller
             ->where('id', $schedule)
             ->firstOrFail();
 
-        $includeStatement = $request->boolean('include_statement', $model->reminder_include_statement);
-        $ok = $this->sendBillingMail($profile, $model, 'reminder', null, $includeStatement);
+        $includeStatement = $request->boolean('include_statement', (bool) $model->reminder_include_statement);
+        $result = $this->sendBillingMail($profile, $model, 'reminder', null, $includeStatement);
 
-        if (! $ok) {
-            return back()->withErrors([
-                'email' => 'Could not send reminder. Add a client email on the client record and check mail configuration.',
-            ]);
+        if (! $result['ok']) {
+            return back()->withErrors(['email' => $result['error']]);
         }
 
-        return back()->with('success', 'Payment reminder sent to '.$model->client->email.'.');
+        $extra = $result['warning'] ? ' '.$result['warning'] : '';
+
+        return back()->with('success', 'Payment reminder sent to '.$result['to'].'.'.$extra);
     }
 
     public function sendDueReminders()
@@ -281,17 +281,24 @@ class RecurringInvoiceController extends Controller
 
         $sent = 0;
         $skipped = 0;
+        $lastError = null;
         foreach ($schedules as $schedule) {
             $statement = CompanyClientStatement::forClient($schedule->client, $user->id);
             if ($statement['total_owed'] <= 0.009) {
                 $skipped++;
                 continue;
             }
-            if ($this->sendBillingMail($profile, $schedule, 'reminder', null, $schedule->reminder_include_statement)) {
+            $result = $this->sendBillingMail($profile, $schedule, 'reminder', null, (bool) $schedule->reminder_include_statement);
+            if ($result['ok']) {
                 $sent++;
             } else {
                 $skipped++;
+                $lastError = $result['error'];
             }
+        }
+
+        if ($sent === 0 && $lastError) {
+            return back()->withErrors(['email' => $lastError]);
         }
 
         return back()->with('success', $sent === 0
@@ -368,14 +375,17 @@ class RecurringInvoiceController extends Controller
                 $created++;
             });
 
-            if ($rfp && $schedule->auto_email && $this->sendBillingMail(
-                $profile,
-                $schedule,
-                'proforma',
-                $rfp,
-                $schedule->reminder_include_statement
-            )) {
-                $emailed++;
+            if ($rfp && $schedule->auto_email) {
+                $mail = $this->sendBillingMail(
+                    $profile,
+                    $schedule,
+                    'proforma',
+                    $rfp,
+                    (bool) $schedule->reminder_include_statement
+                );
+                if ($mail['ok']) {
+                    $emailed++;
+                }
             }
         }
 
@@ -448,48 +458,113 @@ class RecurringInvoiceController extends Controller
         return $candidate;
     }
 
+    /**
+     * @return array{ok: bool, error: ?string, warning: ?string, to: ?string}
+     */
     private function sendBillingMail(
         CompanyProfile $profile,
         CompanyRecurringInvoice $schedule,
         string $kind,
         ?CompanyInvoice $document = null,
         bool $includeStatement = false
-    ): bool {
+    ): array {
         $schedule->loadMissing('client');
         $client = $schedule->client;
-        if (! $client || ! filled($client->email)) {
-            return false;
+        $to = trim((string) ($client->email ?? ''));
+
+        if (! $client || $to === '') {
+            return [
+                'ok' => false,
+                'error' => 'Client has no email on the company client record. Edit the client and add one.',
+                'warning' => null,
+                'to' => null,
+            ];
+        }
+
+        if (! filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return [
+                'ok' => false,
+                'error' => 'Client email "'.$to.'" is not a valid address. Fix it on the client record.',
+                'warning' => null,
+                'to' => null,
+            ];
         }
 
         $statement = null;
-        $pdfBinary = null;
         if ($includeStatement || $kind === 'statement' || $kind === 'reminder') {
-            $statement = CompanyClientStatement::forClient($client, (int) $schedule->user_id);
+            try {
+                $statement = CompanyClientStatement::forClient($client, (int) $schedule->user_id);
+            } catch (\Throwable $e) {
+                report($e);
+
+                return [
+                    'ok' => false,
+                    'error' => 'Could not build the account statement: '.$e->getMessage(),
+                    'warning' => null,
+                    'to' => $to,
+                ];
+            }
         }
+
+        $pdfBinary = null;
+        $warning = null;
         if ($includeStatement && $statement) {
-            $pdfBinary = Pdf::loadView('company.pdf.client-statement', [
-                'profile' => $profile,
-                'client' => $client,
-                'statement' => $statement,
-            ])->output();
+            try {
+                $pdfBinary = Pdf::loadView('company.pdf.client-statement', [
+                    'profile' => $profile,
+                    'client' => $client,
+                    'statement' => $statement,
+                ])->output();
+            } catch (\Throwable $e) {
+                report($e);
+                $warning = 'Reminder emailed without PDF (statement render failed).';
+                $pdfBinary = null;
+            }
         }
 
         try {
-            Mail::to($client->email)->send(new CompanyClientBillingMail(
+            $mailable = new CompanyClientBillingMail(
                 $profile,
                 $client,
                 $schedule,
                 $kind,
                 $document,
                 $statement,
-                $pdfBinary
-            ));
+            );
+
+            if ($pdfBinary) {
+                $mailable->attachData($pdfBinary, 'account-statement.pdf', [
+                    'mime' => 'application/pdf',
+                ]);
+            }
+
+            $operatorEmail = trim((string) (Auth::user()?->email ?? ''));
+            if ($operatorEmail !== '' && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL)) {
+                $mailable->replyTo($operatorEmail, $profile->legal_name ?: null);
+            }
+
+            Mail::to($to)->send($mailable);
         } catch (\Throwable $e) {
             report($e);
 
-            return false;
+            $hint = $e->getMessage();
+            if (stripos($hint, 'Connection') !== false || stripos($hint, 'SMTP') !== false) {
+                $hint .= ' Check MAIL_MAILER / MAIL_HOST / MAIL_USERNAME on the server.';
+            }
+
+            return [
+                'ok' => false,
+                'error' => 'Mail send failed: '.$hint,
+                'warning' => null,
+                'to' => $to,
+            ];
         }
 
-        return true;
+        return [
+            'ok' => true,
+            'error' => null,
+            'warning' => $warning,
+            'to' => $to,
+        ];
     }
 }

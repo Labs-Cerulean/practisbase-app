@@ -8,7 +8,6 @@ use App\Models\CompanyProfile;
 use App\Models\CompanyRecurringInvoice;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -27,7 +26,6 @@ class CompanyClientBillingMail extends Mailable
         public string $kind,
         public ?CompanyInvoice $document = null,
         public ?array $statement = null,
-        public ?string $statementPdfBinary = null,
     ) {}
 
     public function envelope(): Envelope
@@ -57,20 +55,5 @@ class CompanyClientBillingMail extends Mailable
                 'statement' => $this->statement,
             ],
         );
-    }
-
-    /**
-     * @return array<int, Attachment>
-     */
-    public function attachments(): array
-    {
-        if (! $this->statementPdfBinary) {
-            return [];
-        }
-
-        return [
-            Attachment::fromData(fn () => $this->statementPdfBinary, 'account-statement.pdf')
-                ->withMime('application/pdf'),
-        ];
     }
 }
