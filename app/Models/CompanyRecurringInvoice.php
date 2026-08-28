@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\EstateHubBilling;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CompanyRecurringInvoice extends Model
 {
@@ -65,6 +66,11 @@ class CompanyRecurringInvoice extends Model
     public function lastInvoice(): BelongsTo
     {
         return $this->belongsTo(CompanyInvoice::class, 'last_invoice_id');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(CompanyInvoice::class, 'company_recurring_invoice_id');
     }
 
     public function hasSla(): bool

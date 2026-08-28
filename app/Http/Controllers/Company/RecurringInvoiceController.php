@@ -15,9 +15,11 @@ use App\Support\TenantStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class RecurringInvoiceController extends Controller
 {
@@ -31,7 +33,20 @@ class RecurringInvoiceController extends Controller
             ->get();
         $clients = CompanyClient::where('user_id', $user->id)->orderBy('name')->get();
 
-        return view('company.accounts.recurring', compact('schedules', 'clients'));
+        $issuedBySchedule = [];
+        foreach ($schedules as $schedule) {
+            $issuedBySchedule[$schedule->id] = $this->documentsForSchedule($user->id, $schedule);
+        }
+
+        return view('company.accounts.recurring', [
+            'schedules' => $schedules,
+            'clients' => $clients,
+            'issuedBySchedule' => $issuedBySchedule,
+            'openCreate' => request()->boolean('new') || old('company_client_id') || old('confirmed'),
+            'dueCatchUpCount' => $schedules->filter(
+                fn ($s) => $s->is_active && $s->next_issue_on->lte(now()->startOfDay())
+            )->count(),
+        ]);
     }
 
     public function store(Request $request)
@@ -99,82 +114,46 @@ class RecurringInvoiceController extends Controller
             'start_date' => $start->toDateString(),
             'auto_email' => $request->boolean('auto_email'),
             'auto_reminders' => $request->boolean('auto_reminders'),
-            'reminder_include_statement' => $request->boolean('reminder_include_statement', true),
+            'reminder_include_statement' => $request->boolean('reminder_include_statement'),
         ]);
 
+        $profile = CompanyBooks::ensureProfile($user);
+        $caughtUp = $this->catchUpSchedule($user, $profile, $schedule);
         $subtotal = EstateHubBilling::itemsSubtotal($items);
 
-        return redirect('/company/recurring#schedule-'.$schedule->id)->with(
-            'success',
-            $title.' confirmed for €'.number_format($subtotal, 2).' ex-VAT / month. Upload the signed SLA on the schedule card below.'
-        );
+        $msg = $title.' saved · €'.number_format($subtotal, 2).' ex-VAT / month.';
+        if ($caughtUp['created'] > 0) {
+            $msg .= ' Generated '.$caughtUp['created'].' proforma(s) from start date through today.';
+        } else {
+            $msg .= ' Next issue '.$schedule->fresh()->next_issue_on->format('d M Y').'.';
+        }
+
+        return redirect('/company/recurring#schedule-'.$schedule->id)->with('success', $msg);
     }
 
     public function generateDue()
     {
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
-        $today = now()->toDateString();
         $due = CompanyRecurringInvoice::with('client')
             ->where('user_id', $user->id)
             ->where('is_active', true)
-            ->where('next_issue_on', '<=', $today)
+            ->where('next_issue_on', '<=', now()->toDateString())
             ->get();
 
         $created = 0;
         $emailed = 0;
         foreach ($due as $schedule) {
-            $rfp = null;
-            DB::transaction(function () use ($user, $profile, $schedule, &$created, &$rfp) {
-                $issueDate = $schedule->next_issue_on->format('Y-m-d');
-                $items = $schedule->items ?? [];
-                $subtotal = EstateHubBilling::itemsSubtotal($items);
-                $vat = $profile->isArticle10() ? round($subtotal * 0.18, 2) : 0.0;
-                $total = round($subtotal + $vat, 2);
-                $number = CompanyBooks::nextDocumentNumber($user->id, 'rfp', (int) $schedule->next_issue_on->format('Y'));
-
-                $rfp = CompanyInvoice::create([
-                    'user_id' => $user->id,
-                    'company_client_id' => $schedule->company_client_id,
-                    'type' => 'rfp',
-                    'document_number' => $number,
-                    'issue_date' => $issueDate,
-                    'supply_date' => $issueDate,
-                    'due_date' => Carbon::parse($issueDate)->addDays((int) $schedule->due_days)->toDateString(),
-                    'subtotal' => $subtotal,
-                    'vat_total' => $vat,
-                    'total' => $total,
-                    'amount_paid' => 0,
-                    'status' => 'unpaid',
-                    'items' => $items,
-                    'notes' => trim(($schedule->notes ? $schedule->notes."\n" : '').'Recurring proforma: '.$schedule->title),
-                ]);
-
-                $next = $schedule->next_issue_on->copy()->addMonthNoOverflow()->day(min((int) $schedule->day_of_month, 28));
-                $schedule->update([
-                    'last_generated_on' => $issueDate,
-                    'last_invoice_id' => $rfp->id,
-                    'next_issue_on' => $next->toDateString(),
-                ]);
-                $created++;
-            });
-
-            if ($rfp && $schedule->auto_email && $this->sendBillingMail(
-                $profile,
-                $schedule,
-                'proforma',
-                $rfp,
-                $schedule->reminder_include_statement
-            )) {
-                $emailed++;
-            }
+            $result = $this->catchUpSchedule($user, $profile, $schedule);
+            $created += $result['created'];
+            $emailed += $result['emailed'];
         }
 
         $msg = $created === 0
-            ? 'No recurring proformas were due today.'
-            : $created.' recurring proforma(s) generated (VAT commits when paid and converted).';
+            ? 'No proformas were due — all schedules are caught up.'
+            : $created.' proforma(s) generated (catch-up through today). VAT commits when paid and converted.';
         if ($emailed > 0) {
-            $msg .= ' '.$emailed.' emailed to client(s).';
+            $msg .= ' '.$emailed.' emailed.';
         }
 
         return back()->with('success', $msg);
@@ -310,6 +289,145 @@ class RecurringInvoiceController extends Controller
         return back()->with('success', $sent === 0
             ? 'No auto-reminders sent (no open balances or missing client emails).'
             : $sent.' payment reminder(s) sent'.($skipped ? ' ('.$skipped.' skipped).' : '.'));
+    }
+
+    /**
+     * Issue every due month for a schedule until next_issue_on is after today (max 36).
+     *
+     * @return array{created: int, emailed: int}
+     */
+    private function catchUpSchedule($user, CompanyProfile $profile, CompanyRecurringInvoice $schedule): array
+    {
+        $created = 0;
+        $emailed = 0;
+        $today = Carbon::today();
+        $guard = 0;
+
+        $schedule->refresh();
+
+        while ($schedule->is_active && $schedule->next_issue_on->lte($today) && $guard < 36) {
+            $guard++;
+            $rfp = null;
+
+            DB::transaction(function () use ($user, $profile, $schedule, &$created, &$rfp) {
+                $locked = CompanyRecurringInvoice::where('user_id', $user->id)
+                    ->where('id', $schedule->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($locked->next_issue_on->gt(Carbon::today())) {
+                    $schedule->refresh();
+
+                    return;
+                }
+
+                $issueDate = $locked->next_issue_on->format('Y-m-d');
+                $items = $locked->items ?? [];
+                $subtotal = EstateHubBilling::itemsSubtotal($items);
+                $vat = $profile->isArticle10() ? round($subtotal * 0.18, 2) : 0.0;
+                $total = round($subtotal + $vat, 2);
+                $number = CompanyBooks::nextDocumentNumber($user->id, 'rfp', (int) $locked->next_issue_on->format('Y'));
+
+                $payload = [
+                    'user_id' => $user->id,
+                    'company_client_id' => $locked->company_client_id,
+                    'type' => 'rfp',
+                    'document_number' => $number,
+                    'issue_date' => $issueDate,
+                    'supply_date' => $issueDate,
+                    'due_date' => Carbon::parse($issueDate)->addDays((int) $locked->due_days)->toDateString(),
+                    'subtotal' => $subtotal,
+                    'vat_total' => $vat,
+                    'total' => $total,
+                    'amount_paid' => 0,
+                    'status' => 'unpaid',
+                    'items' => $items,
+                    'notes' => trim(($locked->notes ? $locked->notes."\n" : '').'Recurring proforma: '.$locked->title),
+                ];
+                if ($this->hasRecurringLinkColumn()) {
+                    $payload['company_recurring_invoice_id'] = $locked->id;
+                }
+
+                $rfp = CompanyInvoice::create($payload);
+
+                $next = $locked->next_issue_on->copy()->addMonthNoOverflow()->day(min((int) $locked->day_of_month, 28));
+                $locked->update([
+                    'last_generated_on' => $issueDate,
+                    'last_invoice_id' => $rfp->id,
+                    'next_issue_on' => $next->toDateString(),
+                ]);
+                $schedule->refresh();
+                $created++;
+            });
+
+            if ($rfp && $schedule->auto_email && $this->sendBillingMail(
+                $profile,
+                $schedule,
+                'proforma',
+                $rfp,
+                $schedule->reminder_include_statement
+            )) {
+                $emailed++;
+            }
+        }
+
+        return ['created' => $created, 'emailed' => $emailed];
+    }
+
+    /**
+     * @return Collection<int, CompanyInvoice>
+     */
+    private function documentsForSchedule(int $userId, CompanyRecurringInvoice $schedule): Collection
+    {
+        $query = CompanyInvoice::with(['payments', 'childDocuments'])
+            ->where('user_id', $userId)
+            ->whereNull('parent_document_id')
+            ->where(function ($q) use ($schedule) {
+                if ($this->hasRecurringLinkColumn()) {
+                    $q->where('company_recurring_invoice_id', $schedule->id);
+                }
+                $q->orWhere(function ($inner) use ($schedule) {
+                    $inner->where('company_client_id', $schedule->company_client_id)
+                        ->where('notes', 'like', '%Recurring proforma: '.$schedule->title.'%');
+                });
+                if ($schedule->last_invoice_id) {
+                    $q->orWhere('id', $schedule->last_invoice_id);
+                }
+            })
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id');
+
+        $docs = $query->get()->unique('id')->values();
+
+        $rfpIds = $docs->where('type', 'rfp')->pluck('id');
+        if ($rfpIds->isNotEmpty()) {
+            $tax = CompanyInvoice::with(['payments', 'childDocuments'])
+                ->where('user_id', $userId)
+                ->where('type', 'invoice')
+                ->whereIn('linked_document_id', $rfpIds)
+                ->get();
+            foreach ($tax as $invoice) {
+                if (! $docs->contains('id', $invoice->id)) {
+                    $docs->push($invoice);
+                }
+            }
+        }
+
+        return $docs->sortByDesc(fn ($d) => $d->issue_date->format('Y-m-d').'-'.$d->id)->values();
+    }
+
+    private function hasRecurringLinkColumn(): bool
+    {
+        static $has = null;
+        if ($has === null) {
+            try {
+                $has = Schema::hasColumn('company_invoices', 'company_recurring_invoice_id');
+            } catch (\Throwable) {
+                $has = false;
+            }
+        }
+
+        return $has;
     }
 
     private function resolveFirstIssueDate(Carbon $start, int $dayOfMonth): Carbon
