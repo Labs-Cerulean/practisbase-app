@@ -14,7 +14,7 @@ class CompanyBooks
 
     public const DEFAULT_REGISTERED_OFFICE = 'Flat 6B, Marigold Court, Triq Carmelo Schembri, Mosta MST 2480, Malta';
 
-    public const INCORPORATION_DATE = '2026-07-31';
+    public const INCORPORATION_DATE = '2026-07-29';
 
     public const FIRST_PERIOD_END = '2026-12-31';
 
@@ -22,7 +22,7 @@ class CompanyBooks
 
     public static function ensureProfile(User $user): CompanyProfile
     {
-        return CompanyProfile::firstOrCreate(
+        $profile = CompanyProfile::firstOrCreate(
             ['user_id' => $user->id],
             [
                 'legal_name' => self::DEFAULT_LEGAL_NAME,
@@ -39,6 +39,15 @@ class CompanyBooks
                 'payment_instructions' => "Please pay by bank transfer to Cerulean Labs Limited.\nBank: Bank of Valletta\nQuote the document number as reference.",
             ]
         );
+
+        // Correct earlier placeholder incorporation date (31 Jul → 29 Jul 2026).
+        if ($profile->first_period_start
+            && $profile->first_period_start->toDateString() === '2026-07-31') {
+            $profile->first_period_start = self::INCORPORATION_DATE;
+            $profile->save();
+        }
+
+        return $profile;
     }
 
     public static function nextDocumentNumber(int $userId, string $type, ?int $year = null): string
