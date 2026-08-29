@@ -8,8 +8,8 @@
             <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">{{ $profile->legal_name }}</div>
             <h1 style="font-size: 1.45rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Compliance calendar</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45; max-width: 40rem;">
-                VAT returns, provisional tax cues, income tax return, year end, and MBR anniversary.
-                Dates are advisory — confirm statutory windows with your accountant / CFR.
+                Year-1 aware: provisional tax with no prior-year base, incorporation-month MBR, and year-end cutoff are softened or deferred.
+                Real VAT and tax-return filings stay on the alarm list. Dates are advisory — confirm with your accountant / CFR / MBR.
             </p>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
@@ -67,16 +67,27 @@
                     </thead>
                     <tbody>
                         @foreach($events as $item)
-                            @php $c = $catColors[$item['category']] ?? $catColors['books']; @endphp
-                            <tr style="border-bottom: 1px solid var(--border-light); {{ $item['overdue'] ? 'background:#fef2f2;' : '' }}">
-                                <td style="padding: 0.65rem 0.4rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }};">
+                            @php
+                                $c = $catColors[$item['category']] ?? $catColors['books'];
+                                $severity = $item['severity'] ?? 'filing';
+                                $isNote = $severity === 'note';
+                                $isInfo = $severity === 'info';
+                                $rowBg = $item['overdue'] ? '#fef2f2;' : (($isNote || $isInfo) ? 'background:#f8fafc;' : '');
+                            @endphp
+                            <tr style="border-bottom: 1px solid var(--border-light); {{ $rowBg }}">
+                                <td style="padding: 0.65rem 0.4rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: {{ $item['overdue'] ? '#991b1b' : (($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)') }};">
                                     {{ \Illuminate\Support\Carbon::parse($item['due'])->format('d M Y') }}
                                 </td>
                                 <td style="padding: 0.65rem 0.4rem;">
-                                    <a href="{{ $item['href'] }}" style="color: var(--primary-navy); font-weight: 600; text-decoration: none; border-bottom: 1px dotted var(--primary-navy);">{{ $item['label'] }}</a>
+                                    <a href="{{ $item['href'] }}" style="color: {{ ($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)' }}; font-weight: 600; text-decoration: none; border-bottom: 1px dotted {{ ($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)' }};">{{ $item['label'] }}</a>
                                 </td>
                                 <td style="padding: 0.65rem 0.4rem;">
                                     <span style="display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; background: {{ $c['bg'] }}; color: {{ $c['fg'] }}; border: 1px solid {{ $c['border'] }};">{{ $item['category'] }}</span>
+                                    @if($isNote)
+                                        <span style="display: inline-block; margin-left: 0.25rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">Year 1</span>
+                                    @elseif($isInfo)
+                                        <span style="display: inline-block; margin-left: 0.25rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">Info</span>
+                                    @endif
                                 </td>
                                 <td style="padding: 0.65rem 0.4rem; color: var(--text-muted); font-size: 0.82rem; line-height: 1.4;">{{ $item['hint'] }}</td>
                             </tr>
