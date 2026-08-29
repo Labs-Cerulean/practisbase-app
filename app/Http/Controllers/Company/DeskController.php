@@ -41,6 +41,12 @@ class DeskController extends Controller
             ->sum('vat_total');
         $outputVat = max(0, $outputVat - $creditVat);
 
+        $reverseChargeVat = (float) CompanyExpense::where('user_id', $userId)
+            ->whereYear('expense_date', $year)
+            ->where('is_reverse_charge', true)
+            ->sum('vat_amount');
+        $outputVat = round($outputVat + $reverseChargeVat, 2);
+
         $inputVat = (float) CompanyExpense::where('user_id', $userId)
             ->whereYear('expense_date', $year)
             ->sum('vat_amount');
@@ -64,7 +70,7 @@ class DeskController extends Controller
             ->where('funded_by', 'director')
             ->whereNull('director_refunded_at')
             ->get()
-            ->sum(fn (CompanyExpense $e) => $e->totalWithVat());
+            ->sum(fn (CompanyExpense $e) => $e->cashTotal());
 
         $month = (int) date('n');
         $monthBilled = (float) CompanyInvoice::where('user_id', $userId)
@@ -92,6 +98,7 @@ class DeskController extends Controller
             'expensesExVat' => $expensesExVat,
             'outputVat' => $outputVat,
             'inputVat' => $inputVat,
+            'reverseChargeVat' => $reverseChargeVat,
             'vatBalance' => $outputVat - $inputVat,
             'owedToDirector' => $owedToDirector,
             'openRfps' => $openRfps,

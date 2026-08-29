@@ -337,7 +337,8 @@ class CompanyLedger
 
         $net = round((float) $expense->amount, 2);
         $vat = round((float) $expense->vat_amount, 2);
-        $gross = round($net + $vat, 2);
+        $isReverseCharge = (bool) $expense->is_reverse_charge;
+        $cash = $isReverseCharge ? $net : round($net + $vat, 2);
         $expenseCode = CompanyChartOfAccounts::expenseAccountCode((string) $expense->category);
         $creditCode = $expense->funded_by === 'director'
             ? CompanyChartOfAccounts::DIRECTOR_LOAN
@@ -351,7 +352,22 @@ class CompanyLedger
                 'memo' => $expense->description,
             ],
         ];
-        if ($vat > 0) {
+
+        if ($isReverseCharge && $vat > 0) {
+            $rcMemo = 'Reverse charge: '.$expense->description;
+            $lines[] = [
+                'account_code' => CompanyChartOfAccounts::INPUT_VAT,
+                'side' => 'debit',
+                'amount' => $vat,
+                'memo' => $rcMemo,
+            ];
+            $lines[] = [
+                'account_code' => CompanyChartOfAccounts::OUTPUT_VAT,
+                'side' => 'credit',
+                'amount' => $vat,
+                'memo' => $rcMemo,
+            ];
+        } elseif ($vat > 0) {
             $lines[] = [
                 'account_code' => CompanyChartOfAccounts::INPUT_VAT,
                 'side' => 'debit',
@@ -359,17 +375,22 @@ class CompanyLedger
                 'memo' => $expense->description,
             ];
         }
+
         $lines[] = [
             'account_code' => $creditCode,
             'side' => 'credit',
-            'amount' => $gross,
+            'amount' => $cash,
             'memo' => $expense->funded_by,
         ];
+
+        $narrative = $isReverseCharge
+            ? 'Expense (reverse charge): '.$expense->description
+            : 'Expense: '.$expense->description;
 
         return self::post(
             $expense->user_id,
             $expense->expense_date->format('Y-m-d'),
-            'Expense: '.$expense->description,
+            $narrative,
             $lines,
             'company_expense',
             $expense->id,
@@ -381,7 +402,7 @@ class CompanyLedger
     {
         self::ensureChart(User::findOrFail($expense->user_id));
 
-        $gross = round((float) $expense->amount + (float) $expense->vat_amount, 2);
+        $gross = $expense->cashTotal();
         $date = optional($expense->director_refunded_at)->format('Y-m-d') ?: now()->toDateString();
 
         return self::post(
