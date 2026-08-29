@@ -45,6 +45,7 @@ class RecurringInvoiceController extends Controller
             'dueCatchUpCount' => $schedules->filter(
                 fn ($s) => $s->is_active && $s->next_issue_on->lte(now()->startOfDay())
             )->count(),
+            'mailStatus' => $this->mailDeliveryStatus(),
         ]);
     }
 
@@ -264,8 +265,9 @@ class RecurringInvoiceController extends Controller
         }
 
         $extra = $result['warning'] ? ' '.$result['warning'] : '';
+        $via = $result['mailer'] ? ' via '.$result['mailer'] : '';
 
-        return back()->with('success', 'Payment reminder sent to '.$result['to'].'.'.$extra);
+        return back()->with('success', 'Payment reminder sent to '.$result['to'].$via.'.'.$extra);
     }
 
     public function sendDueReminders()
@@ -458,7 +460,35 @@ class RecurringInvoiceController extends Controller
     }
 
     /**
-     * @return array{ok: bool, error: ?string, warning: ?string, to: ?string}
+     * @return array{mailer: string, transport: string, from: string, delivers: bool, hint: ?string}
+     */
+    private function mailDeliveryStatus(): array
+    {
+        $mailer = (string) config('mail.default', 'log');
+        $transport = (string) config("mail.mailers.{$mailer}.transport", $mailer);
+        $from = (string) config('mail.from.address', '');
+        $hint = null;
+        $delivers = true;
+
+        if (in_array($transport, ['log', 'array'], true)) {
+            $delivers = false;
+            $hint = 'MAIL_MAILER is "'.$mailer.'" ('.$transport.') — Laravel only writes to the app log. On Railway set MAIL_MAILER=smtp or resend, plus host/credentials and MAIL_FROM_ADDRESS.';
+        } elseif ($from === '' || strcasecmp($from, 'hello@example.com') === 0) {
+            $delivers = false;
+            $hint = 'MAIL_FROM_ADDRESS is missing or still the Laravel default. Set a real from address on Railway (e.g. billing@yourdomain.com).';
+        }
+
+        return [
+            'mailer' => $mailer,
+            'transport' => $transport,
+            'from' => $from,
+            'delivers' => $delivers,
+            'hint' => $hint,
+        ];
+    }
+
+    /**
+     * @return array{ok: bool, error: ?string, warning: ?string, to: ?string, mailer: ?string}
      */
     private function sendBillingMail(
         CompanyProfile $profile,
@@ -467,9 +497,20 @@ class RecurringInvoiceController extends Controller
         ?CompanyInvoice $document = null,
         bool $includeStatement = false
     ): array {
+        $status = $this->mailDeliveryStatus();
         $schedule->loadMissing('client');
         $client = $schedule->client;
         $to = trim((string) ($client->email ?? ''));
+
+        if (! $status['delivers']) {
+            return [
+                'ok' => false,
+                'error' => $status['hint'],
+                'warning' => null,
+                'to' => $to !== '' ? $to : null,
+                'mailer' => $status['mailer'],
+            ];
+        }
 
         if (! $client || $to === '') {
             return [
@@ -477,6 +518,7 @@ class RecurringInvoiceController extends Controller
                 'error' => 'Client has no email on the company client record. Edit the client and add one.',
                 'warning' => null,
                 'to' => null,
+                'mailer' => $status['mailer'],
             ];
         }
 
@@ -486,6 +528,7 @@ class RecurringInvoiceController extends Controller
                 'error' => 'Client email "'.$to.'" is not a valid address. Fix it on the client record.',
                 'warning' => null,
                 'to' => null,
+                'mailer' => $status['mailer'],
             ];
         }
 
@@ -501,15 +544,16 @@ class RecurringInvoiceController extends Controller
                     'error' => 'Could not build the account statement: '.$e->getMessage(),
                     'warning' => null,
                     'to' => $to,
+                    'mailer' => $status['mailer'],
                 ];
             }
         }
 
         $pdfBinary = null;
-        $warning = null;
+        $warning = $status['hint'];
         if ($includeStatement && $statement) {
-            if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class) && ! class_exists(\api_jacket\DomPDF\PDF::class)) {
-                $warning = 'Reminder emailed without PDF (DomPDF not installed on this server).';
+            if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class) && ! class_exists(\Barryvdh\DomPDF\PDF::class)) {
+                $warning = trim(($warning ? $warning.' ' : '').'Reminder emailed without PDF (DomPDF not installed on this server).');
             } else {
                 try {
                     $pdfBinary = Pdf::loadView('company.pdf.client-statement', [
@@ -519,7 +563,7 @@ class RecurringInvoiceController extends Controller
                     ])->output();
                 } catch (\Throwable $e) {
                     report($e);
-                    $warning = 'Reminder emailed without PDF (statement render failed: '.$e->getMessage().').';
+                    $warning = trim(($warning ? $warning.' ' : '').'Reminder emailed without PDF (statement render failed).');
                     $pdfBinary = null;
                 }
             }
@@ -556,6 +600,7 @@ class RecurringInvoiceController extends Controller
                     'error' => 'Mail body render failed: '.$e->getMessage(),
                     'warning' => null,
                     'to' => $to,
+                    'mailer' => $status['mailer'],
                 ];
             }
 
@@ -569,8 +614,9 @@ class RecurringInvoiceController extends Controller
 
             $operatorEmail = trim((string) (Auth::user()?->email ?? ''));
             $operatorName = filled($profile->legal_name) ? (string) $profile->legal_name : null;
+            $mailerName = $status['mailer'];
 
-            Mail::html($html, function ($message) use ($to, $subject, $pdfBinary, $operatorEmail, $operatorName) {
+            Mail::mailer($mailerName)->html($html, function ($message) use ($to, $subject, $pdfBinary, $operatorEmail, $operatorName) {
                 $message->to($to)->subject($subject);
 
                 if ($operatorEmail !== '' && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL)) {
@@ -592,7 +638,7 @@ class RecurringInvoiceController extends Controller
 
             $hint = $e->getMessage();
             if (stripos($hint, 'Connection') !== false || stripos($hint, 'SMTP') !== false) {
-                $hint .= ' Check MAIL_MAILER / MAIL_HOST / MAIL_USERNAME on the server.';
+                $hint .= ' Check MAIL_MAILER / MAIL_HOST / MAIL_USERNAME on Railway.';
             }
 
             return [
@@ -600,6 +646,7 @@ class RecurringInvoiceController extends Controller
                 'error' => 'Mail send failed: '.$hint,
                 'warning' => null,
                 'to' => $to,
+                'mailer' => $status['mailer'],
             ];
         }
 
@@ -608,6 +655,7 @@ class RecurringInvoiceController extends Controller
             'error' => null,
             'warning' => $warning,
             'to' => $to,
+            'mailer' => $status['mailer'],
         ];
     }
 }
