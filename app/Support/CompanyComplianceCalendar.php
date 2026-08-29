@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 /**
  * Cerulean Labs Ltd compliance calendar — VAT returns, tax filings, and year-end cues.
  * Advisory dates for the operator desk (confirm statutory windows with your accountant).
+ * Events for periods entirely before incorporation / first_period_start are omitted.
  */
 class CompanyComplianceCalendar
 {
@@ -70,6 +71,28 @@ class CompanyComplianceCalendar
         return $picked;
     }
 
+    private static function companyStart(CompanyProfile $profile): ?Carbon
+    {
+        if (! $profile->first_period_start) {
+            return null;
+        }
+
+        return $profile->first_period_start->copy()->startOfDay();
+    }
+
+    /**
+     * True when the company existed for at least one day of the period
+     * (period end on/after incorporation).
+     */
+    private static function periodTouchesCompany(?Carbon $start, Carbon $periodEnd): bool
+    {
+        if (! $start) {
+            return true;
+        }
+
+        return $periodEnd->copy()->startOfDay()->gte($start);
+    }
+
     /**
      * @return list<array{key: string, label: string, category: string, hint: string, due: string, urgent: bool, overdue: bool, href: string}>
      */
@@ -77,6 +100,7 @@ class CompanyComplianceCalendar
     {
         $events = [];
         $freq = $profile->vat_filing_frequency ?: 'quarterly';
+        $start = self::companyStart($profile);
 
         if (! $profile->isArticle10()) {
             return $events;
@@ -86,6 +110,10 @@ class CompanyComplianceCalendar
             for ($m = 1; $m <= 12; $m++) {
                 $periodMonth = $m === 1 ? 12 : $m - 1;
                 $periodYear = $m === 1 ? $year - 1 : $year;
+                $periodEnd = Carbon::create($periodYear, $periodMonth, 1)->endOfMonth()->startOfDay();
+                if (! self::periodTouchesCompany($start, $periodEnd)) {
+                    continue;
+                }
                 $due = Carbon::create($year, $m, 15);
                 $events[] = self::chip(
                     'vat_m_'.$periodYear.'_'.$periodMonth,
@@ -102,14 +130,42 @@ class CompanyComplianceCalendar
         }
 
         $quarters = [
-            ['due' => Carbon::create($year, 2, 15), 'label' => 'VAT Q4 '.($year - 1), 'key' => 'vat_q4_'.($year - 1)],
-            ['due' => Carbon::create($year, 5, 15), 'label' => 'VAT Q1 '.$year, 'key' => 'vat_q1_'.$year],
-            ['due' => Carbon::create($year, 8, 15), 'label' => 'VAT Q2 '.$year, 'key' => 'vat_q2_'.$year],
-            ['due' => Carbon::create($year, 11, 15), 'label' => 'VAT Q3 '.$year, 'key' => 'vat_q3_'.$year],
-            ['due' => Carbon::create($year + 1, 2, 15), 'label' => 'VAT Q4 '.$year, 'key' => 'vat_q4_'.$year],
+            [
+                'due' => Carbon::create($year, 2, 15),
+                'label' => 'VAT Q4 '.($year - 1),
+                'key' => 'vat_q4_'.($year - 1),
+                'period_end' => Carbon::create($year - 1, 12, 31),
+            ],
+            [
+                'due' => Carbon::create($year, 5, 15),
+                'label' => 'VAT Q1 '.$year,
+                'key' => 'vat_q1_'.$year,
+                'period_end' => Carbon::create($year, 3, 31),
+            ],
+            [
+                'due' => Carbon::create($year, 8, 15),
+                'label' => 'VAT Q2 '.$year,
+                'key' => 'vat_q2_'.$year,
+                'period_end' => Carbon::create($year, 6, 30),
+            ],
+            [
+                'due' => Carbon::create($year, 11, 15),
+                'label' => 'VAT Q3 '.$year,
+                'key' => 'vat_q3_'.$year,
+                'period_end' => Carbon::create($year, 9, 30),
+            ],
+            [
+                'due' => Carbon::create($year + 1, 2, 15),
+                'label' => 'VAT Q4 '.$year,
+                'key' => 'vat_q4_'.$year,
+                'period_end' => Carbon::create($year, 12, 31),
+            ],
         ];
 
         foreach ($quarters as $q) {
+            if (! self::periodTouchesCompany($start, $q['period_end'])) {
+                continue;
+            }
             $events[] = self::chip(
                 $q['key'],
                 $q['label'],
@@ -130,6 +186,7 @@ class CompanyComplianceCalendar
     private static function taxEvents(CompanyProfile $profile, int $year, Carbon $today): array
     {
         $events = [];
+        $start = self::companyStart($profile);
 
         // Soft provisional / payment-on-account cues (confirm with accountant for Ltd).
         foreach ([
@@ -138,6 +195,9 @@ class CompanyComplianceCalendar
             [12, 21, 'Provisional tax · Dec'],
         ] as [$month, $day, $label]) {
             $due = Carbon::create($year, $month, $day);
+            if ($start && $due->lt($start)) {
+                continue;
+            }
             $events[] = self::chip(
                 'pt_'.$year.'_'.$month,
                 $label,
@@ -152,17 +212,19 @@ class CompanyComplianceCalendar
         $fyeMonth = (int) ($profile->financial_year_end_month ?: 12);
         $fyeDay = (int) ($profile->financial_year_end_day ?: 31);
         $fye = Carbon::create($year, $fyeMonth, min($fyeDay, Carbon::create($year, $fyeMonth, 1)->daysInMonth));
-        $taxReturnDue = $fye->copy()->addMonthsNoOverflow(9);
 
-        $events[] = self::chip(
-            'ct_return_'.$year,
-            'Income tax return · FY '.$year,
-            'tax',
-            'Target ~9 months after year end ('.$taxReturnDue->format('d M Y').'). Confirm with accountant.',
-            $taxReturnDue,
-            $today,
-            '/company/accounts'
-        );
+        if (! $start || $fye->gte($start)) {
+            $taxReturnDue = $fye->copy()->addMonthsNoOverflow(9);
+            $events[] = self::chip(
+                'ct_return_'.$year,
+                'Income tax return · FY '.$year,
+                'tax',
+                'Target ~9 months after year end ('.$taxReturnDue->format('d M Y').'). Confirm with accountant.',
+                $taxReturnDue,
+                $today,
+                '/company/accounts'
+            );
+        }
 
         return $events;
     }
@@ -173,23 +235,27 @@ class CompanyComplianceCalendar
     private static function yearEndEvents(CompanyProfile $profile, int $year, Carbon $today): array
     {
         $events = [];
+        $start = self::companyStart($profile);
         $fyeMonth = (int) ($profile->financial_year_end_month ?: 12);
         $fyeDay = (int) ($profile->financial_year_end_day ?: 31);
         $fye = Carbon::create($year, $fyeMonth, min($fyeDay, Carbon::create($year, $fyeMonth, 1)->daysInMonth));
 
-        $events[] = self::chip(
-            'fye_'.$year,
-            'Financial year end',
-            'books',
-            'Close books for '.$fye->format('d M Y').'. Lock period when ready.',
-            $fye,
-            $today,
-            '/company/accounts'
-        );
+        if (! $start || $fye->gte($start)) {
+            $events[] = self::chip(
+                'fye_'.$year,
+                'Financial year end',
+                'books',
+                'Close books for '.$fye->format('d M Y').'. Lock period when ready.',
+                $fye,
+                $today,
+                '/company/accounts'
+            );
+        }
 
         if ($profile->first_period_start) {
-            $anniversary = $profile->first_period_start->copy()->year($year);
-            if ($anniversary->year === $year) {
+            $anniversary = $profile->first_period_start->copy()->year($year)->startOfDay();
+            // Skip pre-incorporation anniversary clones (e.g. Jul 2025 when formed Jul 2026).
+            if (! $start || $anniversary->gte($start)) {
                 $events[] = self::chip(
                     'mbr_'.$year,
                     'MBR annual return',
