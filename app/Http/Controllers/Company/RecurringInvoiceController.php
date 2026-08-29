@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
-use App\Mail\CompanyClientBillingMail;
 use App\Models\CompanyClient;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyProfile;
@@ -509,41 +508,85 @@ class RecurringInvoiceController extends Controller
         $pdfBinary = null;
         $warning = null;
         if ($includeStatement && $statement) {
-            try {
-                $pdfBinary = Pdf::loadView('company.pdf.client-statement', [
-                    'profile' => $profile,
-                    'client' => $client,
-                    'statement' => $statement,
-                ])->output();
-            } catch (\Throwable $e) {
-                report($e);
-                $warning = 'Reminder emailed without PDF (statement render failed).';
-                $pdfBinary = null;
+            if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class) && ! class_exists(\api_jacket\DomPDF\PDF::class)) {
+                $warning = 'Reminder emailed without PDF (DomPDF not installed on this server).';
+            } else {
+                try {
+                    $pdfBinary = Pdf::loadView('company.pdf.client-statement', [
+                        'profile' => $profile,
+                        'client' => $client,
+                        'statement' => $statement,
+                    ])->output();
+                } catch (\Throwable $e) {
+                    report($e);
+                    $warning = 'Reminder emailed without PDF (statement render failed: '.$e->getMessage().').';
+                    $pdfBinary = null;
+                }
             }
         }
 
         try {
-            $mailable = new CompanyClientBillingMail(
-                $profile,
-                $client,
-                $schedule,
-                $kind,
-                $document,
-                $statement,
-            );
+            try {
+                $html = view('company.mail.billing-notice', [
+                    'kind' => $kind,
+                    'clientName' => (string) $client->name,
+                    'companyName' => (string) ($profile->legal_name ?: 'Cerulean Labs Ltd'),
+                    'vatNumber' => (string) ($profile->vat_number ?: ''),
+                    'packageLabel' => $schedule->packageLabel(),
+                    'documentNumber' => (string) ($document?->document_number ?? ''),
+                    'documentTotal' => number_format((float) ($document?->total ?? 0), 2),
+                    'documentDue' => $document && $document->due_date
+                        ? $document->due_date->format('d M Y')
+                        : '',
+                    'officialOwed' => $statement
+                        ? number_format((float) $statement['official_owed'], 2)
+                        : null,
+                    'rfpOwed' => $statement
+                        ? number_format((float) $statement['rfp_owed'], 2)
+                        : null,
+                    'totalOwed' => $statement
+                        ? number_format((float) $statement['total_owed'], 2)
+                        : null,
+                ])->render();
+            } catch (\Throwable $e) {
+                report($e);
 
-            if ($pdfBinary) {
-                $mailable->attachData($pdfBinary, 'account-statement.pdf', [
-                    'mime' => 'application/pdf',
-                ]);
+                return [
+                    'ok' => false,
+                    'error' => 'Mail body render failed: '.$e->getMessage(),
+                    'warning' => null,
+                    'to' => $to,
+                ];
             }
+
+            $company = $profile->legal_name ?: 'Cerulean Labs Ltd';
+            $subject = match ($kind) {
+                'proforma' => $company.' - monthly proforma '.($document?->document_number ?? ''),
+                'reminder' => $company.' - payment reminder',
+                'statement' => $company.' - account statement',
+                default => $company.' - billing notice',
+            };
 
             $operatorEmail = trim((string) (Auth::user()?->email ?? ''));
-            if ($operatorEmail !== '' && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL)) {
-                $mailable->replyTo($operatorEmail, $profile->legal_name ?: null);
-            }
+            $operatorName = filled($profile->legal_name) ? (string) $profile->legal_name : null;
 
-            Mail::to($to)->send($mailable);
+            Mail::html($html, function ($message) use ($to, $subject, $pdfBinary, $operatorEmail, $operatorName) {
+                $message->to($to)->subject($subject);
+
+                if ($operatorEmail !== '' && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL)) {
+                    if ($operatorName) {
+                        $message->replyTo($operatorEmail, $operatorName);
+                    } else {
+                        $message->replyTo($operatorEmail);
+                    }
+                }
+
+                if (is_string($pdfBinary) && $pdfBinary !== '') {
+                    $message->attachData($pdfBinary, 'account-statement.pdf', [
+                        'mime' => 'application/pdf',
+                    ]);
+                }
+            });
         } catch (\Throwable $e) {
             report($e);
 
