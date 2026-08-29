@@ -13,6 +13,16 @@
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; max-width: 34rem; line-height: 1.45;">
                 Estate Hub schedules · issued proformas listed below · tax invoices after payment.
             </p>
+            @if(!empty($mailStatus))
+                <p style="margin: 0.45rem 0 0; font-size: 0.78rem; color: {{ $mailStatus['delivers'] ? '#64748b' : '#b45309' }}; line-height: 1.4;">
+                    Mail: <strong>{{ $mailStatus['mailer'] }}</strong>
+                    ({{ $mailStatus['transport'] }})
+                    · from {{ $mailStatus['from'] ?: 'not set' }}
+                    @if(! $mailStatus['delivers'])
+                        · not delivering to inboxes
+                    @endif
+                </p>
+            @endif
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/company/invoices" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">All invoices &amp; RFPs</a>
@@ -39,6 +49,12 @@
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
+        </div>
+    @endif
+
+    @if(!empty($mailStatus) && ! $mailStatus['delivers'])
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1rem; font-size: 0.88rem; color: #92400e; line-height: 1.45;">
+            {{ $mailStatus['hint'] }}
         </div>
     @endif
 
