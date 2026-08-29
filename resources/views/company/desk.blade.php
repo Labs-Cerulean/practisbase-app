@@ -90,7 +90,11 @@
             </div>
         </div>
         <p style="margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
-            Operational billing plus posted double-entry journals. Output VAT €{{ number_format($outputVat, 2) }} − input VAT €{{ number_format($inputVat, 2) }}.
+            Operational billing plus posted double-entry journals. Output VAT €{{ number_format($outputVat, 2) }} − input VAT €{{ number_format($inputVat, 2) }}
+            @if(($reverseChargeVat ?? 0) > 0.009)
+                (includes reverse charge €{{ number_format($reverseChargeVat, 2) }} in both boxes)
+            @endif
+            .
             Open RFPs: {{ $openRfps }}. Share capital: {{ $profile->shareCapitalReceived() ? 'received '.$profile->share_capital_received_at->format('d M Y') : 'pending at BOV' }}.
         </p>
     </div>

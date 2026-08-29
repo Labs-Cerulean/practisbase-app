@@ -25,13 +25,18 @@ class ExpenseController extends Controller
             ->get();
 
         $owed = $expenses->filter(fn (CompanyExpense $e) => $e->isOwedToDirector())
-            ->sum(fn (CompanyExpense $e) => $e->totalWithVat());
+            ->sum(fn (CompanyExpense $e) => $e->cashTotal());
+
+        $reverseChargeVat = (float) $expenses
+            ->filter(fn (CompanyExpense $e) => $e->is_reverse_charge)
+            ->sum(fn (CompanyExpense $e) => $e->reverseChargeVat());
 
         return view('company.expenses-index', [
             'expenses' => $expenses,
             'categories' => CompanyExpense::CATEGORIES,
             'year' => $year,
             'owedToDirector' => $owed,
+            'reverseChargeVat' => $reverseChargeVat,
             'profile' => $profile,
         ]);
     }
@@ -43,6 +48,7 @@ class ExpenseController extends Controller
         return view('company.expenses-create', [
             'categories' => CompanyExpense::CATEGORIES,
             'profile' => $profile,
+            'canReverseCharge' => $profile->isArticle10(),
         ]);
     }
 
@@ -57,9 +63,18 @@ class ExpenseController extends Controller
             'description' => 'required|string|max:1000',
             'amount' => 'required|numeric|min:0.01',
             'vat_amount' => 'nullable|numeric|min:0',
+            'is_reverse_charge' => 'sometimes|boolean',
             'funded_by' => 'required|in:company,director',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:8192',
         ]);
+
+        $isReverseCharge = $request->boolean('is_reverse_charge');
+
+        if ($isReverseCharge && ! $profile->isArticle10()) {
+            return back()->withErrors([
+                'is_reverse_charge' => 'Reverse charge only applies while the company is on Article 10 VAT.',
+            ])->withInput();
+        }
 
         $expenseDate = $validated['expense_date'];
         if (strtotime($expenseDate) > $profile->first_period_end->getTimestamp()) {
@@ -69,6 +84,13 @@ class ExpenseController extends Controller
         }
 
         $isPre = strtotime($expenseDate) < $profile->first_period_start->getTimestamp();
+
+        $amount = round((float) $validated['amount'], 2);
+        if ($isReverseCharge) {
+            $vatAmount = CompanyExpense::reverseChargeVatOn($amount);
+        } else {
+            $vatAmount = round((float) ($validated['vat_amount'] ?? 0), 2);
+        }
 
         $receiptPath = null;
         if ($request->hasFile('receipt')) {
@@ -83,8 +105,9 @@ class ExpenseController extends Controller
             'expense_date' => $expenseDate,
             'category' => $validated['category'],
             'description' => $validated['description'],
-            'amount' => $validated['amount'],
-            'vat_amount' => $validated['vat_amount'] ?? 0,
+            'amount' => $amount,
+            'vat_amount' => $vatAmount,
+            'is_reverse_charge' => $isReverseCharge,
             'funded_by' => $validated['funded_by'],
             'receipt_path' => $receiptPath,
             'is_pre_incorporation' => $isPre,
@@ -93,7 +116,11 @@ class ExpenseController extends Controller
         CompanyLedger::ensureChart($user);
         CompanyLedger::postExpense($expense);
 
-        return redirect('/company/expenses')->with('success', 'Expense logged and posted to the ledger.');
+        $msg = $isReverseCharge
+            ? 'Expense logged with reverse charge (output + input VAT €'.number_format($vatAmount, 2).').'
+            : 'Expense logged and posted to the ledger.';
+
+        return redirect('/company/expenses')->with('success', $msg);
     }
 
     public function markRefunded(Request $request, int $expense)

@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS company_expenses (
     description TEXT NOT NULL,
     amount NUMERIC(12, 2) NOT NULL,
     vat_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    is_reverse_charge BOOLEAN NOT NULL DEFAULT FALSE,
     funded_by VARCHAR(16) NOT NULL DEFAULT 'company',
     director_refunded_at DATE NULL,
     refund_reference VARCHAR(120) NULL,
