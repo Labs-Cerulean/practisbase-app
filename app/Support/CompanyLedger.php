@@ -22,23 +22,51 @@ use RuntimeException;
  */
 class CompanyLedger
 {
+    /** @var array<int, true> */
+    private static array $chartReadyForUser = [];
+
+    /**
+     * Seed missing GL accounts in bulk (1–2 queries). Memoized per request —
+     * never loop firstOrCreate (that is ~30 round-trips and times out on remote PG).
+     */
     public static function ensureChart(User $user): void
     {
-        foreach (CompanyChartOfAccounts::definitions() as $row) {
-            CompanyGlAccount::firstOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'account_code' => $row['account_code'],
-                ],
-                [
-                    'name' => $row['name'],
-                    'type' => $row['type'],
-                    'balance_sheet_category' => $row['balance_sheet_category'],
-                    'pl_group' => $row['pl_group'],
-                    'is_active' => true,
-                ]
-            );
+        if (isset(self::$chartReadyForUser[$user->id])) {
+            return;
         }
+
+        $definitions = CompanyChartOfAccounts::definitions();
+        $codes = array_column($definitions, 'account_code');
+        $existing = CompanyGlAccount::where('user_id', $user->id)
+            ->whereIn('account_code', $codes)
+            ->pluck('account_code')
+            ->all();
+        $have = array_flip($existing);
+
+        $now = now();
+        $insert = [];
+        foreach ($definitions as $row) {
+            if (isset($have[$row['account_code']])) {
+                continue;
+            }
+            $insert[] = [
+                'user_id' => $user->id,
+                'account_code' => $row['account_code'],
+                'name' => $row['name'],
+                'type' => $row['type'],
+                'balance_sheet_category' => $row['balance_sheet_category'],
+                'pl_group' => $row['pl_group'],
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if ($insert !== []) {
+            CompanyGlAccount::insert($insert);
+        }
+
+        self::$chartReadyForUser[$user->id] = true;
     }
 
     public static function assertDateOpen(int $userId, string $date): void
@@ -524,11 +552,12 @@ class CompanyLedger
     public static function accountBalances(int $userId, ?string $asOfDate = null, ?string $fromDate = null): array
     {
         $query = CompanyJournalLine::query()
-            ->select('company_journal_lines.*')
+            ->selectRaw("company_gl_accounts.account_code as account_code, COALESCE(SUM(CASE WHEN company_journal_lines.side = 'debit' THEN company_journal_lines.amount ELSE -company_journal_lines.amount END), 0) as balance")
             ->join('company_journal_entries', 'company_journal_entries.id', '=', 'company_journal_lines.journal_entry_id')
             ->join('company_gl_accounts', 'company_gl_accounts.id', '=', 'company_journal_lines.gl_account_id')
             ->where('company_journal_lines.user_id', $userId)
-            ->whereIn('company_journal_entries.status', ['posted', 'reconciled']);
+            ->whereIn('company_journal_entries.status', ['posted', 'reconciled'])
+            ->groupBy('company_gl_accounts.account_code');
 
         if ($asOfDate) {
             $query->where('company_journal_entries.entry_date', '<=', $asOfDate);
@@ -538,9 +567,8 @@ class CompanyLedger
         }
 
         $balances = [];
-        foreach ($query->with('account')->get() as $line) {
-            $code = $line->account->account_code;
-            $balances[$code] = ($balances[$code] ?? 0) + $line->signedAmount();
+        foreach ($query->get() as $row) {
+            $balances[(string) $row->account_code] = round((float) $row->balance, 2);
         }
 
         return $balances;
@@ -666,7 +694,10 @@ class CompanyLedger
     /**
      * @return array<string, mixed>
      */
-    public static function balanceSheet(int $userId, string $asOfDate, string $periodStart): array
+    /**
+     * @param  array<string, mixed>|null  $profitAndLoss  Pass a prior profitAndLoss() result to avoid a second P&L / balance scan.
+     */
+    public static function balanceSheet(int $userId, string $asOfDate, string $periodStart, ?array $profitAndLoss = null): array
     {
         self::ensureChart(User::findOrFail($userId));
         $balances = self::accountBalances($userId, $asOfDate);
@@ -696,7 +727,7 @@ class CompanyLedger
             ];
         }
 
-        $pl = self::profitAndLoss($userId, $periodStart, $asOfDate);
+        $pl = $profitAndLoss ?? self::profitAndLoss($userId, $periodStart, $asOfDate);
         $currentEarnings = (float) $pl['net_profit'];
         if (abs($currentEarnings) >= 0.005) {
             $groups['capital_reserves'][] = [
@@ -734,6 +765,7 @@ class CompanyLedger
             'balanced' => abs($assets - $equityLiab) < 0.005,
             'difference' => round($assets - $equityLiab, 2),
             'current_period_profit' => $currentEarnings,
+            'balances' => $balances,
         ];
     }
 }
