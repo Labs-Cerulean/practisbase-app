@@ -69,6 +69,16 @@ class CompanyLedger
         self::$chartReadyForUser[$user->id] = true;
     }
 
+    /** Skip User::findOrFail when the chart was already seeded this request. */
+    public static function ensureChartForUserId(int $userId): void
+    {
+        if (isset(self::$chartReadyForUser[$userId])) {
+            return;
+        }
+
+        self::ensureChart(User::findOrFail($userId));
+    }
+
     public static function assertDateOpen(int $userId, string $date): void
     {
         $lock = CompanyBooksLock::where('user_id', $userId)->first();
@@ -585,12 +595,13 @@ class CompanyLedger
     }
 
     /**
+     * @param  array<string, float>|null  $balances  Optional precomputed accountBalances($userId, $asOfDate).
      * @return array<string, mixed>
      */
-    public static function trialBalance(int $userId, string $asOfDate): array
+    public static function trialBalance(int $userId, string $asOfDate, ?array $balances = null): array
     {
-        self::ensureChart(User::findOrFail($userId));
-        $balances = self::accountBalances($userId, $asOfDate);
+        self::ensureChartForUserId($userId);
+        $balances ??= self::accountBalances($userId, $asOfDate);
         $accounts = CompanyGlAccount::where('user_id', $userId)->orderBy('account_code')->get();
         $rows = [];
         $totalDebit = 0.0;
@@ -628,7 +639,7 @@ class CompanyLedger
      */
     public static function profitAndLoss(int $userId, string $from, string $to): array
     {
-        self::ensureChart(User::findOrFail($userId));
+        self::ensureChartForUserId($userId);
         $balances = self::accountBalances($userId, $to, $from);
         $accounts = CompanyGlAccount::where('user_id', $userId)
             ->whereIn('type', ['revenue', 'expense'])
@@ -699,7 +710,7 @@ class CompanyLedger
      */
     public static function balanceSheet(int $userId, string $asOfDate, string $periodStart, ?array $profitAndLoss = null): array
     {
-        self::ensureChart(User::findOrFail($userId));
+        self::ensureChartForUserId($userId);
         $balances = self::accountBalances($userId, $asOfDate);
         $accounts = CompanyGlAccount::where('user_id', $userId)->orderBy('account_code')->get()->keyBy('account_code');
 
