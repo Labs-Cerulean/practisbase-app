@@ -8,6 +8,7 @@ use App\Models\ClinicalEntry;
 use App\Models\Client;
 use App\Models\MedicalVault;
 use App\Models\Patient;
+use App\Support\ClinicalNoteTemplates;
 use App\Support\MedicalVaultCrypto;
 use App\Support\TierPolicy;
 use Illuminate\Http\Request;
@@ -367,6 +368,17 @@ class PatientController extends Controller
                 ];
             });
 
+        $errorBag = session('errors');
+        $composeNote = old('entry_type') === 'journal'
+            && $errorBag
+            && (
+                $errorBag->has('body')
+                || $errorBag->has('entry_date')
+                || $errorBag->has('note_template')
+                || $errorBag->has('fields')
+                || $errorBag->has('attachment')
+            );
+
         return view('pro.medical.patients-show', [
             'patient' => $patient,
             'payload' => $payload,
@@ -375,6 +387,12 @@ class PatientController extends Controller
             'linkedClientIds' => $linkedClientIds,
             'canAddClient' => $user->canAddClient(),
             'entryTypes' => ClinicalEntry::TYPES,
+            'composeNote' => (bool) $composeNote,
+            'noteTemplate' => ClinicalNoteTemplates::normalizeForUser(
+                $user,
+                old('note_template', $user->clinical_note_template ?? ClinicalNoteTemplates::GENERAL)
+            ),
+            'templateCatalogue' => ClinicalNoteTemplates::catalogueForUser($user),
         ]);
     }
 

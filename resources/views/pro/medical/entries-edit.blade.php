@@ -19,7 +19,7 @@
     @endphp
     <div style="max-width: {{ $isRx ? '820px' : '720px' }}; margin: 0 auto; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
-            <h2 style="margin: 0; color: var(--primary-navy);">Edit {{ $types[$entry->entry_type] ?? 'entry' }}</h2>
+            <h2 style="margin: 0; color: var(--primary-navy);">{{ $isJournal ? 'Edit note' : ('Edit '.($types[$entry->entry_type] ?? 'entry')) }}</h2>
             <a href="/pro/medical/patients/{{ $patient->id }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none;">Cancel</a>
         </div>
         @if($entry->isStampable())
@@ -37,10 +37,12 @@
             @method('PUT')
             <input type="hidden" name="entry_type" value="{{ $entry->entry_type }}">
 
+            @if(! $isJournal)
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Type</label>
                 <input type="text" value="{{ $types[$entry->entry_type] ?? $entry->entry_type }}" disabled style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #f8fafc; color: var(--text-muted);">
             </div>
+            @endif
 
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Date *</label>

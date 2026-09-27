@@ -37,6 +37,10 @@ class ClinicalEntryController extends Controller
             $defaultType = 'journal';
         }
 
+        if ($defaultType === 'journal') {
+            return redirect('/pro/medical/patients/'.$patient->id.'#compose-note');
+        }
+
         if (in_array($defaultType, ClinicalEntry::STAMPABLE_TYPES, true) && ! $user->hasDocumentStamp()) {
             if (! $user->canAccessDocumentStamper()) {
                 return redirect('/pro/medical/patients/'.$patient->id)

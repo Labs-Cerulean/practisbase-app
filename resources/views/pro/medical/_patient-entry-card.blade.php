@@ -9,6 +9,7 @@
      style="background: {{ $chrome['card_bg'] }}; border: 1px solid {{ $chrome['border'] }}; border-left: 6px solid {{ $chrome['accent'] }}; border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
     <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
         <div style="flex: 1; min-width: 180px;">
+            @if($type !== 'journal')
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.35rem;">
                 <span style="display: inline-block; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.28rem 0.65rem; border-radius: 4px;">
                     {{ $entry['type_label'] }}
@@ -21,8 +22,12 @@
                     @endif
                 @endif
             </div>
-            <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['title'] }}</strong>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+            @endif
+            @if($type === 'journal')
+                <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['model']->entry_date->format('d M Y') }}</strong>
+            @else
+                <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['title'] }}</strong>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
                 {{ $entry['model']->entry_date->format('d M Y') }}
                 @if($type === 'certificate' && !empty($entry['certificate_kind_label']))
                     · {{ $entry['certificate_kind_label'] }}
@@ -42,7 +47,8 @@
                         · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: var(--primary-navy); font-weight: 700;">{{ $entry['issue_code'] }}</span>
                     @endif
                 @endif
-            </div>
+                </div>
+            @endif
         </div>
     </div>
 

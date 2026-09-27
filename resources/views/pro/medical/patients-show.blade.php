@@ -264,24 +264,60 @@
                         Drafts stay editable until Stamp &amp; issue.
                     @endif
                 </div>
-                <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type={{ $tabKey }}"
-                   style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none; font-size: 0.85rem;">
-                    {{ $tabMeta['new'] }}
-                </a>
+                @if($tabKey === 'journal')
+                    <button type="button" id="journal-compose-open" class="journal-new-btn"
+                            style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; cursor: pointer;">
+                        {{ $tabMeta['new'] }}
+                    </button>
+                @else
+                    <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type={{ $tabKey }}"
+                       style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none; font-size: 0.85rem;">
+                        {{ $tabMeta['new'] }}
+                    </a>
+                @endif
             </div>
 
+            @if($tabKey === 'journal')
+                <div id="journal-compose" style="{{ ($composeNote ?? false) ? '' : 'display:none;' }} margin-bottom: 0.85rem;">
+                    @include('pro.medical._journal-compose', [
+                        'patient' => $patient,
+                        'noteTemplate' => $noteTemplate ?? 'general',
+                        'templateCatalogue' => $templateCatalogue ?? [],
+                    ])
+                </div>
+            @endif
+
             @if($tabEntries->isEmpty())
-                <p style="color: var(--text-muted); margin: 0 0 1.5rem;">Nothing here yet.</p>
+                <p class="journal-empty" style="color: var(--text-muted); margin: 0 0 1.5rem;">Nothing here yet.</p>
             @else
-                <div style="display: grid; gap: 0.75rem; margin-bottom: 1.5rem;">
+                <div class="{{ $tabKey === 'journal' ? 'journal-notes' : '' }}{{ ($tabKey === 'journal' && ($composeNote ?? false)) ? ' is-composing' : '' }}" style="display: grid; gap: 0.75rem; margin-bottom: 1.5rem;">
                     @foreach($tabEntries as $entry)
-                        @include('pro.medical._patient-entry-card', [
-                            'entry' => $entry,
-                            'patient' => $patient,
-                            'payload' => $payload,
-                            'entryTypes' => $entryTypes ?? \App\Models\ClinicalEntry::TYPES,
-                            'expandShare' => (int) session('issued_entry_id') === (int) $entry['model']->id,
-                        ])
+                        @if($tabKey === 'journal')
+                            <div class="journal-note-wrap">
+                                <button type="button" class="journal-note-peek" hidden
+                                        style="width: 100%; text-align: left; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.7rem 0.9rem; font-weight: 700; color: var(--primary-navy); cursor: pointer;">
+                                    {{ $entry['model']->entry_date->format('d M Y') }}
+                                    <span style="font-weight: 600; color: var(--text-muted); margin-left: 0.35rem;">· Show note</span>
+                                </button>
+                                <div class="journal-note-full">
+                                    @include('pro.medical._patient-entry-card', [
+                                        'entry' => $entry,
+                                        'patient' => $patient,
+                                        'payload' => $payload,
+                                        'entryTypes' => $entryTypes ?? \App\Models\ClinicalEntry::TYPES,
+                                        'expandShare' => (int) session('issued_entry_id') === (int) $entry['model']->id,
+                                    ])
+                                </div>
+                            </div>
+                        @else
+                            @include('pro.medical._patient-entry-card', [
+                                'entry' => $entry,
+                                'patient' => $patient,
+                                'payload' => $payload,
+                                'entryTypes' => $entryTypes ?? \App\Models\ClinicalEntry::TYPES,
+                                'expandShare' => (int) session('issued_entry_id') === (int) $entry['model']->id,
+                            ])
+                        @endif
                     @endforeach
                 </div>
             @endif
@@ -325,6 +361,63 @@
                 if (document.querySelector('.patient-hub-tab[data-tab="' + fromHash + '"]')) {
                     activateTab(fromHash);
                 }
+            }
+
+            var compose = document.getElementById('journal-compose');
+            var openBtn = document.getElementById('journal-compose-open');
+            var cancelBtn = document.getElementById('journal-compose-cancel');
+            var notes = document.querySelector('.journal-notes');
+
+            function collapsePriorNote(wrap, collapsed) {
+                var peek = wrap.querySelector('.journal-note-peek');
+                var full = wrap.querySelector('.journal-note-full');
+                if (!peek || !full) return;
+                peek.hidden = !collapsed;
+                full.hidden = collapsed;
+                var cue = peek.querySelector('span');
+                if (cue) cue.textContent = '· Show note';
+            }
+
+            function setComposing(on) {
+                if (!compose) return;
+                compose.style.display = on ? 'block' : 'none';
+                if (openBtn) openBtn.style.display = on ? 'none' : '';
+                if (notes) {
+                    notes.querySelectorAll('.journal-note-wrap').forEach(function (wrap) {
+                        collapsePriorNote(wrap, on);
+                    });
+                }
+                if (history.replaceState) {
+                    history.replaceState(null, '', on ? '#compose-note' : '#tab-journal');
+                }
+            }
+
+            if (openBtn) {
+                openBtn.addEventListener('click', function () {
+                    activateTab('journal');
+                    setComposing(true);
+                });
+            }
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function () {
+                    setComposing(false);
+                });
+            }
+            document.querySelectorAll('.journal-note-peek').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var wrap = btn.closest('.journal-note-wrap');
+                    var full = wrap ? wrap.querySelector('.journal-note-full') : null;
+                    if (!full) return;
+                    var opening = full.hidden;
+                    full.hidden = !opening;
+                    var cue = btn.querySelector('span');
+                    if (cue) cue.textContent = opening ? '· Hide note' : '· Show note';
+                });
+            });
+
+            if ((location.hash || '') === '#compose-note' || (compose && compose.style.display !== 'none')) {
+                activateTab('journal');
+                setComposing(true);
             }
 
             async function fetchPdfBlob(url) {
