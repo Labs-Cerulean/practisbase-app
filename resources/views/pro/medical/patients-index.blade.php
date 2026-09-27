@@ -56,15 +56,24 @@
         </div>
     </div>
 
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+        <a href="/pro/medical/patients" style="padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; {{ empty($showArchived) ? 'background: var(--primary-navy); color: white;' : 'background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;' }}">Active</a>
+        <a href="/pro/medical/patients?archived=1" style="padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; {{ !empty($showArchived) ? 'background: var(--primary-navy); color: white;' : 'background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;' }}">Archived{{ ($archivedCount ?? 0) > 0 ? ' ('.$archivedCount.')' : '' }}</a>
+    </div>
+
     @if($rows->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
-            <p style="color: var(--text-muted);">No patients in this vault yet.</p>
-            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                <a href="/pro/medical/patients/create" style="color: var(--primary-cerulean); font-weight: 600;">Add first patient &rarr;</a>
-                @if(strtolower(trim((string) (auth()->user()->email ?? ''))) === 'sarah.darmanin2@gmail.com')
-                    <a href="/pro/medical/import" style="color: var(--primary-navy); font-weight: 600;">Import gynae Word batch &rarr;</a>
-                @endif
-            </div>
+            @if(!empty($showArchived))
+                <p style="color: var(--text-muted); margin: 0;">No archived patients.</p>
+            @else
+                <p style="color: var(--text-muted);">No patients in this vault yet.</p>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <a href="/pro/medical/patients/create" style="color: var(--primary-cerulean); font-weight: 600;">Add first patient &rarr;</a>
+                    @if(strtolower(trim((string) (auth()->user()->email ?? ''))) === 'sarah.darmanin2@gmail.com')
+                        <a href="/pro/medical/import" style="color: var(--primary-navy); font-weight: 600;">Import gynae Word batch &rarr;</a>
+                    @endif
+                </div>
+            @endif
         </div>
     @else
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
@@ -134,8 +143,7 @@
 
         <div id="patient-list" style="display: grid; gap: 0.75rem;">
             @foreach($rows as $row)
-                <a href="/pro/medical/patients/{{ $row['model']->id }}"
-                   class="patient-row"
+                <div class="patient-row"
                    data-name="{{ strtolower($row['display_name']) }}"
                    data-ref="{{ strtolower($row['public_ref']) }}"
                    data-client="{{ strtolower($row['client_name'] ?? '') }}"
@@ -153,7 +161,7 @@
                    data-certificate="{{ $row['certificate_count'] }}"
                    data-attachment="{{ $row['attachment_count'] }}"
                    data-created="{{ $row['created_ts'] }}"
-                   style="display: flex; justify-content: space-between; gap: 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+                   style="display: flex; justify-content: space-between; gap: 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem 1.25rem; box-shadow: var(--shadow-sm); align-items: center;">
                     <div>
                         <div style="font-weight: 700; color: var(--primary-navy);">{{ $row['display_name'] }}</div>
                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
@@ -175,8 +183,21 @@
                             Notes {{ $row['journal_count'] }} · Rx {{ $row['prescription_count'] }} · Ref {{ $row['referral_count'] }} · Cert {{ $row['certificate_count'] }} · Files {{ $row['attachment_count'] }}
                         </div>
                     </div>
-                    <div style="color: var(--primary-cerulean); font-weight: 600; font-size: 0.85rem; align-self: center;">Open</div>
-                </a>
+                    <div style="display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                        <a href="/pro/medical/patients/{{ $row['model']->id }}" style="color: var(--primary-cerulean); font-weight: 700; font-size: 0.85rem; text-decoration: none; padding: 0.45rem 0.7rem;">Open</a>
+                        @if(!empty($showArchived))
+                            <form action="/pro/medical/patients/{{ $row['model']->id }}/restore" method="POST" style="margin: 0;">
+                                @csrf
+                                <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">Restore</button>
+                            </form>
+                        @else
+                            <form action="/pro/medical/patients/{{ $row['model']->id }}/archive" method="POST" style="margin: 0;" onsubmit="return confirm('Archive this patient? Their notes stay with the chart and you can restore them later.');">
+                                @csrf
+                                <button type="submit" style="background: white; border: 1px solid #fecaca; color: #b91c1c; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer; font-size: 0.8rem;">Archive</button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
             @endforeach
         </div>
         <div id="patient-empty-filter" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted); border: 2px dashed var(--border-light); border-radius: var(--radius-md); background: white;">

@@ -9,6 +9,7 @@
      style="background: {{ $chrome['card_bg'] }}; border: 1px solid {{ $chrome['border'] }}; border-left: 6px solid {{ $chrome['accent'] }}; border-radius: var(--radius-md); padding: 1rem; box-shadow: var(--shadow-sm);">
     <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
         <div style="flex: 1; min-width: 180px;">
+            @if($type !== 'journal')
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.35rem;">
                 <span style="display: inline-block; background: {{ $chrome['badge_bg'] }}; color: {{ $chrome['badge_fg'] }}; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.28rem 0.65rem; border-radius: 4px;">
                     {{ $entry['type_label'] }}
@@ -21,8 +22,12 @@
                     @endif
                 @endif
             </div>
-            <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['title'] }}</strong>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+            @endif
+            @if($type === 'journal')
+                <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['model']->entry_date->format('d M Y') }}</strong>
+            @else
+                <strong style="color: var(--primary-navy); font-size: 1.05rem;">{{ $entry['title'] }}</strong>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
                 {{ $entry['model']->entry_date->format('d M Y') }}
                 @if($type === 'certificate' && !empty($entry['certificate_kind_label']))
                     · {{ $entry['certificate_kind_label'] }}
@@ -42,7 +47,8 @@
                         · <span style="font-family: ui-monospace, monospace; letter-spacing: 0.04em; color: var(--primary-navy); font-weight: 700;">{{ $entry['issue_code'] }}</span>
                     @endif
                 @endif
-            </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -99,7 +105,7 @@
         <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
     @endif
 
-    @if($entry['is_stampable'])
+    @if($entry['is_stampable'] && empty($entry['is_archived']) && ! $patient->archived_at)
         <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: {{ $chrome['soft'] }}; border: 1px solid {{ $chrome['border'] }}; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-main);">
             @if($entry['is_issued'])
                 Issued {{ $entry['issue_code'] }} — confirm and share when ready.
@@ -110,6 +116,12 @@
     @endif
 
     <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        @if(!empty($entry['is_archived']))
+            <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/restore" method="POST" style="margin: 0;">
+                @csrf
+                <button type="submit" style="padding: 0.4rem 0.75rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Restore</button>
+            </form>
+        @elseif(! $patient->archived_at)
         @if($entry['is_editable'])
             <a href="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/edit"
                style="display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid var(--border-light); color: var(--primary-navy); border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; text-decoration: none;">
@@ -142,6 +154,11 @@
                 'expanded' => $expandShare,
             ])
         @endif
+            <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/archive" method="POST" style="margin: 0;" onsubmit="return confirm('Archive this entry? You can restore it from the Archived section on this tab.');">
+                @csrf
+                <button type="submit" style="padding: 0.4rem 0.75rem; background: white; border: 1px solid #fecaca; color: #b91c1c; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Archive</button>
+            </form>
+        @endif
     </div>
 
     @if(!empty($entry['attachments']) && count($entry['attachments']))
@@ -161,7 +178,7 @@
         </div>
     @endif
 
-    @if($entry['is_editable'])
+    @if($entry['is_editable'] && ! $patient->archived_at)
         <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry['model']->id }}/attachments"
               method="POST"
               enctype="multipart/form-data"

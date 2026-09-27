@@ -12,8 +12,10 @@ use App\Support\ClinicalNoteTemplates;
 use App\Support\IssueCode;
 use App\Support\MedicalVaultCrypto;
 use App\Support\TenantStorage;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -26,6 +28,11 @@ class ClinicalEntryController extends Controller
             abort(403);
         }
 
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this patient before adding a note or document.']);
+        }
+
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
         if (! $key) {
             return redirect('/pro/medical/vault/unlock');
@@ -35,6 +42,10 @@ class ClinicalEntryController extends Controller
         $defaultType = $request->query('type');
         if (! is_string($defaultType) || ! array_key_exists($defaultType, ClinicalEntry::TYPES)) {
             $defaultType = 'journal';
+        }
+
+        if ($defaultType === 'journal') {
+            return redirect('/pro/medical/patients/'.$patient->id.'#compose-note');
         }
 
         if (in_array($defaultType, ClinicalEntry::STAMPABLE_TYPES, true) && ! $user->hasDocumentStamp()) {
@@ -75,6 +86,11 @@ class ClinicalEntryController extends Controller
             abort(403);
         }
 
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this patient before adding a note or document.']);
+        }
+
         $vault = MedicalVault::activeForUser($user->id);
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
 
@@ -99,45 +115,107 @@ class ClinicalEntryController extends Controller
 
         $payload = $this->buildEncryptedPayload($validated);
 
-        $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
+        try {
+            return Cache::lock('entry-store:'.$patient->id, 20)->block(8, function () use ($request, $user, $vault, $key, $patient, $validated, $payload) {
+                $duplicate = $this->recentDuplicateEntry($patient, $key, $validated['entry_type'], $payload);
+                if ($duplicate) {
+                    return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$validated['entry_type'])
+                        ->with('success', 'That entry was just saved. A second copy was not created.');
+                }
 
-        $entry = ClinicalEntry::create([
-            'user_id' => $user->id,
-            'vault_id' => $vault->id,
-            'patient_id' => $patient->id,
-            'entry_type' => $validated['entry_type'],
-            'entry_date' => $validated['entry_date'],
-            'payload_ciphertext' => $encrypted['ciphertext'],
-            'payload_nonce' => $encrypted['nonce'],
-            'issued_at' => null,
-            'issued_by_user_id' => null,
-            'issue_code' => null,
-        ]);
+                $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
 
-        if ($request->hasFile('attachment')) {
-            $this->storeAttachmentFile($request, $user->id, $vault->id, $patient->id, $entry->id, $key);
+                $entry = ClinicalEntry::create([
+                    'user_id' => $user->id,
+                    'vault_id' => $vault->id,
+                    'patient_id' => $patient->id,
+                    'entry_type' => $validated['entry_type'],
+                    'entry_date' => $validated['entry_date'],
+                    'payload_ciphertext' => $encrypted['ciphertext'],
+                    'payload_nonce' => $encrypted['nonce'],
+                    'issued_at' => null,
+                    'issued_by_user_id' => null,
+                    'issue_code' => null,
+                ]);
+
+                if ($request->hasFile('attachment')) {
+                    $this->storeAttachmentFile($request, $user->id, $vault->id, $patient->id, $entry->id, $key);
+                }
+
+                if ($validated['entry_type'] === 'prescription' && ! empty($validated['medicines'])) {
+                    PrescriptionCatalogItem::rememberForUser($user->id, $validated['medicines']);
+                }
+
+                if ($request->boolean('issue_now') && $entry->isStampable()) {
+                    return $this->stampAndRedirect($patient, $entry, $user);
+                }
+
+                $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
+                    ? 'Draft '.(ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document').' saved.'
+                    : 'Patient note saved.';
+
+                return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$validated['entry_type'])
+                    ->with('success', $msg);
+            });
+        } catch (LockTimeoutException) {
+            return back()->withErrors([
+                'body' => 'A save is already in progress. Check this patient before trying again.',
+            ])->withInput();
+        }
+    }
+
+    public function archive(Patient $patient, ClinicalEntry $entry)
+    {
+        $user = Auth::user();
+        $this->assertOwned($user->id, $patient, $entry);
+
+        $tab = $entry->entry_type;
+
+        if ($entry->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$tab)
+                ->with('success', 'That entry is already archived.');
         }
 
-        if ($validated['entry_type'] === 'prescription' && ! empty($validated['medicines'])) {
-            PrescriptionCatalogItem::rememberForUser($user->id, $validated['medicines']);
+        $entry->archived_at = now();
+        $entry->save();
+
+        return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$tab)
+            ->with('success', 'Archived. Restore it from the Archived section on this tab.');
+    }
+
+    public function restore(Patient $patient, ClinicalEntry $entry)
+    {
+        $user = Auth::user();
+        $this->assertOwned($user->id, $patient, $entry);
+
+        $tab = $entry->entry_type;
+
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore the patient first. Then you can restore individual notes.']);
         }
 
-        if ($request->boolean('issue_now') && $entry->isStampable()) {
-            return $this->stampAndRedirect($patient, $entry, $user);
+        if (! $entry->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$tab)
+                ->with('success', 'That entry is already active.');
         }
 
-        $msg = in_array($validated['entry_type'], ClinicalEntry::STAMPABLE_TYPES, true)
-            ? 'Draft ' . (ClinicalEntry::TYPES[$validated['entry_type']] ?? 'document') . ' saved.'
-            : 'Patient note saved.';
+        $entry->archived_at = null;
+        $entry->save();
 
-        return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$validated['entry_type'])
-            ->with('success', $msg);
+        return redirect('/pro/medical/patients/'.$patient->id.'#entry-'.$entry->id)
+            ->with('success', 'Entry restored.');
     }
 
     public function edit(Patient $patient, ClinicalEntry $entry)
     {
         $user = Auth::user();
         $this->assertOwned($user->id, $patient, $entry);
+
+        if ($patient->isArchived() || $entry->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this before editing.']);
+        }
 
         if (! $entry->isEditable()) {
             return redirect('/pro/medical/patients/' . $patient->id)
@@ -179,6 +257,11 @@ class ClinicalEntryController extends Controller
     {
         $user = Auth::user();
         $this->assertOwned($user->id, $patient, $entry);
+
+        if ($patient->isArchived() || $entry->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this before editing.']);
+        }
 
         if (! $entry->isEditable()) {
             return redirect('/pro/medical/patients/' . $patient->id)
@@ -233,6 +316,11 @@ class ClinicalEntryController extends Controller
     {
         $user = Auth::user();
         $this->assertOwned($user->id, $patient, $entry);
+
+        if ($patient->isArchived() || $entry->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this before stamping.']);
+        }
 
         if (! $entry->isStampable()) {
             return back()->withErrors(['entry' => 'Journal notes are not stamped.']);
@@ -447,5 +535,56 @@ class ClinicalEntryController extends Controller
         if ($patient->user_id !== $userId || $entry->user_id !== $userId || $entry->patient_id !== $patient->id) {
             abort(403);
         }
+    }
+
+    private function recentDuplicateEntry(Patient $patient, string $key, string $entryType, array $payload): ?ClinicalEntry
+    {
+        $fingerprint = $this->payloadFingerprint($payload);
+
+        $recent = ClinicalEntry::where('user_id', $patient->user_id)
+            ->where('patient_id', $patient->id)
+            ->where('entry_type', $entryType)
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
+
+        foreach ($recent as $existing) {
+            try {
+                $data = MedicalVaultCrypto::decrypt($existing->payload_ciphertext, $existing->payload_nonce, $key);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if (! is_array($data)) {
+                continue;
+            }
+
+            if (hash_equals($fingerprint, $this->payloadFingerprint($data))) {
+                return $existing;
+            }
+        }
+
+        return null;
+    }
+
+    private function payloadFingerprint(array $payload): string
+    {
+        $normalized = $this->ksortRecursive($payload);
+
+        return hash('sha256', (string) json_encode($normalized, JSON_UNESCAPED_UNICODE));
+    }
+
+    private function ksortRecursive(array $value): array
+    {
+        foreach ($value as $k => $item) {
+            if (is_array($item)) {
+                $value[$k] = $this->ksortRecursive($item);
+            }
+        }
+
+        ksort($value);
+
+        return $value;
     }
 }

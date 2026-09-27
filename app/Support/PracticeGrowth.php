@@ -37,16 +37,20 @@ class PracticeGrowth
         $activeSince = $now->copy()->subMonths(self::ACTIVE_MONTHS)->toDateString();
 
         $panelSize = (int) ClinicalEntry::where('user_id', $userId)
+            ->whereNull('archived_at')
+            ->whereHas('patient', fn ($q) => $q->whereNull('archived_at'))
             ->whereDate('entry_date', '>=', $activeSince)
             ->select('patient_id')
             ->distinct()
             ->count();
 
         if ($panelSize === 0) {
-            $panelSize = Patient::where('user_id', $userId)->count();
+            $panelSize = Patient::where('user_id', $userId)->whereNull('archived_at')->count();
         }
 
         $byPatient = ClinicalEntry::where('user_id', $userId)
+            ->whereNull('archived_at')
+            ->whereHas('patient', fn ($q) => $q->whereNull('archived_at'))
             ->orderBy('entry_date')
             ->get(['patient_id', 'entry_date'])
             ->groupBy('patient_id');
@@ -74,7 +78,7 @@ class PracticeGrowth
         $returnRate = $eligible > 0 ? round(100 * $returned / $eligible, 1) : null;
 
         $monthly = self::monthlyNewCounts(
-            Patient::where('user_id', $userId),
+            Patient::where('user_id', $userId)->whereNull('archived_at'),
             'created_at',
             6
         );

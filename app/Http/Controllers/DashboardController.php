@@ -263,7 +263,7 @@ class DashboardController extends Controller
         $vault = MedicalVault::activeForUser($userId);
         $vaultUnlocked = $vault && MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null;
 
-        $patientCount = Patient::where('user_id', $userId)->count();
+        $patientCount = Patient::where('user_id', $userId)->whereNull('archived_at')->count();
 
         return [
             'kind' => 'med',

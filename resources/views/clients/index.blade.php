@@ -93,7 +93,7 @@
 
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                         <div>
-                            <h3 style="margin: 0; color: var(--primary-navy); font-size: 1.1rem;">{{ $client->name }}</h3>
+                            <h3 style="margin: 0; font-size: 1.1rem;"><a href="/clients/{{ $client->id }}" style="color: var(--primary-navy); text-decoration: none;">{{ $client->name }}</a></h3>
                             <span style="display: inline-block; margin-top: 0.25rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 4px;">
                                 {{ ucfirst($client->type) }}{{ $showArchived ? ' · Archived' : '' }}
                             </span>
@@ -128,12 +128,25 @@
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         @if(!$showArchived && $client->phone)
                             <a href="tel:{{ $client->phone }}" style="flex: 1; text-align: center; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); color: #059669; border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">Call</a>
                         @endif
                         <a href="/clients/{{ $client->id }}?tab=statement" style="flex: 1; text-align: center; padding: 0.5rem; background: rgba(2, 132, 199, 0.1); color: var(--primary-cerulean); border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">Statement</a>
                         <a href="/clients/{{ $client->id }}?tab=history" style="flex: 1; text-align: center; padding: 0.5rem; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">History</a>
+                        @if($showArchived)
+                            <form action="/clients/{{ $client->id }}/restore" method="POST" style="flex: 1; margin: 0;">
+                                @csrf
+                                <button type="submit" style="width: 100%; padding: 0.5rem; background: var(--primary-cerulean); color: white; border: none; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">Restore</button>
+                            </form>
+                        @else
+                            <a href="/clients/{{ $client->id }}/edit" style="flex: 1; text-align: center; padding: 0.5rem; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: 6px; font-weight: 700; font-size: 0.85rem; text-decoration: none;">Edit</a>
+                            <form action="/clients/{{ $client->id }}" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('Archive this client? Invoice history is kept. This does not free a Free-plan slot.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" style="width: 100%; padding: 0.5rem; background: white; color: #b91c1c; border: 1px solid #fecaca; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">Archive</button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @endforeach

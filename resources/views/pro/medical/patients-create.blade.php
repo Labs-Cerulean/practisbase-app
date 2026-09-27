@@ -77,7 +77,7 @@
                 <label style="display: block; font-weight: 600; margin-bottom: 0.4rem;">Private notes</label>
                 <textarea name="notes" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('notes') }}</textarea>
             </div>
-            <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save patient</button>
+            <button type="submit" id="patient-create-submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save patient</button>
         </form>
     </div>
 
@@ -123,6 +123,22 @@
                 dob.addEventListener('change', function () {
                     var computed = ageFromDob(dob.value);
                     if (computed !== '') age.value = computed;
+                });
+            }
+
+            var form = document.getElementById('patient-create-form');
+            if (form) {
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.submitted === '1') {
+                        event.preventDefault();
+                        return;
+                    }
+                    form.dataset.submitted = '1';
+                    var button = document.getElementById('patient-create-submit');
+                    if (button) {
+                        button.disabled = true;
+                        button.textContent = 'Saving…';
+                    }
                 });
             }
         })();

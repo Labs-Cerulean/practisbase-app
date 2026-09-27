@@ -103,6 +103,8 @@ class PracticeGuidance
             $vault = MedicalVault::activeForUser($user->id);
             $hasPatient = Patient::where('user_id', $user->id)->exists();
             $hasStampable = ClinicalEntry::where('user_id', $user->id)
+                ->whereNull('archived_at')
+                ->whereHas('patient', fn ($q) => $q->whereNull('archived_at'))
                 ->whereIn('entry_type', ClinicalEntry::STAMPABLE_TYPES)
                 ->exists();
 
