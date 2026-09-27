@@ -26,14 +26,18 @@ class AccountsController extends Controller
         $from = $request->input('from', $profile->first_period_start->format('Y-m-d'));
         $to = $request->input('to', $asOf);
 
+        $profitAndLoss = CompanyLedger::profitAndLoss($user->id, $from, $to);
+        $balanceSheet = CompanyLedger::balanceSheet($user->id, $asOf, $from, $profitAndLoss);
+        $trialBalance = CompanyLedger::trialBalance($user->id, $asOf, $balanceSheet['balances'] ?? null);
+
         return view('company.accounts.index', [
             'profile' => $profile,
             'asOf' => $asOf,
             'from' => $from,
             'to' => $to,
-            'trialBalance' => CompanyLedger::trialBalance($user->id, $asOf),
-            'profitAndLoss' => CompanyLedger::profitAndLoss($user->id, $from, $to),
-            'balanceSheet' => CompanyLedger::balanceSheet($user->id, $asOf, $from),
+            'trialBalance' => $trialBalance,
+            'profitAndLoss' => $profitAndLoss,
+            'balanceSheet' => $balanceSheet,
             'lock' => CompanyBooksLock::where('user_id', $user->id)->first(),
             'journalCount' => CompanyJournalEntry::where('user_id', $user->id)->count(),
             'accountCount' => CompanyGlAccount::where('user_id', $user->id)->count(),
