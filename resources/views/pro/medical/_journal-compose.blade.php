@@ -33,11 +33,27 @@
         <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
     </div>
 
-    <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save</button>
+    <button type="submit" id="journal-compose-submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save</button>
 </form>
 
 <script>
     (function () {
+        var composeForm = document.getElementById('journal-compose-form');
+        if (composeForm) {
+            composeForm.addEventListener('submit', function (event) {
+                if (composeForm.dataset.submitted === '1') {
+                    event.preventDefault();
+                    return;
+                }
+                composeForm.dataset.submitted = '1';
+                var button = document.getElementById('journal-compose-submit');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Saving…';
+                }
+            });
+        }
+
         var noteTemplate = document.getElementById('note_template');
         var fieldsHost = document.getElementById('journal-structured-fields');
         if (!noteTemplate || !fieldsHost) return;

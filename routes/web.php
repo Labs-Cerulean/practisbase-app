@@ -285,12 +285,16 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
             Route::get('/patients/{patient}', [PatientController::class, 'show']);
             Route::get('/patients/{patient}/edit', [PatientController::class, 'edit']);
             Route::put('/patients/{patient}', [PatientController::class, 'update']);
+            Route::post('/patients/{patient}/archive', [PatientController::class, 'archive']);
+            Route::post('/patients/{patient}/restore', [PatientController::class, 'restore']);
             Route::put('/patients/{patient}/billing-link', [PatientController::class, 'updateBillingLink']);
             Route::post('/patients/{patient}/billing-client', [PatientController::class, 'createBillingClient']);
             Route::get('/patients/{patient}/entries/create', [ClinicalEntryController::class, 'create']);
             Route::post('/patients/{patient}/entries', [ClinicalEntryController::class, 'store']);
             Route::get('/patients/{patient}/entries/{entry}/edit', [ClinicalEntryController::class, 'edit']);
             Route::put('/patients/{patient}/entries/{entry}', [ClinicalEntryController::class, 'update']);
+            Route::post('/patients/{patient}/entries/{entry}/archive', [ClinicalEntryController::class, 'archive']);
+            Route::post('/patients/{patient}/entries/{entry}/restore', [ClinicalEntryController::class, 'restore']);
             Route::get('/patients/{patient}/entries/{entry}/issue', [ClinicalEntryController::class, 'issueGetFallback']);
             Route::post('/patients/{patient}/entries/{entry}/issue', [ClinicalEntryController::class, 'issue']);
             Route::get('/patients/{patient}/entries/{entry}/pdf', [ClinicalEntryPdfController::class, 'download']);

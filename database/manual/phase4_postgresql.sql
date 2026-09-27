@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS patients (
     billing_client_id bigint NULL REFERENCES clients(id) ON DELETE SET NULL,
     payload_ciphertext text NOT NULL,
     payload_nonce varchar(64) NOT NULL,
+    archived_at timestamp without time zone NULL,
     created_at timestamp without time zone NULL,
     updated_at timestamp without time zone NULL
 );
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS clinical_entries (
     entry_date date NOT NULL,
     payload_ciphertext text NOT NULL,
     payload_nonce varchar(64) NOT NULL,
+    archived_at timestamp without time zone NULL,
     created_at timestamp without time zone NULL,
     updated_at timestamp without time zone NULL
 );

@@ -19,6 +19,7 @@ class ClinicalEntry extends Model
         'issued_at',
         'issued_by_user_id',
         'issue_code',
+        'archived_at',
     ];
 
     protected function casts(): array
@@ -26,7 +27,13 @@ class ClinicalEntry extends Model
         return [
             'entry_date' => 'date',
             'issued_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 
     public const TYPES = [
@@ -75,7 +82,7 @@ class ClinicalEntry extends Model
 
     public function isEditable(): bool
     {
-        return ! $this->isIssued();
+        return ! $this->isArchived() && ! $this->isIssued();
     }
 
     public function typeLabel(): string

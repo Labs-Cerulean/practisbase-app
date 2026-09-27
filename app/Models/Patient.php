@@ -15,7 +15,20 @@ class Patient extends Model
         'billing_client_id',
         'payload_ciphertext',
         'payload_nonce',
+        'archived_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'archived_at' => 'datetime',
+        ];
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
 
     public function user(): BelongsTo
     {

@@ -26,6 +26,7 @@ class StampableLedgerController extends Controller
 
         $patients = Patient::where('user_id', $user->id)
             ->where('vault_id', $vault->id)
+            ->whereNull('archived_at')
             ->get()
             ->keyBy('id');
 
@@ -41,6 +42,8 @@ class StampableLedgerController extends Controller
 
         $clinicalRows = ClinicalEntry::where('user_id', $user->id)
             ->where('vault_id', $vault->id)
+            ->whereNull('archived_at')
+            ->whereIn('patient_id', $patients->keys())
             ->whereIn('entry_type', ClinicalEntry::STAMPABLE_TYPES)
             ->orderByDesc('issued_at')
             ->orderByDesc('entry_date')

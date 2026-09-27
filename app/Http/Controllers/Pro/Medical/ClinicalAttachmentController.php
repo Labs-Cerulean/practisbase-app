@@ -30,6 +30,10 @@ class ClinicalAttachmentController extends Controller
             return redirect('/pro/medical/vault/unlock');
         }
 
+        if ($patient->isArchived() || $entry->isArchived()) {
+            return back()->withErrors(['attachment' => 'Restore this before adding a file.']);
+        }
+
         if (! $entry->isEditable()) {
             return back()->withErrors(['attachment' => 'This document is stamped and issued. Attachments cannot be added.']);
         }

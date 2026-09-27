@@ -339,6 +339,17 @@
             }
             if (noteTemplate) noteTemplate.addEventListener('change', syncTemplateFields);
             sync();
+
+            var entryForm = document.getElementById('entry-form');
+            if (entryForm) {
+                entryForm.addEventListener('submit', function (event) {
+                    if (entryForm.dataset.submitted === '1') {
+                        event.preventDefault();
+                        return;
+                    }
+                    entryForm.dataset.submitted = '1';
+                });
+            }
         })();
     </script>
 @endsection

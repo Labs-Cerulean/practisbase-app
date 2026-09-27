@@ -11,28 +11,38 @@ use App\Models\Patient;
 use App\Support\ClinicalNoteTemplates;
 use App\Support\MedicalVaultCrypto;
 use App\Support\TierPolicy;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
         $vault = MedicalVault::activeForUser($user->id);
+        $showArchived = $request->boolean('archived');
+
+        $archivedCount = Patient::where('user_id', $user->id)
+            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->whereNotNull('archived_at')
+            ->count();
 
         $patients = Patient::where('user_id', $user->id)
             ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->when($showArchived, fn ($q) => $q->whereNotNull('archived_at'), fn ($q) => $q->whereNull('archived_at'))
             ->with('billingClient')
             ->orderByDesc('id')
             ->get();
 
         $entryStats = ClinicalEntry::where('user_id', $user->id)
             ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->whereNull('archived_at')
             ->selectRaw('patient_id, entry_type, COUNT(*) as total')
             ->groupBy('patient_id', 'entry_type')
             ->get()
@@ -40,6 +50,7 @@ class PatientController extends Controller
 
         $latestEntry = ClinicalEntry::where('user_id', $user->id)
             ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
+            ->whereNull('archived_at')
             ->selectRaw('patient_id, MAX(entry_date) as last_seen')
             ->groupBy('patient_id')
             ->pluck('last_seen', 'patient_id');
@@ -95,6 +106,8 @@ class PatientController extends Controller
             'user' => $user,
             'vault' => $vault,
             'backupOverdue' => $vault ? $vault->isBackupOverdue() : false,
+            'showArchived' => $showArchived,
+            'archivedCount' => $archivedCount,
         ]);
     }
 
@@ -145,40 +158,94 @@ class PatientController extends Controller
 
         $billingClientId = $validated['billing_client_id'] ?? null;
 
-        if ($billingClientId) {
-            $alreadyLinked = Patient::where('user_id', $user->id)
-                ->where('billing_client_id', $billingClientId)
-                ->exists();
+        try {
+            return Cache::lock('patient-store:'.$user->id, 20)->block(8, function () use ($user, $vault, $key, $validated, $billingClientId) {
+                if ($billingClientId) {
+                    $alreadyLinked = Patient::where('user_id', $user->id)
+                        ->where('billing_client_id', $billingClientId)
+                        ->exists();
 
-            if ($alreadyLinked) {
-                return back()->withErrors([
-                    'billing_client_id' => 'That billing client is already linked to another patient in your vault.',
-                ])->withInput();
-            }
+                    if ($alreadyLinked) {
+                        return back()->withErrors([
+                            'billing_client_id' => 'That billing client is already linked to another patient in your vault.',
+                        ])->withInput();
+                    }
+                }
+
+                $duplicate = $this->recentDuplicatePatient($user->id, $key, $validated['display_name'], $validated['date_of_birth'] ?? null);
+                if ($duplicate) {
+                    return redirect('/pro/medical/patients/'.$duplicate->id)
+                        ->with('success', 'That patient was just saved. Opened the existing record so a second copy was not created.');
+                }
+
+                $encrypted = MedicalVaultCrypto::encrypt([
+                    'display_name' => $validated['display_name'],
+                    'date_of_birth' => $validated['date_of_birth'] ?? null,
+                    'age' => $validated['age'] ?? null,
+                    'id_card' => $validated['id_card'] ?? null,
+                    'tel' => $validated['tel'] ?? null,
+                    'email' => $validated['email'] ?? null,
+                    'address' => $validated['address'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                ], $key);
+
+                $patient = Patient::create([
+                    'user_id' => $user->id,
+                    'vault_id' => $vault->id,
+                    'public_ref' => 'PAT-'.strtoupper(Str::random(8)),
+                    'billing_client_id' => $billingClientId,
+                    'payload_ciphertext' => $encrypted['ciphertext'],
+                    'payload_nonce' => $encrypted['nonce'],
+                ]);
+
+                return redirect('/pro/medical/patients/'.$patient->id)
+                    ->with('success', 'Patient record created in the encrypted vault.');
+            });
+        } catch (LockTimeoutException) {
+            return back()->withErrors([
+                'display_name' => 'A save is already in progress. Check the patient list before trying again.',
+            ])->withInput();
+        }
+    }
+
+    public function archive(Patient $patient)
+    {
+        $user = Auth::user();
+        if ($patient->user_id !== $user->id) {
+            abort(403);
         }
 
-        $encrypted = MedicalVaultCrypto::encrypt([
-            'display_name' => $validated['display_name'],
-            'date_of_birth' => $validated['date_of_birth'] ?? null,
-            'age' => $validated['age'] ?? null,
-            'id_card' => $validated['id_card'] ?? null,
-            'tel' => $validated['tel'] ?? null,
-            'email' => $validated['email'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'notes' => $validated['notes'] ?? null,
-        ], $key);
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients?archived=1')->with('success', 'Patient is already archived.');
+        }
 
-        $patient = Patient::create([
-            'user_id' => $user->id,
-            'vault_id' => $vault->id,
-            'public_ref' => 'PAT-' . strtoupper(Str::random(8)),
-            'billing_client_id' => $billingClientId,
-            'payload_ciphertext' => $encrypted['ciphertext'],
-            'payload_nonce' => $encrypted['nonce'],
-        ]);
+        $patient->archived_at = now();
+        $patient->save();
 
-        return redirect('/pro/medical/patients/' . $patient->id)
-            ->with('success', 'Patient record created in the encrypted vault.');
+        return redirect('/pro/medical/patients')->with(
+            'success',
+            'Patient archived. Notes stay with the chart. Restore them from Archived whenever you want.'
+        );
+    }
+
+    public function restore(Patient $patient)
+    {
+        $user = Auth::user();
+        if ($patient->user_id !== $user->id) {
+            abort(403);
+        }
+
+        if (! $patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)->with('success', 'Patient is already active.');
+        }
+
+        $patient->archived_at = null;
+        $patient->save();
+
+        return redirect('/pro/medical/patients/'.$patient->id)->with(
+            'success',
+            'Patient restored. Their notes are back on the active list.'
+        );
     }
 
     public function updateBillingLink(Request $request, Patient $patient)
@@ -186,6 +253,11 @@ class PatientController extends Controller
         $user = Auth::user();
         if ($patient->user_id !== $user->id) {
             abort(403);
+        }
+
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this patient before changing the billing link.']);
         }
 
         $validated = $request->validate([
@@ -224,6 +296,11 @@ class PatientController extends Controller
         $user = Auth::user();
         if ($patient->user_id !== $user->id) {
             abort(403);
+        }
+
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this patient before creating a billing client.']);
         }
 
         if ($patient->billing_client_id) {
@@ -363,6 +440,7 @@ class PatientController extends Controller
                     'is_stampable' => $entry->isStampable(),
                     'is_issued' => $entry->isIssued(),
                     'is_editable' => $entry->isEditable(),
+                    'is_archived' => $entry->isArchived(),
                     'issued_at' => $entry->issued_at,
                     'issue_code' => $entry->issue_code,
                 ];
@@ -403,6 +481,11 @@ class PatientController extends Controller
             abort(403);
         }
 
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this patient before editing.']);
+        }
+
         $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
         if (! $key) {
             return redirect('/pro/medical/vault/unlock');
@@ -421,6 +504,11 @@ class PatientController extends Controller
         $user = Auth::user();
         if ($patient->user_id !== $user->id) {
             abort(403);
+        }
+
+        if ($patient->isArchived()) {
+            return redirect('/pro/medical/patients/'.$patient->id)
+                ->withErrors(['archive' => 'Restore this patient before editing.']);
         }
 
         $vault = MedicalVault::activeForUser($user->id);
@@ -458,5 +546,33 @@ class PatientController extends Controller
 
         return redirect('/pro/medical/patients/' . $patient->id)
             ->with('success', 'Patient record updated.');
+    }
+
+    private function recentDuplicatePatient(int $userId, string $key, string $displayName, ?string $dateOfBirth): ?Patient
+    {
+        $needle = mb_strtolower(trim($displayName));
+        $dob = $dateOfBirth ? (string) $dateOfBirth : '';
+
+        $recent = Patient::where('user_id', $userId)
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get();
+
+        foreach ($recent as $existing) {
+            try {
+                $payload = MedicalVaultCrypto::decrypt($existing->payload_ciphertext, $existing->payload_nonce, $key);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $name = mb_strtolower(trim((string) ($payload['display_name'] ?? '')));
+            $existingDob = (string) ($payload['date_of_birth'] ?? '');
+            if ($name === $needle && $existingDob === $dob) {
+                return $existing;
+            }
+        }
+
+        return null;
     }
 }

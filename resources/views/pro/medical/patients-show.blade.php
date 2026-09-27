@@ -3,17 +3,33 @@
 @section('page_title', 'Patient')
 
 @section('content')
-    <a href="/pro/medical/patients" style="color: var(--text-muted); font-weight: 600; text-decoration: none; font-size: 0.85rem;">&larr; Patients</a>
+    <a href="{{ $patient->archived_at ? '/pro/medical/patients?archived=1' : '/pro/medical/patients' }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none; font-size: 0.85rem;">&larr; Patients</a>
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin: 0.75rem 0 1.25rem; flex-wrap: wrap;">
         <div>
             <h1 style="margin: 0; color: var(--primary-navy);">{{ $payload['display_name'] ?? 'Patient' }}</h1>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">Patient ref {{ $patient->public_ref }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Patient ref {{ $patient->public_ref }}{{ $patient->archived_at ? ' · Archived' : '' }}</div>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <a href="/pro/medical/patients/{{ $patient->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit patient</a>
+            @if($patient->archived_at)
+                <form action="/pro/medical/patients/{{ $patient->id }}/restore" method="POST" style="margin: 0;">
+                    @csrf
+                    <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Restore patient</button>
+                </form>
+            @else
+                <a href="/pro/medical/patients/{{ $patient->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit patient</a>
+                <form action="/pro/medical/patients/{{ $patient->id }}/archive" method="POST" style="margin: 0;" onsubmit="return confirm('Archive this patient? Their notes stay with the chart and you can restore them later.');">
+                    @csrf
+                    <button type="submit" style="background: white; border: 1px solid #fecaca; color: #b91c1c; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Archive</button>
+                </form>
+            @endif
             <a href="/pro/medical/stampables" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Documents</a>
         </div>
     </div>
+    @if($patient->archived_at)
+        <div style="background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; padding: 0.85rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.9rem;">
+            This patient is archived. Notes stay on the chart. Restore them before adding or editing anything.
+        </div>
+    @endif
 
     @if(session('success'))
         <div style="background: #ecfdf5; color: #065f46; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
@@ -84,6 +100,7 @@
         @endif
     </div>
 
+    @unless($patient->archived_at)
     @php
         $billingFormOpen = $errors->has('name') || $errors->has('type') || $errors->has('billing_client_id')
             || $errors->has('email') || $errors->has('phone') || $errors->has('billing_address');
@@ -213,6 +230,13 @@
             </div>
         </details>
     </div>
+    @else
+        @if($patient->billingClient)
+            <p style="margin: -0.25rem 0 1.25rem; font-size: 0.85rem; color: var(--text-muted);">
+                Billing client {{ $patient->billingClient->name }} stays linked. Restore the patient to change it.
+            </p>
+        @endif
+    @endunless
 
     @php
         $hubTabs = [
@@ -234,7 +258,7 @@
             @foreach($hubTabs as $tabKey => $tabMeta)
                 @php
                     $tabChrome = \App\Models\ClinicalEntry::typeChrome($tabKey);
-                    $tabCount = ($entriesByType->get($tabKey) ?? collect())->count();
+                    $tabCount = ($entriesByType->get($tabKey) ?? collect())->filter(fn ($row) => empty($row['is_archived']))->count();
                 @endphp
                 <button type="button"
                         class="patient-hub-tab"
@@ -253,6 +277,8 @@
         @php
             $tabChrome = \App\Models\ClinicalEntry::typeChrome($tabKey);
             $tabEntries = $entriesByType->get($tabKey) ?? collect();
+            $activeEntries = $tabEntries->filter(fn ($row) => empty($row['is_archived']));
+            $archivedEntries = $tabEntries->filter(fn ($row) => ! empty($row['is_archived']));
         @endphp
         <div class="patient-hub-panel" data-tab-panel="{{ $tabKey }}" role="tabpanel"
              style="display: {{ $initialHubTab === $tabKey ? 'block' : 'none' }};">
@@ -264,20 +290,22 @@
                         Drafts stay editable until Stamp &amp; issue.
                     @endif
                 </div>
-                @if($tabKey === 'journal')
-                    <button type="button" id="journal-compose-open" class="journal-new-btn"
-                            style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; cursor: pointer;">
-                        {{ $tabMeta['new'] }}
-                    </button>
-                @else
-                    <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type={{ $tabKey }}"
-                       style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none; font-size: 0.85rem;">
-                        {{ $tabMeta['new'] }}
-                    </a>
-                @endif
+                @unless($patient->archived_at)
+                    @if($tabKey === 'journal')
+                        <button type="button" id="journal-compose-open" class="journal-new-btn"
+                                style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.85rem; cursor: pointer;">
+                            {{ $tabMeta['new'] }}
+                        </button>
+                    @else
+                        <a href="/pro/medical/patients/{{ $patient->id }}/entries/create?type={{ $tabKey }}"
+                           style="background: {{ $tabChrome['badge_bg'] }}; color: {{ $tabChrome['badge_fg'] }}; border: 1px solid {{ $tabChrome['border'] }}; padding: 0.5rem 0.95rem; border-radius: var(--radius-md); font-weight: 700; text-decoration: none; font-size: 0.85rem;">
+                            {{ $tabMeta['new'] }}
+                        </a>
+                    @endif
+                @endunless
             </div>
 
-            @if($tabKey === 'journal')
+            @if($tabKey === 'journal' && ! $patient->archived_at)
                 <div id="journal-compose" style="{{ ($composeNote ?? false) ? '' : 'display:none;' }} margin-bottom: 0.85rem;">
                     @include('pro.medical._journal-compose', [
                         'patient' => $patient,
@@ -287,11 +315,11 @@
                 </div>
             @endif
 
-            @if($tabEntries->isEmpty())
+            @if($activeEntries->isEmpty())
                 <p class="journal-empty" style="color: var(--text-muted); margin: 0 0 1.5rem;">Nothing here yet.</p>
             @else
                 <div class="{{ $tabKey === 'journal' ? 'journal-notes' : '' }}{{ ($tabKey === 'journal' && ($composeNote ?? false)) ? ' is-composing' : '' }}" style="display: grid; gap: 0.75rem; margin-bottom: 1.5rem;">
-                    @foreach($tabEntries as $entry)
+                    @foreach($activeEntries as $entry)
                         @if($tabKey === 'journal')
                             <div class="journal-note-wrap">
                                 <button type="button" class="journal-note-peek" hidden
@@ -320,6 +348,23 @@
                         @endif
                     @endforeach
                 </div>
+            @endif
+
+            @if($archivedEntries->isNotEmpty() && ! $patient->archived_at)
+                <details style="margin: 0 0 1.5rem;">
+                    <summary style="cursor: pointer; font-weight: 700; color: var(--text-muted); font-size: 0.85rem;">Archived ({{ $archivedEntries->count() }})</summary>
+                    <div style="display: grid; gap: 0.75rem; margin-top: 0.75rem;">
+                        @foreach($archivedEntries as $entry)
+                            @include('pro.medical._patient-entry-card', [
+                                'entry' => $entry,
+                                'patient' => $patient,
+                                'payload' => $payload,
+                                'entryTypes' => $entryTypes ?? \App\Models\ClinicalEntry::TYPES,
+                                'expandShare' => false,
+                            ])
+                        @endforeach
+                    </div>
+                </details>
             @endif
         </div>
     @endforeach
