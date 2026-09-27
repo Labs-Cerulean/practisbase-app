@@ -9,20 +9,23 @@
             <h1 style="margin: 0; color: var(--primary-navy);">{{ $payload['display_name'] ?? 'Patient' }}</h1>
             <div style="font-size: 0.85rem; color: var(--text-muted);">Patient ref {{ $patient->public_ref }}{{ $patient->archived_at ? ' · Archived' : '' }}</div>
         </div>
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            @php
+                $patientActionStyle = 'display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 2.55rem; padding: 0 1rem; border-radius: var(--radius-md); font-family: inherit; font-size: 0.9rem; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer;';
+            @endphp
             @if($patient->archived_at)
-                <form action="/pro/medical/patients/{{ $patient->id }}/restore" method="POST" style="margin: 0;">
+                <form action="/pro/medical/patients/{{ $patient->id }}/restore" method="POST" style="margin: 0; display: inline-flex;">
                     @csrf
-                    <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Restore patient</button>
+                    <button type="submit" style="{{ $patientActionStyle }} background: var(--primary-cerulean); color: white; border: 1px solid var(--primary-cerulean);">Restore patient</button>
                 </form>
             @else
-                <a href="/pro/medical/patients/{{ $patient->id }}/edit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Edit patient</a>
-                <form action="/pro/medical/patients/{{ $patient->id }}/archive" method="POST" style="margin: 0;" onsubmit="return confirm('Archive this patient? Their notes stay with the chart and you can restore them later.');">
+                <a href="/pro/medical/patients/{{ $patient->id }}/edit" style="{{ $patientActionStyle }} background: white; border: 1px solid var(--border-light); color: var(--primary-navy);">Edit patient</a>
+                <form action="/pro/medical/patients/{{ $patient->id }}/archive" method="POST" style="margin: 0; display: inline-flex;" onsubmit="return confirm('Archive this patient? Their notes stay with the chart and you can restore them later.');">
                     @csrf
-                    <button type="submit" style="background: white; border: 1px solid #fecaca; color: #b91c1c; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Archive</button>
+                    <button type="submit" style="{{ $patientActionStyle }} background: white; border: 1px solid #fecaca; color: #b91c1c;">Archive</button>
                 </form>
             @endif
-            <a href="/pro/medical/stampables" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; text-decoration: none;">Documents</a>
+            <a href="/pro/medical/stampables" style="{{ $patientActionStyle }} background: white; border: 1px solid var(--border-light); color: var(--primary-navy);">Documents</a>
         </div>
     </div>
     @if($patient->archived_at)
