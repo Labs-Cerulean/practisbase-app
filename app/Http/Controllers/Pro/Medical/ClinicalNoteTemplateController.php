@@ -166,6 +166,7 @@ class ClinicalNoteTemplateController extends Controller
             'fields.*.label' => 'required|string|max:80',
             'fields.*.key' => 'nullable|string|max:40',
             'fields.*.type' => 'nullable|in:text,date,bullets',
+            'fields.*.defaults' => 'nullable|string|max:2000',
         ], [
             'name.unique' => 'You already have a template with that name.',
         ]);

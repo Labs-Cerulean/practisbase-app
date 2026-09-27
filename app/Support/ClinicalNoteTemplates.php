@@ -447,14 +447,62 @@ class ClinicalNoteTemplates
             }
             $usedKeys[$key] = true;
 
-            $out[] = [
+            $type = self::normalizeFieldType($row['type'] ?? 'text');
+            $field = [
                 'key' => $key,
                 'label' => mb_substr($label, 0, 80),
-                'type' => self::normalizeFieldType($row['type'] ?? 'text'),
+                'type' => $type,
             ];
+            if ($type === 'text') {
+                $field['defaults'] = self::sanitizeDefaultLines($row['defaults'] ?? []);
+            }
+            $out[] = $field;
         }
 
         return $out;
+    }
+
+    /**
+     * Bold starter lines for a free-text field. Each line is shown in bold when a note starts.
+     *
+     * @return list<string>
+     */
+    public static function sanitizeDefaultLines(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            $lines = $raw;
+        } else {
+            $lines = preg_split('/\r\n|\r|\n/', (string) $raw) ?: [];
+        }
+
+        $out = [];
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+            $line = str_replace(['*', '<', '>'], '', $line);
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $out[] = mb_substr($line, 0, 160);
+            if (count($out) >= 12) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Escape note text, then turn **bold** markers into strong tags.
+     */
+    public static function renderInlineMarkup(string $value): string
+    {
+        $escaped = e($value);
+
+        return preg_replace('/\*\*([^*\n]+)\*\*/', '<strong>$1</strong>', $escaped) ?? $escaped;
     }
 
     public static function normalizeFieldType(mixed $type): string

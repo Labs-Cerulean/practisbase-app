@@ -166,7 +166,12 @@
             }
 
             function captureValues() {
+                if (window.PractisNoteRich) window.PractisNoteRich.syncHost(fieldsHost);
                 fieldsHost.querySelectorAll('[data-field-key]').forEach(function (el) {
+                    if (el.getAttribute('data-rich-field') === '1') {
+                        valueStore[el.getAttribute('data-field-key')] = window.PractisNoteRich.htmlToStorage(el);
+                        return;
+                    }
                     valueStore[el.getAttribute('data-field-key')] = el.value;
                 });
             }
@@ -191,6 +196,9 @@
                     return '<textarea name="' + name + '" ' + keyAttr + ' data-bullet-field="1" rows="4" placeholder="1. First item" style="' + style + '">' +
                         escapeHtml(seed) + '</textarea>' +
                         '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Numbers update as you type. Enter for the next item.</div>';
+                }
+                if (window.PractisNoteRich) {
+                    return window.PractisNoteRich.textControl(name, keyAttr, style, val, field.defaults || [], false);
                 }
                 return '<textarea name="' + name + '" ' + keyAttr + ' rows="3" style="' + style + '">' +
                     escapeHtml(val) + '</textarea>';
@@ -275,6 +283,7 @@
                         fieldControl(field, val) + '</div>';
                 }).join('');
                 bindBulletFields();
+                if (window.PractisNoteRich) window.PractisNoteRich.bind(fieldsHost);
             }
 
             noteTemplate.addEventListener('change', syncTemplateFields);

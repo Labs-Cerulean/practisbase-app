@@ -87,22 +87,22 @@
             $templateLabel = $entry['template_name']
                 ?? (\App\Support\ClinicalNoteTemplates::builtinOptions()[$entry['template'] ?? ''] ?? 'Consult');
         @endphp
-        <div style="margin-top: 0.65rem; display: grid; gap: 0.55rem;">
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+        <div style="margin-top: 0.85rem;">
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.15rem;">
                 {{ $templateLabel }}
             </div>
             @foreach($fieldDefs as $def)
                 @php $fieldKey = is_array($def) ? ($def['key'] ?? '') : ''; @endphp
                 @if($fieldKey !== '' && trim((string) ($entry['fields'][$fieldKey] ?? '')) !== '')
-                    <div>
-                        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">{{ $def['label'] ?? $fieldKey }}</div>
-                        <div style="white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['fields'][$fieldKey] }}</div>
+                    <div style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid #e2e8f0;">
+                        <div style="font-size: 0.95rem; font-weight: 800; color: var(--primary-navy); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.45rem;">{{ $def['label'] ?? $fieldKey }}</div>
+                        <div style="white-space: pre-wrap; font-size: 0.95rem; line-height: 1.55;">{!! \App\Support\ClinicalNoteTemplates::renderInlineMarkup($entry['fields'][$fieldKey]) !!}</div>
                     </div>
                 @endif
             @endforeach
         </div>
     @else
-        <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.9rem;">{{ $entry['body'] }}</div>
+        <div style="margin-top: 0.65rem; color: var(--text-main); white-space: pre-wrap; font-size: 0.95rem; line-height: 1.55;">{!! \App\Support\ClinicalNoteTemplates::renderInlineMarkup($entry['body']) !!}</div>
     @endif
 
     @if($entry['is_stampable'] && empty($entry['is_archived']) && ! $patient->archived_at)
