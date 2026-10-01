@@ -468,6 +468,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/invoices/{document}/pay', [CompanyInvoiceController::class, 'pay']);
         Route::post('/invoices/{document}/credit', [CompanyInvoiceController::class, 'credit']);
         Route::get('/invoices/{document}/pdf', [CompanyInvoiceController::class, 'pdf']);
+        Route::delete('/invoices/{document}', [CompanyInvoiceController::class, 'destroy'])->whereNumber('document');
 
         Route::get('/expenses', [CompanyExpenseController::class, 'index']);
         Route::get('/expenses/create', [CompanyExpenseController::class, 'create']);

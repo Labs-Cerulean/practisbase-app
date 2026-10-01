@@ -88,4 +88,24 @@ class CompanyInvoice extends Model
 
         return round(((float) $this->total - $credits) - (float) $this->amount_paid, 2);
     }
+
+    /**
+     * Unpaid proformas only. Tax invoices and converted RFPs stay on the books.
+     */
+    public function canDelete(): bool
+    {
+        if ($this->type !== 'rfp' || $this->status === 'converted') {
+            return false;
+        }
+
+        if ((float) $this->amount_paid > 0.009) {
+            return false;
+        }
+
+        $hasPayments = $this->relationLoaded('payments')
+            ? $this->payments->isNotEmpty()
+            : $this->payments()->exists();
+
+        return ! $hasPayments;
+    }
 }
