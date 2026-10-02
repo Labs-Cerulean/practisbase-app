@@ -257,7 +257,15 @@
                                             <td style="padding: 0.5rem 0.65rem; text-align: right; font-variant-numeric: tabular-nums; color: {{ $bal > 0.009 ? '#b45309' : '#059669' }};">€{{ number_format($bal, 2) }}</td>
                                             <td style="padding: 0.5rem 0.65rem; text-align: right; white-space: nowrap;">
                                                 <a href="/company/invoices/{{ $doc->id }}/pdf" style="font-size: 0.78rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">PDF</a>
-                                                <a href="/company/invoices" style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; margin-left: 0.45rem;">Pay / convert</a>
+                                                @if($doc->canDelete())
+                                                    <form method="POST" action="/company/invoices/{{ $doc->id }}" style="display: inline; margin-left: 0.45rem;" onsubmit="return confirm('Delete this unpaid proforma? It has no tax effect.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" style="font-size: 0.78rem; font-weight: 600; background: none; border: none; color: #b91c1c; cursor: pointer; padding: 0;">Delete</button>
+                                                    </form>
+                                                @else
+                                                    <a href="/company/invoices" style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; margin-left: 0.45rem;">Pay / convert</a>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

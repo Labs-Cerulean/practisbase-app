@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Company;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyClient;
 use App\Models\CompanyInvoice;
+use App\Models\CompanyJournalEntry;
 use App\Models\CompanyPayment;
 use App\Models\CompanyProfile;
 use App\Models\User;
@@ -290,6 +291,54 @@ class InvoiceController extends Controller
         ]);
 
         return $pdf->download($doc->document_number.'.pdf');
+    }
+
+    public function destroy(int $document)
+    {
+        $user = Auth::user();
+        $rfp = CompanyInvoice::where('user_id', $user->id)
+            ->where('id', $document)
+            ->firstOrFail();
+
+        if ($rfp->type !== 'rfp') {
+            return back()->withErrors([
+                'document' => 'Tax invoices stay on the books. Issue a credit note instead of deleting.',
+            ]);
+        }
+
+        if ($rfp->status === 'converted' || CompanyInvoice::where('user_id', $user->id)->where('linked_document_id', $rfp->id)->where('type', 'invoice')->exists()) {
+            return back()->withErrors([
+                'document' => 'This proforma was already converted to a tax invoice, so it cannot be deleted.',
+            ]);
+        }
+
+        if (! $rfp->canDelete()) {
+            return back()->withErrors([
+                'document' => 'This proforma has a payment recorded. Only unpaid proformas can be deleted.',
+            ]);
+        }
+
+        try {
+            CompanyLedger::assertDateOpen($user->id, $rfp->issue_date->format('Y-m-d'));
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        $hasLedger = CompanyJournalEntry::where('user_id', $user->id)
+            ->where('source_id', $rfp->id)
+            ->whereIn('source_type', ['company_invoice', 'company_invoice_convert'])
+            ->exists();
+
+        if ($hasLedger) {
+            return back()->withErrors([
+                'document' => 'This proforma has ledger entries and cannot be deleted.',
+            ]);
+        }
+
+        $number = $rfp->document_number;
+        $rfp->delete();
+
+        return back()->with('success', 'Proforma '.$number.' deleted. It had no tax effect.');
     }
 
     /**

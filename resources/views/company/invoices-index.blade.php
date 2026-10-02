@@ -51,6 +51,14 @@
                 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
                     <a href="/company/invoices/{{ $doc->id }}/pdf" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none; padding: 0.4rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">PDF</a>
 
+                    @if($doc->canDelete())
+                        <form method="POST" action="/company/invoices/{{ $doc->id }}" onsubmit="return confirm('Delete this unpaid proforma? It has no tax effect.');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: #b91c1c; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Delete</button>
+                        </form>
+                    @endif
+
                     @if($doc->type === 'rfp' && $doc->status !== 'converted')
                         <form method="POST" action="/company/invoices/{{ $doc->id }}/convert" onsubmit="return confirm('Convert this RFP to a tax invoice with 18% VAT?');">
                             @csrf
