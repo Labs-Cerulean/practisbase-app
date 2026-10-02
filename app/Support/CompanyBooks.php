@@ -76,6 +76,23 @@ class CompanyBooks
         return $patternPrefix.str_pad((string) $nextSeq, 4, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Monthly bills download as "(CL-RFP-2026-0004 Oct-26).pdf". Other documents keep the reference only.
+     */
+    public static function documentPdfFilename(string $documentNumber, \DateTimeInterface $supplyMonth, bool $monthlyBill): string
+    {
+        $ref = trim(str_replace(['/', '\\', "\0"], '-', $documentNumber));
+        if ($ref === '') {
+            $ref = 'document';
+        }
+
+        if (! $monthlyBill) {
+            return $ref.'.pdf';
+        }
+
+        return '('.$ref.' '.$supplyMonth->format('M-y').').pdf';
+    }
+
     public static function periodLabel(CompanyProfile $profile): string
     {
         return $profile->first_period_start->format('d M Y').' – '.$profile->first_period_end->format('d M Y');
