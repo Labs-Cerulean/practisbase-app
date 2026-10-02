@@ -15,4 +15,22 @@ class CompanyBooksTest extends TestCase
         $this->assertSame('2026-12-31', CompanyBooks::FIRST_PERIOD_END);
         $this->assertSame(1200.0, CompanyBooks::SHARE_CAPITAL_EUR);
     }
+
+    public function test_monthly_bill_pdf_name_uses_reference_and_supply_month(): void
+    {
+        $october = new \DateTimeImmutable('2026-10-01');
+
+        $this->assertSame(
+            '(CL-RFP-2026-0004 Oct-26).pdf',
+            CompanyBooks::documentPdfFilename('CL-RFP-2026-0004', $october, true)
+        );
+        $this->assertSame(
+            '(CL-INV-2026-0002 Oct-26).pdf',
+            CompanyBooks::documentPdfFilename('CL-INV-2026-0002', $october, true)
+        );
+        $this->assertSame(
+            'CL-RFP-2026-0004.pdf',
+            CompanyBooks::documentPdfFilename('CL-RFP-2026-0004', $october, false)
+        );
+    }
 }

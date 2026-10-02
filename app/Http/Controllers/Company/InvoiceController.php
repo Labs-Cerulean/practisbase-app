@@ -290,7 +290,7 @@ class InvoiceController extends Controller
             'creditedInvoice' => $doc->type === 'credit_note' ? $doc->parentDocument : null,
         ]);
 
-        return $pdf->download($doc->document_number.'.pdf');
+        return $pdf->download($doc->pdfDownloadName());
     }
 
     public function destroy(int $document)

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CompanyBooks;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -107,5 +108,23 @@ class CompanyInvoice extends Model
             : $this->payments()->exists();
 
         return ! $hasPayments;
+    }
+
+    public function isMonthlyBill(): bool
+    {
+        if ($this->company_recurring_invoice_id) {
+            return true;
+        }
+
+        return str_contains((string) $this->notes, 'Recurring proforma:');
+    }
+
+    public function pdfDownloadName(): string
+    {
+        return CompanyBooks::documentPdfFilename(
+            (string) $this->document_number,
+            $this->effectiveSupplyDate(),
+            $this->isMonthlyBill(),
+        );
     }
 }
