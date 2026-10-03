@@ -23,6 +23,7 @@ class CompanyExpense extends Model
     protected $fillable = [
         'user_id',
         'company_supplier_id',
+        'company_expense_payment_id',
         'expense_date',
         'category',
         'description',
@@ -60,6 +61,11 @@ class CompanyExpense extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(CompanySupplier::class, 'company_supplier_id');
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(CompanyExpensePayment::class, 'company_expense_payment_id');
     }
 
     /**
@@ -107,5 +113,22 @@ class CompanyExpense extends Model
         return ! $this->isReversed()
             && $this->funded_by === 'director'
             && $this->director_refunded_at === null;
+    }
+
+    /** Supplier invoice logged, company bank not yet charged. */
+    public function isAwaitingSupplierPayment(): bool
+    {
+        return ! $this->isReversed()
+            && $this->funded_by === 'payable'
+            && $this->company_expense_payment_id === null;
+    }
+
+    public function fundingLabel(): string
+    {
+        return match ($this->funded_by) {
+            'director' => 'Director-funded',
+            'payable' => $this->company_expense_payment_id ? 'Paid to supplier' : 'Waiting for payment',
+            default => 'Company-paid',
+        };
     }
 }

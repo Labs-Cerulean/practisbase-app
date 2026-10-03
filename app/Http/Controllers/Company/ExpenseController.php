@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompanyExpense;
+use App\Models\CompanyExpensePayment;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
 use App\Support\CompanyExpenseMonths;
@@ -13,6 +14,7 @@ use App\Support\SupplierInvoiceReader;
 use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -24,7 +26,7 @@ class ExpenseController extends Controller
         $profile = CompanyBooks::ensureProfile($user);
         $year = (int) $request->input('year', $profile->first_period_end->format('Y'));
         $status = (string) $request->input('status', 'active');
-        if (! in_array($status, ['active', 'owed', 'company', 'reversed'], true)) {
+        if (! in_array($status, ['active', 'owed', 'unpaid', 'company', 'reversed'], true)) {
             $status = 'active';
         }
         $search = trim((string) $request->input('q', ''));
@@ -54,7 +56,7 @@ class ExpenseController extends Controller
         }
 
         $query = CompanyExpense::where('user_id', $user->id)
-            ->with('supplier')
+            ->with(['supplier', 'payment'])
             ->whereYear('expense_date', $year);
 
         if ($supplierFilter) {
@@ -74,6 +76,8 @@ class ExpenseController extends Controller
 
         if ($status === 'owed') {
             $query->where('funded_by', 'director')->whereNull('director_refunded_at')->whereNull('reversed_at');
+        } elseif ($status === 'unpaid') {
+            $query->where('funded_by', 'payable')->whereNull('company_expense_payment_id')->whereNull('reversed_at');
         } elseif ($status === 'company') {
             $query->where('funded_by', 'company')->whereNull('reversed_at');
         } elseif ($status === 'reversed') {
@@ -93,6 +97,7 @@ class ExpenseController extends Controller
                 'reversed' => $expense->isReversed(),
                 'cash' => $expense->cashTotal(),
                 'owed' => $expense->isOwedToDirector() ? $expense->cashTotal() : 0.0,
+                'unpaid' => $expense->isAwaitingSupplierPayment() ? $expense->cashTotal() : 0.0,
             ];
         }
 
@@ -102,6 +107,8 @@ class ExpenseController extends Controller
             : $expenses->filter(fn (CompanyExpense $expense) => ! $expense->isReversed());
 
         $owed = $counted->filter(fn (CompanyExpense $expense) => $expense->isOwedToDirector())
+            ->sum(fn (CompanyExpense $expense) => $expense->cashTotal());
+        $owedSuppliers = $counted->filter(fn (CompanyExpense $expense) => $expense->isAwaitingSupplierPayment())
             ->sum(fn (CompanyExpense $expense) => $expense->cashTotal());
         $cashShown = $counted->sum(fn (CompanyExpense $expense) => $expense->cashTotal());
         $reverseChargeVat = (float) $counted
@@ -134,6 +141,7 @@ class ExpenseController extends Controller
             'cashShown' => $cashShown,
             'invoiceCount' => $counted->count(),
             'owedToDirector' => $owed,
+            'owedToSuppliers' => $owedSuppliers,
             'reverseChargeVat' => $reverseChargeVat,
             'profile' => $profile,
             'suppliers' => $suppliers,
@@ -230,7 +238,7 @@ class ExpenseController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'vat_amount' => 'nullable|numeric|min:0',
             'is_reverse_charge' => 'sometimes|boolean',
-            'funded_by' => 'required|in:company,director',
+            'funded_by' => 'required|in:company,director,payable',
             'supplier_mode' => 'required|in:existing,new',
             'company_supplier_id' => 'nullable|integer',
             'supplier_name' => 'nullable|string|max:255',
@@ -343,9 +351,13 @@ class ExpenseController extends Controller
         CompanyLedger::ensureChart($user);
         CompanyLedger::postExpense($expense);
 
-        $msg = $isReverseCharge
-            ? 'Expense logged for '.$supplier->name.' with reverse charge (output + input VAT €'.number_format($vatAmount, 2).').'
-            : 'Expense logged for '.$supplier->name.' and posted to the ledger.';
+        if ($validated['funded_by'] === 'payable') {
+            $msg = 'Invoice logged for '.$supplier->name.'. Trade payables went up. The bank stays as it is until you record the payment.';
+        } elseif ($isReverseCharge) {
+            $msg = 'Expense logged for '.$supplier->name.' with reverse charge (output + input VAT €'.number_format($vatAmount, 2).').';
+        } else {
+            $msg = 'Expense logged for '.$supplier->name.' and posted to the ledger.';
+        }
 
         return redirect('/company/expenses')->with('success', $msg);
     }
@@ -434,6 +446,9 @@ class ExpenseController extends Controller
         if ($model->director_refunded_at) {
             $message .= ' The director refund was reversed as well.';
         }
+        if ($model->funded_by === 'payable' && $model->company_expense_payment_id) {
+            $message .= ' The supplier payment was reversed as well.';
+        }
         if ($released > 0) {
             $message .= ' The bank match was released.';
         }
@@ -467,6 +482,216 @@ class ExpenseController extends Controller
         ]);
 
         return back()->with('success', 'Assigned to '.$supplier->name.'.');
+    }
+
+    public function pay(Request $request)
+    {
+        $user = Auth::user();
+        CompanyBooks::ensureProfile($user);
+        $kind = $request->input('kind') === 'supplier' ? 'supplier' : 'director';
+
+        $openQuery = CompanyExpense::where('user_id', $user->id)
+            ->with('supplier')
+            ->whereNull('reversed_at')
+            ->orderBy('expense_date')
+            ->orderBy('id');
+
+        if ($kind === 'supplier') {
+            $openQuery->where('funded_by', 'payable')->whereNull('company_expense_payment_id');
+        } else {
+            $openQuery->where('funded_by', 'director')->whereNull('director_refunded_at');
+        }
+
+        $open = $openQuery->get();
+
+        $suppliers = $open
+            ->map(fn (CompanyExpense $expense) => $expense->supplier)
+            ->filter()
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
+        $supplierFilter = null;
+        if ($request->filled('supplier')) {
+            $supplierId = (int) $request->input('supplier');
+            $supplierFilter = $suppliers->firstWhere('id', $supplierId)
+                ?: CompanySupplier::where('user_id', $user->id)->where('id', $supplierId)->first();
+        }
+
+        $expenses = $supplierFilter
+            ? $open->where('company_supplier_id', $supplierFilter->id)->values()
+            : $open;
+
+        return view('company.expenses-pay', [
+            'expenses' => $expenses,
+            'suppliers' => $suppliers,
+            'supplierFilter' => $supplierFilter,
+            'openTotal' => CompanyExpensePayment::cashTotal($expenses),
+            'kind' => $kind,
+        ]);
+    }
+
+    public function storePayment(Request $request)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+
+        $validated = $request->validate([
+            'expense_ids' => 'required|array|min:1|max:200',
+            'expense_ids.*' => 'integer',
+            'paid_on' => 'required|date|before_or_equal:today',
+            'reference' => 'nullable|string|max:120',
+            'proof' => 'required|file|mimes:jpg,jpeg,png,pdf|max:8192',
+        ]);
+
+        $ids = array_values(array_unique(array_map('intval', $validated['expense_ids'])));
+        $paidOn = $validated['paid_on'];
+        $reference = trim((string) ($validated['reference'] ?? ''));
+        $reference = $reference !== '' ? $reference : null;
+
+        $expenses = CompanyExpense::where('user_id', $user->id)
+            ->whereIn('id', $ids)
+            ->get();
+
+        if ($expenses->count() !== count($ids)) {
+            return back()->withErrors([
+                'expense_ids' => 'One of those expenses is not on your books.',
+            ])->withInput();
+        }
+
+        try {
+            CompanyExpensePayment::kindFor($expenses);
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['expense_ids' => $e->getMessage()])->withInput();
+        }
+
+        foreach ($expenses as $expense) {
+            if ($paidOn < $expense->expense_date->format('Y-m-d')) {
+                return back()->withErrors([
+                    'paid_on' => 'The payment date cannot be earlier than '.$expense->expense_date->format('d M Y').' ('.$expense->description.').',
+                ])->withInput();
+            }
+        }
+
+        if (strtotime($paidOn) > $profile->first_period_end->getTimestamp()) {
+            return back()->withErrors([
+                'paid_on' => 'Payment date is after the first financial period end.',
+            ])->withInput();
+        }
+
+        try {
+            CompanyLedger::assertDateOpen($user->id, $paidOn);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        $proofPath = $request->file('proof')->store(
+            TenantStorage::companyPaymentsPath($user->id),
+            TenantStorage::diskName()
+        );
+
+        try {
+            $result = DB::transaction(function () use ($user, $ids, $paidOn, $reference, $proofPath) {
+                $locked = CompanyExpense::where('user_id', $user->id)
+                    ->whereIn('id', $ids)
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($locked->count() !== count($ids)) {
+                    throw ValidationException::withMessages([
+                        'expense_ids' => 'One of those expenses is not on your books.',
+                    ]);
+                }
+
+                try {
+                    $lockedKind = CompanyExpensePayment::kindFor($locked);
+                } catch (\InvalidArgumentException $e) {
+                    throw ValidationException::withMessages([
+                        'expense_ids' => $e->getMessage(),
+                    ]);
+                }
+
+                $total = CompanyExpensePayment::cashTotal($locked);
+                if ($total <= 0) {
+                    throw ValidationException::withMessages([
+                        'expense_ids' => 'The selected total must be more than zero.',
+                    ]);
+                }
+
+                $payment = CompanyExpensePayment::create([
+                    'user_id' => $user->id,
+                    'paid_on' => $paidOn,
+                    'reference' => $reference,
+                    'amount' => $total,
+                    'proof_path' => $proofPath,
+                    'kind' => $lockedKind,
+                ]);
+
+                $update = [
+                    'company_expense_payment_id' => $payment->id,
+                    'updated_at' => now(),
+                ];
+                if ($lockedKind === CompanyExpensePayment::KIND_DIRECTOR) {
+                    $update['director_refunded_at'] = $paidOn;
+                    $update['refund_reference'] = $reference;
+                }
+
+                CompanyExpense::where('user_id', $user->id)
+                    ->whereIn('id', $ids)
+                    ->update($update);
+
+                if ($lockedKind === CompanyExpensePayment::KIND_SUPPLIER) {
+                    CompanyLedger::postSupplierPaymentBatch(
+                        $user->id,
+                        $paidOn,
+                        $total,
+                        $reference,
+                        $payment->id,
+                        $locked->count()
+                    );
+                } else {
+                    CompanyLedger::postDirectorRefundBatch(
+                        $user->id,
+                        $paidOn,
+                        $total,
+                        $reference,
+                        $payment->id,
+                        $locked->count()
+                    );
+                }
+
+                return [$total, $locked->count(), $lockedKind];
+            });
+        } catch (ValidationException $e) {
+            TenantStorage::disk()->delete($proofPath);
+
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Throwable $e) {
+            TenantStorage::disk()->delete($proofPath);
+            throw $e;
+        }
+
+        $where = $result[2] === CompanyExpensePayment::KIND_SUPPLIER
+            ? 'Trade payables and the bank are updated.'
+            : 'The director loan and the bank are updated.';
+
+        return redirect('/company/expenses?status='.($result[2] === CompanyExpensePayment::KIND_SUPPLIER ? 'unpaid' : 'owed'))->with(
+            'success',
+            'Recorded a payment of €'.number_format($result[0], 2).' covering '.$result[1].' '.($result[1] === 1 ? 'invoice' : 'invoices').'. '.$where
+        );
+    }
+
+    public function paymentProof(int $payment)
+    {
+        $model = CompanyExpensePayment::where('user_id', Auth::id())
+            ->where('id', $payment)
+            ->firstOrFail();
+
+        if (! filled($model->proof_path)) {
+            abort(404);
+        }
+
+        return TenantStorage::disk()->download($model->proof_path);
     }
 
     public function markRefunded(Request $request, int $expense)

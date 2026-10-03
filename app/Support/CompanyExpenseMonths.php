@@ -43,6 +43,7 @@ class CompanyExpenseMonths
             $reversed = [];
             $cash = 0.0;
             $owed = 0.0;
+            $unpaid = 0.0;
             foreach ($items as $item) {
                 if ($item['reversed']) {
                     $reversed[] = (int) $item['id'];
@@ -54,6 +55,7 @@ class CompanyExpenseMonths
                     if (! $reversedOnly) {
                         $cash += (float) $item['cash'];
                         $owed += (float) $item['owed'];
+                        $unpaid += (float) ($item['unpaid'] ?? 0);
                     }
                 }
             }
@@ -67,6 +69,7 @@ class CompanyExpenseMonths
                 'reversed_ids' => $reversed,
                 'cash' => round($cash, 2),
                 'owed' => round($owed, 2),
+                'unpaid' => round($unpaid, 2),
             ];
         }
 

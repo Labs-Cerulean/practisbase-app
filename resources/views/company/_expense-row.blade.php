@@ -7,6 +7,9 @@
                 @if($expense->isOwedToDirector())
                     <span style="margin-left: 0.3rem; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.1rem 0.35rem; vertical-align: middle;">Owed</span>
                 @endif
+                @if($expense->isAwaitingSupplierPayment())
+                    <span style="margin-left: 0.3rem; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.1rem 0.35rem; vertical-align: middle;">To pay</span>
+                @endif
                 @if(!$expense->supplier && !$expense->isReversed())
                     <span style="margin-left: 0.3rem; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.1rem 0.35rem; vertical-align: middle;">No supplier</span>
                 @endif
@@ -34,7 +37,7 @@
                 · {{ $expense->supplier_invoice_number }}
             @endif
             · {{ $categories[$expense->category] ?? $expense->category }}
-            · {{ $expense->funded_by === 'director' ? 'Director-funded' : 'Company-paid' }}
+            · {{ $expense->fundingLabel() }}
             @if($expense->is_pre_incorporation) · pre-incorporation @endif
             <br>
             ex-VAT €{{ number_format((float) $expense->amount, 2) }}
@@ -48,6 +51,15 @@
             @endif
             @if($expense->funded_by === 'director' && $expense->director_refunded_at && !$expense->isReversed())
                 <br><span style="color: #059669;">Refunded {{ $expense->director_refunded_at->format('d M Y') }}</span>
+                @if($expense->payment && $expense->payment->proof_path)
+                    · <a href="/company/expenses/payments/{{ $expense->payment->id }}/proof" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payment proof</a>
+                @endif
+            @endif
+            @if($expense->funded_by === 'payable' && $expense->payment && !$expense->isReversed())
+                <br><span style="color: #059669;">Paid {{ $expense->payment->paid_on->format('d M Y') }}</span>
+                @if($expense->payment->proof_path)
+                    · <a href="/company/expenses/payments/{{ $expense->payment->id }}/proof" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payment proof</a>
+                @endif
             @endif
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center;">
@@ -65,6 +77,9 @@
                     </select>
                     <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Save supplier</button>
                 </form>
+            @endif
+            @if($expense->isAwaitingSupplierPayment())
+                <a href="/company/expenses/pay?kind=supplier&supplier={{ $expense->company_supplier_id }}" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Record payment</a>
             @endif
             @if($expense->isOwedToDirector())
                 <form method="POST" action="/company/expenses/{{ $expense->id }}/refund" style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;">
