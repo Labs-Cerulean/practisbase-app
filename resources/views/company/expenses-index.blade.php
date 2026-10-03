@@ -12,6 +12,7 @@
                     · Reverse charge VAT (boxes): <strong style="color: var(--primary-navy);">€{{ number_format($reverseChargeVat, 2) }}</strong> out + in
                 @endif
             </p>
+            <p style="margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.8rem;">Wrong amount? Reverse that expense. The original journal stays, and you can log the corrected invoice afterwards.</p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/company/suppliers?year={{ $year }}" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Suppliers</a>
@@ -50,11 +51,14 @@
 
     <div style="display: grid; gap: 0.75rem;">
         @forelse($expenses as $expense)
-            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; box-shadow: var(--shadow-sm);">
+            <div style="background: {{ $expense->isReversed() ? '#f8fafc' : 'white' }}; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; box-shadow: var(--shadow-sm);">
                 <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                     <div>
                         <div style="font-weight: 700; color: var(--primary-navy);">
                             {{ $expense->supplier->name ?? 'No supplier' }}
+                            @if($expense->isReversed())
+                                <span style="margin-left: 0.35rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 0.15rem 0.45rem; vertical-align: middle;">Reversed</span>
+                            @endif
                             @if($expense->is_reverse_charge)
                                 <span style="margin-left: 0.35rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.15rem 0.45rem; vertical-align: middle;">Reverse charge</span>
                             @endif
@@ -68,6 +72,10 @@
                             · {{ $categories[$expense->category] ?? $expense->category }}
                             · {{ $expense->funded_by === 'director' ? 'Director-funded' : 'Company-paid' }}
                             @if($expense->is_pre_incorporation) · pre-incorporation @endif
+                            @if($expense->isReversed())
+                                · reversed {{ $expense->reversed_at->format('d M Y') }}
+                                @if($expense->reversal_note) · {{ $expense->reversal_note }} @endif
+                            @endif
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -86,7 +94,7 @@
                     @if($expense->receipt_path)
                         <a href="/company/expenses/{{ $expense->id }}/receipt" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Receipt</a>
                     @endif
-                    @if(!$expense->supplier)
+                    @if(!$expense->isReversed() && !$expense->supplier)
                         @if($suppliers->isNotEmpty())
                             <form method="POST" action="/company/expenses/{{ $expense->id }}/supplier" style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;">
                                 @csrf
@@ -107,8 +115,16 @@
                             <input type="text" name="refund_reference" placeholder="BOV ref (optional)" style="width: 8rem; padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
                             <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: #059669; color: white; border: none; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Mark refunded</button>
                         </form>
-                    @elseif($expense->funded_by === 'director' && $expense->director_refunded_at)
+                    @elseif($expense->funded_by === 'director' && $expense->director_refunded_at && !$expense->isReversed())
                         <div style="margin-left: auto; font-size: 0.8rem; color: #059669;">Refunded {{ $expense->director_refunded_at->format('d M Y') }}</div>
+                    @endif
+                    @if(!$expense->isReversed())
+                        <form method="POST" action="/company/expenses/{{ $expense->id }}/reverse" style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; width: 100%; margin-top: 0.35rem;" onsubmit="return confirm('Reverse this expense? The original journal stays, and an opposite entry removes it from the totals. You can then log the correct amount.');">
+                            @csrf
+                            <input type="date" name="reversed_at" value="{{ date('Y-m-d') }}" min="{{ $expense->expense_date->format('Y-m-d') }}" max="{{ date('Y-m-d') }}" required style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
+                            <input type="text" name="reversal_note" placeholder="Why (optional)" maxlength="500" style="flex: 1; min-width: 8rem; padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
+                            <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: #991b1b; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Reverse</button>
+                        </form>
                     @endif
                 </div>
             </div>

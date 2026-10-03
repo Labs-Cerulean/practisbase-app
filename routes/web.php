@@ -480,6 +480,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::post('/expenses/assign-suggested', [CompanyExpenseController::class, 'assignSuggested']);
         Route::post('/expenses', [CompanyExpenseController::class, 'store']);
         Route::post('/expenses/{expense}/supplier', [CompanyExpenseController::class, 'assignSupplier'])->whereNumber('expense');
+        Route::post('/expenses/{expense}/reverse', [CompanyExpenseController::class, 'reverse'])->whereNumber('expense');
         Route::post('/expenses/{expense}/refund', [CompanyExpenseController::class, 'markRefunded'])->whereNumber('expense');
         Route::get('/expenses/{expense}/receipt', [CompanyExpenseController::class, 'receipt'])->whereNumber('expense');
 

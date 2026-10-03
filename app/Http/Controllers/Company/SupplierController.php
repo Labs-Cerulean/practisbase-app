@@ -23,12 +23,15 @@ class SupplierController extends Controller
 
         $expenses = CompanyExpense::where('user_id', $user->id)
             ->whereYear('expense_date', $year)
-            ->get(['id', 'company_supplier_id', 'amount', 'vat_amount', 'is_reverse_charge', 'funded_by']);
+            ->get(['id', 'company_supplier_id', 'amount', 'vat_amount', 'is_reverse_charge', 'funded_by', 'reversed_at']);
 
         $spend = [];
         $unassignedCount = 0;
         $unassignedCash = 0.0;
         foreach ($expenses as $expense) {
+            if ($expense->isReversed()) {
+                continue;
+            }
             if (! $expense->company_supplier_id) {
                 $unassignedCount++;
                 $unassignedCash += $expense->cashTotal();

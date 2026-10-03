@@ -35,6 +35,8 @@ class CompanyExpense extends Model
         'refund_reference',
         'receipt_path',
         'is_pre_incorporation',
+        'reversed_at',
+        'reversal_note',
     ];
 
     protected function casts(): array
@@ -42,6 +44,7 @@ class CompanyExpense extends Model
         return [
             'expense_date' => 'date',
             'director_refunded_at' => 'date',
+            'reversed_at' => 'date',
             'amount' => 'decimal:2',
             'vat_amount' => 'decimal:2',
             'is_pre_incorporation' => 'boolean',
@@ -94,8 +97,15 @@ class CompanyExpense extends Model
         return round(max(0, $net) * self::REVERSE_CHARGE_RATE, 2);
     }
 
+    public function isReversed(): bool
+    {
+        return $this->reversed_at !== null;
+    }
+
     public function isOwedToDirector(): bool
     {
-        return $this->funded_by === 'director' && $this->director_refunded_at === null;
+        return ! $this->isReversed()
+            && $this->funded_by === 'director'
+            && $this->director_refunded_at === null;
     }
 }
