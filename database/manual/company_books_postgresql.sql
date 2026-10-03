@@ -109,12 +109,35 @@ CREATE INDEX IF NOT EXISTS company_payments_user_id_idx
 CREATE INDEX IF NOT EXISTS company_payments_invoice_id_idx
     ON company_payments (company_invoice_id);
 
+CREATE TABLE IF NOT EXISTS company_suppliers (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    vat_number VARCHAR(64) NULL,
+    email VARCHAR(255) NULL,
+    country VARCHAR(80) NULL,
+    address TEXT NULL,
+    default_category VARCHAR(64) NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    CONSTRAINT company_suppliers_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS company_suppliers_user_id_idx
+    ON company_suppliers (user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS company_suppliers_user_name_uidx
+    ON company_suppliers (user_id, lower(name));
+
 CREATE TABLE IF NOT EXISTS company_expenses (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
+    company_supplier_id BIGINT NULL,
     expense_date DATE NOT NULL,
     category VARCHAR(64) NOT NULL DEFAULT 'software',
     description TEXT NOT NULL,
+    supplier_invoice_number VARCHAR(120) NULL,
     amount NUMERIC(12, 2) NOT NULL,
     vat_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
     is_reverse_charge BOOLEAN NOT NULL DEFAULT FALSE,
@@ -126,7 +149,9 @@ CREATE TABLE IF NOT EXISTS company_expenses (
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,
     CONSTRAINT company_expenses_user_id_fkey
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT company_expenses_supplier_id_fkey
+        FOREIGN KEY (company_supplier_id) REFERENCES company_suppliers (id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS company_expenses_user_id_idx
@@ -137,3 +162,6 @@ CREATE INDEX IF NOT EXISTS company_expenses_user_date_idx
 
 CREATE INDEX IF NOT EXISTS company_expenses_director_open_idx
     ON company_expenses (user_id, funded_by, director_refunded_at);
+
+CREATE INDEX IF NOT EXISTS company_expenses_user_supplier_idx
+    ON company_expenses (user_id, company_supplier_id);

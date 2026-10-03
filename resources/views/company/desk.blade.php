@@ -144,7 +144,11 @@
         </a>
         <a href="/company/expenses" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Expenses</div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Photo/PDF · director loan postings</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Supplier invoices · director loan postings</div>
+        </a>
+        <a href="/company/suppliers" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Suppliers</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Supply-chain cost by supplier</div>
         </a>
         <a href="/company/bank" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Bank recon</div>
