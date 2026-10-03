@@ -21,18 +21,14 @@ ALTER TABLE company_expense_payments
 ALTER TABLE company_expenses
     ADD COLUMN IF NOT EXISTS company_expense_payment_id BIGINT NULL;
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'company_expenses_payment_id_fkey'
-    ) THEN
-        ALTER TABLE company_expenses
-            ADD CONSTRAINT company_expenses_payment_id_fkey
-            FOREIGN KEY (company_expense_payment_id)
-            REFERENCES company_expense_payments (id)
-            ON DELETE RESTRICT;
-    END IF;
-END $$;
+ALTER TABLE company_expenses
+    DROP CONSTRAINT IF EXISTS company_expenses_payment_id_fkey;
+
+ALTER TABLE company_expenses
+    ADD CONSTRAINT company_expenses_payment_id_fkey
+    FOREIGN KEY (company_expense_payment_id)
+    REFERENCES company_expense_payments (id)
+    ON DELETE RESTRICT;
 
 CREATE INDEX IF NOT EXISTS company_expenses_payment_id_idx
     ON company_expenses (company_expense_payment_id);
