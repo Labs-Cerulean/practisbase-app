@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CompanyExpense;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
+use App\Support\CompanyExpenseMonths;
 use App\Support\CompanyLedger;
 use App\Support\PdfPlainText;
 use App\Support\SupplierInvoiceReader;
@@ -22,6 +23,14 @@ class ExpenseController extends Controller
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
         $year = (int) $request->input('year', $profile->first_period_end->format('Y'));
+        $status = (string) $request->input('status', 'active');
+        if (! in_array($status, ['active', 'owed', 'company', 'reversed'], true)) {
+            $status = 'active';
+        }
+        $search = trim((string) $request->input('q', ''));
+        if (strlen($search) > 120) {
+            $search = substr($search, 0, 120);
+        }
 
         $suppliers = CompanySupplier::where('user_id', $user->id)
             ->orderBy('name')
@@ -32,16 +41,74 @@ class ExpenseController extends Controller
             $supplierFilter = $suppliers->firstWhere('id', (int) $request->input('supplier'));
         }
 
-        $expenses = CompanyExpense::where('user_id', $user->id)
+        $years = CompanyExpense::where('user_id', $user->id)
+            ->selectRaw('EXTRACT(YEAR FROM expense_date) as expense_year')
+            ->distinct()
+            ->orderByDesc('expense_year')
+            ->pluck('expense_year')
+            ->map(fn ($value) => (int) $value)
+            ->all();
+        if (! in_array($year, $years, true)) {
+            $years[] = $year;
+            rsort($years);
+        }
+
+        $query = CompanyExpense::where('user_id', $user->id)
             ->with('supplier')
-            ->whereYear('expense_date', $year)
+            ->whereYear('expense_date', $year);
+
+        if ($supplierFilter) {
+            $query->where('company_supplier_id', $supplierFilter->id);
+        }
+
+        if ($search !== '') {
+            $like = CompanyExpenseMonths::likeTerm($search);
+            $query->where(function ($inner) use ($like) {
+                $inner->where('description', 'ilike', $like)
+                    ->orWhere('supplier_invoice_number', 'ilike', $like)
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($like) {
+                        $supplierQuery->where('name', 'ilike', $like);
+                    });
+            });
+        }
+
+        if ($status === 'owed') {
+            $query->where('funded_by', 'director')->whereNull('director_refunded_at')->whereNull('reversed_at');
+        } elseif ($status === 'company') {
+            $query->where('funded_by', 'company')->whereNull('reversed_at');
+        } elseif ($status === 'reversed') {
+            $query->whereNotNull('reversed_at');
+        }
+
+        $expenses = $query
             ->orderByDesc('expense_date')
             ->orderByDesc('id')
             ->get();
 
-        $unassignedCount = $expenses
-            ->filter(fn (CompanyExpense $e) => ! $e->company_supplier_id && ! $e->isReversed())
-            ->count();
+        $rows = [];
+        foreach ($expenses as $expense) {
+            $rows[] = [
+                'id' => (int) $expense->id,
+                'date' => $expense->expense_date->format('Y-m-d'),
+                'reversed' => $expense->isReversed(),
+                'cash' => $expense->cashTotal(),
+                'owed' => $expense->isOwedToDirector() ? $expense->cashTotal() : 0.0,
+            ];
+        }
+
+        $months = CompanyExpenseMonths::group($rows, now()->toDateString(), $status === 'reversed');
+        $counted = $status === 'reversed'
+            ? $expenses
+            : $expenses->filter(fn (CompanyExpense $expense) => ! $expense->isReversed());
+
+        $owed = $counted->filter(fn (CompanyExpense $expense) => $expense->isOwedToDirector())
+            ->sum(fn (CompanyExpense $expense) => $expense->cashTotal());
+        $cashShown = $counted->sum(fn (CompanyExpense $expense) => $expense->cashTotal());
+        $reverseChargeVat = (float) $counted
+            ->filter(fn (CompanyExpense $expense) => $expense->is_reverse_charge && ! $expense->isReversed())
+            ->sum(fn (CompanyExpense $expense) => $expense->reverseChargeVat());
+
+        $unassigned = $expenses->filter(fn (CompanyExpense $expense) => ! $expense->company_supplier_id && ! $expense->isReversed());
         $supplierRows = $suppliers->map(fn (CompanySupplier $supplier) => [
             'id' => $supplier->id,
             'name' => $supplier->name,
@@ -49,42 +116,32 @@ class ExpenseController extends Controller
         ])->all();
 
         $suggestions = [];
-        foreach ($expenses as $expense) {
-            if ($expense->company_supplier_id || $expense->isReversed()) {
-                continue;
-            }
+        foreach ($unassigned as $expense) {
             $suggestions[$expense->id] = SupplierInvoiceReader::suggestSupplierId(
                 (string) $expense->description,
                 $supplierRows
             );
         }
-        $suggestedCount = count(array_filter($suggestions));
-
-        if ($supplierFilter) {
-            $expenses = $expenses
-                ->where('company_supplier_id', $supplierFilter->id)
-                ->values();
-        }
-
-        $owed = $expenses->filter(fn (CompanyExpense $e) => $e->isOwedToDirector())
-            ->sum(fn (CompanyExpense $e) => $e->cashTotal());
-
-        $reverseChargeVat = (float) $expenses
-            ->filter(fn (CompanyExpense $e) => $e->is_reverse_charge && ! $e->isReversed())
-            ->sum(fn (CompanyExpense $e) => $e->reverseChargeVat());
 
         return view('company.expenses-index', [
-            'expenses' => $expenses,
+            'expensesById' => $expenses->keyBy('id'),
+            'months' => $months,
             'categories' => CompanyExpense::CATEGORIES,
             'year' => $year,
+            'years' => $years,
+            'status' => $status,
+            'search' => $search,
+            'cashShown' => $cashShown,
+            'invoiceCount' => $counted->count(),
             'owedToDirector' => $owed,
             'reverseChargeVat' => $reverseChargeVat,
             'profile' => $profile,
             'suppliers' => $suppliers,
             'supplierFilter' => $supplierFilter,
-            'unassignedCount' => $unassignedCount,
+            'unassignedCount' => $unassigned->count(),
             'suggestions' => $suggestions,
-            'suggestedCount' => $suggestedCount,
+            'suggestedCount' => count(array_filter($suggestions)),
+            'filtersOn' => $search !== '' || $supplierFilter !== null || $status !== 'active',
         ]);
     }
 
