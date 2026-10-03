@@ -43,6 +43,7 @@ use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
 use App\Http\Controllers\Company\ClientController as CompanyClientController;
 use App\Http\Controllers\Company\InvoiceController as CompanyInvoiceController;
 use App\Http\Controllers\Company\ExpenseController as CompanyExpenseController;
+use App\Http\Controllers\Company\SupplierController as CompanySupplierController;
 use App\Http\Controllers\Company\AccountsController as CompanyAccountsController;
 use App\Http\Controllers\Company\BankController as CompanyBankController;
 use App\Http\Controllers\Company\DividendController as CompanyDividendController;
@@ -470,11 +471,17 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/invoices/{document}/pdf', [CompanyInvoiceController::class, 'pdf']);
         Route::delete('/invoices/{document}', [CompanyInvoiceController::class, 'destroy'])->whereNumber('document');
 
+        Route::get('/suppliers', [CompanySupplierController::class, 'index']);
+        Route::post('/suppliers', [CompanySupplierController::class, 'store']);
+
         Route::get('/expenses', [CompanyExpenseController::class, 'index']);
         Route::get('/expenses/create', [CompanyExpenseController::class, 'create']);
+        Route::post('/expenses/intake', [CompanyExpenseController::class, 'intake']);
+        Route::post('/expenses/assign-suggested', [CompanyExpenseController::class, 'assignSuggested']);
         Route::post('/expenses', [CompanyExpenseController::class, 'store']);
-        Route::post('/expenses/{expense}/refund', [CompanyExpenseController::class, 'markRefunded']);
-        Route::get('/expenses/{expense}/receipt', [CompanyExpenseController::class, 'receipt']);
+        Route::post('/expenses/{expense}/supplier', [CompanyExpenseController::class, 'assignSupplier'])->whereNumber('expense');
+        Route::post('/expenses/{expense}/refund', [CompanyExpenseController::class, 'markRefunded'])->whereNumber('expense');
+        Route::get('/expenses/{expense}/receipt', [CompanyExpenseController::class, 'receipt'])->whereNumber('expense');
 
         Route::get('/accounts', [CompanyAccountsController::class, 'index']);
         Route::get('/accounts/chart', [CompanyAccountsController::class, 'chart']);
