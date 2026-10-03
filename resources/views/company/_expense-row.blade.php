@@ -48,6 +48,9 @@
             @endif
             @if($expense->funded_by === 'director' && $expense->director_refunded_at && !$expense->isReversed())
                 <br><span style="color: #059669;">Refunded {{ $expense->director_refunded_at->format('d M Y') }}</span>
+                @if($expense->payment && $expense->payment->proof_path)
+                    · <a href="/company/expenses/payments/{{ $expense->payment->id }}/proof" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payment proof</a>
+                @endif
             @endif
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center;">

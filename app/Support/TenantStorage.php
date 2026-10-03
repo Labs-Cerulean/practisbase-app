@@ -75,6 +75,11 @@ class TenantStorage
         return 'tenants/' . $userId . '/company/receipts';
     }
 
+    public static function companyPaymentsPath(int $userId): string
+    {
+        return 'tenants/' . $userId . '/company/payments';
+    }
+
     public static function companyBrandingPath(int $userId): string
     {
         return 'tenants/' . $userId . '/company/branding';

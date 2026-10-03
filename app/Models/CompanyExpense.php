@@ -23,6 +23,7 @@ class CompanyExpense extends Model
     protected $fillable = [
         'user_id',
         'company_supplier_id',
+        'company_expense_payment_id',
         'expense_date',
         'category',
         'description',
@@ -60,6 +61,11 @@ class CompanyExpense extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(CompanySupplier::class, 'company_supplier_id');
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(CompanyExpensePayment::class, 'company_expense_payment_id');
     }
 
     /**

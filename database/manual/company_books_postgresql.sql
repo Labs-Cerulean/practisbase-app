@@ -130,10 +130,27 @@ CREATE INDEX IF NOT EXISTS company_suppliers_user_id_idx
 CREATE UNIQUE INDEX IF NOT EXISTS company_suppliers_user_name_uidx
     ON company_suppliers (user_id, lower(name));
 
+CREATE TABLE IF NOT EXISTS company_expense_payments (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    paid_on DATE NOT NULL,
+    reference VARCHAR(120) NULL,
+    amount NUMERIC(12, 2) NOT NULL,
+    proof_path VARCHAR(500) NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    CONSTRAINT company_expense_payments_user_id_fkey
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS company_expense_payments_user_id_idx
+    ON company_expense_payments (user_id);
+
 CREATE TABLE IF NOT EXISTS company_expenses (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     company_supplier_id BIGINT NULL,
+    company_expense_payment_id BIGINT NULL,
     expense_date DATE NOT NULL,
     category VARCHAR(64) NOT NULL DEFAULT 'software',
     description TEXT NOT NULL,
@@ -153,7 +170,9 @@ CREATE TABLE IF NOT EXISTS company_expenses (
     CONSTRAINT company_expenses_user_id_fkey
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT company_expenses_supplier_id_fkey
-        FOREIGN KEY (company_supplier_id) REFERENCES company_suppliers (id) ON DELETE RESTRICT
+        FOREIGN KEY (company_supplier_id) REFERENCES company_suppliers (id) ON DELETE RESTRICT,
+    CONSTRAINT company_expenses_payment_id_fkey
+        FOREIGN KEY (company_expense_payment_id) REFERENCES company_expense_payments (id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS company_expenses_user_id_idx
@@ -167,3 +186,6 @@ CREATE INDEX IF NOT EXISTS company_expenses_director_open_idx
 
 CREATE INDEX IF NOT EXISTS company_expenses_user_supplier_idx
     ON company_expenses (user_id, company_supplier_id);
+
+CREATE INDEX IF NOT EXISTS company_expenses_payment_id_idx
+    ON company_expenses (company_expense_payment_id);

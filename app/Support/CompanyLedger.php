@@ -514,6 +514,32 @@ class CompanyLedger
     }
 
     /**
+     * One bank payment that refunds several director-funded expenses.
+     */
+    public static function postDirectorRefundBatch(
+        int $userId,
+        string $date,
+        float $amount,
+        ?string $reference,
+        int $paymentId,
+        int $expenseCount
+    ): CompanyJournalEntry {
+        self::ensureChart(User::findOrFail($userId));
+
+        $narrative = 'Director refund: '.$expenseCount.' '.($expenseCount === 1 ? 'expense' : 'expenses');
+
+        return self::post(
+            $userId,
+            $date,
+            $narrative,
+            self::directorRefundJournalLines($amount, $reference),
+            'company_expense_payment',
+            $paymentId,
+            'company_expense_payment:'.$paymentId.':posted'
+        );
+    }
+
+    /**
      * Post the opposite of the expense (and of a director refund, when one was posted).
      * Returns how many bank-statement matches were released.
      */
@@ -576,6 +602,14 @@ class CompanyLedger
             ->where('source_id', $expense->id)
             ->whereIn('source_type', ['company_expense', 'company_expense_refund'])
             ->get();
+
+        if ($expense->company_expense_payment_id) {
+            $paymentEntries = CompanyJournalEntry::where('user_id', $expense->user_id)
+                ->where('source_type', 'company_expense_payment')
+                ->where('source_id', $expense->company_expense_payment_id)
+                ->get();
+            $entries = $entries->concat($paymentEntries);
+        }
 
         $released = 0;
         foreach ($entries as $entry) {

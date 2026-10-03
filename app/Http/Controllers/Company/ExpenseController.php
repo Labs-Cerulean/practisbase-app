@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompanyExpense;
+use App\Models\CompanyExpensePayment;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
 use App\Support\CompanyExpenseMonths;
@@ -13,6 +14,7 @@ use App\Support\SupplierInvoiceReader;
 use App\Support\TenantStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -54,7 +56,7 @@ class ExpenseController extends Controller
         }
 
         $query = CompanyExpense::where('user_id', $user->id)
-            ->with('supplier')
+            ->with(['supplier', 'payment'])
             ->whereYear('expense_date', $year);
 
         if ($supplierFilter) {
@@ -467,6 +469,188 @@ class ExpenseController extends Controller
         ]);
 
         return back()->with('success', 'Assigned to '.$supplier->name.'.');
+    }
+
+    public function pay(Request $request)
+    {
+        $user = Auth::user();
+        CompanyBooks::ensureProfile($user);
+
+        $open = CompanyExpense::where('user_id', $user->id)
+            ->with('supplier')
+            ->where('funded_by', 'director')
+            ->whereNull('director_refunded_at')
+            ->whereNull('reversed_at')
+            ->orderBy('expense_date')
+            ->orderBy('id')
+            ->get();
+
+        $suppliers = $open
+            ->map(fn (CompanyExpense $expense) => $expense->supplier)
+            ->filter()
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
+        $supplierFilter = null;
+        if ($request->filled('supplier')) {
+            $supplierId = (int) $request->input('supplier');
+            $supplierFilter = $suppliers->firstWhere('id', $supplierId)
+                ?: CompanySupplier::where('user_id', $user->id)->where('id', $supplierId)->first();
+        }
+
+        $expenses = $supplierFilter
+            ? $open->where('company_supplier_id', $supplierFilter->id)->values()
+            : $open;
+
+        return view('company.expenses-pay', [
+            'expenses' => $expenses,
+            'suppliers' => $suppliers,
+            'supplierFilter' => $supplierFilter,
+            'openTotal' => CompanyExpensePayment::cashTotal($expenses),
+        ]);
+    }
+
+    public function storePayment(Request $request)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+
+        $validated = $request->validate([
+            'expense_ids' => 'required|array|min:1|max:200',
+            'expense_ids.*' => 'integer',
+            'paid_on' => 'required|date|before_or_equal:today',
+            'reference' => 'nullable|string|max:120',
+            'proof' => 'required|file|mimes:jpg,jpeg,png,pdf|max:8192',
+        ]);
+
+        $ids = array_values(array_unique(array_map('intval', $validated['expense_ids'])));
+        $paidOn = $validated['paid_on'];
+        $reference = trim((string) ($validated['reference'] ?? ''));
+        $reference = $reference !== '' ? $reference : null;
+
+        $expenses = CompanyExpense::where('user_id', $user->id)
+            ->whereIn('id', $ids)
+            ->get();
+
+        if ($expenses->count() !== count($ids)) {
+            return back()->withErrors([
+                'expense_ids' => 'One of those expenses is not on your books.',
+            ])->withInput();
+        }
+
+        foreach ($expenses as $expense) {
+            if (! $expense->isOwedToDirector()) {
+                return back()->withErrors([
+                    'expense_ids' => '“'.$expense->description.'” is not waiting for a refund.',
+                ])->withInput();
+            }
+            if ($paidOn < $expense->expense_date->format('Y-m-d')) {
+                return back()->withErrors([
+                    'paid_on' => 'The payment date cannot be earlier than '.$expense->expense_date->format('d M Y').' ('.$expense->description.').',
+                ])->withInput();
+            }
+        }
+
+        if (strtotime($paidOn) > $profile->first_period_end->getTimestamp()) {
+            return back()->withErrors([
+                'paid_on' => 'Payment date is after the first financial period end.',
+            ])->withInput();
+        }
+
+        try {
+            CompanyLedger::assertDateOpen($user->id, $paidOn);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        $proofPath = $request->file('proof')->store(
+            TenantStorage::companyPaymentsPath($user->id),
+            TenantStorage::diskName()
+        );
+
+        try {
+            $result = DB::transaction(function () use ($user, $ids, $paidOn, $reference, $proofPath) {
+                $locked = CompanyExpense::where('user_id', $user->id)
+                    ->whereIn('id', $ids)
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($locked->count() !== count($ids)) {
+                    throw ValidationException::withMessages([
+                        'expense_ids' => 'One of those expenses is not on your books.',
+                    ]);
+                }
+
+                foreach ($locked as $expense) {
+                    if (! $expense->isOwedToDirector()) {
+                        throw ValidationException::withMessages([
+                            'expense_ids' => '“'.$expense->description.'” is no longer waiting for a refund.',
+                        ]);
+                    }
+                }
+
+                $total = CompanyExpensePayment::cashTotal($locked);
+                if ($total <= 0) {
+                    throw ValidationException::withMessages([
+                        'expense_ids' => 'The selected total must be more than zero.',
+                    ]);
+                }
+
+                $payment = CompanyExpensePayment::create([
+                    'user_id' => $user->id,
+                    'paid_on' => $paidOn,
+                    'reference' => $reference,
+                    'amount' => $total,
+                    'proof_path' => $proofPath,
+                ]);
+
+                CompanyExpense::where('user_id', $user->id)
+                    ->whereIn('id', $ids)
+                    ->update([
+                        'director_refunded_at' => $paidOn,
+                        'refund_reference' => $reference,
+                        'company_expense_payment_id' => $payment->id,
+                        'updated_at' => now(),
+                    ]);
+
+                CompanyLedger::postDirectorRefundBatch(
+                    $user->id,
+                    $paidOn,
+                    $total,
+                    $reference,
+                    $payment->id,
+                    $locked->count()
+                );
+
+                return [$total, $locked->count()];
+            });
+        } catch (ValidationException $e) {
+            TenantStorage::disk()->delete($proofPath);
+
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Throwable $e) {
+            TenantStorage::disk()->delete($proofPath);
+            throw $e;
+        }
+
+        return redirect('/company/expenses?status=owed')->with(
+            'success',
+            'Recorded a payment of €'.number_format($result[0], 2).' covering '.$result[1].' '.($result[1] === 1 ? 'invoice' : 'invoices').'. The director loan and the bank are updated.'
+        );
+    }
+
+    public function paymentProof(int $payment)
+    {
+        $model = CompanyExpensePayment::where('user_id', Auth::id())
+            ->where('id', $payment)
+            ->firstOrFail();
+
+        if (! filled($model->proof_path)) {
+            abort(404);
+        }
+
+        return TenantStorage::disk()->download($model->proof_path);
     }
 
     public function markRefunded(Request $request, int $expense)
