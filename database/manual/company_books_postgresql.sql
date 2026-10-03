@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS company_expense_payments (
     user_id BIGINT NOT NULL,
     paid_on DATE NOT NULL,
     reference VARCHAR(120) NULL,
+    kind VARCHAR(32) NOT NULL DEFAULT 'director_refund',
     amount NUMERIC(12, 2) NOT NULL,
     proof_path VARCHAR(500) NULL,
     created_at TIMESTAMP NULL,

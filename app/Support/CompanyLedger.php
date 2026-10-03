@@ -6,6 +6,7 @@ use App\Models\CompanyBankStatementLine;
 use App\Models\CompanyBooksLock;
 use App\Models\CompanyDividend;
 use App\Models\CompanyExpense;
+use App\Models\CompanyExpensePayment;
 use App\Models\CompanyGlAccount;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyJournalEntry;
@@ -385,9 +386,11 @@ class CompanyLedger
         $vat = round($vat, 2);
         $cash = $reverseCharge ? $net : round($net + $vat, 2);
         $expenseCode = CompanyChartOfAccounts::expenseAccountCode($category);
-        $creditCode = $fundedBy === 'director'
-            ? CompanyChartOfAccounts::DIRECTOR_LOAN
-            : CompanyChartOfAccounts::BANK;
+        $creditCode = match ($fundedBy) {
+            'director' => CompanyChartOfAccounts::DIRECTOR_LOAN,
+            'payable' => CompanyChartOfAccounts::TRADE_PAYABLES,
+            default => CompanyChartOfAccounts::BANK,
+        };
 
         $lines = [
             [
@@ -540,6 +543,55 @@ class CompanyLedger
     }
 
     /**
+     * @return list<array{account_code: string, side: string, amount: float, memo: ?string}>
+     */
+    public static function supplierPaymentJournalLines(float $gross, ?string $reference): array
+    {
+        $gross = round($gross, 2);
+
+        return [
+            [
+                'account_code' => CompanyChartOfAccounts::TRADE_PAYABLES,
+                'side' => 'debit',
+                'amount' => $gross,
+                'memo' => $reference,
+            ],
+            [
+                'account_code' => CompanyChartOfAccounts::BANK,
+                'side' => 'credit',
+                'amount' => $gross,
+                'memo' => $reference,
+            ],
+        ];
+    }
+
+    /**
+     * One bank payment that settles supplier invoices previously credited to trade payables.
+     */
+    public static function postSupplierPaymentBatch(
+        int $userId,
+        string $date,
+        float $amount,
+        ?string $reference,
+        int $paymentId,
+        int $expenseCount
+    ): CompanyJournalEntry {
+        self::ensureChart(User::findOrFail($userId));
+
+        $narrative = 'Supplier payment: '.$expenseCount.' '.($expenseCount === 1 ? 'expense' : 'expenses');
+
+        return self::post(
+            $userId,
+            $date,
+            $narrative,
+            self::supplierPaymentJournalLines($amount, $reference),
+            'company_expense_payment',
+            $paymentId,
+            'company_expense_payment:'.$paymentId.':posted'
+        );
+    }
+
+    /**
      * Post the opposite of the expense (and of a director refund, when one was posted).
      * Returns how many bank-statement matches were released.
      */
@@ -584,6 +636,27 @@ class CompanyLedger
                     'company_expense_refund_reversal',
                     $expense->id,
                     'company_expense:'.$expense->id.':director_refund_reversal'
+                );
+            }
+
+            if ($expense->funded_by === 'payable' && $expense->company_expense_payment_id) {
+                $payment = $expense->relationLoaded('payment')
+                    ? $expense->payment
+                    : CompanyExpensePayment::where('user_id', $expense->user_id)
+                        ->where('id', $expense->company_expense_payment_id)
+                        ->first();
+
+                self::post(
+                    $expense->user_id,
+                    $reversalDate,
+                    'Reversal of supplier payment: '.$expense->description,
+                    self::swapSides(self::supplierPaymentJournalLines(
+                        $expense->cashTotal(),
+                        $payment?->reference
+                    )),
+                    'company_expense_supplier_payment_reversal',
+                    $expense->id,
+                    'company_expense:'.$expense->id.':supplier_payment_reversal'
                 );
             }
 

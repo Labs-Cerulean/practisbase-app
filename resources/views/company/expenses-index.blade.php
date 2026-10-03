@@ -6,7 +6,8 @@
     @php
         $filterNote = match ($status) {
             'owed' => 'Director-funded costs still waiting for a refund.',
-            'company' => 'Paid from the company bank or card.',
+            'unpaid' => 'Supplier invoices logged, still waiting for the company to pay.',
+            'company' => 'Paid from the company bank or card when the invoice was logged.',
             'reversed' => 'These no longer count in totals. The original journal is still in Accounts.',
             default => 'Open a line for the receipt, a refund, or a reversal. Older months stay closed.',
         };
@@ -27,6 +28,7 @@
                 {{ $invoiceCount }} {{ $invoiceCount === 1 ? 'invoice' : 'invoices' }}
                 · cash <strong style="color: var(--primary-navy);">€{{ number_format($cashShown, 2) }}</strong>
                 · owed to you: <strong style="color: {{ $owedToDirector > 0 ? '#b45309' : '#059669' }};">€{{ number_format($owedToDirector, 2) }}</strong>
+                · owed to suppliers: <strong style="color: {{ $owedToSuppliers > 0 ? '#b45309' : '#059669' }};">€{{ number_format($owedToSuppliers, 2) }}</strong>
                 @if(($reverseChargeVat ?? 0) > 0.009)
                     · reverse charge VAT <strong style="color: var(--primary-navy);">€{{ number_format($reverseChargeVat, 2) }}</strong> out + in
                 @endif
@@ -63,6 +65,7 @@
                 <select id="expenseStatus" name="status" data-expense-filter style="width: 100%; padding: 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
                     <option value="active" @selected($status === 'active')>All live invoices</option>
                     <option value="owed" @selected($status === 'owed')>Owed to me</option>
+                    <option value="unpaid" @selected($status === 'unpaid')>Waiting to pay a supplier</option>
                     <option value="company" @selected($status === 'company')>Company paid</option>
                     <option value="reversed" @selected($status === 'reversed')>Reversed</option>
                 </select>
@@ -119,6 +122,9 @@
                             @if($month['owed'] > 0.009)
                                 · owed €{{ number_format($month['owed'], 2) }}
                             @endif
+                            @if(($month['unpaid'] ?? 0) > 0.009)
+                                · to pay €{{ number_format($month['unpaid'], 2) }}
+                            @endif
                             @if(count($month['reversed_ids']) > 0)
                                 · {{ count($month['reversed_ids']) }} reversed
                             @endif
@@ -168,7 +174,8 @@
             var notes = {
                 active: 'Open a line for the receipt, a refund, or a reversal. Older months stay closed.',
                 owed: 'Director-funded costs still waiting for a refund.',
-                company: 'Paid from the company bank or card.',
+                unpaid: 'Supplier invoices logged, still waiting for the company to pay.',
+                company: 'Paid from the company bank or card when the invoice was logged.',
                 reversed: 'These no longer count in totals. The original journal is still in Accounts.'
             };
             status.addEventListener('change', function () {

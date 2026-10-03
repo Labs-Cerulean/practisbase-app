@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS company_expense_payments (
     user_id BIGINT NOT NULL,
     paid_on DATE NOT NULL,
     reference VARCHAR(120) NULL,
+    kind VARCHAR(32) NOT NULL DEFAULT 'director_refund',
     amount NUMERIC(12, 2) NOT NULL,
     proof_path VARCHAR(500) NULL,
     created_at TIMESTAMP NULL,
@@ -13,6 +14,9 @@ CREATE TABLE IF NOT EXISTS company_expense_payments (
 
 CREATE INDEX IF NOT EXISTS company_expense_payments_user_id_idx
     ON company_expense_payments (user_id);
+
+ALTER TABLE company_expense_payments
+    ADD COLUMN IF NOT EXISTS kind VARCHAR(32) NOT NULL DEFAULT 'director_refund';
 
 ALTER TABLE company_expenses
     ADD COLUMN IF NOT EXISTS company_expense_payment_id BIGINT NULL;

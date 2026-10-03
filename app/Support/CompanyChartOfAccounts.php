@@ -16,6 +16,8 @@ class CompanyChartOfAccounts
 
     public const INPUT_VAT = '1200';
 
+    public const TRADE_PAYABLES = '2000';
+
     public const CUSTOMER_ADVANCES = '2200';
 
     public const OUTPUT_VAT = '2100';

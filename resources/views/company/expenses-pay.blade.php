@@ -16,7 +16,11 @@
         <div>
             <h1 style="font-size: 1.4rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Record a payment</h1>
             <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem; max-width: 40rem;">
-                Tick the invoices this bank payment covers. Filter to one supplier when you are settling that supplier. For a director refund, leave every unrefunded invoice in the list and tick them all. One proof is saved for the whole payment.
+                @if($kind === 'supplier')
+                    These invoices are already on the books. The supplier is waiting to be paid. Tick one supplier’s invoices, then attach the proof. That is when the bank is credited.
+                @else
+                    Tick the director-funded invoices this refund covers. You can tick every unrefunded invoice, including different suppliers. One proof is saved for the whole payment.
+                @endif
             </p>
         </div>
         <a href="/company/expenses" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Back to expenses</a>
@@ -30,10 +34,15 @@
         </div>
     @endif
 
+    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem;">
+        <a href="/company/expenses/pay?kind=director" style="text-decoration: none; font-size: 0.85rem; font-weight: 700; padding: 0.45rem 0.8rem; border-radius: var(--radius-md); border: 1px solid {{ $kind === 'director' ? 'var(--primary-navy)' : 'var(--border-light)' }}; background: {{ $kind === 'director' ? 'var(--primary-navy)' : 'white' }}; color: {{ $kind === 'director' ? 'white' : 'var(--primary-navy)' }};">Director refund</a>
+        <a href="/company/expenses/pay?kind=supplier" style="text-decoration: none; font-size: 0.85rem; font-weight: 700; padding: 0.45rem 0.8rem; border-radius: var(--radius-md); border: 1px solid {{ $kind === 'supplier' ? 'var(--primary-navy)' : 'var(--border-light)' }}; background: {{ $kind === 'supplier' ? 'var(--primary-navy)' : 'white' }}; color: {{ $kind === 'supplier' ? 'white' : 'var(--primary-navy)' }};">Pay a supplier</a>
+    </div>
+
     <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem;">
-        <a href="/company/expenses/pay" style="text-decoration: none; font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 999px; border: 1px solid {{ $supplierFilter ? 'var(--border-light)' : 'var(--primary-navy)' }}; background: {{ $supplierFilter ? 'white' : 'var(--primary-navy)' }}; color: {{ $supplierFilter ? 'var(--text-muted)' : 'white' }};">All unrefunded</a>
+        <a href="/company/expenses/pay?kind={{ $kind }}" style="text-decoration: none; font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 999px; border: 1px solid {{ $supplierFilter ? 'var(--border-light)' : 'var(--primary-navy)' }}; background: {{ $supplierFilter ? 'white' : 'var(--primary-navy)' }}; color: {{ $supplierFilter ? 'var(--text-muted)' : 'white' }};">{{ $kind === 'supplier' ? 'All waiting' : 'All unrefunded' }}</a>
         @foreach($suppliers as $supplier)
-            <a href="/company/expenses/pay?supplier={{ $supplier->id }}" style="text-decoration: none; font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 999px; border: 1px solid {{ ($supplierFilter && $supplierFilter->id === $supplier->id) ? 'var(--primary-navy)' : 'var(--border-light)' }}; background: {{ ($supplierFilter && $supplierFilter->id === $supplier->id) ? 'var(--primary-navy)' : 'white' }}; color: {{ ($supplierFilter && $supplierFilter->id === $supplier->id) ? 'white' : 'var(--text-muted)' }};">{{ $supplier->name }}</a>
+            <a href="/company/expenses/pay?kind={{ $kind }}&supplier={{ $supplier->id }}" style="text-decoration: none; font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 999px; border: 1px solid {{ ($supplierFilter && $supplierFilter->id === $supplier->id) ? 'var(--primary-navy)' : 'var(--border-light)' }}; background: {{ ($supplierFilter && $supplierFilter->id === $supplier->id) ? 'var(--primary-navy)' : 'white' }}; color: {{ ($supplierFilter && $supplierFilter->id === $supplier->id) ? 'white' : 'var(--text-muted)' }};">{{ $supplier->name }}</a>
         @endforeach
     </div>
 
@@ -47,10 +56,14 @@
 
     @if($expenses->isEmpty())
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem; color: var(--text-muted); font-size: 0.9rem;">
-            Nothing is waiting for a refund{{ $supplierFilter ? ' from '.$supplierFilter->name : '' }}.
+            @if($kind === 'supplier')
+                No supplier invoice is waiting for payment{{ $supplierFilter ? ' from '.$supplierFilter->name : '' }}.
+            @else
+                Nothing is waiting for a refund{{ $supplierFilter ? ' from '.$supplierFilter->name : '' }}.
+            @endif
         </div>
     @else
-        <form id="payForm" method="POST" action="/company/expenses/pay" enctype="multipart/form-data">
+        <form id="payForm" method="POST" action="/company/expenses/pay" enctype="multipart/form-data" data-kind="{{ $kind }}">
             @csrf
             <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
                 <label style="display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-light); font-size: 0.85rem; font-weight: 600; color: var(--primary-navy); cursor: pointer;">
@@ -59,7 +72,7 @@
                 </label>
                 @foreach($expenses as $expense)
                     <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-light); cursor: pointer;">
-                        <input type="checkbox" name="expense_ids[]" value="{{ $expense->id }}" data-cash="{{ number_format($expense->cashTotal(), 2, '.', '') }}" data-date="{{ $expense->expense_date->format('Y-m-d') }}" @checked(in_array((int) $expense->id, $picked, true)) style="width: 1.15rem; height: 1.15rem; margin-top: 0.15rem;">
+                        <input type="checkbox" name="expense_ids[]" value="{{ $expense->id }}" data-cash="{{ number_format($expense->cashTotal(), 2, '.', '') }}" data-date="{{ $expense->expense_date->format('Y-m-d') }}" data-supplier="{{ (int) $expense->company_supplier_id }}" @checked(in_array((int) $expense->id, $picked, true)) style="width: 1.15rem; height: 1.15rem; margin-top: 0.15rem;">
                         <span style="flex: 1; min-width: 0;">
                             <span style="display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
                                 <strong style="color: var(--primary-navy); font-size: 0.92rem;">{{ $expense->supplier->name ?? 'No supplier' }}</strong>
@@ -135,19 +148,30 @@
                     var rows = selected();
                     var total = 0;
                     var latest = '';
+                    var suppliers = {};
                     rows.forEach(function (box) {
                         total += parseFloat(box.getAttribute('data-cash') || '0');
                         var date = box.getAttribute('data-date') || '';
                         if (!latest || date > latest) latest = date;
+                        suppliers[box.getAttribute('data-supplier') || '0'] = true;
                     });
                     total = Math.round(total * 100) / 100;
+                    var mixed = form.getAttribute('data-kind') === 'supplier' && Object.keys(suppliers).length > 1;
                     countEl.textContent = String(rows.length);
                     totalEl.textContent = money(total);
                     modalCount.textContent = String(rows.length);
                     modalTotal.textContent = money(total);
-                    hint.hidden = rows.length > 0;
-                    openBtn.disabled = rows.length === 0;
-                    openBtn.style.opacity = rows.length === 0 ? '0.55' : '1';
+                    if (mixed) {
+                        hint.hidden = false;
+                        hint.textContent = 'Pay one supplier at a time.';
+                    } else if (rows.length === 0) {
+                        hint.hidden = false;
+                        hint.textContent = 'Tick at least one invoice.';
+                    } else {
+                        hint.hidden = true;
+                    }
+                    openBtn.disabled = rows.length === 0 || mixed;
+                    openBtn.style.opacity = (rows.length === 0 || mixed) ? '0.55' : '1';
                     if (dateInput && latest) dateInput.min = latest;
                     if (all) {
                         all.checked = rows.length > 0 && rows.length === boxes.length;
