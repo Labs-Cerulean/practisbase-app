@@ -146,6 +146,8 @@ CREATE TABLE IF NOT EXISTS company_expenses (
     refund_reference VARCHAR(120) NULL,
     receipt_path VARCHAR(500) NULL,
     is_pre_incorporation BOOLEAN NOT NULL DEFAULT FALSE,
+    reversed_at DATE NULL,
+    reversal_note VARCHAR(500) NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,
     CONSTRAINT company_expenses_user_id_fkey

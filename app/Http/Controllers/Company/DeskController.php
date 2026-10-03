@@ -42,6 +42,7 @@ class DeskController extends Controller
 
         $expenseAgg = CompanyExpense::query()
             ->where('user_id', $userId)
+            ->whereNull('reversed_at')
             ->whereBetween('expense_date', [$yearStart, $yearEnd])
             ->selectRaw('COALESCE(SUM(amount), 0) as amount_sum, COALESCE(SUM(vat_amount), 0) as vat_sum, COALESCE(SUM(CASE WHEN is_reverse_charge THEN vat_amount ELSE 0 END), 0) as rc_vat_sum')
             ->first();
@@ -64,6 +65,7 @@ class DeskController extends Controller
 
         $owedToDirector = (float) CompanyExpense::where('user_id', $userId)
             ->where('funded_by', 'director')
+            ->whereNull('reversed_at')
             ->whereNull('director_refunded_at')
             ->get(['amount', 'vat_amount', 'is_reverse_charge'])
             ->sum(fn (CompanyExpense $e) => $e->cashTotal());

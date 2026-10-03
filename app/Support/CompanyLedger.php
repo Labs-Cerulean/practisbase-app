@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CompanyBankStatementLine;
 use App\Models\CompanyBooksLock;
 use App\Models\CompanyDividend;
 use App\Models\CompanyExpense;
@@ -369,16 +370,22 @@ class CompanyLedger
         );
     }
 
-    public static function postExpense(CompanyExpense $expense): CompanyJournalEntry
-    {
-        self::ensureChart(User::findOrFail($expense->user_id));
-
-        $net = round((float) $expense->amount, 2);
-        $vat = round((float) $expense->vat_amount, 2);
-        $isReverseCharge = (bool) $expense->is_reverse_charge;
-        $cash = $isReverseCharge ? $net : round($net + $vat, 2);
-        $expenseCode = CompanyChartOfAccounts::expenseAccountCode((string) $expense->category);
-        $creditCode = $expense->funded_by === 'director'
+    /**
+     * @return list<array{account_code: string, side: string, amount: float, memo: ?string}>
+     */
+    public static function expenseJournalLines(
+        float $net,
+        float $vat,
+        bool $reverseCharge,
+        string $fundedBy,
+        string $category,
+        string $description
+    ): array {
+        $net = round($net, 2);
+        $vat = round($vat, 2);
+        $cash = $reverseCharge ? $net : round($net + $vat, 2);
+        $expenseCode = CompanyChartOfAccounts::expenseAccountCode($category);
+        $creditCode = $fundedBy === 'director'
             ? CompanyChartOfAccounts::DIRECTOR_LOAN
             : CompanyChartOfAccounts::BANK;
 
@@ -387,12 +394,12 @@ class CompanyLedger
                 'account_code' => $expenseCode,
                 'side' => 'debit',
                 'amount' => $net,
-                'memo' => $expense->description,
+                'memo' => $description,
             ],
         ];
 
-        if ($isReverseCharge && $vat > 0) {
-            $rcMemo = 'Reverse charge: '.$expense->description;
+        if ($reverseCharge && $vat > 0) {
+            $rcMemo = 'Reverse charge: '.$description;
             $lines[] = [
                 'account_code' => CompanyChartOfAccounts::INPUT_VAT,
                 'side' => 'debit',
@@ -410,7 +417,7 @@ class CompanyLedger
                 'account_code' => CompanyChartOfAccounts::INPUT_VAT,
                 'side' => 'debit',
                 'amount' => $vat,
-                'memo' => $expense->description,
+                'memo' => $description,
             ];
         }
 
@@ -418,9 +425,55 @@ class CompanyLedger
             'account_code' => $creditCode,
             'side' => 'credit',
             'amount' => $cash,
-            'memo' => $expense->funded_by,
+            'memo' => $fundedBy,
         ];
 
+        return $lines;
+    }
+
+    /**
+     * @return list<array{account_code: string, side: string, amount: float, memo: ?string}>
+     */
+    public static function directorRefundJournalLines(float $gross, ?string $reference): array
+    {
+        $gross = round($gross, 2);
+
+        return [
+            [
+                'account_code' => CompanyChartOfAccounts::DIRECTOR_LOAN,
+                'side' => 'debit',
+                'amount' => $gross,
+                'memo' => $reference,
+            ],
+            [
+                'account_code' => CompanyChartOfAccounts::BANK,
+                'side' => 'credit',
+                'amount' => $gross,
+                'memo' => $reference,
+            ],
+        ];
+    }
+
+    /**
+     * @param  list<array{account_code: string, side: string, amount: float|int|string, memo?: ?string}>  $lines
+     * @return list<array{account_code: string, side: string, amount: float|int|string, memo?: ?string}>
+     */
+    public static function swapSides(array $lines): array
+    {
+        $swapped = [];
+        foreach ($lines as $line) {
+            $line['side'] = $line['side'] === 'debit' ? 'credit' : 'debit';
+            $swapped[] = $line;
+        }
+
+        return $swapped;
+    }
+
+    public static function postExpense(CompanyExpense $expense): CompanyJournalEntry
+    {
+        self::ensureChart(User::findOrFail($expense->user_id));
+
+        $isReverseCharge = (bool) $expense->is_reverse_charge;
         $narrative = $isReverseCharge
             ? 'Expense (reverse charge): '.$expense->description
             : 'Expense: '.$expense->description;
@@ -429,7 +482,14 @@ class CompanyLedger
             $expense->user_id,
             $expense->expense_date->format('Y-m-d'),
             $narrative,
-            $lines,
+            self::expenseJournalLines(
+                (float) $expense->amount,
+                (float) $expense->vat_amount,
+                $isReverseCharge,
+                (string) $expense->funded_by,
+                (string) $expense->category,
+                (string) $expense->description
+            ),
             'company_expense',
             $expense->id,
             'company_expense:'.$expense->id.':posted'
@@ -440,31 +500,107 @@ class CompanyLedger
     {
         self::ensureChart(User::findOrFail($expense->user_id));
 
-        $gross = $expense->cashTotal();
         $date = optional($expense->director_refunded_at)->format('Y-m-d') ?: now()->toDateString();
 
         return self::post(
             $expense->user_id,
             $date,
             'Director refund: '.$expense->description,
-            [
-                [
-                    'account_code' => CompanyChartOfAccounts::DIRECTOR_LOAN,
-                    'side' => 'debit',
-                    'amount' => $gross,
-                    'memo' => $expense->refund_reference,
-                ],
-                [
-                    'account_code' => CompanyChartOfAccounts::BANK,
-                    'side' => 'credit',
-                    'amount' => $gross,
-                    'memo' => $expense->refund_reference,
-                ],
-            ],
+            self::directorRefundJournalLines($expense->cashTotal(), $expense->refund_reference),
             'company_expense_refund',
             $expense->id,
             'company_expense:'.$expense->id.':director_refund'
         );
+    }
+
+    /**
+     * Post the opposite of the expense (and of a director refund, when one was posted).
+     * Returns how many bank-statement matches were released.
+     */
+    public static function reverseExpense(CompanyExpense $expense, string $reversalDate, ?string $note = null): int
+    {
+        if ($expense->reversed_at) {
+            throw ValidationException::withMessages([
+                'expense' => 'This expense is already reversed.',
+            ]);
+        }
+
+        self::assertDateOpen($expense->user_id, $reversalDate);
+        self::ensureChart(User::findOrFail($expense->user_id));
+
+        return DB::transaction(function () use ($expense, $reversalDate, $note) {
+            $released = self::releaseExpenseBankMatches($expense);
+
+            $isReverseCharge = (bool) $expense->is_reverse_charge;
+            self::post(
+                $expense->user_id,
+                $reversalDate,
+                'Reversal of expense: '.$expense->description,
+                self::swapSides(self::expenseJournalLines(
+                    (float) $expense->amount,
+                    (float) $expense->vat_amount,
+                    $isReverseCharge,
+                    (string) $expense->funded_by,
+                    (string) $expense->category,
+                    (string) $expense->description
+                )),
+                'company_expense_reversal',
+                $expense->id,
+                'company_expense:'.$expense->id.':reversal'
+            );
+
+            if ($expense->director_refunded_at) {
+                self::post(
+                    $expense->user_id,
+                    $reversalDate,
+                    'Reversal of director refund: '.$expense->description,
+                    self::swapSides(self::directorRefundJournalLines($expense->cashTotal(), $expense->refund_reference)),
+                    'company_expense_refund_reversal',
+                    $expense->id,
+                    'company_expense:'.$expense->id.':director_refund_reversal'
+                );
+            }
+
+            $expense->update([
+                'reversed_at' => $reversalDate,
+                'reversal_note' => $note,
+            ]);
+
+            return $released;
+        });
+    }
+
+    private static function releaseExpenseBankMatches(CompanyExpense $expense): int
+    {
+        $entries = CompanyJournalEntry::where('user_id', $expense->user_id)
+            ->where('source_id', $expense->id)
+            ->whereIn('source_type', ['company_expense', 'company_expense_refund'])
+            ->get();
+
+        $released = 0;
+        foreach ($entries as $entry) {
+            $lines = CompanyJournalLine::where('user_id', $expense->user_id)
+                ->where('journal_entry_id', $entry->id)
+                ->whereNotNull('bank_statement_line_id')
+                ->get();
+
+            foreach ($lines as $line) {
+                CompanyBankStatementLine::where('user_id', $expense->user_id)
+                    ->where('id', $line->bank_statement_line_id)
+                    ->update([
+                        'status' => 'unreconciled',
+                        'matched_journal_line_id' => null,
+                    ]);
+                $line->update(['bank_statement_line_id' => null]);
+                $released++;
+            }
+
+            if ($entry->status === 'reconciled') {
+                $entry->update(['status' => 'posted']);
+            }
+        }
+
+        return $released;
     }
 
     public static function postShareCapital(CompanyProfile $profile): ?CompanyJournalEntry

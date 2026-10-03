@@ -39,7 +39,9 @@ class ExpenseController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $unassignedCount = $expenses->whereNull('company_supplier_id')->count();
+        $unassignedCount = $expenses
+            ->filter(fn (CompanyExpense $e) => ! $e->company_supplier_id && ! $e->isReversed())
+            ->count();
         $supplierRows = $suppliers->map(fn (CompanySupplier $supplier) => [
             'id' => $supplier->id,
             'name' => $supplier->name,
@@ -48,7 +50,7 @@ class ExpenseController extends Controller
 
         $suggestions = [];
         foreach ($expenses as $expense) {
-            if ($expense->company_supplier_id) {
+            if ($expense->company_supplier_id || $expense->isReversed()) {
                 continue;
             }
             $suggestions[$expense->id] = SupplierInvoiceReader::suggestSupplierId(
@@ -68,7 +70,7 @@ class ExpenseController extends Controller
             ->sum(fn (CompanyExpense $e) => $e->cashTotal());
 
         $reverseChargeVat = (float) $expenses
-            ->filter(fn (CompanyExpense $e) => $e->is_reverse_charge)
+            ->filter(fn (CompanyExpense $e) => $e->is_reverse_charge && ! $e->isReversed())
             ->sum(fn (CompanyExpense $e) => $e->reverseChargeVat());
 
         return view('company.expenses-index', [
@@ -242,6 +244,7 @@ class ExpenseController extends Controller
         if ($invoiceNumber !== '') {
             $duplicate = CompanyExpense::where('user_id', $user->id)
                 ->where('company_supplier_id', $supplier->id)
+                ->whereNull('reversed_at')
                 ->whereRaw('lower(supplier_invoice_number) = ?', [mb_strtolower($invoiceNumber)])
                 ->exists();
             if ($duplicate) {
@@ -306,6 +309,7 @@ class ExpenseController extends Controller
         $expenses = CompanyExpense::where('user_id', $user->id)
             ->whereYear('expense_date', $year)
             ->whereNull('company_supplier_id')
+            ->whereNull('reversed_at')
             ->get();
 
         $plan = [];
@@ -334,6 +338,52 @@ class ExpenseController extends Controller
         return back()->with('success', $message);
     }
 
+    public function reverse(Request $request, int $expense)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        $model = CompanyExpense::where('user_id', $user->id)->where('id', $expense)->firstOrFail();
+
+        if ($model->isReversed()) {
+            return back()->withErrors(['expense' => 'This expense is already reversed.']);
+        }
+
+        $validated = $request->validate([
+            'reversed_at' => 'required|date|before_or_equal:today',
+            'reversal_note' => 'nullable|string|max:500',
+        ]);
+
+        $reversalDate = $validated['reversed_at'];
+        if ($reversalDate < $model->expense_date->format('Y-m-d')) {
+            return back()->withErrors([
+                'reversed_at' => 'The reversal date cannot be earlier than the expense date.',
+            ])->withInput();
+        }
+        if (strtotime($reversalDate) > $profile->first_period_end->getTimestamp()) {
+            return back()->withErrors([
+                'reversed_at' => 'Reversal date is after the first financial period end.',
+            ])->withInput();
+        }
+
+        $note = trim((string) ($validated['reversal_note'] ?? ''));
+
+        try {
+            $released = CompanyLedger::reverseExpense($model, $reversalDate, $note !== '' ? $note : null);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        $message = 'Reversed €'.number_format($model->cashTotal(), 2).' for '.$model->description.'. It no longer counts in totals. Log the correct invoice when you are ready.';
+        if ($model->director_refunded_at) {
+            $message .= ' The director refund was reversed as well.';
+        }
+        if ($released > 0) {
+            $message .= ' The bank match was released.';
+        }
+
+        return back()->with('success', $message);
+    }
+
     public function assignSupplier(Request $request, int $expense)
     {
         $user = Auth::user();
@@ -342,6 +392,9 @@ class ExpenseController extends Controller
         ]);
 
         $model = CompanyExpense::where('user_id', $user->id)->where('id', $expense)->firstOrFail();
+        if ($model->isReversed()) {
+            return back()->withErrors(['expense' => 'A reversed expense stays as history. Log a new one for the corrected invoice.']);
+        }
         $supplier = CompanySupplier::where('user_id', $user->id)
             ->where('id', (int) $validated['company_supplier_id'])
             ->firstOrFail();
@@ -364,6 +417,9 @@ class ExpenseController extends Controller
         $user = Auth::user();
         $model = CompanyExpense::where('user_id', $user->id)->where('id', $expense)->firstOrFail();
 
+        if ($model->isReversed()) {
+            return back()->withErrors(['expense' => 'This expense is reversed, so it cannot be marked refunded.']);
+        }
         if ($model->funded_by !== 'director') {
             return back()->withErrors(['expense' => 'Only director-funded costs can be marked refunded.']);
         }
