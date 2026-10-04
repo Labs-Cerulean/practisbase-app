@@ -43,6 +43,7 @@
                             <li><a href="/company/expenses" class="nav-link {{ request()->is('company/expenses*') ? 'active' : '' }}">Expenses</a></li>
                             <li><a href="/company/suppliers" class="nav-link {{ request()->is('company/suppliers*') ? 'active' : '' }}">Suppliers</a></li>
                             <li><a href="/company/bank" class="nav-link {{ request()->is('company/bank*') ? 'active' : '' }}">Bank recon</a></li>
+                            <li><a href="/company/personal" class="nav-link {{ request()->is('company/personal*') ? 'active' : '' }}">Personal money</a></li>
                             <li><a href="/company/dividends" class="nav-link {{ request()->is('company/dividends*') ? 'active' : '' }}">Dividends</a></li>
                             <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
                             <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>

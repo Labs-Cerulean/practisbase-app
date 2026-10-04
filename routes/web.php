@@ -47,6 +47,7 @@ use App\Http\Controllers\Company\SupplierController as CompanySupplierController
 use App\Http\Controllers\Company\AccountsController as CompanyAccountsController;
 use App\Http\Controllers\Company\BankController as CompanyBankController;
 use App\Http\Controllers\Company\DividendController as CompanyDividendController;
+use App\Http\Controllers\Company\PersonalReceiptController as CompanyPersonalReceiptController;
 use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringInvoiceController;
 use App\Http\Controllers\Company\BetaInviteController as CompanyBetaInviteController;
 use App\Http\Controllers\Company\ContentStudioController as CompanyContentStudioController;
@@ -497,6 +498,12 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/bank', [CompanyBankController::class, 'index']);
         Route::post('/bank', [CompanyBankController::class, 'store']);
         Route::post('/bank/{line}/match', [CompanyBankController::class, 'match']);
+
+        Route::get('/personal', [CompanyPersonalReceiptController::class, 'index']);
+        Route::post('/personal', [CompanyPersonalReceiptController::class, 'store']);
+        Route::post('/personal/{receipt}/return', [CompanyPersonalReceiptController::class, 'returnFunds'])->whereNumber('receipt');
+        Route::post('/personal/{receipt}/reverse', [CompanyPersonalReceiptController::class, 'reverse'])->whereNumber('receipt');
+        Route::get('/personal/{receipt}/proof', [CompanyPersonalReceiptController::class, 'proof'])->whereNumber('receipt');
 
         Route::get('/dividends', [CompanyDividendController::class, 'index']);
         Route::post('/dividends', [CompanyDividendController::class, 'store']);
