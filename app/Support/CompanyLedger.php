@@ -12,6 +12,7 @@ use App\Models\CompanyInvoice;
 use App\Models\CompanyJournalEntry;
 use App\Models\CompanyJournalLine;
 use App\Models\CompanyPayment;
+use App\Models\CompanyPersonalReceipt;
 use App\Models\CompanyProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -797,6 +798,148 @@ class CompanyLedger
             $dividend->id,
             'company_dividend:'.$dividend->id.':paid'
         );
+    }
+
+    /**
+     * Money that arrived in the company bank but belongs to the director personally.
+     *
+     * @return list<array{account_code: string, side: string, amount: float, memo: ?string}>
+     */
+    public static function personalFundsReceivedLines(float $amount, ?string $reference): array
+    {
+        $amount = round($amount, 2);
+
+        return [
+            [
+                'account_code' => CompanyChartOfAccounts::BANK,
+                'side' => 'debit',
+                'amount' => $amount,
+                'memo' => $reference,
+            ],
+            [
+                'account_code' => CompanyChartOfAccounts::DIRECTOR_LOAN,
+                'side' => 'credit',
+                'amount' => $amount,
+                'memo' => $reference,
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{account_code: string, side: string, amount: float, memo: ?string}>
+     */
+    public static function personalFundsReturnedLines(float $amount, ?string $reference): array
+    {
+        return self::swapSides(self::personalFundsReceivedLines($amount, $reference));
+    }
+
+    public static function postPersonalFundsReceived(CompanyPersonalReceipt $receipt): CompanyJournalEntry
+    {
+        self::ensureChart(User::findOrFail($receipt->user_id));
+
+        return self::post(
+            $receipt->user_id,
+            $receipt->received_on->format('Y-m-d'),
+            'Personal funds received: '.$receipt->description,
+            self::personalFundsReceivedLines((float) $receipt->amount, $receipt->reference),
+            'company_personal_receipt',
+            $receipt->id,
+            'company_personal_receipt:'.$receipt->id.':received'
+        );
+    }
+
+    public static function postPersonalFundsReturned(CompanyPersonalReceipt $receipt): CompanyJournalEntry
+    {
+        self::ensureChart(User::findOrFail($receipt->user_id));
+        $date = optional($receipt->returned_on)->format('Y-m-d') ?: now()->toDateString();
+
+        return self::post(
+            $receipt->user_id,
+            $date,
+            'Personal funds returned: '.$receipt->description,
+            self::personalFundsReturnedLines((float) $receipt->amount, $receipt->return_reference),
+            'company_personal_return',
+            $receipt->id,
+            'company_personal_receipt:'.$receipt->id.':returned'
+        );
+    }
+
+    public static function reversePersonalReceipt(CompanyPersonalReceipt $receipt, string $reversalDate, ?string $note = null): int
+    {
+        if ($receipt->reversed_at) {
+            throw ValidationException::withMessages([
+                'receipt' => 'This personal receipt is already reversed.',
+            ]);
+        }
+
+        self::assertDateOpen($receipt->user_id, $reversalDate);
+        self::ensureChart(User::findOrFail($receipt->user_id));
+
+        return DB::transaction(function () use ($receipt, $reversalDate, $note) {
+            $released = self::releasePersonalReceiptMatches($receipt);
+
+            self::post(
+                $receipt->user_id,
+                $reversalDate,
+                'Reversal of personal funds received: '.$receipt->description,
+                self::swapSides(self::personalFundsReceivedLines((float) $receipt->amount, $receipt->reference)),
+                'company_personal_receipt_reversal',
+                $receipt->id,
+                'company_personal_receipt:'.$receipt->id.':received_reversal'
+            );
+
+            if ($receipt->returned_on) {
+                self::post(
+                    $receipt->user_id,
+                    $reversalDate,
+                    'Reversal of personal funds returned: '.$receipt->description,
+                    self::swapSides(self::personalFundsReturnedLines((float) $receipt->amount, $receipt->return_reference)),
+                    'company_personal_return_reversal',
+                    $receipt->id,
+                    'company_personal_receipt:'.$receipt->id.':returned_reversal'
+                );
+            }
+
+            $receipt->update([
+                'reversed_at' => $reversalDate,
+                'reversal_note' => $note,
+            ]);
+
+            return $released;
+        });
+    }
+
+    private static function releasePersonalReceiptMatches(CompanyPersonalReceipt $receipt): int
+    {
+        $entries = CompanyJournalEntry::where('user_id', $receipt->user_id)
+            ->where('source_id', $receipt->id)
+            ->whereIn('source_type', ['company_personal_receipt', 'company_personal_return'])
+            ->get();
+
+        $released = 0;
+        foreach ($entries as $entry) {
+            $lines = CompanyJournalLine::where('user_id', $receipt->user_id)
+                ->where('journal_entry_id', $entry->id)
+                ->whereNotNull('bank_statement_line_id')
+                ->get();
+
+            foreach ($lines as $line) {
+                CompanyBankStatementLine::where('user_id', $receipt->user_id)
+                    ->where('id', $line->bank_statement_line_id)
+                    ->update([
+                        'status' => 'unreconciled',
+                        'matched_journal_line_id' => null,
+                    ]);
+                $line->update(['bank_statement_line_id' => null]);
+                $released++;
+            }
+
+            if ($entry->status === 'reconciled') {
+                $entry->update(['status' => 'posted']);
+            }
+        }
+
+        return $released;
     }
 
     /**

@@ -154,6 +154,10 @@
             <div style="font-weight: 700; color: var(--primary-navy);">Bank recon</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Match BOV lines to the ledger</div>
         </a>
+        <a href="/company/personal" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
+            <div style="font-weight: 700; color: var(--primary-navy);">Personal money</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Money paid into the company by mistake</div>
+        </a>
         <a href="/company/dividends" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; text-decoration: none; box-shadow: var(--shadow-sm);">
             <div style="font-weight: 700; color: var(--primary-navy);">Dividends</div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Declare · pay from retained earnings</div>
