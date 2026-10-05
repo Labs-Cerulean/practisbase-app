@@ -435,7 +435,9 @@ class RecurringInvoiceController extends Controller
             }
         }
 
-        return $docs->sortByDesc(fn ($d) => $d->issue_date->format('Y-m-d').'-'.$d->id)->values();
+        return CompanyInvoice::withoutSupersededProformas(
+            $docs->sortByDesc(fn ($d) => $d->issue_date->format('Y-m-d').'-'.$d->id)->values()
+        );
     }
 
     private function hasRecurringLinkColumn(): bool
