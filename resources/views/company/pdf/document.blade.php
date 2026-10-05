@@ -52,6 +52,9 @@
                 @if($document->due_date && $document->type !== 'credit_note')
                     <div class="muted">Due: {{ $document->due_date->format('d M Y') }}</div>
                 @endif
+                @if($coverage = $document->coverageLabel())
+                    <div style="margin-top: 8px; font-size: 13px; font-weight: bold;">{{ $coverage }}</div>
+                @endif
                 <div class="muted">Currency: EUR</div>
             </td>
         </tr>
@@ -62,6 +65,12 @@
             <strong>This credit note amends tax invoice {{ $creditedInvoice->document_number }}</strong>
             (issued {{ $creditedInvoice->issue_date->format('d M Y') }}).
             It reverses the taxable amount and VAT shown below for that invoice.
+        </div>
+    @endif
+
+    @if($coverage ?? null)
+        <div class="banner">
+            <strong>Coverage {{ $coverage }}</strong>
         </div>
     @endif
 

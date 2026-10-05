@@ -24,7 +24,7 @@ class InvoiceController extends Controller
         $user = Auth::user();
         CompanyBooks::ensureProfile($user);
 
-        $documents = CompanyInvoice::with(['client', 'payments', 'childDocuments'])
+        $documents = CompanyInvoice::with(['client', 'payments', 'childDocuments', 'linkedDocument'])
             ->where('user_id', $user->id)
             ->whereNull('parent_document_id')
             ->orderByDesc('issue_date')
@@ -76,6 +76,8 @@ class InvoiceController extends Controller
             'issue_date' => 'required|date|before_or_equal:today',
             'supply_date' => 'nullable|date|before_or_equal:today',
             'due_date' => 'required|date|after_or_equal:issue_date',
+            'coverage_start' => 'nullable|date',
+            'coverage_end' => 'nullable|date',
             'item_desc' => 'required|array|min:1',
             'item_desc.*' => 'required|string',
             'item_qty' => 'required|array|min:1',
@@ -87,6 +89,19 @@ class InvoiceController extends Controller
 
         if ($error = $this->validateIssueDate($profile, $request->issue_date, 'rfp')) {
             return back()->withErrors(['issue_date' => $error])->withInput();
+        }
+
+        $coverageStart = $request->filled('coverage_start') ? $request->coverage_start : null;
+        $coverageEnd = $request->filled('coverage_end') ? $request->coverage_end : null;
+        if (($coverageStart && ! $coverageEnd) || (! $coverageStart && $coverageEnd)) {
+            return back()->withErrors([
+                'coverage_end' => 'Enter both the coverage start and the coverage end.',
+            ])->withInput();
+        }
+        if ($coverageStart && $coverageEnd && $coverageEnd < $coverageStart) {
+            return back()->withErrors([
+                'coverage_end' => 'The coverage end cannot be earlier than the coverage start.',
+            ])->withInput();
         }
 
         $supplyDate = $request->filled('supply_date') ? $request->supply_date : $request->issue_date;
@@ -107,7 +122,7 @@ class InvoiceController extends Controller
         $year = (int) date('Y', strtotime($request->issue_date));
         $number = CompanyBooks::nextDocumentNumber($user->id, 'rfp', $year);
 
-        DB::transaction(function () use ($user, $request, $number, $supplyDate, $subtotal, $vatTotal, $total, $items) {
+        DB::transaction(function () use ($user, $request, $number, $supplyDate, $coverageStart, $coverageEnd, $subtotal, $vatTotal, $total, $items) {
             CompanyInvoice::create([
                 'user_id' => $user->id,
                 'company_client_id' => $request->company_client_id,
@@ -115,6 +130,8 @@ class InvoiceController extends Controller
                 'document_number' => $number,
                 'issue_date' => $request->issue_date,
                 'supply_date' => $supplyDate,
+                'coverage_start' => $coverageStart,
+                'coverage_end' => $coverageEnd,
                 'due_date' => $request->due_date,
                 'subtotal' => $subtotal,
                 'vat_total' => $vatTotal,
@@ -250,6 +267,8 @@ class InvoiceController extends Controller
 
         $number = CompanyBooks::nextDocumentNumber($user->id, 'credit_note', (int) date('Y'));
         $supplyDate = optional($invoice->supply_date)->format('Y-m-d') ?: $issueDate;
+        $invoice->loadMissing('linkedDocument');
+        $coverage = $invoice->resolvedCoverage();
 
         $credit = CompanyInvoice::create([
             'user_id' => $user->id,
@@ -259,6 +278,8 @@ class InvoiceController extends Controller
             'document_number' => $number,
             'issue_date' => $issueDate,
             'supply_date' => $supplyDate,
+            'coverage_start' => $coverage[0] ?? null,
+            'coverage_end' => $coverage[1] ?? null,
             'due_date' => $issueDate,
             'subtotal' => $invoice->subtotal,
             'vat_total' => $invoice->vat_total,
@@ -279,7 +300,7 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
-        $doc = CompanyInvoice::with(['client', 'parentDocument'])
+        $doc = CompanyInvoice::with(['client', 'parentDocument.linkedDocument', 'linkedDocument'])
             ->where('user_id', $user->id)
             ->where('id', $document)
             ->firstOrFail();
@@ -382,6 +403,10 @@ class InvoiceController extends Controller
             throw ValidationException::withMessages(['supply_date' => $error]);
         }
 
+        $coverage = $locked->resolvedCoverage();
+        $coverageStart = $coverage[0] ?? null;
+        $coverageEnd = $coverage[1] ?? null;
+
         $year = (int) date('Y', strtotime($issueDate));
         $number = CompanyBooks::nextDocumentNumber($user->id, 'invoice', $year);
 
@@ -401,6 +426,8 @@ class InvoiceController extends Controller
             'document_number' => $number,
             'issue_date' => $issueDate,
             'supply_date' => $supplyDate,
+            'coverage_start' => $coverageStart,
+            'coverage_end' => $coverageEnd,
             'due_date' => $locked->due_date,
             'subtotal' => $locked->subtotal,
             'vat_total' => $vatTotal,

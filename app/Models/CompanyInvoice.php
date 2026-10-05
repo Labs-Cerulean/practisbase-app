@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\CompanyBooks;
+use App\Support\InvoiceCoverage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,6 +17,8 @@ class CompanyInvoice extends Model
         'document_number',
         'issue_date',
         'supply_date',
+        'coverage_start',
+        'coverage_end',
         'due_date',
         'subtotal',
         'vat_total',
@@ -35,6 +38,8 @@ class CompanyInvoice extends Model
             'items' => 'array',
             'issue_date' => 'date',
             'supply_date' => 'date',
+            'coverage_start' => 'date',
+            'coverage_end' => 'date',
             'due_date' => 'date',
             'subtotal' => 'decimal:2',
             'vat_total' => 'decimal:2',
@@ -46,6 +51,58 @@ class CompanyInvoice extends Model
     public function effectiveSupplyDate(): \Carbon\CarbonInterface
     {
         return $this->supply_date ?? $this->issue_date;
+    }
+
+    /**
+     * Service period printed on the proforma and on the tax invoice.
+     * A converted invoice keeps the proforma's month, not the payment date.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public function resolvedCoverage(): ?array
+    {
+        if ($this->coverage_start && $this->coverage_end) {
+            return [
+                $this->coverage_start->toDateString(),
+                $this->coverage_end->toDateString(),
+            ];
+        }
+
+        if ($this->type === 'credit_note' && $this->parentDocument) {
+            return $this->parentDocument->resolvedCoverage();
+        }
+
+        $source = $this;
+        if ($this->type === 'invoice' && $this->linked_document_id) {
+            $rfp = $this->relationLoaded('linkedDocument')
+                ? $this->linkedDocument
+                : $this->linkedDocument()->first();
+            if ($rfp) {
+                $fromRfp = $rfp->resolvedCoverage();
+                if ($fromRfp) {
+                    return $fromRfp;
+                }
+                $source = $rfp;
+            }
+        }
+
+        if (! $source->isMonthlyBill() || ! $source->issue_date) {
+            return null;
+        }
+
+        $start = $source->issue_date->toDateString();
+
+        return [$start, InvoiceCoverage::monthEnd($start)];
+    }
+
+    public function coverageLabel(): ?string
+    {
+        $bounds = $this->resolvedCoverage();
+        if (! $bounds) {
+            return null;
+        }
+
+        return InvoiceCoverage::label($bounds[0], $bounds[1]);
     }
 
     public function user(): BelongsTo

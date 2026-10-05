@@ -58,6 +58,21 @@
                 </div>
             </div>
 
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 0.35rem;">
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Coverage from</label>
+                    <input type="date" name="coverage_start" id="coverageStart" value="{{ old('coverage_start') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Coverage to</label>
+                    <input type="date" name="coverage_end" id="coverageEnd" value="{{ old('coverage_end') }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                </div>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+                Printed on the proforma and on the tax invoice as (From: …, To: …).
+                <button type="button" onclick="fillCoverageMonth()" style="background: none; border: none; padding: 0; color: var(--primary-cerulean); font-weight: 700; cursor: pointer; font-size: 0.75rem;">Use one month from the issue date</button>
+            </div>
+
             <div id="clientWarning" style="display: none; margin-bottom: 1.25rem; padding: 0.75rem 1rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius-md); color: #9a3412; font-size: 0.85rem; line-height: 1.45;"></div>
 
             <h3 style="color: var(--primary-navy); font-size: 1.05rem; margin-bottom: 0.75rem;">Line items (ex-VAT, EUR)</h3>
@@ -92,6 +107,21 @@
     <script>
         var clientMeta = @json($clientMeta);
 
+        function fillCoverageMonth() {
+            var issue = document.getElementById('issueDate').value;
+            if (!issue) return;
+            var start = new Date(issue + 'T00:00:00');
+            var end = new Date(start.getTime());
+            end.setMonth(end.getMonth() + 1);
+            end.setDate(end.getDate() - 1);
+            function iso(d) {
+                var month = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                return d.getFullYear() + '-' + month + '-' + day;
+            }
+            document.getElementById('coverageStart').value = iso(start);
+            document.getElementById('coverageEnd').value = iso(end);
+        }
         function checkClient() {
             var warn = document.getElementById('clientWarning');
             var id = document.getElementById('clientSelect').value;

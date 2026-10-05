@@ -338,6 +338,7 @@ class RecurringInvoiceController extends Controller
                 }
 
                 $issueDate = $locked->next_issue_on->format('Y-m-d');
+                $nextIssue = $locked->next_issue_on->copy()->addMonthNoOverflow()->day(min((int) $locked->day_of_month, 28));
                 $items = $locked->items ?? [];
                 $subtotal = EstateHubBilling::itemsSubtotal($items);
                 $vat = $profile->isArticle10() ? round($subtotal * 0.18, 2) : 0.0;
@@ -351,6 +352,8 @@ class RecurringInvoiceController extends Controller
                     'document_number' => $number,
                     'issue_date' => $issueDate,
                     'supply_date' => $issueDate,
+                    'coverage_start' => $issueDate,
+                    'coverage_end' => $nextIssue->copy()->subDay()->toDateString(),
                     'due_date' => Carbon::parse($issueDate)->addDays((int) $locked->due_days)->toDateString(),
                     'subtotal' => $subtotal,
                     'vat_total' => $vat,
@@ -366,7 +369,7 @@ class RecurringInvoiceController extends Controller
 
                 $rfp = CompanyInvoice::create($payload);
 
-                $next = $locked->next_issue_on->copy()->addMonthNoOverflow()->day(min((int) $locked->day_of_month, 28));
+                $next = $nextIssue;
                 $locked->update([
                     'last_generated_on' => $issueDate,
                     'last_invoice_id' => $rfp->id,
@@ -398,7 +401,7 @@ class RecurringInvoiceController extends Controller
      */
     private function documentsForSchedule(int $userId, CompanyRecurringInvoice $schedule): Collection
     {
-        $query = CompanyInvoice::with(['payments', 'childDocuments'])
+        $query = CompanyInvoice::with(['payments', 'childDocuments', 'linkedDocument'])
             ->where('user_id', $userId)
             ->whereNull('parent_document_id')
             ->where(function ($q) use ($schedule) {
@@ -420,7 +423,7 @@ class RecurringInvoiceController extends Controller
 
         $rfpIds = $docs->where('type', 'rfp')->pluck('id');
         if ($rfpIds->isNotEmpty()) {
-            $tax = CompanyInvoice::with(['payments', 'childDocuments'])
+            $tax = CompanyInvoice::with(['payments', 'childDocuments', 'linkedDocument'])
                 ->where('user_id', $userId)
                 ->where('type', 'invoice')
                 ->whereIn('linked_document_id', $rfpIds)
@@ -582,6 +585,7 @@ class RecurringInvoiceController extends Controller
                     'documentDue' => $document && $document->due_date
                         ? $document->due_date->format('d M Y')
                         : '',
+                    'coverageLabel' => $document?->coverageLabel(),
                     'officialOwed' => $statement
                         ? number_format((float) $statement['official_owed'], 2)
                         : null,

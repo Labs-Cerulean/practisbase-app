@@ -7,6 +7,11 @@
             for <strong>{{ $packageLabel }}</strong>
             (total €{{ $documentTotal }}, due {{ $documentDue }}).
         </p>
+        @if(!empty($coverageLabel))
+            <p style="margin: 0 0 1rem; font-size: 14px;">
+                Coverage <strong>{{ $coverageLabel }}</strong>
+            </p>
+        @endif
         <p style="margin: 0 0 1rem; font-size: 13px; color: #475569;">
             This is a request for payment (proforma). A tax invoice with VAT is issued once payment is received.
         </p>

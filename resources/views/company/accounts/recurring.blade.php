@@ -230,6 +230,7 @@
                                 <thead>
                                     <tr style="background: #f8fafc; text-align: left; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;">
                                         <th style="padding: 0.45rem 0.65rem; font-weight: 700;">Date</th>
+                                        <th style="padding: 0.45rem 0.65rem; font-weight: 700;">Coverage</th>
                                         <th style="padding: 0.45rem 0.65rem; font-weight: 700;">Number</th>
                                         <th style="padding: 0.45rem 0.65rem; font-weight: 700;">Type</th>
                                         <th style="padding: 0.45rem 0.65rem; font-weight: 700;">Status</th>
@@ -250,6 +251,7 @@
                                         @endphp
                                         <tr style="border-top: 1px solid var(--border-light);">
                                             <td style="padding: 0.5rem 0.65rem; white-space: nowrap;">{{ $doc->issue_date->format('d M Y') }}</td>
+                                            <td style="padding: 0.5rem 0.65rem; white-space: nowrap; color: var(--text-muted);">{{ $doc->coverageLabel() }}</td>
                                             <td style="padding: 0.5rem 0.65rem; font-weight: 600; color: var(--primary-navy);">{{ $doc->document_number }}</td>
                                             <td style="padding: 0.5rem 0.65rem;">{{ $typeLabel }}</td>
                                             <td style="padding: 0.5rem 0.65rem;">{{ $doc->status }}</td>

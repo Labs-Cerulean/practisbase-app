@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS company_invoices (
     document_number VARCHAR(64) NOT NULL,
     issue_date DATE NOT NULL,
     supply_date DATE NULL,
+    coverage_start DATE NULL,
+    coverage_end DATE NULL,
     due_date DATE NULL,
     subtotal NUMERIC(12, 2) NOT NULL DEFAULT 0,
     vat_total NUMERIC(12, 2) NOT NULL DEFAULT 0,
