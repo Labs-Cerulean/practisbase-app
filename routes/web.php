@@ -449,6 +449,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
     Route::middleware('company_books')->prefix('company')->group(function () {
         Route::get('/', [CompanyDeskController::class, 'index']);
         Route::get('/compliance', [CompanyDeskController::class, 'compliance']);
+        Route::get('/compliance/vat.pdf', [CompanyDeskController::class, 'vatReturnPdf']);
         Route::get('/platform', [CompanyPlatformDashboardController::class, 'index']);
         Route::post('/platform/users/{id}/kpi-cohort', [CompanyPlatformDashboardController::class, 'setKpiCohort'])->whereNumber('id');
         Route::get('/profile', [CompanyProfileController::class, 'edit']);
@@ -460,6 +461,8 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/clients/create', [CompanyClientController::class, 'create']);
         Route::post('/clients', [CompanyClientController::class, 'store']);
         Route::get('/clients/{client}', [CompanyClientController::class, 'show']);
+        Route::get('/clients/{client}/statement.pdf', [CompanyClientController::class, 'statementPdf'])->whereNumber('client');
+        Route::get('/clients/{client}/history.pdf', [CompanyClientController::class, 'historyPdf'])->whereNumber('client');
         Route::get('/clients/{client}/edit', [CompanyClientController::class, 'edit']);
         Route::put('/clients/{client}', [CompanyClientController::class, 'update']);
 
@@ -492,6 +495,7 @@ Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(functi
         Route::get('/accounts/chart', [CompanyAccountsController::class, 'chart']);
         Route::get('/accounts/journals', [CompanyAccountsController::class, 'journals']);
         Route::get('/accounts/customer-statement', [CompanyAccountsController::class, 'customerStatement']);
+        Route::get('/accounts/customer-statement.pdf', [CompanyAccountsController::class, 'customerStatementPdf']);
         Route::post('/accounts/lock', [CompanyAccountsController::class, 'lock']);
         Route::post('/accounts/unlock', [CompanyAccountsController::class, 'unlock']);
 

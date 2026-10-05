@@ -101,6 +101,17 @@ img, svg { max-width: 100%; height: auto; }
     border-top: none;
 }
 
+.sidebar-nav.nav-compact .nav-link {
+    padding: 0.42rem 1rem;
+    margin-bottom: 0.08rem;
+    font-size: 0.88rem;
+}
+
+.sidebar-nav.nav-compact .nav-section-label {
+    margin-top: 0.8rem;
+    margin-bottom: 0.1rem;
+}
+
 .nav-link {
     display: flex;
     align-items: center;

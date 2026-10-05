@@ -10,6 +10,8 @@ use App\Models\CompanyPayment;
 use App\Support\CompanyBooks;
 use App\Support\CompanyComplianceCalendar;
 use App\Support\CompanyLedger;
+use App\Support\CompanyVatReturn;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -130,6 +132,26 @@ class DeskController extends Controller
             'year' => $year,
             'events' => CompanyComplianceCalendar::events($profile, $year),
             'upcoming' => CompanyComplianceCalendar::upcoming($profile, 12),
+            'vatReturn' => CompanyVatReturn::nextFor($profile, $user->id),
         ]);
+    }
+
+    public function vatReturnPdf()
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        $vatReturn = CompanyVatReturn::nextFor($profile, $user->id);
+        if (! $vatReturn) {
+            return redirect('/company/compliance')->withErrors([
+                'vat' => 'There is no Article 10 VAT return to prepare.',
+            ]);
+        }
+
+        $pdf = Pdf::loadView('company.pdf.vat-return', [
+            'profile' => $profile,
+            'vatReturn' => $vatReturn,
+        ]);
+
+        return $pdf->download('vat-return-'.$vatReturn['key'].'.pdf');
     }
 }

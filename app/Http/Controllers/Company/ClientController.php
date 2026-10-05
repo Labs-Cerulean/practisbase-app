@@ -7,6 +7,7 @@ use App\Models\CompanyClient;
 use App\Models\CompanyInvoice;
 use App\Support\CompanyBooks;
 use App\Support\CompanyClientStatement;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -94,6 +95,62 @@ class ClientController extends Controller
             'history' => $history,
             'tab' => $tab,
         ]);
+    }
+
+    public function statementPdf(int $client)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        [$model, $documents] = $this->clientDocuments($user->id, $client);
+
+        $pdf = Pdf::loadView('company.pdf.client-statement', [
+            'profile' => $profile,
+            'client' => $model,
+            'statement' => CompanyClientStatement::openStatement($documents),
+        ]);
+
+        return $pdf->download($this->clientPdfName('statement', $model->name));
+    }
+
+    public function historyPdf(int $client)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        [$model, $documents] = $this->clientDocuments($user->id, $client);
+
+        $pdf = Pdf::loadView('company.pdf.client-history', [
+            'profile' => $profile,
+            'client' => $model,
+            'history' => CompanyClientStatement::transactionHistory($documents),
+        ]);
+
+        return $pdf->download($this->clientPdfName('history', $model->name));
+    }
+
+    /**
+     * @return array{0: CompanyClient, 1: \Illuminate\Support\Collection<int, CompanyInvoice>}
+     */
+    private function clientDocuments(int $userId, int $client): array
+    {
+        $model = CompanyClient::where('user_id', $userId)->where('id', $client)->firstOrFail();
+        $documents = CompanyInvoice::with([
+            'payments' => fn ($q) => $q->orderBy('payment_date')->orderBy('id'),
+            'childDocuments',
+        ])
+            ->where('user_id', $userId)
+            ->where('company_client_id', $model->id)
+            ->orderBy('issue_date')
+            ->orderBy('id')
+            ->get();
+
+        return [$model, $documents];
+    }
+
+    private function clientPdfName(string $kind, ?string $name): string
+    {
+        $slug = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', (string) $name) ?? 'client', '-'));
+
+        return $kind.'-'.($slug !== '' ? $slug : 'client').'-'.date('Ymd').'.pdf';
     }
 
     public function edit(int $client)
