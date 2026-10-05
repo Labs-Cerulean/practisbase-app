@@ -53,6 +53,10 @@
                style="padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; {{ $tab === 'history' ? 'background: var(--primary-navy); color: white;' : 'background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;' }}">
                 Transaction history
             </a>
+            <a href="/company/clients/{{ $client->id }}/{{ $tab === 'history' ? 'history' : 'statement' }}.pdf"
+               style="margin-left: auto; padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; background: var(--primary-cerulean); color: white;">
+                Download PDF
+            </a>
         </div>
 
         @if($tab === 'statement')

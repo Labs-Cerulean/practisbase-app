@@ -144,16 +144,19 @@ class CompanyComplianceCalendar
                 $hint = $partial
                     ? 'First VAT month (from incorporation). File via MTCA even if nil / input-only reclaim.'
                     : 'Monthly return — around '.$due->format('d M Y').'. Confirm CFR window.';
-                $events[] = self::chip(
+                $chip = self::chip(
                     'vat_m_'.$periodYear.'_'.$periodMonth,
                     'VAT · '.Carbon::create($periodYear, $periodMonth, 1)->format('M Y'),
                     'vat',
                     $hint,
                     $due,
                     $today,
-                    '/company/invoices',
+                    '/company/compliance#vat-return',
                     'filing'
                 );
+                $chip['period_from'] = $periodStart->toDateString();
+                $chip['period_to'] = $periodEnd->toDateString();
+                $events[] = $chip;
             }
 
             return $events;
@@ -207,16 +210,19 @@ class CompanyComplianceCalendar
             $hint = $partial
                 ? 'First VAT return (partial quarter from incorporation). File via MTCA even if nil / mainly input VAT reclaim on startup costs.'
                 : 'Quarterly Art 10 return — around '.$q['due']->format('d M Y').'. Confirm CFR window.';
-            $events[] = self::chip(
+            $chip = self::chip(
                 $q['key'],
                 $q['label'],
                 'vat',
                 $hint,
                 $q['due'],
                 $today,
-                '/company',
+                '/company/compliance#vat-return',
                 'filing'
             );
+            $chip['period_from'] = $q['period_start']->toDateString();
+            $chip['period_to'] = $q['period_end']->toDateString();
+            $events[] = $chip;
         }
 
         return $events;

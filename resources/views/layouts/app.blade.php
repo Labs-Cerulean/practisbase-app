@@ -29,24 +29,28 @@
                 </a>
             </div>
 
-            <nav class="sidebar-nav">
+            <nav class="sidebar-nav {{ $companyMode ? 'nav-compact' : '' }}">
                 <ul>
                     @auth
                         @if($companyMode)
                             <li class="nav-section-label">Cerulean Labs Ltd</li>
                             <li><a href="/company" class="nav-link {{ request()->is('company') ? 'active' : '' }}">Desk</a></li>
                             <li><a href="/company/compliance" class="nav-link {{ request()->is('company/compliance*') ? 'active' : '' }}">Compliance</a></li>
-                            <li><a href="/company/platform" class="nav-link {{ request()->is('company/platform*') ? 'active' : '' }}">PractisBase dashboard</a></li>
-                            <li><a href="/company/accounts" class="nav-link {{ request()->is('company/accounts*') ? 'active' : '' }}">Accounts</a></li>
+                            <li class="nav-section-label">Sales</li>
                             <li><a href="/company/invoices" class="nav-link {{ request()->is('company/invoices*') ? 'active' : '' }}">Invoices</a></li>
                             <li><a href="/company/recurring" class="nav-link {{ request()->is('company/recurring*') ? 'active' : '' }}">Monthly billing</a></li>
+                            <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
+                            <li class="nav-section-label">Spending</li>
                             <li><a href="/company/expenses" class="nav-link {{ request()->is('company/expenses*') ? 'active' : '' }}">Expenses</a></li>
                             <li><a href="/company/suppliers" class="nav-link {{ request()->is('company/suppliers*') ? 'active' : '' }}">Suppliers</a></li>
                             <li><a href="/company/bank" class="nav-link {{ request()->is('company/bank*') ? 'active' : '' }}">Bank recon</a></li>
                             <li><a href="/company/personal" class="nav-link {{ request()->is('company/personal*') ? 'active' : '' }}">Personal money</a></li>
                             <li><a href="/company/dividends" class="nav-link {{ request()->is('company/dividends*') ? 'active' : '' }}">Dividends</a></li>
-                            <li><a href="/company/clients" class="nav-link {{ request()->is('company/clients*') ? 'active' : '' }}">Clients</a></li>
+                            <li class="nav-section-label">Books</li>
+                            <li><a href="/company/accounts" class="nav-link {{ request()->is('company/accounts*') ? 'active' : '' }}">Accounts</a></li>
+                            <li class="nav-section-label">Company</li>
                             <li><a href="/company/profile" class="nav-link {{ request()->is('company/profile*') ? 'active' : '' }}">Company profile</a></li>
+                            <li><a href="/company/platform" class="nav-link {{ request()->is('company/platform*') ? 'active' : '' }}">PractisBase dashboard</a></li>
                             <li class="nav-section-label" aria-hidden="true">Marketing</li>
                             <li><a href="/company/content" class="nav-link {{ request()->is('company/content*') ? 'active' : '' }}">Content studio</a></li>
                             <li class="nav-section-label" aria-hidden="true">Beta</li>

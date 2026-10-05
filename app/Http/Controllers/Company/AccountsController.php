@@ -11,6 +11,7 @@ use App\Models\CompanyJournalLine;
 use App\Support\CompanyBooks;
 use App\Support\CompanyChartOfAccounts;
 use App\Support\CompanyLedger;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -79,39 +80,7 @@ class AccountsController extends Controller
         $from = $request->input('from', CompanyBooks::ensureProfile($user)->first_period_start->format('Y-m-d'));
         $to = $request->input('to', now()->toDateString());
 
-        $rows = collect();
-        $client = null;
-        $running = 0.0;
-
-        if ($clientId > 0) {
-            $client = $clients->firstWhere('id', $clientId);
-            $ar = CompanyLedger::account($user->id, CompanyChartOfAccounts::AR);
-            $lines = CompanyJournalLine::query()
-                ->with('entry')
-                ->where('user_id', $user->id)
-                ->where('gl_account_id', $ar->id)
-                ->where('company_client_id', $clientId)
-                ->whereHas('entry', function ($q) use ($from, $to) {
-                    $q->whereIn('status', ['posted', 'reconciled'])
-                        ->where('entry_date', '>=', $from)
-                        ->where('entry_date', '<=', $to);
-                })
-                ->get()
-                ->sortBy(fn ($line) => $line->entry->entry_date->format('Y-m-d').'-'.$line->id);
-
-            foreach ($lines as $line) {
-                $debit = $line->side === 'debit' ? (float) $line->amount : 0.0;
-                $credit = $line->side === 'credit' ? (float) $line->amount : 0.0;
-                $running = round($running + $debit - $credit, 2);
-                $rows->push([
-                    'date' => $line->entry->entry_date,
-                    'reference' => $line->entry->description,
-                    'debit' => $debit,
-                    'credit' => $credit,
-                    'balance' => $running,
-                ]);
-            }
-        }
+        [$client, $rows, $closing] = $this->arStatement($user->id, $clients, $clientId, $from, $to);
 
         return view('company.accounts.customer-statement', [
             'clients' => $clients,
@@ -120,8 +89,84 @@ class AccountsController extends Controller
             'from' => $from,
             'to' => $to,
             'rows' => $rows,
-            'closing' => $running,
+            'closing' => $closing,
         ]);
+    }
+
+    public function customerStatementPdf(Request $request)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        CompanyLedger::ensureChart($user);
+        $clients = CompanyClient::where('user_id', $user->id)->orderBy('name')->get();
+        $clientId = (int) $request->input('client_id');
+        $from = $request->input('from', $profile->first_period_start->format('Y-m-d'));
+        $to = $request->input('to', now()->toDateString());
+        [$client, $rows, $closing] = $this->arStatement($user->id, $clients, $clientId, $from, $to);
+
+        if (! $client) {
+            return redirect('/company/accounts/customer-statement')->withErrors([
+                'client_id' => 'Choose a client before downloading the statement.',
+            ]);
+        }
+
+        $pdf = Pdf::loadView('company.pdf.ar-statement', [
+            'profile' => $profile,
+            'client' => $client,
+            'from' => $from,
+            'to' => $to,
+            'rows' => $rows,
+            'closing' => $closing,
+        ]);
+
+        $slug = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $client->name) ?? 'client', '-'));
+
+        return $pdf->download('ar-statement-'.($slug !== '' ? $slug : 'client').'-'.date('Ymd').'.pdf');
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, CompanyClient>  $clients
+     * @return array{0: ?CompanyClient, 1: \Illuminate\Support\Collection<int, array<string, mixed>>, 2: float}
+     */
+    private function arStatement(int $userId, $clients, int $clientId, string $from, string $to): array
+    {
+        $rows = collect();
+        $client = null;
+        $running = 0.0;
+
+        if ($clientId > 0) {
+            $client = $clients->firstWhere('id', $clientId);
+            if ($client) {
+                $ar = CompanyLedger::account($userId, CompanyChartOfAccounts::AR);
+                $lines = CompanyJournalLine::query()
+                    ->with('entry')
+                    ->where('user_id', $userId)
+                    ->where('gl_account_id', $ar->id)
+                    ->where('company_client_id', $clientId)
+                    ->whereHas('entry', function ($q) use ($from, $to) {
+                        $q->whereIn('status', ['posted', 'reconciled'])
+                            ->where('entry_date', '>=', $from)
+                            ->where('entry_date', '<=', $to);
+                    })
+                    ->get()
+                    ->sortBy(fn ($line) => $line->entry->entry_date->format('Y-m-d').'-'.$line->id);
+
+                foreach ($lines as $line) {
+                    $debit = $line->side === 'debit' ? (float) $line->amount : 0.0;
+                    $credit = $line->side === 'credit' ? (float) $line->amount : 0.0;
+                    $running = round($running + $debit - $credit, 2);
+                    $rows->push([
+                        'date' => $line->entry->entry_date,
+                        'reference' => $line->entry->description,
+                        'debit' => $debit,
+                        'credit' => $credit,
+                        'balance' => $running,
+                    ]);
+                }
+            }
+        }
+
+        return [$client, $rows, $running];
     }
 
     public function lock(Request $request)

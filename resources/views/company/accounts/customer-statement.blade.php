@@ -47,6 +47,7 @@
                 <div style="text-align: right;">
                     <div style="font-size: 0.75rem; color: var(--text-muted);">Closing balance</div>
                     <div style="font-size: 1.35rem; font-weight: 700; color: {{ $closing > 0 ? '#b45309' : '#059669' }};">€{{ number_format($closing, 2) }}</div>
+                    <a href="/company/accounts/customer-statement.pdf?client_id={{ $client->id }}&from={{ $from }}&to={{ $to }}" style="display: inline-block; margin-top: 0.45rem; background: var(--primary-cerulean); color: white; padding: 0.4rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; text-decoration: none;">Download PDF</a>
                 </div>
             </div>
             <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
