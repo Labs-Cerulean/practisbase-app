@@ -37,6 +37,9 @@
                         <div style="font-weight: 700; color: var(--primary-navy);">{{ $doc->document_number }} · {{ $typeLabel }}</div>
                         <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
                             {{ $doc->client->name ?? 'Client' }} · {{ $doc->issue_date->format('d M Y') }}
+                            @if($label = $doc->coverageLabel())
+                                · {{ $label }}
+                            @endif
                             @if($doc->status === 'converted') · converted @endif
                         </div>
                     </div>
