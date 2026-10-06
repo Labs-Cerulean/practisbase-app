@@ -3,9 +3,7 @@
 namespace Tests\Unit;
 
 use App\Support\CompanyBooks;
-use Illuminate\Mail\Message;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Mime\Email;
 
 class CompanyBooksTest extends TestCase
 {
@@ -19,22 +17,13 @@ class CompanyBooksTest extends TestCase
         $this->assertSame('accounts@labscerulean.com', CompanyBooks::ACCOUNTS_COPY_EMAIL);
     }
 
-    public function test_monthly_bill_copies_the_accounts_inbox(): void
+    public function test_accounts_mail_copies_the_accounts_inbox(): void
     {
-        $bill = new Message(new Email());
-        CompanyBooks::copyAccountsOnMonthlyBill($bill, 'proforma', 'client@grepor.test');
-        $this->assertSame(['accounts@labscerulean.com'], array_map(
-            fn ($address) => $address->getAddress(),
-            $bill->getSymfonyMessage()->getCc()
-        ));
-
-        $already = new Message(new Email());
-        CompanyBooks::copyAccountsOnMonthlyBill($already, 'proforma', 'Accounts@LabsCerulean.com');
-        $this->assertSame([], $already->getSymfonyMessage()->getCc());
-
-        $reminder = new Message(new Email());
-        CompanyBooks::copyAccountsOnMonthlyBill($reminder, 'reminder', 'client@grepor.test');
-        $this->assertSame([], $reminder->getSymfonyMessage()->getCc());
+        $this->assertSame(
+            'accounts@labscerulean.com',
+            CompanyBooks::accountsCopyAddress('client@grepor.test')
+        );
+        $this->assertNull(CompanyBooks::accountsCopyAddress('Accounts@LabsCerulean.com'));
     }
 
     public function test_monthly_bill_pdf_name_uses_reference_and_supply_month(): void

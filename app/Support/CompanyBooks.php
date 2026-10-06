@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyProfile;
 use App\Models\User;
-use Illuminate\Mail\Message;
 
 class CompanyBooks
 {
@@ -128,21 +127,17 @@ class CompanyBooks
     }
 
     /**
-     * Copy the company accounts inbox when a monthly bill goes out.
-     * Skipped when that inbox is already the recipient.
+     * Address to copy on client billing mail (bills, reminders, statements).
+     * Null when that inbox is already the recipient.
      */
-    public static function copyAccountsOnMonthlyBill(Message $message, string $kind, string $recipient): void
+    public static function accountsCopyAddress(string $recipient): ?string
     {
-        if ($kind !== 'proforma') {
-            return;
-        }
-
         $copy = self::ACCOUNTS_COPY_EMAIL;
         if (strcasecmp(trim($recipient), $copy) === 0) {
-            return;
+            return null;
         }
 
-        $message->cc($copy);
+        return $copy;
     }
 
     public static function periodLabel(CompanyProfile $profile): string
