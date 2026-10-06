@@ -242,21 +242,25 @@
                                 <tbody>
                                     @foreach($issued as $doc)
                                         @php
-                                            $bal = $doc->balance();
+                                            $superseded = $doc->type === 'rfp' && $doc->status === 'converted';
+                                            $bal = $superseded ? 0.0 : $doc->balance();
                                             $typeLabel = match ($doc->type) {
-                                                'rfp' => $doc->status === 'converted' ? 'Proforma → invoiced' : 'Proforma',
+                                                'rfp' => 'Proforma',
                                                 'invoice' => 'Tax invoice',
                                                 default => strtoupper($doc->type),
                                             };
+                                            $proforma = ($doc->type === 'invoice' && $doc->linkedDocument && $doc->linkedDocument->type === 'rfp')
+                                                ? $doc->linkedDocument
+                                                : null;
                                         @endphp
                                         <tr style="border-top: 1px solid var(--border-light);">
                                             <td style="padding: 0.5rem 0.65rem; white-space: nowrap;">{{ $doc->issue_date->format('d M Y') }}</td>
                                             <td style="padding: 0.5rem 0.65rem; white-space: nowrap; color: var(--text-muted);">{{ $doc->coverageLabel() }}</td>
                                             <td style="padding: 0.5rem 0.65rem; font-weight: 600; color: var(--primary-navy);">{{ $doc->document_number }}</td>
                                             <td style="padding: 0.5rem 0.65rem;">{{ $typeLabel }}</td>
-                                            <td style="padding: 0.5rem 0.65rem;">{{ $doc->status }}</td>
+                                            <td style="padding: 0.5rem 0.65rem;">{{ $superseded ? 'superseded' : $doc->status }}</td>
                                             <td style="padding: 0.5rem 0.65rem; text-align: right; font-variant-numeric: tabular-nums;">€{{ number_format((float) $doc->total, 2) }}</td>
-                                            <td style="padding: 0.5rem 0.65rem; text-align: right; font-variant-numeric: tabular-nums; color: {{ $bal > 0.009 ? '#b45309' : '#059669' }};">€{{ number_format($bal, 2) }}</td>
+                                            <td style="padding: 0.5rem 0.65rem; text-align: right; font-variant-numeric: tabular-nums; color: {{ $superseded ? 'var(--text-muted)' : ($bal > 0.009 ? '#b45309' : '#059669') }};">{{ $superseded ? 'Superseded' : '€'.number_format($bal, 2) }}</td>
                                             <td style="padding: 0.5rem 0.65rem; text-align: right; white-space: nowrap;">
                                                 <a href="/company/invoices/{{ $doc->id }}/pdf" style="font-size: 0.78rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">PDF</a>
                                                 @if($doc->canDelete())
@@ -265,11 +269,20 @@
                                                         @method('DELETE')
                                                         <button type="submit" style="font-size: 0.78rem; font-weight: 600; background: none; border: none; color: #b91c1c; cursor: pointer; padding: 0;">Delete</button>
                                                     </form>
-                                                @else
+                                                @elseif(! $superseded && $doc->type === 'rfp')
                                                     <a href="/company/invoices" style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-decoration: none; margin-left: 0.45rem;">Pay / convert</a>
                                                 @endif
                                             </td>
                                         </tr>
+                                        @if($proforma)
+                                            <tr>
+                                                <td colspan="8" style="padding: 0 0.65rem 0.55rem 0.65rem; font-size: 0.78rem; color: var(--text-muted);">
+                                                    Superseded by this invoice:
+                                                    <a href="/company/invoices/{{ $proforma->id }}/pdf" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">{{ $proforma->document_number }}</a>
+                                                    · proforma {{ $proforma->issue_date->format('d M Y') }}
+                                                </td>
+                                            </tr>
+                                        @endif
                                     @endforeach
                                 </tbody>
                             </table>

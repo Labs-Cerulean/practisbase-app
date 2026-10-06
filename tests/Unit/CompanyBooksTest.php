@@ -21,16 +21,20 @@ class CompanyBooksTest extends TestCase
         $october = new \DateTimeImmutable('2026-10-01');
 
         $this->assertSame(
-            '(CL-RFP-2026-0004 Oct-26).pdf',
+            'CL-RFP-2026-0016 (Oct-26 Grepor).pdf',
+            CompanyBooks::documentPdfFilename('CL-RFP-2026-0016', $october, true, 'Grepor Invest Ltd')
+        );
+        $this->assertSame(
+            'CL-INV-2026-0002 (Oct-26 Portelli).pdf',
+            CompanyBooks::documentPdfFilename('CL-INV-2026-0002', $october, true, 'J Portelli Projects')
+        );
+        $this->assertSame(
+            'CL-RFP-2026-0004 (Oct-26).pdf',
             CompanyBooks::documentPdfFilename('CL-RFP-2026-0004', $october, true)
         );
         $this->assertSame(
-            '(CL-INV-2026-0002 Oct-26).pdf',
-            CompanyBooks::documentPdfFilename('CL-INV-2026-0002', $october, true)
-        );
-        $this->assertSame(
             'CL-RFP-2026-0004.pdf',
-            CompanyBooks::documentPdfFilename('CL-RFP-2026-0004', $october, false)
+            CompanyBooks::documentPdfFilename('CL-RFP-2026-0004', $october, false, 'Grepor Invest Ltd')
         );
     }
 }
