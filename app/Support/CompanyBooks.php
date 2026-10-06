@@ -77,9 +77,10 @@ class CompanyBooks
     }
 
     /**
-     * Monthly bills download as "(CL-RFP-2026-0004 Oct-26).pdf". Other documents keep the reference only.
+     * Monthly bills download as "CL-RFP-2026-0004 (Oct-26 Grepor).pdf".
+     * The brackets hold the month and a short developer name. Other documents keep the reference only.
      */
-    public static function documentPdfFilename(string $documentNumber, \DateTimeInterface $supplyMonth, bool $monthlyBill): string
+    public static function documentPdfFilename(string $documentNumber, \DateTimeInterface $supplyMonth, bool $monthlyBill, ?string $developer = null): string
     {
         $ref = trim(str_replace(['/', '\\', "\0"], '-', $documentNumber));
         if ($ref === '') {
@@ -90,7 +91,37 @@ class CompanyBooks
             return $ref.'.pdf';
         }
 
-        return '('.$ref.' '.$supplyMonth->format('M-y').').pdf';
+        $inside = $supplyMonth->format('M-y');
+        $tag = self::developerTag($developer);
+        if ($tag !== '') {
+            $inside .= ' '.$tag;
+        }
+
+        return $ref.' ('.$inside.').pdf';
+    }
+
+    /**
+     * Short label for a developer, for a filename. "J Portelli Projects" becomes Portelli.
+     */
+    public static function developerTag(?string $name): string
+    {
+        $skip = ['ltd', 'limited', 'plc', 'inc', 'projects', 'project', 'holdings', 'group', 'company', 'co', 'the', 'and'];
+        $parts = preg_split('/\s+/', trim((string) $name)) ?: [];
+        foreach ($parts as $part) {
+            $clean = trim($part, ".,'\"&");
+            if ($clean === '' || strlen($clean) === 1) {
+                continue;
+            }
+            if (in_array(strtolower($clean), $skip, true)) {
+                continue;
+            }
+            $tag = preg_replace('/[^A-Za-z0-9-]/', '', $clean) ?? '';
+            if ($tag !== '') {
+                return $tag;
+            }
+        }
+
+        return '';
     }
 
     public static function periodLabel(CompanyProfile $profile): string
