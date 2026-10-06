@@ -24,12 +24,16 @@
     <div style="display: grid; gap: 1rem;">
         @forelse($documents as $doc)
             @php
-                $balance = $doc->balance();
+                $superseded = $doc->type === 'rfp' && $doc->status === 'converted';
+                $balance = $superseded ? 0.0 : $doc->balance();
                 $typeLabel = match ($doc->type) {
                     'rfp' => 'RFP',
                     'invoice' => 'Invoice',
                     default => strtoupper($doc->type),
                 };
+                $proforma = ($doc->type === 'invoice' && $doc->linkedDocument && $doc->linkedDocument->type === 'rfp')
+                    ? $doc->linkedDocument
+                    : null;
             @endphp
             <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.15rem 1.25rem; box-shadow: var(--shadow-sm);">
                 <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
@@ -40,14 +44,18 @@
                             @if($label = $doc->coverageLabel())
                                 · {{ $label }}
                             @endif
-                            @if($doc->status === 'converted') · converted @endif
+                            @if($superseded) · superseded @endif
                         </div>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format((float) $doc->total, 2) }}</div>
-                        <div style="font-size: 0.8rem; color: {{ $balance > 0.009 ? '#b45309' : '#059669' }};">
-                            Balance €{{ number_format($balance, 2) }}
-                        </div>
+                        @if($superseded)
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Superseded</div>
+                        @else
+                            <div style="font-size: 0.8rem; color: {{ $balance > 0.009 ? '#b45309' : '#059669' }};">
+                                Balance €{{ number_format($balance, 2) }}
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -90,6 +98,14 @@
                         </form>
                     @endif
                 </div>
+
+                @if($proforma)
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-light); font-size: 0.8rem; color: var(--text-muted);">
+                        Superseded by this invoice:
+                        <a href="/company/invoices/{{ $proforma->id }}/pdf" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">{{ $proforma->document_number }}</a>
+                        · proforma {{ $proforma->issue_date->format('d M Y') }}
+                    </div>
+                @endif
 
                 @if($doc->childDocuments->where('type', 'credit_note')->count())
                     <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">

@@ -24,12 +24,14 @@ class InvoiceController extends Controller
         $user = Auth::user();
         CompanyBooks::ensureProfile($user);
 
-        $documents = CompanyInvoice::with(['client', 'payments', 'childDocuments', 'linkedDocument'])
-            ->where('user_id', $user->id)
-            ->whereNull('parent_document_id')
-            ->orderByDesc('issue_date')
-            ->orderByDesc('id')
-            ->get();
+        $documents = CompanyInvoice::withoutSupersededProformas(
+            CompanyInvoice::with(['client', 'payments', 'childDocuments', 'linkedDocument'])
+                ->where('user_id', $user->id)
+                ->whereNull('parent_document_id')
+                ->orderByDesc('issue_date')
+                ->orderByDesc('id')
+                ->get()
+        );
 
         return view('company.invoices-index', compact('documents'));
     }

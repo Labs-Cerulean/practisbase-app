@@ -7,6 +7,7 @@ use App\Support\InvoiceCoverage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class CompanyInvoice extends Model
 {
@@ -142,9 +143,35 @@ class CompanyInvoice extends Model
 
     public function balance(): float
     {
-        $credits = (float) $this->childDocuments()->where('type', 'credit_note')->sum('total');
+        if ($this->relationLoaded('childDocuments')) {
+            $credits = (float) $this->childDocuments
+                ->where('type', 'credit_note')
+                ->sum(fn (self $doc) => (float) $doc->total);
+        } else {
+            $credits = (float) $this->childDocuments()->where('type', 'credit_note')->sum('total');
+        }
 
         return round(((float) $this->total - $credits) - (float) $this->amount_paid, 2);
+    }
+
+    /**
+     * A converted proforma has no balance of its own. The tax invoice carries the amount.
+     *
+     * @param  Collection<int, self>  $documents
+     * @return Collection<int, self>
+     */
+    public static function withoutSupersededProformas(Collection $documents): Collection
+    {
+        $linkedIds = [];
+        foreach ($documents as $doc) {
+            if ($doc->type === 'invoice' && $doc->linked_document_id) {
+                $linkedIds[(int) $doc->linked_document_id] = true;
+            }
+        }
+
+        return $documents
+            ->reject(fn (self $doc) => $doc->type === 'rfp' && isset($linkedIds[(int) $doc->id]))
+            ->values();
     }
 
     /**
