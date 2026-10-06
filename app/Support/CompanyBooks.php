@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyProfile;
 use App\Models\User;
+use Illuminate\Mail\Message;
 
 class CompanyBooks
 {
@@ -19,6 +20,8 @@ class CompanyBooks
     public const FIRST_PERIOD_END = '2026-12-31';
 
     public const SHARE_CAPITAL_EUR = 1200.00;
+
+    public const ACCOUNTS_COPY_EMAIL = 'accounts@labscerulean.com';
 
     public static function ensureProfile(User $user): CompanyProfile
     {
@@ -122,6 +125,24 @@ class CompanyBooks
         }
 
         return '';
+    }
+
+    /**
+     * Copy the company accounts inbox when a monthly bill goes out.
+     * Skipped when that inbox is already the recipient.
+     */
+    public static function copyAccountsOnMonthlyBill(Message $message, string $kind, string $recipient): void
+    {
+        if ($kind !== 'proforma') {
+            return;
+        }
+
+        $copy = self::ACCOUNTS_COPY_EMAIL;
+        if (strcasecmp(trim($recipient), $copy) === 0) {
+            return;
+        }
+
+        $message->cc($copy);
     }
 
     public static function periodLabel(CompanyProfile $profile): string

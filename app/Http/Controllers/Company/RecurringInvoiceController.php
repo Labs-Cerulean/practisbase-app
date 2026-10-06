@@ -622,8 +622,9 @@ class RecurringInvoiceController extends Controller
             $operatorName = filled($profile->legal_name) ? (string) $profile->legal_name : null;
             $mailerName = $status['mailer'];
 
-            Mail::mailer($mailerName)->html($html, function ($message) use ($to, $subject, $pdfBinary, $operatorEmail, $operatorName) {
+            Mail::mailer($mailerName)->html($html, function ($message) use ($to, $subject, $pdfBinary, $operatorEmail, $operatorName, $kind) {
                 $message->to($to)->subject($subject);
+                CompanyBooks::copyAccountsOnMonthlyBill($message, $kind, $to);
 
                 if ($operatorEmail !== '' && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL)) {
                     if ($operatorName) {
