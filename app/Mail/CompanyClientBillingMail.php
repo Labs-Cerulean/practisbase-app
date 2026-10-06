@@ -6,6 +6,7 @@ use App\Models\CompanyClient;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyProfile;
 use App\Models\CompanyRecurringInvoice;
+use App\Support\CompanyBooks;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -60,6 +61,10 @@ class CompanyClientBillingMail extends Mailable
             'statement' => $company.' - account statement',
             default => $company.' - billing notice',
         };
+
+        if ($copy = CompanyBooks::accountsCopyAddress((string) ($this->client->email ?? ''))) {
+            $this->cc($copy);
+        }
 
         return $this->subject($subject)
             ->view('company.mail.billing-notice', [

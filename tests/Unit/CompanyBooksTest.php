@@ -14,6 +14,16 @@ class CompanyBooksTest extends TestCase
         $this->assertSame('2026-07-29', CompanyBooks::INCORPORATION_DATE);
         $this->assertSame('2026-12-31', CompanyBooks::FIRST_PERIOD_END);
         $this->assertSame(1200.0, CompanyBooks::SHARE_CAPITAL_EUR);
+        $this->assertSame('accounts@labscerulean.com', CompanyBooks::ACCOUNTS_COPY_EMAIL);
+    }
+
+    public function test_accounts_mail_copies_the_accounts_inbox(): void
+    {
+        $this->assertSame(
+            'accounts@labscerulean.com',
+            CompanyBooks::accountsCopyAddress('client@grepor.test')
+        );
+        $this->assertNull(CompanyBooks::accountsCopyAddress('Accounts@LabsCerulean.com'));
     }
 
     public function test_monthly_bill_pdf_name_uses_reference_and_supply_month(): void

@@ -624,6 +624,9 @@ class RecurringInvoiceController extends Controller
 
             Mail::mailer($mailerName)->html($html, function ($message) use ($to, $subject, $pdfBinary, $operatorEmail, $operatorName) {
                 $message->to($to)->subject($subject);
+                if ($copy = CompanyBooks::accountsCopyAddress($to)) {
+                    $message->cc($copy);
+                }
 
                 if ($operatorEmail !== '' && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL)) {
                     if ($operatorName) {

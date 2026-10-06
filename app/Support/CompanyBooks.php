@@ -20,6 +20,8 @@ class CompanyBooks
 
     public const SHARE_CAPITAL_EUR = 1200.00;
 
+    public const ACCOUNTS_COPY_EMAIL = 'accounts@labscerulean.com';
+
     public static function ensureProfile(User $user): CompanyProfile
     {
         $profile = CompanyProfile::firstOrCreate(
@@ -122,6 +124,20 @@ class CompanyBooks
         }
 
         return '';
+    }
+
+    /**
+     * Address to copy on client billing mail (bills, reminders, statements).
+     * Null when that inbox is already the recipient.
+     */
+    public static function accountsCopyAddress(string $recipient): ?string
+    {
+        $copy = self::ACCOUNTS_COPY_EMAIL;
+        if (strcasecmp(trim($recipient), $copy) === 0) {
+            return null;
+        }
+
+        return $copy;
     }
 
     public static function periodLabel(CompanyProfile $profile): string
