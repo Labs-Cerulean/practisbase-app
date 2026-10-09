@@ -137,6 +137,15 @@
                 <span>Net profit</span>
                 <span>€{{ number_format($profitAndLoss['net_profit'], 2) }}</span>
             </div>
+            @if(abs($balanceSheet['outside_profit'] ?? 0) >= 0.005)
+                <div style="margin-top: 0.65rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
+                    @if(($balanceSheet['outside_profit'] ?? 0) < 0)
+                        €{{ number_format(abs($balanceSheet['outside_profit']), 2) }} of expenses were posted before {{ \Carbon\Carbon::parse($from)->format('d M Y') }}. They are on the balance sheet under {{ $balanceSheet['outside_label'] }}, not in this profit.
+                    @else
+                        €{{ number_format($balanceSheet['outside_profit'], 2) }} of profit was posted before {{ \Carbon\Carbon::parse($from)->format('d M Y') }}. It is on the balance sheet under {{ $balanceSheet['outside_label'] }}, not in this profit.
+                    @endif
+                </div>
+            @endif
         </div>
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem 1.4rem; box-shadow: var(--shadow-sm);">

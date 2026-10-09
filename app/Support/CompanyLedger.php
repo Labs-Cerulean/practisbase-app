@@ -1165,6 +1165,20 @@ class CompanyLedger
             ];
         }
 
+        $outside = self::profitOutsidePeriod(self::cumulativeNetProfit($accounts, $balances), $currentEarnings);
+        $outsideLabel = null;
+        if (abs($outside) >= 0.005) {
+            $coversAsOf = ($pl['to'] ?? $asOfDate) === $asOfDate;
+            $outsideLabel = $coversAsOf
+                ? 'Before '.\Illuminate\Support\Carbon::parse($periodStart)->format('d M Y')
+                : 'Outside this profit and loss';
+            $groups['capital_reserves'][] = [
+                'account_code' => 'P&L',
+                'name' => $outsideLabel,
+                'amount' => $outside,
+            ];
+        }
+
         $sum = function (array $rows): float {
             return round(array_sum(array_column($rows, 'amount')), 2);
         };
@@ -1193,7 +1207,37 @@ class CompanyLedger
             'balanced' => abs($assets - $equityLiab) < 0.005,
             'difference' => round($assets - $equityLiab, 2),
             'current_period_profit' => $currentEarnings,
+            'outside_profit' => $outside,
+            'outside_label' => $outsideLabel,
             'balances' => $balances,
         ];
+    }
+
+    /**
+     * Profit in the ledger that the selected profit-and-loss window does not include.
+     * Pre-incorporation expenses make this negative.
+     */
+    public static function profitOutsidePeriod(float $cumulativeProfit, float $periodProfit): float
+    {
+        return round($cumulativeProfit - $periodProfit, 2);
+    }
+
+    /**
+     * @param  iterable<int, CompanyGlAccount>  $accounts
+     * @param  array<string, float>  $balances  debit-positive, cumulative to the balance-sheet date
+     */
+    private static function cumulativeNetProfit(iterable $accounts, array $balances): float
+    {
+        $net = 0.0;
+        foreach ($accounts as $account) {
+            if (! in_array($account->type, ['revenue', 'expense'], true)) {
+                continue;
+            }
+            $raw = round((float) ($balances[$account->account_code] ?? 0), 2);
+            $natural = self::naturalBalance($account, $raw);
+            $net += $account->type === 'revenue' ? $natural : -$natural;
+        }
+
+        return round($net, 2);
     }
 }
