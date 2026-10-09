@@ -9,6 +9,7 @@ use App\Models\CompanyProfile;
 use App\Models\CompanyRecurringInvoice;
 use App\Support\CompanyBooks;
 use App\Support\CompanyClientStatement;
+use App\Support\CompanyMail;
 use App\Support\EstateHubBilling;
 use App\Support\TenantStorage;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -469,27 +470,61 @@ class RecurringInvoiceController extends Controller
      */
     private function mailDeliveryStatus(): array
     {
-        $mailer = (string) config('mail.default', 'log');
-        $transport = (string) config("mail.mailers.{$mailer}.transport", $mailer);
-        $from = (string) config('mail.from.address', '');
-        $hint = null;
-        $delivers = true;
+        $resolved = CompanyMail::resolve($this->mailEnvironment(), [
+            'default' => (string) config('mail.default', 'log'),
+            'from' => (string) config('mail.from.address', ''),
+            'host' => (string) config('mail.mailers.smtp.host', ''),
+        ]);
 
-        if (in_array($transport, ['log', 'array'], true)) {
-            $delivers = false;
-            $hint = 'MAIL_MAILER is "'.$mailer.'" ('.$transport.') — Laravel only writes to the app log. On Railway set MAIL_MAILER=smtp or resend, plus host/credentials and MAIL_FROM_ADDRESS.';
-        } elseif ($from === '' || strcasecmp($from, 'hello@example.com') === 0) {
-            $delivers = false;
-            $hint = 'MAIL_FROM_ADDRESS is missing or still the Laravel default. Set a real from address on Railway (e.g. billing@yourdomain.com).';
+        if ($resolved['overrides'] !== []) {
+            config($resolved['overrides']);
         }
 
-        return [
-            'mailer' => $mailer,
-            'transport' => $transport,
-            'from' => $from,
-            'delivers' => $delivers,
-            'hint' => $hint,
+        unset($resolved['overrides']);
+
+        return $resolved;
+    }
+
+    /**
+     * @return array<string, ?string>
+     */
+    private function mailEnvironment(): array
+    {
+        $keys = [
+            'MAIL_MAILER',
+            'MAIL_HOST',
+            'MAIL_PORT',
+            'MAIL_SCHEME',
+            'MAIL_ENCRYPTION',
+            'MAIL_USERNAME',
+            'MAIL_PASSWORD',
+            'MAIL_FROM_ADDRESS',
+            'MAIL_FROM_NAME',
+            'RESEND_API_KEY',
+            'RESEND_KEY',
         ];
+
+        $env = [];
+        foreach ($keys as $key) {
+            $env[$key] = self::environmentValue($key);
+        }
+
+        return $env;
+    }
+
+    private static function environmentValue(string $key): ?string
+    {
+        $value = getenv($key);
+        if (! is_string($value) || $value === '') {
+            $value = $_ENV[$key] ?? $_SERVER[$key] ?? null;
+        }
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return ($value === '' || strcasecmp($value, 'null') === 0) ? null : $value;
     }
 
     /**
