@@ -686,6 +686,7 @@ class CompanyLedger
         }
 
         $released = 0;
+        $statementIds = [];
         foreach ($entries as $entry) {
             $lines = CompanyJournalLine::where('user_id', $expense->user_id)
                 ->where('journal_entry_id', $entry->id)
@@ -693,22 +694,51 @@ class CompanyLedger
                 ->get();
 
             foreach ($lines as $line) {
-                CompanyBankStatementLine::where('user_id', $expense->user_id)
-                    ->where('id', $line->bank_statement_line_id)
-                    ->update([
-                        'status' => 'unreconciled',
-                        'matched_journal_line_id' => null,
-                    ]);
-                $line->update(['bank_statement_line_id' => null]);
+                $statementIds[(int) $line->bank_statement_line_id] = true;
                 $released++;
             }
+        }
 
+        foreach (array_keys($statementIds) as $statementId) {
+            self::detachBankStatement($expense->user_id, $statementId);
+        }
+
+        foreach ($entries as $entry) {
             if ($entry->status === 'reconciled') {
                 $entry->update(['status' => 'posted']);
             }
         }
 
         return $released;
+    }
+
+    /**
+     * A split match ties several ledger lines to one statement movement.
+     * Releasing any of them puts the whole movement back to unmatched.
+     */
+    private static function detachBankStatement(int $userId, int $statementLineId): void
+    {
+        $entryIds = CompanyJournalLine::where('user_id', $userId)
+            ->where('bank_statement_line_id', $statementLineId)
+            ->pluck('journal_entry_id');
+
+        CompanyJournalLine::where('user_id', $userId)
+            ->where('bank_statement_line_id', $statementLineId)
+            ->update(['bank_statement_line_id' => null]);
+
+        CompanyBankStatementLine::where('user_id', $userId)
+            ->where('id', $statementLineId)
+            ->update([
+                'status' => 'unreconciled',
+                'matched_journal_line_id' => null,
+            ]);
+
+        if ($entryIds->isNotEmpty()) {
+            CompanyJournalEntry::where('user_id', $userId)
+                ->whereIn('id', $entryIds)
+                ->where('status', 'reconciled')
+                ->update(['status' => 'posted']);
+        }
     }
 
     public static function postShareCapital(CompanyProfile $profile): ?CompanyJournalEntry
@@ -917,6 +947,7 @@ class CompanyLedger
             ->get();
 
         $released = 0;
+        $statementIds = [];
         foreach ($entries as $entry) {
             $lines = CompanyJournalLine::where('user_id', $receipt->user_id)
                 ->where('journal_entry_id', $entry->id)
@@ -924,16 +955,16 @@ class CompanyLedger
                 ->get();
 
             foreach ($lines as $line) {
-                CompanyBankStatementLine::where('user_id', $receipt->user_id)
-                    ->where('id', $line->bank_statement_line_id)
-                    ->update([
-                        'status' => 'unreconciled',
-                        'matched_journal_line_id' => null,
-                    ]);
-                $line->update(['bank_statement_line_id' => null]);
+                $statementIds[(int) $line->bank_statement_line_id] = true;
                 $released++;
             }
+        }
 
+        foreach (array_keys($statementIds) as $statementId) {
+            self::detachBankStatement($receipt->user_id, $statementId);
+        }
+
+        foreach ($entries as $entry) {
             if ($entry->status === 'reconciled') {
                 $entry->update(['status' => 'posted']);
             }
