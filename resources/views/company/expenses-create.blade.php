@@ -175,11 +175,11 @@
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Who paid?</label>
                     <select name="funded_by" id="fundedBy" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                        <option value="director" @selected(old('funded_by', 'director') === 'director')>I paid personally (company owes me a refund)</option>
-                        <option value="company" @selected(old('funded_by') === 'company')>Company bank / card (already paid)</option>
-                        <option value="payable" @selected(old('funded_by') === 'payable')>Not paid yet (supplier is waiting)</option>
+                        <option value="company" @selected(old('funded_by', 'company') === 'company')>Company bank / card (already paid)</option>
+                        <option value="director" @selected(old('funded_by', 'company') === 'director')>I paid personally (company owes me a refund)</option>
+                        <option value="payable" @selected(old('funded_by', 'company') === 'payable')>Not paid yet (supplier is waiting)</option>
                     </select>
-                    <div id="fundedGuide" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Director-funded costs stay as a loan until you mark them refunded.</div>
+                    <div id="fundedGuide" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Already paid from the company bank or card. Saving credits the bank on that invoice date.</div>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">{{ $draft ? 'Replace receipt (optional)' : 'Receipt (photo or PDF)' }}</label>
