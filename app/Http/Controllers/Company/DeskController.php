@@ -8,8 +8,10 @@ use App\Models\CompanyGlAccount;
 use App\Models\CompanyInvoice;
 use App\Models\CompanyPayment;
 use App\Support\CompanyBooks;
+use App\Support\CompanyChartOfAccounts;
 use App\Support\CompanyComplianceCalendar;
 use App\Support\CompanyLedger;
+use App\Support\CompanyLiquidFunds;
 use App\Support\CompanyVatReturn;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -97,6 +99,18 @@ class DeskController extends Controller
             (float) (($bs['balances']['1000'] ?? 0))
         );
 
+        $natural = [];
+        foreach (CompanyChartOfAccounts::definitions() as $account) {
+            $raw = (float) ($bs['balances'][$account['account_code']] ?? 0);
+            $natural[$account['account_code']] = in_array($account['type'], ['liability', 'equity', 'revenue'], true)
+                ? round(-$raw, 2)
+                : round($raw, 2);
+        }
+        $liquidFunds = CompanyLiquidFunds::fromNaturalBalances(
+            $natural,
+            $profile->shareCapitalReceived() ? (float) $profile->share_capital_eur : 0.0
+        );
+
         return view('company.desk', [
             'profile' => $profile,
             'periodLabel' => CompanyBooks::periodLabel($profile),
@@ -114,6 +128,7 @@ class DeskController extends Controller
             'netProfit' => $pl['net_profit'],
             'booksBalanced' => $bs['balanced'],
             'bankBalance' => $bankBalance,
+            'liquidFunds' => $liquidFunds,
             'complianceUpcoming' => CompanyComplianceCalendar::upcoming($profile, 8),
         ]);
     }

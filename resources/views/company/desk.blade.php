@@ -85,9 +85,29 @@
                 <div style="font-size: 1.35rem; font-weight: 700; color: var(--primary-navy);">€{{ number_format($bankBalance, 2) }}</div>
             </div>
             <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Available to use</div>
+                <button type="button" onclick="var panel = document.getElementById('liquidFundsPanel'); panel.hidden = !panel.hidden;" style="background: none; border: none; padding: 0; font-size: 1.35rem; font-weight: 700; color: {{ $liquidFunds['available'] >= 0 ? '#059669' : '#b91c1c' }}; border-bottom: 1px dotted var(--primary-navy); cursor: pointer;">€{{ number_format($liquidFunds['available'], 2) }}</button>
+            </div>
+            <div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">Balance sheet</div>
                 <div style="font-size: 1.05rem; font-weight: 700; color: {{ $booksBalanced ? '#059669' : '#b91c1c' }};">{{ $booksBalanced ? 'Balanced' : 'Out of balance' }}</div>
             </div>
+        </div>
+        <div id="liquidFundsPanel" hidden style="margin-top: 1rem; padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.45rem;">Available to use</div>
+            @foreach($liquidFunds['lines'] as $line)
+                <div style="display: flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; padding: 0.2rem 0;">
+                    <span style="color: var(--primary-navy);">{{ $line['label'] }}</span>
+                    <span style="font-variant-numeric: tabular-nums; color: {{ $line['amount'] < 0 ? '#b45309' : 'var(--primary-navy)' }};">€{{ number_format($line['amount'], 2) }}</span>
+                </div>
+            @endforeach
+            <div style="display: flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; font-weight: 700; padding-top: 0.35rem; margin-top: 0.35rem; border-top: 1px solid var(--border-light); color: var(--primary-navy);">
+                <span>Available to use</span>
+                <span>€{{ number_format($liquidFunds['available'], 2) }}</span>
+            </div>
+            @if($liquidFunds['share_capital'] > 0.009)
+                <p style="margin: 0.55rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">Includes share capital €{{ number_format($liquidFunds['share_capital'], 2) }}, which the company can spend. It is not a sum to pay back.</p>
+            @endif
         </div>
         <p style="margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
             Operational billing plus posted double-entry journals. Output VAT €{{ number_format($outputVat, 2) }} − input VAT €{{ number_format($inputVat, 2) }}
