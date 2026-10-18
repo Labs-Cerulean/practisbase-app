@@ -637,10 +637,10 @@
             <div id="install-app" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-sm);">
                 <h3 style="color: var(--primary-navy); margin-top: 0; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.5rem;">App</h3>
                 <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; margin: 0.75rem 0 1rem;">
-                    Open PractisBase in one tap — no app store needed.
+                    Open PractisBase in one tap — no app store needed. Install from https://www.practisbase.com.
                 </p>
                 <button type="button" data-open-install-app style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.7rem 1.15rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.9rem; cursor: pointer;">
-                    Download app
+                    Install app
                 </button>
             </div>
         </div>

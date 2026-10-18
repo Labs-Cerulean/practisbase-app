@@ -1,5 +1,9 @@
-/* PractisBase service worker — installability only; do not intercept navigations. */
-const CACHE = 'practisbase-shell-v2';
+/* PractisBase service worker — installability only.
+   v3 changes the script bytes so an installed app replaces the worker that
+   still carries the certificate from before the 12 Sep 2026 renewal.
+   Keep the fetch listener empty: Chrome needs one for the install prompt,
+   and an empty listener leaves every navigation on the network. */
+const CACHE = 'practisbase-shell-v3';
 const PRECACHE = ['/offline.html', '/images/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {
