@@ -48,7 +48,7 @@ class DeskController extends Controller
             ->where('user_id', $userId)
             ->whereNull('reversed_at')
             ->whereBetween('expense_date', [$yearStart, $yearEnd])
-            ->selectRaw('COALESCE(SUM(amount), 0) as amount_sum, COALESCE(SUM(vat_amount), 0) as vat_sum, COALESCE(SUM(CASE WHEN is_reverse_charge THEN vat_amount ELSE 0 END), 0) as rc_vat_sum')
+            ->selectRaw("COALESCE(SUM(CASE WHEN category = 'computer' THEN 0 ELSE amount END), 0) as amount_sum, COALESCE(SUM(vat_amount), 0) as vat_sum, COALESCE(SUM(CASE WHEN is_reverse_charge THEN vat_amount ELSE 0 END), 0) as rc_vat_sum")
             ->first();
 
         $reverseChargeVat = round((float) ($expenseAgg->rc_vat_sum ?? 0), 2);

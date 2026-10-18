@@ -137,6 +137,27 @@
                             <option value="{{ $key }}" @selected(old('category', $read['category'] ?? 'software') === $key)>{{ $label }}</option>
                         @endforeach
                     </select>
+                    <div id="computerGuide" style="display: none; margin-top: 0.65rem; padding: 0.85rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #f8fafc;">
+                        <div style="font-size: 0.8rem; color: var(--primary-navy); line-height: 1.45;">
+                            A computer is written off at 25% of the ex-VAT cost each year for four years. The first slice uses the invoice date. The next three use 1 January. VAT the company can reclaim is not part of that cost.
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; margin-top: 0.75rem;">
+                            <div style="flex: 1; min-width: 9rem;">
+                                <label for="computerGross" style="display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.8rem;">Invoice total, VAT included</label>
+                                <input type="number" id="computerGross" step="0.01" min="0" placeholder="1848.75" style="width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            </div>
+                            <div>
+                                <label for="computerVatRate" style="display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.8rem;">VAT rate</label>
+                                <select id="computerVatRate" style="padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                    <option value="0.19">19% Germany</option>
+                                    <option value="0.18">18% Malta</option>
+                                </select>
+                            </div>
+                            <button type="button" id="computerSplit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.8rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Split out the VAT</button>
+                            <button type="button" id="computerKeepGross" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 0.8rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">VAT cannot be reclaimed</button>
+                        </div>
+                        <div id="computerSchedule" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.55rem;"></div>
+                    </div>
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Description</label>
@@ -230,9 +251,63 @@
             if (modeExisting) modeExisting.addEventListener('change', syncSupplier);
             if (modeNew) modeNew.addEventListener('change', syncSupplier);
             if (supplierName) supplierName.addEventListener('input', syncSupplier);
+            var categoryEl = document.getElementById('expenseCategory');
+            var computerGuide = document.getElementById('computerGuide');
+            var computerGross = document.getElementById('computerGross');
+            var computerRate = document.getElementById('computerVatRate');
+            var computerSplit = document.getElementById('computerSplit');
+            var computerKeep = document.getElementById('computerKeepGross');
+            var computerSchedule = document.getElementById('computerSchedule');
+            var amountElEarly = document.getElementById('expenseAmount');
+            var vatElEarly = document.getElementById('expenseVatAmount');
+
+            function money(n) {
+                return (Math.round(n * 100) / 100).toFixed(2);
+            }
+
+            function syncComputer() {
+                var isComputer = categoryEl && categoryEl.value === 'computer';
+                if (computerGuide) computerGuide.style.display = isComputer ? 'block' : 'none';
+                if (!isComputer || !computerSchedule || !amountElEarly) return;
+                var cost = parseFloat(amountElEarly.value) || 0;
+                if (cost <= 0) {
+                    computerSchedule.textContent = 'Enter the ex-VAT cost. A VAT-inclusive total can be split above. If the VAT cannot be reclaimed, put the full total in Amount and leave Supplier VAT at €0.';
+                    return;
+                }
+                var annual = Math.round(cost / 4 * 100) / 100;
+                var last = Math.round((cost - annual * 3) * 100) / 100;
+                computerSchedule.textContent = 'Writes off €' + money(annual) + ' in the invoice year and on the next two 1 January dates, then €' + money(last) + ' in the fourth year.';
+            }
+
+            function applyComputerGross(reclaim) {
+                var gross = parseFloat(computerGross && computerGross.value) || 0;
+                var rate = parseFloat(computerRate && computerRate.value) || 0;
+                if (!amountElEarly || !vatElEarly || gross <= 0) return;
+                var rcEl = document.getElementById('isReverseCharge');
+                if (rcEl) rcEl.checked = false;
+                if (reclaim && rate > 0) {
+                    var net = Math.round(gross / (1 + rate) * 100) / 100;
+                    amountElEarly.value = money(net);
+                    vatElEarly.value = money(gross - net);
+                } else {
+                    amountElEarly.value = money(gross);
+                    vatElEarly.value = '0.00';
+                }
+                vatElEarly.readOnly = false;
+                vatElEarly.style.background = '';
+                if (rcEl) rcEl.dispatchEvent(new Event('change'));
+                amountElEarly.dispatchEvent(new Event('input'));
+                syncComputer();
+            }
+
+            if (categoryEl) categoryEl.addEventListener('change', syncComputer);
+            if (amountElEarly) amountElEarly.addEventListener('input', syncComputer);
+            if (computerSplit) computerSplit.addEventListener('click', function () { applyComputerGross(true); });
+            if (computerKeep) computerKeep.addEventListener('click', function () { applyComputerGross(false); });
             if (funded) funded.addEventListener('change', syncFunded);
             syncSupplier();
             syncFunded();
+            syncComputer();
 
             @if($canReverseCharge ?? false)
             var rate = {{ \App\Models\CompanyExpense::REVERSE_CHARGE_RATE }};
@@ -264,9 +339,10 @@
                         preview.style.display = 'none';
                     }
                 }
-                rcEl.addEventListener('change', syncRc);
+                rcEl.addEventListener('change', function () { syncRc(); syncComputer(); });
                 amountEl.addEventListener('input', syncRc);
                 syncRc();
+                syncComputer();
             }
             @endif
         })();

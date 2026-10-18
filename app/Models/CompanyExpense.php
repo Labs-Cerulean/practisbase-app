@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\CompanyBooks;
+use App\Support\CompanyComputerAllowance;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -9,6 +11,7 @@ class CompanyExpense extends Model
 {
     public const CATEGORIES = [
         'software' => 'Software & subscriptions',
+        'computer' => 'Computer equipment',
         'professional' => 'Professional fees',
         'marketing' => 'Marketing & websites',
         'office' => 'Office & admin',
@@ -121,6 +124,26 @@ class CompanyExpense extends Model
         return ! $this->isReversed()
             && $this->funded_by === 'payable'
             && $this->company_expense_payment_id === null;
+    }
+
+    /**
+     * @return list<array{index: int, date: string, amount: float}>
+     */
+    public function computerWearAndTear(): array
+    {
+        if ($this->category !== 'computer') {
+            return [];
+        }
+
+        $date = $this->expense_date instanceof \DateTimeInterface
+            ? $this->expense_date->format('Y-m-d')
+            : (string) $this->expense_date;
+
+        return CompanyComputerAllowance::slices(
+            (float) $this->amount,
+            $date,
+            CompanyBooks::FIRST_PERIOD_END
+        );
     }
 
     public function fundingLabel(): string
