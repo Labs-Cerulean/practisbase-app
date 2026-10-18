@@ -16,6 +16,8 @@ class CompanyChartOfAccounts
 
     public const INPUT_VAT = '1200';
 
+    public const COMPUTER_EQUIPMENT = '1400';
+
     public const TRADE_PAYABLES = '2000';
 
     public const CUSTOMER_ADVANCES = '2200';
@@ -35,6 +37,8 @@ class CompanyChartOfAccounts
     public const REVENUE_SAAS = '4000';
 
     public const SALES_RETURNS = '4090';
+
+    public const DEPRECIATION = '6070';
 
     public const CORP_TAX_EXPENSE = '7000';
 

@@ -7,6 +7,7 @@ use App\Models\CompanyExpense;
 use App\Models\CompanyExpensePayment;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
+use App\Support\CompanyComputerAllowance;
 use App\Support\CompanyExpenseMonths;
 use App\Support\CompanyLedger;
 use App\Support\PdfPlainText;
@@ -24,6 +25,7 @@ class ExpenseController extends Controller
     {
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
+        CompanyLedger::syncComputerDepreciation($user->id);
         $year = (int) $request->input('year', $profile->first_period_end->format('Y'));
         $status = (string) $request->input('status', 'active');
         if (! in_array($status, ['active', 'owed', 'unpaid', 'company', 'reversed'], true)) {
@@ -351,7 +353,22 @@ class ExpenseController extends Controller
         CompanyLedger::ensureChart($user);
         CompanyLedger::postExpense($expense);
 
-        if ($validated['funded_by'] === 'payable') {
+        if ($validated['category'] === 'computer') {
+            $slices = CompanyComputerAllowance::slices(
+                $amount,
+                $expenseDate,
+                $profile->first_period_end->format('Y-m-d')
+            );
+            $first = (float) ($slices[0]['amount'] ?? 0);
+            $msg = 'Computer logged for '.$supplier->name.'. €'.number_format($amount, 2)
+                .' is on the balance sheet. €'.number_format($first, 2)
+                .' is written off this year, then again on 1 January for the next three years.';
+            if ($vatAmount <= 0) {
+                $msg .= ' Supplier VAT is €0, so any VAT inside that amount is part of the cost being written off.';
+            } else {
+                $msg .= ' The VAT stays out of the amount that is written off.';
+            }
+        } elseif ($validated['funded_by'] === 'payable') {
             $msg = 'Invoice logged for '.$supplier->name.'. Trade payables went up. The bank stays as it is until you record the payment.';
         } elseif ($isReverseCharge) {
             $msg = 'Expense logged for '.$supplier->name.' with reverse charge (output + input VAT €'.number_format($vatAmount, 2).').';

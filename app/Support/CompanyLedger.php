@@ -28,6 +28,9 @@ class CompanyLedger
     /** @var array<int, true> */
     private static array $chartReadyForUser = [];
 
+    /** @var array<int, true> */
+    private static array $computerDepreciationSynced = [];
+
     /**
      * Seed missing GL accounts in bulk (1–2 queries). Memoized per request —
      * never loop firstOrCreate (that is ~30 round-trips and times out on remote PG).
@@ -386,7 +389,9 @@ class CompanyLedger
         $net = round($net, 2);
         $vat = round($vat, 2);
         $cash = $reverseCharge ? $net : round($net + $vat, 2);
-        $expenseCode = CompanyChartOfAccounts::expenseAccountCode($category);
+        $expenseCode = $category === 'computer'
+            ? CompanyChartOfAccounts::COMPUTER_EQUIPMENT
+            : CompanyChartOfAccounts::expenseAccountCode($category);
         $creditCode = match ($fundedBy) {
             'director' => CompanyChartOfAccounts::DIRECTOR_LOAN,
             'payable' => CompanyChartOfAccounts::TRADE_PAYABLES,
@@ -438,6 +443,29 @@ class CompanyLedger
     /**
      * @return list<array{account_code: string, side: string, amount: float, memo: ?string}>
      */
+    public static function computerDepreciationLines(float $amount, string $description): array
+    {
+        $amount = round($amount, 2);
+
+        return [
+            [
+                'account_code' => CompanyChartOfAccounts::DEPRECIATION,
+                'side' => 'debit',
+                'amount' => $amount,
+                'memo' => $description,
+            ],
+            [
+                'account_code' => CompanyChartOfAccounts::COMPUTER_EQUIPMENT,
+                'side' => 'credit',
+                'amount' => $amount,
+                'memo' => $description,
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{account_code: string, side: string, amount: float, memo: ?string}>
+     */
     public static function directorRefundJournalLines(float $gross, ?string $reference): array
     {
         $gross = round($gross, 2);
@@ -482,7 +510,7 @@ class CompanyLedger
             ? 'Expense (reverse charge): '.$expense->description
             : 'Expense: '.$expense->description;
 
-        return self::post(
+        $entry = self::post(
             $expense->user_id,
             $expense->expense_date->format('Y-m-d'),
             $narrative,
@@ -498,6 +526,76 @@ class CompanyLedger
             $expense->id,
             'company_expense:'.$expense->id.':posted'
         );
+
+        if ($expense->category === 'computer') {
+            self::postDueComputerDepreciation($expense, now()->toDateString());
+        }
+
+        return $entry;
+    }
+
+    /**
+     * Post any computer wear-and-tear slices whose date has arrived.
+     * Safe to call often: each slice has one source key.
+     */
+    public static function syncComputerDepreciation(int $userId): void
+    {
+        if (isset(self::$computerDepreciationSynced[$userId])) {
+            return;
+        }
+
+        self::$computerDepreciationSynced[$userId] = true;
+        self::ensureChartForUserId($userId);
+
+        $expenses = CompanyExpense::where('user_id', $userId)
+            ->where('category', 'computer')
+            ->whereNull('reversed_at')
+            ->get();
+
+        $asOf = now()->toDateString();
+        foreach ($expenses as $expense) {
+            self::postDueComputerDepreciation($expense, $asOf);
+        }
+    }
+
+    public static function postDueComputerDepreciation(CompanyExpense $expense, string $asOf): void
+    {
+        if ($expense->category !== 'computer' || $expense->reversed_at) {
+            return;
+        }
+
+        $inService = $expense->expense_date instanceof \DateTimeInterface
+            ? $expense->expense_date->format('Y-m-d')
+            : (string) $expense->expense_date;
+        $profile = CompanyProfile::where('user_id', $expense->user_id)->first();
+        $firstPeriodEnd = $profile && $profile->first_period_end
+            ? $profile->first_period_end->format('Y-m-d')
+            : CompanyBooks::FIRST_PERIOD_END;
+
+        $due = CompanyComputerAllowance::dueSlices(
+            CompanyComputerAllowance::slices((float) $expense->amount, $inService, $firstPeriodEnd),
+            $asOf
+        );
+
+        foreach ($due as $slice) {
+            if ($slice['amount'] <= 0) {
+                continue;
+            }
+
+            try {
+                self::post(
+                    $expense->user_id,
+                    $slice['date'],
+                    'Computer wear and tear: '.$expense->description,
+                    self::computerDepreciationLines($slice['amount'], (string) $expense->description),
+                    'company_expense_depreciation',
+                    $expense->id,
+                    'company_expense:'.$expense->id.':depreciation:'.$slice['index']
+                );
+            } catch (ValidationException) {
+                // This year's books are locked. The slice waits until they are opened.
+            }
+        }
     }
 
     public static function postDirectorRefund(CompanyExpense $expense): CompanyJournalEntry
@@ -592,6 +690,48 @@ class CompanyLedger
         );
     }
 
+    public static function reverseComputerDepreciation(CompanyExpense $expense, string $reversalDate): void
+    {
+        if ($expense->category !== 'computer') {
+            return;
+        }
+
+        $entries = CompanyJournalEntry::where('user_id', $expense->user_id)
+            ->where('source_type', 'company_expense_depreciation')
+            ->where('source_id', $expense->id)
+            ->with('lines.account')
+            ->get();
+
+        foreach ($entries as $entry) {
+            $lines = [];
+            foreach ($entry->lines as $line) {
+                $code = $line->account?->account_code;
+                if (! is_string($code) || $code === '') {
+                    continue;
+                }
+                $lines[] = [
+                    'account_code' => $code,
+                    'side' => $line->side,
+                    'amount' => (float) $line->amount,
+                    'memo' => $line->memo,
+                ];
+            }
+            if ($lines === []) {
+                continue;
+            }
+
+            self::post(
+                $expense->user_id,
+                $reversalDate,
+                'Reversal of computer wear and tear: '.$expense->description,
+                self::swapSides($lines),
+                'company_expense_depreciation_reversal',
+                $expense->id,
+                'company_expense:'.$expense->id.':depreciation_reversal:'.$entry->id
+            );
+        }
+    }
+
     /**
      * Post the opposite of the expense (and of a director refund, when one was posted).
      * Returns how many bank-statement matches were released.
@@ -639,6 +779,8 @@ class CompanyLedger
                     'company_expense:'.$expense->id.':director_refund_reversal'
                 );
             }
+
+            self::reverseComputerDepreciation($expense, $reversalDate);
 
             if ($expense->funded_by === 'payable' && $expense->company_expense_payment_id) {
                 $payment = $expense->relationLoaded('payment')
@@ -1056,6 +1198,7 @@ class CompanyLedger
      */
     public static function profitAndLoss(int $userId, string $from, string $to): array
     {
+        self::syncComputerDepreciation($userId);
         self::ensureChartForUserId($userId);
         $balances = self::accountBalances($userId, $to, $from);
         $accounts = CompanyGlAccount::where('user_id', $userId)
@@ -1127,6 +1270,7 @@ class CompanyLedger
      */
     public static function balanceSheet(int $userId, string $asOfDate, string $periodStart, ?array $profitAndLoss = null): array
     {
+        self::syncComputerDepreciation($userId);
         self::ensureChartForUserId($userId);
         $balances = self::accountBalances($userId, $asOfDate);
         $accounts = CompanyGlAccount::where('user_id', $userId)->orderBy('account_code')->get()->keyBy('account_code');

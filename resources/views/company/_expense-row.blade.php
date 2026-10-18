@@ -46,6 +46,12 @@
             @else
                 · VAT €{{ number_format((float) $expense->vat_amount, 2) }}
             @endif
+            @if($expense->category === 'computer' && !$expense->isReversed())
+                <br>Wear and tear
+                @foreach($expense->computerWearAndTear() as $slice)
+                    €{{ number_format($slice['amount'], 2) }} on {{ \Illuminate\Support\Carbon::parse($slice['date'])->format('j M Y') }}@if(!$loop->last), @endif
+                @endforeach
+            @endif
             @if($expense->isReversed())
                 <br>Reversed {{ $expense->reversed_at->format('d M Y') }}@if($expense->reversal_note) · {{ $expense->reversal_note }}@endif
             @endif
