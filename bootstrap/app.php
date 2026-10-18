@@ -11,6 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Railway terminates TLS. Trust the forwarded protocol so https
+        // requests are not treated as the plain connection inside the container.
+        $middleware->trustProxies(at: '*');
+        $middleware->append(\App\Http\Middleware\ForceHttps::class);
+
         $middleware->alias([
             'tier' => \App\Http\Middleware\EnsureUserTier::class,
             'terms' => \App\Http\Middleware\EnsureTermsAccepted::class,

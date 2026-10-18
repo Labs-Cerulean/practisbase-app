@@ -5,6 +5,19 @@
 
     RewriteEngine On
 
+    # Apex always lands on the secure www host. FrankenPHP on Railway does not
+    # read this file; ForceHttps does the same check there.
+    RewriteCond %{HTTP_HOST} ^practisbase\.com$ [NC]
+    RewriteRule ^ https://www.practisbase.com%{REQUEST_URI} [L,R=301]
+
+    # Upgrade a direct http request. A proxy that already terminated TLS sets
+    # X-Forwarded-Proto and must not be redirected again.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+    RewriteCond %{HTTP_HOST} !^localhost(:[0-9]+)?$ [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:[0-9]+)?$ [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
