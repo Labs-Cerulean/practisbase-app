@@ -1,10 +1,11 @@
-{{-- Global Download app modal + install script (logged-in sole-trader shell). --}}
+{{-- Global Install app modal + install script (logged-in sole-trader shell). --}}
 <div id="pb-install-app-modal" class="pb-modal" hidden>
     <div class="pb-modal-backdrop" data-close-install-app></div>
-    <div class="pb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="pb-install-app-title" style="max-width: 440px;">
-        <h2 id="pb-install-app-title" style="margin: 0 0 0.5rem; color: var(--primary-navy); font-size: 1.15rem;">Download PractisBase</h2>
+    <div class="pb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="pb-install-app-title" style="max-width: 480px;">
+        <h2 id="pb-install-app-title" style="margin: 0 0 0.5rem; color: var(--primary-navy); font-size: 1.15rem;">Install PractisBase</h2>
         <p style="margin: 0 0 1rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
             Add PractisBase to your phone or desktop for one-tap return — no app store.
+            Open <strong style="color: var(--primary-navy);">https://www.practisbase.com</strong> first, with www and the padlock.
         </p>
 
         <button type="button" id="pb-install-prompt-btn" hidden style="width: 100%; margin-bottom: 1rem; background: var(--primary-cerulean); color: white; border: none; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-weight: 700; font-size: 0.95rem; cursor: pointer;">
@@ -22,11 +23,15 @@
             </div>
             <div style="padding: 0.75rem 0.9rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 <strong style="color: var(--primary-navy);">Android</strong>
-                <div style="color: var(--text-muted); margin-top: 0.25rem;">Chrome menu → Install app / Add to Home screen</div>
+                <div style="color: var(--text-muted); margin-top: 0.25rem;">Chrome menu → Add to Home screen → Install app</div>
             </div>
             <div style="padding: 0.75rem 0.9rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                 <strong style="color: var(--primary-navy);">Desktop</strong>
-                <div style="color: var(--text-muted); margin-top: 0.25rem;">Chrome or Edge → install icon in the address bar, or use the button above when shown</div>
+                <div style="color: var(--text-muted); margin-top: 0.25rem;">Chrome or Edge menu → Cast, save, and share → Install PractisBase. When Chrome shows Install page as app, use that. The install icon in the address bar does the same thing when it appears. The button above appears when Chrome offers it.</div>
+            </div>
+            <div style="padding: 0.75rem 0.9rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md);">
+                <strong style="color: var(--primary-navy);">Certificate warning on an older icon</strong>
+                <div style="color: var(--text-muted); margin-top: 0.25rem;">Remove that icon. Open https://www.practisbase.com in a normal Chrome tab and confirm the padlock, then install again from the menu above. If the window says App update available, choose Review app update, then Update, while the name is still PractisBase.</div>
             </div>
         </div>
 

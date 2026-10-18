@@ -354,7 +354,7 @@ class MarketingContentPacks
                     ."PractisBase works in the browser on mobile, and you can add it to your Home Screen for one tap return. Capture the job while you are still on site.\n\n"
                     .'{url}',
                 'hashtags' => '#Perit #Engineering #SiteWork #Mobile #PractisBase',
-                'tip' => 'Film phone and Download app / Add to Home Screen, then open a condition report form.',
+                'tip' => 'Film phone and Install app / Add to Home Screen, then open a condition report form.',
                 'url_path' => '/',
             ],
             [
@@ -616,7 +616,7 @@ class MarketingContentPacks
                 'kicker' => 'Highlight reel 9',
                 'headline' => 'Add PractisBase to your Home Screen.',
                 'subline' => 'Phone ready desk for invoices, projects, and stamps when you are away from the office.',
-                'highlight' => 'PWA · Download app',
+                'highlight' => 'PWA · Install app',
                 'cta' => 'Install from the browser',
                 'caption' => "You should not need a laptop to raise an invoice or stamp a site PDF.\n\n"
                     ."PractisBase installs as an app from your browser. Add to Home Screen, then work from the van, the clinic corridor, or the site cabin.\n\n"

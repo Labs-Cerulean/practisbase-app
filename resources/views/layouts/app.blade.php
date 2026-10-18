@@ -136,7 +136,7 @@
                         <li class="nav-mobile-only nav-section-label">Account</li>
                         @unless($companyMode)
                             <li class="nav-mobile-only">
-                                <button type="button" class="nav-link" data-open-install-app style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit;">Download app</button>
+                                <button type="button" class="nav-link" data-open-install-app style="width: 100%; text-align: left; background: none; border: none; cursor: pointer; font: inherit;">Install app</button>
                             </li>
                         @endunless
                         <li class="nav-mobile-only">
@@ -181,7 +181,7 @@
                 <div class="avatar" aria-hidden="true">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
                 <a href="/settings" class="header-action header-desktop-only">Settings</a>
                 @unless($companyMode)
-                    <button type="button" class="header-action header-desktop-only header-action-btn" data-open-install-app>Download app</button>
+                    <button type="button" class="header-action header-desktop-only header-action-btn" data-open-install-app>Install app</button>
                 @endunless
                 <form action="/logout" method="POST" class="header-desktop-only header-logout-form">
                     @csrf

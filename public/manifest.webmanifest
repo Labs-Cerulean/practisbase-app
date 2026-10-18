@@ -2,6 +2,7 @@
   "name": "PractisBase",
   "short_name": "PractisBase",
   "description": "Accounts, VAT, and profession tools for Maltese sole traders.",
+  "id": "/dashboard",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
