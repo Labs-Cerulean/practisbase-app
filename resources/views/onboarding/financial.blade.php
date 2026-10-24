@@ -81,6 +81,7 @@
     @include('partials.pwa-head')
 </head>
 <body>
+    @include('partials.staging-banner')
 @php
     $isMedical = $user->profession === 'Medical Professional';
     $defaultVat = old('vat_status', $isMedical ? 'exempt' : '');

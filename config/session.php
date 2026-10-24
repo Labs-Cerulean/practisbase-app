@@ -169,7 +169,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
+    'secure' => env('SESSION_SECURE_COOKIE', in_array(env('APP_ENV'), ['production', 'staging'], true) || strtolower((string) env('RAILWAY_ENVIRONMENT_NAME')) === 'staging'),
 
     /*
     |--------------------------------------------------------------------------

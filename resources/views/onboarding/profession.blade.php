@@ -89,6 +89,7 @@
     @include('partials.pwa-head')
 </head>
 <body>
+    @include('partials.staging-banner')
 
     <div class="auth-card">
         <div class="auth-header">

@@ -528,6 +528,7 @@
     </style>
 </head>
 <body>
+    @include('partials.staging-banner')
     <header class="top">
         <a class="top-brand" href="/">
             <img src="/images/logo.png" alt="">
