@@ -373,7 +373,7 @@ class User extends Authenticatable
 
     public function isOnboardingComplete(): bool
     {
-        return filled($this->profession) && filled($this->employment_type) && filled($this->tier);
+        return \App\Support\ProfessionStart::onboardingComplete($this->profession, $this->tier);
     }
 
     /**
@@ -390,15 +390,7 @@ class User extends Authenticatable
 
     public function onboardingRedirectPath(): string
     {
-        if (! filled($this->profession)) {
-            return '/onboarding/profession';
-        }
-
-        if (! filled($this->employment_type)) {
-            return '/onboarding/financial';
-        }
-
-        return '/onboarding/plans';
+        return \App\Support\ProfessionStart::redirectPath($this->profession, $this->tier);
     }
 
     public function freeClientCap(): int

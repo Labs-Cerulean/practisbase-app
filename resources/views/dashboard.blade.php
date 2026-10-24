@@ -12,17 +12,12 @@
             default => 'var(--primary-cerulean)',
         };
         $subtitle = match (true) {
-            ($peritHome ?? false) => 'Projects, planning cases, and sites — day to day for the practice.',
-            $mode === 'practice' => match ($package) {
-                'med' => 'Clinical tools first. Free invoicing sits underneath.',
-                'arch' => 'Projects, planning cases, and sites — day to day for the practice.',
-                'eng' => 'Technical tools first. Free invoicing sits underneath.',
-                default => 'Practice tools first. Free invoicing sits underneath.',
-            },
-            $mode === 'pro' && ($package ?? null) === 'arch' => 'Studio desk first. Billing and tax live under Accounts.',
-            $mode === 'pro' => 'Practice desk and Tax and VAT in one place.',
-            $mode === 'standard' => 'Your '.$year.' accounts at a glance. Official invoices only count for tax.',
-            default => 'Free invoicing layer. Upgrade when you need Tax and VAT or profession tools.',
+            ($practiceHome ?? false) && $package === 'med' => 'Patients, prescriptions, and certificates.',
+            ($practiceHome ?? false) && $package === 'arch' => 'Projects, sites, and planning.',
+            ($practiceHome ?? false) && $package === 'eng' => 'Projects, certificates, and site files.',
+            $mode === 'standard' => $year.' books.',
+            $mode === 'pro' => $year.' books.',
+            default => 'Invoices and clients.',
         };
         $showMoneyOnOverview = $showMoneyOnOverview ?? ! ($peritHome ?? false);
     @endphp
@@ -44,11 +39,8 @@
                 @endif
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'arch')
                 <a href="/pro/architect/projects/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Project</a>
-                <a href="/pro/architect/projects" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Portfolio map</a>
-                <a href="/accounts" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Accounts</a>
             @elseif($practiceDesk && ($practiceDesk['kind'] ?? null) === 'eng')
-                <a href="/clients/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Client</a>
-                <a href="/pro/engineer/certificates" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Field certificates</a>
+                <a href="/pro/engineer/projects/create" style="background: {{ $deskAccent }}; color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Project</a>
             @endif
 
             @if($showMoneyOnOverview && ($hasFinancial || $mode === 'free'))
@@ -149,7 +141,7 @@
                 @elseif(($practiceDesk['kind'] ?? null) === 'arch')
                     <a href="/pro/architect/projects" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open portfolio →</a>
                 @elseif($practiceDesk)
-                    <a href="/clients" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open clients →</a>
+                    <a href="/pro/engineer/projects" style="font-size: 0.8rem; font-weight: 600; color: {{ $deskAccent }}; text-decoration: none;">Open projects →</a>
                 @endif
             </div>
 

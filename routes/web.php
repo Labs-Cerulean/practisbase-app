@@ -120,8 +120,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth', 'terms'])->group(function () {
     Route::get('/onboarding/profession', function () {
-        if (auth()->user()->beta_invite_code_id) {
-            return redirect('/onboarding/financial');
+        $user = auth()->user();
+        if ($user->beta_invite_code_id && filled($user->profession)) {
+            return redirect($user->canAccessCompanyBooks() ? '/company' : '/dashboard');
         }
 
         $customProfessions = \App\Models\User::whereNotIn('profession', [

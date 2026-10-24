@@ -80,10 +80,8 @@
 
     <main class="pricing-container">
         <div class="pricing-header">
-            <div class="step-indicator">Step 3 of 3</div>
-            <h2 style="color: var(--primary-navy); font-size: clamp(1.5rem, 4vw, 2.1rem); margin: 0 0 0.4rem;">Select your plan</h2>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">Start with profession tools or accounts. Upgrade into the full system later.</p>
-            <p class="resume-note">Your account is already saved. If you leave, sign in again to finish this step.</p>
+            <div class="step-indicator">Step 2 of 2</div>
+            <h2 style="color: var(--primary-navy); font-size: clamp(1.5rem, 4vw, 2.1rem); margin: 0;">Choose a plan</h2>
         </div>
 
         @if ($errors->any())
@@ -93,25 +91,92 @@
         @endif
 
         @if($canPaid && $user->trial_ends_at)
-            <div class="promo-banner">
-                Founding access until {{ $user->trial_ends_at->format('d M Y') }}. Choose a plan.
-            </div>
-        @elseif($canPaid)
-            <div class="promo-banner">
-                Founding access. Choose a plan.
-            </div>
-        @else
-            <div class="promo-banner">
-                Start Free, or use a Founding code at signup. Card billing soon.
+            <div class="promo-banner">Founding access until {{ $user->trial_ends_at->format('d M Y') }}.</div>
+        @elseif(! $canPaid)
+            <div class="promo-banner">Paid plans need an access code.</div>
+        @endif
+
+        @if($practiceTier || $proTier)
+            <div class="section-label">Desk</div>
+            <div class="pricing-grid">
+                @if($practiceTier)
+                    @php
+                        $pkg = \App\Support\TierPolicy::packageForTier($practiceTier);
+                        $accent = $pkg === 'med' ? '#059669' : ($pkg === 'eng' ? '#d97706' : 'var(--primary-navy)');
+                    @endphp
+                    <div class="pricing-card popular" style="border-top: 4px solid {{ $accent }};">
+                        <div class="popular-badge" style="background: {{ $accent }};">Desk</div>
+                        <div class="tier-name" style="color: {{ $accent }};">{{ \App\Support\TierPolicy::label($practiceTier) }}</div>
+                        <div class="tier-price">€{{ $prac }}<span>/mo</span></div>
+                        <p class="tier-vat">{{ $vatSuffix }}</p>
+                        <p class="tier-inc">€{{ \App\Support\TierPolicy::priceIncludingVat($prac) }}/mo inc VAT</p>
+                        <p class="tier-blurb">Profession tools.</p>
+                        <ul class="feature-list">
+                            <li>Invoices, up to 5 clients</li>
+                            @if($pkg === 'med')
+                                <li>Private journals, prescriptions, referrals</li>
+                                <li>Clinical stampables</li>
+                            @elseif($pkg === 'arch')
+                                <li>Condition reports and method statements</li>
+                                <li>BCA templates and project files</li>
+                            @else
+                                <li>Field certificates and specialised reports</li>
+                                <li>Equipment certificates and project files</li>
+                            @endif
+                        </ul>
+                        @if($canPaid)
+                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                                @csrf
+                                <input type="hidden" name="tier" value="{{ $practiceTier }}">
+                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select</button>
+                            </form>
+                        @else
+                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
+                        @endif
+                    </div>
+                @endif
+
+                @if($proTier)
+                    @php
+                        $pkg = \App\Support\TierPolicy::packageForTier($proTier);
+                        $accent = $pkg === 'med' ? '#059669' : ($pkg === 'eng' ? '#d97706' : 'var(--primary-navy)');
+                    @endphp
+                    <div class="pricing-card" style="border-top: 4px solid {{ $accent }};">
+                        <div class="tier-name" style="color: {{ $accent }};">{{ \App\Support\TierPolicy::label($proTier) }}</div>
+                        <div class="tier-price">€{{ $pro }}<span>/mo</span></div>
+                        <p class="tier-vat">{{ $vatSuffix }}</p>
+                        <p class="tier-inc">€{{ \App\Support\TierPolicy::priceIncludingVat($pro) }}/mo inc VAT</p>
+                        <p class="tier-blurb">Profession tools and books.</p>
+                        <ul class="feature-list">
+                            <li>Unlimited clients, expenses, tax and VAT</li>
+                            @if($pkg === 'med')
+                                <li>Patients, prescriptions, referrals</li>
+                            @elseif($pkg === 'arch')
+                                <li>Condition reports, method statements, project files</li>
+                            @else
+                                <li>Field certificates, reports, and projects</li>
+                            @endif
+                        </ul>
+                        @if($canPaid)
+                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                                @csrf
+                                <input type="hidden" name="tier" value="{{ $proTier }}">
+                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select</button>
+                            </form>
+                        @else
+                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
+                        @endif
+                    </div>
+                @endif
             </div>
         @endif
 
-        <div class="section-label">Accounts</div>
+        <div class="section-label">Books</div>
         <div class="pricing-grid">
             <div class="pricing-card">
                 <div class="tier-name">Free</div>
                 <div class="tier-price">€0<span>/mo</span></div>
-                <p class="tier-blurb">Basic invoicing to get started.</p>
+                <p class="tier-blurb">Invoices.</p>
                 <ul class="feature-list">
                     <li><strong>Up to 5 Clients</strong> (lifetime)</li>
                     <li>Invoices &amp; RFPs</li>
@@ -124,13 +189,12 @@
                 </form>
             </div>
 
-            <div class="pricing-card popular">
-                <div class="popular-badge">Accounts</div>
+            <div class="pricing-card">
                 <div class="tier-name">Standard</div>
                 <div class="tier-price">€{{ $std }}<span>/mo</span></div>
                 <p class="tier-vat">{{ $vatSuffix }}</p>
                 <p class="tier-inc">€{{ \App\Support\TierPolicy::priceIncludingVat($std) }}/mo inc VAT</p>
-                <p class="tier-blurb">Sole trader Tax &amp; VAT. No profession tools.</p>
+                <p class="tier-blurb">Tax and VAT.</p>
                 <ul class="feature-list">
                     <li><strong>Unlimited Clients</strong></li>
                     <li>Tax &amp; VAT report</li>
@@ -146,92 +210,10 @@
                         <button type="submit" class="btn-tier btn-solid">Select Standard</button>
                     </form>
                 @else
-                    <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs promo or billing</button>
+                    <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
                 @endif
             </div>
         </div>
-
-        @if($practiceTier || $proTier)
-            <div class="section-label">Your profession</div>
-            <div class="pricing-grid">
-                @if($practiceTier)
-                    @php
-                        $pkg = \App\Support\TierPolicy::packageForTier($practiceTier);
-                        $accent = $pkg === 'med' ? '#059669' : ($pkg === 'eng' ? '#d97706' : 'var(--primary-navy)');
-                    @endphp
-                    <div class="pricing-card" style="border-top: 4px solid {{ $accent }};">
-                        <div class="tier-name" style="color: {{ $accent }};">{{ \App\Support\TierPolicy::label($practiceTier) }}</div>
-                        <div class="tier-price">€{{ $prac }}<span>/mo</span></div>
-                        <p class="tier-vat">{{ $vatSuffix }}</p>
-                        <p class="tier-inc">€{{ \App\Support\TierPolicy::priceIncludingVat($prac) }}/mo inc VAT</p>
-                        <p class="tier-blurb">Profession tools + Free invoicing. Add Tax &amp; VAT later via Full Pro.</p>
-                        <ul class="feature-list">
-                            <li>Free financial layer (5 clients + invoices)</li>
-                            <li class="group-header" style="color: {{ $accent }};">Profession tools:</li>
-                            @if($pkg === 'med')
-                                <li>Secure patient journals</li>
-                                <li>Prescriptions &amp; referrals</li>
-                                <li>Clinical stampables</li>
-                                <li>Document Stamper (PDF)</li>
-                            @elseif($pkg === 'arch')
-                                <li>Condition reports &amp; method statements</li>
-                                <li>BCA catalog + Architect documents</li>
-                                <li>Document Stamper + project phases</li>
-                            @else
-                                <li>Field certificates &amp; specialised reports</li>
-                                <li>Client → Project → PA hierarchy</li>
-                                <li>Equipment certificate management</li>
-                                <li>Document Stamper (PDF)</li>
-                            @endif
-                        </ul>
-                        @if($canPaid)
-                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                                @csrf
-                                <input type="hidden" name="tier" value="{{ $practiceTier }}">
-                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select profession plan</button>
-                            </form>
-                        @else
-                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs promo or billing</button>
-                        @endif
-                    </div>
-                @endif
-
-                @if($proTier)
-                    @php
-                        $pkg = \App\Support\TierPolicy::packageForTier($proTier);
-                        $accent = $pkg === 'med' ? '#059669' : ($pkg === 'eng' ? '#d97706' : 'var(--primary-navy)');
-                    @endphp
-                    <div class="pricing-card" style="border-top: 4px solid {{ $accent }};">
-                        <div class="tier-name" style="color: {{ $accent }};">{{ \App\Support\TierPolicy::label($proTier) }}</div>
-                        <div class="tier-price">€{{ $pro }}<span>/mo</span></div>
-                        <p class="tier-vat">{{ $vatSuffix }}</p>
-                        <p class="tier-inc">€{{ \App\Support\TierPolicy::priceIncludingVat($pro) }}/mo inc VAT</p>
-                        <p class="tier-blurb">Standard accounts plus profession tools. Save €{{ \App\Support\TierPolicy::bundleSavingsEuro() }}/mo vs buying both.</p>
-                        <ul class="feature-list">
-                            <li><strong>All Standard financial features</strong></li>
-                            <li>Unlimited clients</li>
-                            <li class="group-header" style="color: {{ $accent }};">Plus profession tools:</li>
-                            @if($pkg === 'med')
-                                <li>Patients, prescriptions, referrals</li>
-                            @elseif($pkg === 'arch')
-                                <li>Condition reports, method statements, document library</li>
-                            @else
-                                <li>Field certificates, reports &amp; projects</li>
-                            @endif
-                        </ul>
-                        @if($canPaid)
-                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                                @csrf
-                                <input type="hidden" name="tier" value="{{ $proTier }}">
-                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select Full Pro</button>
-                            </form>
-                        @else
-                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs promo or billing</button>
-                        @endif
-                    </div>
-                @endif
-            </div>
-        @endif
     </main>
 
 </body>

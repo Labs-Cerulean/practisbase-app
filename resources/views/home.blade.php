@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PractisBase | The sole-trader toolkit for Malta</title>
-    <meta name="description" content="Accounts, VAT, and profession tools built for Maltese doctors, architects, and engineers — not generic SaaS.">
+    <meta name="description" content="Clinical, studio, and technical desks for Maltese doctors, architects, and engineers.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -565,8 +565,8 @@
                             <em>Equipment · certificates</em>
                         </div>
                         <div class="hero-block accent">
-                            <strong>Accounts</strong>
-                            <em>Tax · VAT · SSC</em>
+                            <strong>Books</strong>
+                            <em>When you need them</em>
                         </div>
                     </div>
                 </div>
@@ -576,7 +576,7 @@
         <div class="hero-copy">
             <img class="hero-logo" src="/images/logo.png" alt="PractisBase">
             <h1>Made for Maltese practice.</h1>
-            <p class="hero-lead">The sole-trader toolkit that understands local tax, VAT, and the way doctors, architects, and engineers actually work.</p>
+            <p class="hero-lead">Clinical, studio, and technical desks for Maltese warrants. Books sit one door away.</p>
             <div class="hero-cta">
                 <a href="#what" class="btn btn-sea">See what it does</a>
                 <a href="/register" class="btn btn-ghost">Register</a>
@@ -586,25 +586,25 @@
 
     <section class="story" id="what">
         <p class="story-kicker">What it is</p>
-        <h2>One desk for your books and your profession.</h2>
-        <p>Generic software ignores Maltese parameters. PractisBase is built around Article 10 / 11, provisional tax, SSC, and the documents your warrant actually needs.</p>
+        <h2>The warrant desk comes first.</h2>
+        <p>Doctors, architects, and engineers open their own tools. Books calculate for you and your accountant, and send nothing to the tax or VAT department.</p>
 
         <div class="made-for">
             <div class="made-row">
-                <h3>Made for your books</h3>
-                <p>Raise invoices and RFPs, track expenses, and open a live fiscal report that mirrors how Malta taxes sole traders. Auto complete your Tax forms (TA22) and export to your accountant, with year locking when you close a year.</p>
+                <h3>Made for your practice</h3>
+                <p>Doctors get private journals, prescriptions, certificates, and referrals. Architects get condition reports, BCA templates, and declarations. Engineers get equipment certificates, field certificates, and project files.</p>
             </div>
             <div class="made-row">
-                <h3>Made for your practice</h3>
-                <p>Profession tools sit beside the ledger. Doctors get secured and private patient journals, prescriptions, certificates, and referrals. Architects get condition reports, BCA templates, and declarations. Engineers get equipment certificate management alongside field certificates and project files. Every practice gets a document manager.</p>
+                <h3>Made for your books</h3>
+                <p>Invoices, expenses, and the figures your accountant needs.</p>
             </div>
             <div class="made-row">
                 <h3>Made for calm compliance</h3>
-                <p>Audit friendly breakdowns instead of black box totals. Accountant packs when you need to hand work over.</p>
+                <p>The figures show their working. Hand the pack to your accountant when you want to.</p>
             </div>
             <div class="made-row">
                 <h3>Made with the community</h3>
-                <p>Request features, send feedback, and watch the toolkit upgrade. Built by Maltese professionals, for Maltese professionals, not a foreign template with Malta painted on.</p>
+                <p>Built in Malta, for Maltese professionals.</p>
             </div>
         </div>
     </section>
@@ -612,7 +612,7 @@
     <section class="story" id="professions" style="padding-top: 0;">
         <p class="story-kicker">Profession paths</p>
         <h2>Tools that match the warrant.</h2>
-        <p>Start with accounts, or go straight into the practice desk for your field. Full Pro keeps both on one plan.</p>
+        <p>Open the desk for your warrant.</p>
 
         <div class="paths">
             <article class="path">

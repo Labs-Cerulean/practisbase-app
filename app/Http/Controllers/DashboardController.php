@@ -39,12 +39,15 @@ class DashboardController extends Controller
         $clientCap = $user->hasUnlimitedClients() ? null : $user->freeClientCap();
         $clientsUsed = (int) ($user->clients_created_count ?? $clientCount);
 
-        $peritHome = $hasPractice && $package === 'arch' && $user->canAccessProPackage('arch');
+        $practiceHome = $hasPractice
+            && in_array($package, ['med', 'arch', 'eng'], true)
+            && $user->canAccessProPackage($package);
+        $peritHome = $practiceHome && $package === 'arch';
 
         $billing = null;
         $glance = null;
         $deadlines = [];
-        if (! $peritHome) {
+        if (! $practiceHome) {
             if ($hasFinancial || $practiceOnly || ! $hasPractice) {
                 $billing = $this->billingSnapshot($userId, $year);
             }
@@ -69,7 +72,7 @@ class DashboardController extends Controller
             $growth = PracticeGrowth::forClients($userId);
         }
 
-        $checklist = $peritHome
+        $checklist = $practiceHome
             ? ['all_done' => true, 'complete' => 0, 'total' => 0, 'items' => []]
             : PracticeGuidance::firstWeekChecklist($user);
 
@@ -93,7 +96,8 @@ class DashboardController extends Controller
             'hasPractice' => $hasPractice,
             'practiceOnly' => $practiceOnly,
             'peritHome' => $peritHome,
-            'showMoneyOnOverview' => ! $peritHome,
+            'practiceHome' => $practiceHome,
+            'showMoneyOnOverview' => ! $practiceHome,
             'clientCount' => $clientCount,
             'archivedCount' => $archivedCount,
             'clientCap' => $clientCap,
@@ -130,7 +134,7 @@ class DashboardController extends Controller
 
         $billing = $this->billingSnapshot($userId, $year);
         $glance = $hasFinancial ? $this->fiscalGlance($user, $year) : null;
-        $deadlines = $hasFinancial ? PracticeGuidance::softDeadlines($user, $year) : [];
+        $deadlines = PracticeGuidance::softDeadlines($user, $year);
 
         $mode = match (true) {
             $practiceOnly => 'practice',

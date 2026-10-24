@@ -30,7 +30,9 @@ class PlatformKpi
 
         $total = (clone $users)->count();
         $free = (clone $users)->where(function ($q) {
-            $q->whereNull('tier')->orWhere('tier', TierPolicy::TIER_FREE);
+            $q->whereNull('tier')
+                ->orWhere('tier', TierPolicy::TIER_FREE)
+                ->orWhere('tier', ProfessionStart::PLAN_PENDING);
         })->count();
         $paid = max(0, $total - $free);
 
@@ -44,6 +46,7 @@ class PlatformKpi
             ->where('employment_type', '!=', '')
             ->whereNotNull('tier')
             ->where('tier', '!=', '')
+            ->where('tier', '!=', ProfessionStart::PLAN_PENDING)
             ->count();
 
         $termsAccepted = (clone $users)->whereNotNull('terms_accepted_at')->count();
