@@ -1,6 +1,9 @@
 <form action="/pro/medical/patients/{{ $patient->id }}/entries" method="POST" enctype="multipart/form-data" id="journal-compose-form"
+      data-note-draft="{{ auth()->id() }}-{{ $patient->id }}-new"
+      @if(! empty($composeNote)) data-note-draft-hold="1" @endif
       style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.2rem; box-shadow: var(--shadow-sm);">
     @csrf
+    <div data-note-draft-banner hidden style="background: #eff6ff; color: #1e3a8a; padding: 0.65rem 0.8rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; font-size: 0.85rem; font-weight: 700;">Unsaved note restored.</div>
     <input type="hidden" name="entry_type" value="journal">
     <input type="hidden" name="title" value="">
 

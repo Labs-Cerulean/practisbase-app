@@ -189,6 +189,7 @@
                     @if($practiceDesk['vault_unlocked'])
                         <a href="/pro/medical/patients" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Patients</a>
                         <a href="/pro/medical/stampables" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Documents</a>
+                        <a href="/pro/medical/library" style="padding: 0.55rem 0.85rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.85rem;">Library</a>
                     @elseif($practiceDesk['vault_setup'])
                         <a href="/pro/medical/vault/unlock" style="padding: 0.55rem 0.85rem; background: {{ $deskAccent }}; color: white; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem;">Unlock to continue</a>
                     @else
@@ -492,6 +493,7 @@
                         @if($hasPractice && ($practiceDesk['kind'] ?? null) === 'med')
                             <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
                             <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Documents</a>
+                            <a href="/pro/medical/library" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Library</a>
                         @elseif($hasPractice && ($practiceDesk['kind'] ?? null) === 'arch')
                             <a href="/pro/architect/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Portfolio & map</a>
                             <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>
@@ -520,6 +522,7 @@
                 @if(($practiceDesk['kind'] ?? null) === 'med')
                     <a href="/pro/medical/patients" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Patients</a>
                     <a href="/pro/medical/stampables" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Documents</a>
+                    <a href="/pro/medical/library" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Library</a>
                 @elseif(($practiceDesk['kind'] ?? null) === 'arch')
                     <a href="/pro/architect/projects" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Portfolio & map</a>
                     <a href="/pro/architect/condition-reports" style="padding: 0.75rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); text-decoration: none; color: var(--primary-navy); font-weight: 600; font-size: 0.9rem;">Condition reports</a>

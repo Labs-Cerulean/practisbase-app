@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Pro\Medical;
 use App\Http\Controllers\Controller;
 use App\Models\ClinicalAttachment;
 use App\Models\ClinicalEntry;
+use App\Models\ClinicalLabel;
+use App\Models\ClinicalLibraryDocument;
 use App\Models\Client;
 use App\Models\MedicalVault;
 use App\Models\Patient;
+use App\Models\PatientAction;
 use App\Support\ClinicalNoteTemplates;
+use App\Support\ClinicDeskSchema;
 use App\Support\MedicalVaultCrypto;
+use App\Support\PatientIdentity;
 use App\Support\TierPolicy;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
@@ -61,7 +66,16 @@ class PatientController extends Controller
             ->groupBy('patient_id')
             ->pluck('total', 'patient_id');
 
-        $rows = $patients->map(function (Patient $patient) use ($key, $entryStats, $attachmentCounts, $latestEntry) {
+        $clinicDeskReady = ClinicDeskSchema::ensure();
+        $labels = $clinicDeskReady
+            ? ClinicalLabel::where('user_id', $user->id)->orderBy('name')->get()
+            : collect();
+        $openByPatient = $clinicDeskReady
+            ? PatientAction::where('user_id', $user->id)->whereNull('done_at')->get()->groupBy('patient_id')
+            : collect();
+        $labelNames = $labels->pluck('name', 'id');
+
+        $rows = $patients->map(function (Patient $patient) use ($key, $entryStats, $attachmentCounts, $latestEntry, $openByPatient, $labelNames) {
             try {
                 $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
             } catch (\Throwable) {
@@ -69,6 +83,19 @@ class PatientController extends Controller
             }
 
             $byType = ($entryStats->get($patient->id) ?? collect())->pluck('total', 'entry_type');
+            $openIds = (($openByPatient->get($patient->id) ?? collect()))
+                ->pluck('label_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+            $openNames = [];
+            foreach ($openIds as $labelId) {
+                $labelName = $labelNames->get($labelId);
+                if ($labelName) {
+                    $openNames[] = $labelName;
+                }
+            }
             $dob = $payload['date_of_birth'] ?? null;
             $dobFormatted = '';
             if ($dob) {
@@ -98,6 +125,8 @@ class PatientController extends Controller
                 'attachment_count' => (int) ($attachmentCounts[$patient->id] ?? 0),
                 'last_seen' => $latestEntry[$patient->id] ?? null,
                 'created_ts' => optional($patient->created_at)->timestamp ?? $patient->id,
+                'open_action_ids' => $openIds,
+                'open_action_names' => $openNames,
             ];
         });
 
@@ -108,6 +137,8 @@ class PatientController extends Controller
             'backupOverdue' => $vault ? $vault->isBackupOverdue() : false,
             'showArchived' => $showArchived,
             'archivedCount' => $archivedCount,
+            'labels' => $labels,
+            'clinicDeskReady' => $clinicDeskReady,
         ]);
     }
 
@@ -157,9 +188,10 @@ class PatientController extends Controller
         ]);
 
         $billingClientId = $validated['billing_client_id'] ?? null;
+        $confirmed = $request->boolean('confirm_possible_duplicate');
 
         try {
-            return Cache::lock('patient-store:'.$user->id, 20)->block(8, function () use ($user, $vault, $key, $validated, $billingClientId) {
+            return Cache::lock('patient-store:'.$user->id, 20)->block(8, function () use ($user, $vault, $key, $validated, $billingClientId, $confirmed) {
                 if ($billingClientId) {
                     $alreadyLinked = Patient::where('user_id', $user->id)
                         ->where('billing_client_id', $billingClientId)
@@ -170,6 +202,13 @@ class PatientController extends Controller
                             'billing_client_id' => 'That billing client is already linked to another patient in your vault.',
                         ])->withInput();
                     }
+                }
+
+                $possible = $this->identityMatches($user->id, $key, $validated['display_name'], $validated['id_card'] ?? null);
+                if ($possible !== [] && ! $confirmed) {
+                    return back()->withInput()->with('possible_patient_matches', $possible)->withErrors([
+                        'display_name' => 'This ID or name may already be in the vault. Open the existing chart, or confirm this is a different person.',
+                    ]);
                 }
 
                 $duplicate = $this->recentDuplicatePatient($user->id, $key, $validated['display_name'], $validated['date_of_birth'] ?? null);
@@ -457,10 +496,34 @@ class PatientController extends Controller
                 || $errorBag->has('attachment')
             );
 
+        $chartFiles = [];
+        foreach ($entries as $entry) {
+            foreach ($entry['attachments'] as $file) {
+                $chartFiles[] = [
+                    'id' => $file['id'],
+                    'name' => $file['name'],
+                    'date' => $entry['model']->entry_date,
+                    'type' => $entry['type_label'],
+                ];
+            }
+        }
+
+        $clinicDeskReady = ClinicDeskSchema::ensure();
+        $labels = $clinicDeskReady
+            ? ClinicalLabel::where('user_id', $user->id)->orderBy('name')->get()
+            : collect();
+        $actions = $clinicDeskReady
+            ? $this->presentActions($user->id, $patient->id, $key)
+            : [];
+        $libraryDocuments = $clinicDeskReady
+            ? $this->libraryTitles($user->id, $key)
+            : [];
+
         return view('pro.medical.patients-show', [
             'patient' => $patient,
             'payload' => $payload,
             'entries' => $entries,
+            'chartFiles' => $chartFiles,
             'clients' => $clients,
             'linkedClientIds' => $linkedClientIds,
             'canAddClient' => $user->canAddClient(),
@@ -471,6 +534,51 @@ class PatientController extends Controller
                 old('note_template', $user->clinical_note_template ?? ClinicalNoteTemplates::GENERAL)
             ),
             'templateCatalogue' => ClinicalNoteTemplates::catalogueForUser($user),
+            'labels' => $labels,
+            'actions' => $actions,
+            'libraryDocuments' => $libraryDocuments,
+            'clinicDeskReady' => $clinicDeskReady,
+        ]);
+    }
+
+    public function matches(Request $request)
+    {
+        $user = Auth::user();
+        $key = MedicalVaultCrypto::keyFromSession(session('medical_vault_key'));
+        if (! $key) {
+            return response()->json(['matches' => []]);
+        }
+
+        $matches = $this->identityMatches(
+            $user->id,
+            $key,
+            (string) $request->query('display_name', ''),
+            $request->query('id_card'),
+            (int) $request->query('ignore', 0)
+        );
+
+        return response()->json([
+            'matches' => array_map(function (array $row) {
+                $dob = $row['date_of_birth'];
+                $dobFmt = '';
+                if ($dob !== '') {
+                    try {
+                        $dobFmt = \Illuminate\Support\Carbon::parse($dob)->format('d M Y');
+                    } catch (\Throwable) {
+                        $dobFmt = $dob;
+                    }
+                }
+
+                return [
+                    'id' => $row['id'],
+                    'name' => $row['name'],
+                    'id_card' => $row['id_card'],
+                    'date_of_birth' => $dobFmt,
+                    'archived' => $row['archived'],
+                    'reason' => $row['reason'] === 'id' ? 'Same ID card' : 'Same or very similar name',
+                    'url' => '/pro/medical/patients/'.$row['id'],
+                ];
+            }, $matches),
         ]);
     }
 
@@ -529,6 +637,13 @@ class PatientController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
+        $possible = $this->identityMatches($user->id, $key, $validated['display_name'], $validated['id_card'] ?? null, $patient->id);
+        if ($possible !== [] && ! $request->boolean('confirm_possible_duplicate')) {
+            return back()->withInput()->with('possible_patient_matches', $possible)->withErrors([
+                'display_name' => 'This ID or name may already be in the vault. Open the existing chart, or confirm this is a different person.',
+            ]);
+        }
+
         $encrypted = MedicalVaultCrypto::encrypt([
             'display_name' => $validated['display_name'],
             'date_of_birth' => $validated['date_of_birth'] ?? null,
@@ -546,6 +661,95 @@ class PatientController extends Controller
 
         return redirect('/pro/medical/patients/' . $patient->id)
             ->with('success', 'Patient record updated.');
+    }
+
+    /**
+     * @return list<array{id: int, name: string, id_card: string, date_of_birth: string, archived: bool, reason: string}>
+     */
+    private function identityMatches(int $userId, string $key, string $name, ?string $idCard, int $ignoreId = 0): array
+    {
+        if (PatientIdentity::normalizeName($name) === '' && strlen(PatientIdentity::normalizeId($idCard)) < 5) {
+            return [];
+        }
+
+        $candidates = [];
+        $patients = Patient::where('user_id', $userId)
+            ->orderByDesc('id')
+            ->get(['id', 'payload_ciphertext', 'payload_nonce', 'archived_at']);
+
+        foreach ($patients as $existing) {
+            try {
+                $payload = MedicalVaultCrypto::decrypt($existing->payload_ciphertext, $existing->payload_nonce, $key);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $candidates[] = [
+                'id' => $existing->id,
+                'name' => (string) ($payload['display_name'] ?? ''),
+                'id_card' => $payload['id_card'] ?? null,
+                'date_of_birth' => (string) ($payload['date_of_birth'] ?? ''),
+                'archived' => $existing->archived_at !== null,
+            ];
+        }
+
+        return PatientIdentity::findMatches($name, $idCard, $candidates, $ignoreId);
+    }
+
+    /**
+     * @return list<array{id: int, label: string, note: string, done: bool}>
+     */
+    private function presentActions(int $userId, int $patientId, string $key): array
+    {
+        return PatientAction::where('user_id', $userId)
+            ->where('patient_id', $patientId)
+            ->with('label')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (PatientAction $action) use ($key) {
+                $note = '';
+                if ($action->note_ciphertext && $action->note_nonce) {
+                    try {
+                        $decoded = MedicalVaultCrypto::decrypt($action->note_ciphertext, $action->note_nonce, $key);
+                        $note = trim((string) ($decoded['note'] ?? ''));
+                    } catch (\Throwable) {
+                        $note = '';
+                    }
+                }
+
+                return [
+                    'id' => $action->id,
+                    'label' => $action->label?->name ?? 'Action',
+                    'note' => $note,
+                    'done' => $action->isDone(),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: int, title: string}>
+     */
+    private function libraryTitles(int $userId, string $key): array
+    {
+        return ClinicalLibraryDocument::where('user_id', $userId)
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (ClinicalLibraryDocument $document) use ($key) {
+                $title = 'Document';
+                try {
+                    $payload = MedicalVaultCrypto::decrypt($document->title_ciphertext, $document->title_nonce, $key);
+                    $title = trim((string) ($payload['title'] ?? '')) ?: 'Document';
+                } catch (\Throwable) {
+                    $title = 'Document';
+                }
+
+                return [
+                    'id' => $document->id,
+                    'title' => $title,
+                ];
+            })
+            ->all();
     }
 
     private function recentDuplicatePatient(int $userId, string $key, string $displayName, ?string $dateOfBirth): ?Patient

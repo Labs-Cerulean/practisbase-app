@@ -65,6 +65,7 @@
                                 <li class="nav-section-label" aria-hidden="true">Practice</li>
                                 <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
                                 <li><a href="/pro/medical/stampables" class="nav-link {{ request()->is('pro/medical/stampables*') ? 'active' : '' }}">Documents</a></li>
+                                <li><a href="/pro/medical/library" class="nav-link {{ request()->is('pro/medical/library*') ? 'active' : '' }}">Library</a></li>
                             @elseif(auth()->user()->canAccessProPackage('arch'))
                                 <li class="nav-section-label" aria-hidden="true">Practice</li>
                                 <li><a href="/pro/architect/projects" class="nav-link {{ request()->is('pro/architect/projects*') || request()->is('pro/architect/pa*') ? 'active' : '' }}">Projects</a></li>

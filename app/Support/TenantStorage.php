@@ -40,6 +40,11 @@ class TenantStorage
         return 'medical/' . $userId . '/vault_' . $vaultId . '/attachments';
     }
 
+    public static function medicalLibraryPath(int $userId, int $vaultId): string
+    {
+        return 'medical/' . $userId . '/vault_' . $vaultId . '/library';
+    }
+
     public static function architectDocumentsPath(int $userId): string
     {
         return 'tenants/' . $userId . '/architect/documents';
