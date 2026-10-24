@@ -29,7 +29,23 @@ class PracticeGuidance
 
         $vatStatus = $user->vat_status;
 
-        if ($user->canAccessReports() && ($vatStatus === 'article_10' || $vatStatus === 'article_11')) {
+        if ($vatStatus === 'article_11') {
+            $billed = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
+            if ($billed >= 28000) {
+                $chips[] = [
+                    'key' => 'vat_art11',
+                    'label' => 'Article 11',
+                    'hint' => '€'.number_format($billed, 0).' billed. Cap €35,000.',
+                    'href' => $user->canAccessReports()
+                        ? '/reports?year='.$year.'#tab-vat'
+                        : '/ledger',
+                    'due' => null,
+                    'urgent' => $billed >= 32000,
+                ];
+            }
+        }
+
+        if ($user->canAccessReports() && $vatStatus === 'article_10') {
             // Soft approximate CFR-style windows (mid-month after quarter). Advisory only.
             // Include prior-year Q4 so Jan/Feb still surfaces that return before Q1.
             $quarters = [
@@ -47,7 +63,7 @@ class PracticeGuidance
                     break;
                 }
             }
-            if ($next && $vatStatus === 'article_10') {
+            if ($next) {
                 $chips[] = [
                     'key' => 'vat_q',
                     'label' => $next['label'],
@@ -55,15 +71,6 @@ class PracticeGuidance
                     'href' => '/reports?year='.$next['report_year'].'&period='.$next['period'].'#tab-vat',
                     'due' => $next['due']->toDateString(),
                     'urgent' => $next['due']->diffInDays($today) <= 21,
-                ];
-            } elseif ($next && $vatStatus === 'article_11') {
-                $chips[] = [
-                    'key' => 'vat_art11',
-                    'label' => 'Article 11 watch',
-                    'hint' => 'Keep billed revenue under €35k. Check your report',
-                    'href' => '/reports?year='.$year.'#tab-vat',
-                    'due' => null,
-                    'urgent' => false,
                 ];
             }
         }
@@ -217,6 +224,17 @@ class PracticeGuidance
                     ? '/pro/engineer/reports/create?project_id='.$firstProject->id
                     : '/pro/engineer/reports/create',
                 'done' => \App\Models\EngineerReport::where('user_id', $user->id)->exists(),
+            ];
+        }
+
+        if ($user->hasPracticeTools()) {
+            $complete = count(array_filter($items, fn ($i) => $i['done']));
+
+            return [
+                'items' => $items,
+                'complete' => $complete,
+                'total' => count($items),
+                'all_done' => $complete === count($items),
             ];
         }
 

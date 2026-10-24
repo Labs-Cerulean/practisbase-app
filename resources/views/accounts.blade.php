@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('page_title', 'Accounts')
+@section('page_title', 'Books')
 
 @section('content')
     @php
@@ -10,14 +10,11 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
         <div>
             <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">{{ $tierLabel }}</div>
-            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Accounts</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
-                @if($hasFinancial)
-                    Invoices, collections, and {{ $year }} tax figures.
-                @else
-                    Free billing layer — invoices and RFPs. Tax and VAT unlocks with Standard.
-                @endif
-            </p>
+            <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">Books</h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">Calculates for you and your accountant. Sends nothing to the tax or VAT department.</p>
+            @if(! filled($user->employment_type))
+                <p style="margin: 0.45rem 0 0; font-size: 0.9rem;"><a href="/settings#tax-setup" style="color: var(--primary-navy); font-weight: 600;">Tax setup</a></p>
+            @endif
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/ledger/create" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Invoice / RFP</a>
@@ -26,7 +23,7 @@
                 <a href="/expenses/create" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">+ Expense</a>
             @endif
             @if(($package ?? null) === 'arch')
-                <a href="/dashboard" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Studio overview</a>
+                <a href="/dashboard" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Overview</a>
             @endif
         </div>
     </div>

@@ -61,27 +61,6 @@
                             <li><a href="/community/feedback/inbox" class="nav-link {{ request()->is('community/feedback/inbox*') ? 'active' : '' }}">Feedback inbox</a></li>
                             <li><a href="/community/feedback" class="nav-link {{ request()->is('community/feedback') || request()->is('community/feedback/create') || (request()->is('community/feedback/*') && ! request()->is('community/feedback/inbox*')) ? 'active' : '' }}">My feedback</a></li>
                         @else
-                            <li class="nav-section-label" aria-hidden="true">General</li>
-                            <li>
-                                <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Overview</a>
-                            </li>
-                            <li>
-                                <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
-                            </li>
-                            @unless(auth()->user()->canAccessProPackage('arch'))
-                                <li>
-                                    <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
-                                </li>
-                            @endunless
-                            <li>
-                                <a href="/exports/backup" class="nav-link {{ request()->is('exports/backup*') ? 'active' : '' }}">Backup</a>
-                            </li>
-                            @if(auth()->user()->canAccessDocumentStamper())
-                                <li>
-                                    <a href="/stamper" class="nav-link {{ request()->is('stamper*') ? 'active' : '' }}">Document Stamper</a>
-                                </li>
-                            @endif
-
                             @if(auth()->user()->canAccessProPackage('med'))
                                 <li class="nav-section-label" aria-hidden="true">Practice</li>
                                 <li><a href="/pro/medical/patients" class="nav-link {{ request()->is('pro/medical/patients*') || request()->is('pro/medical/vault*') ? 'active' : '' }}">Patients</a></li>
@@ -105,27 +84,30 @@
                                 <li><a href="/pro/engineer/equipment/due" class="nav-link {{ request()->is('pro/engineer/equipment/due') ? 'active' : '' }}">Due board</a></li>
                             @endif
 
-                            @if(auth()->user()->canAccessProPackage('arch') || auth()->user()->canAccessReports() || auth()->user()->hasStandardFinancial() || auth()->user()->isPracticeOnly())
-                                <li class="nav-section-label" aria-hidden="true">Accounts</li>
+                            <li class="nav-section-label" aria-hidden="true">General</li>
+                            <li>
+                                <a href="/dashboard" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}">Overview</a>
+                            </li>
+                            <li>
+                                <a href="/clients" class="nav-link {{ request()->is('clients*') ? 'active' : '' }}">Clients</a>
+                            </li>
+                            <li>
+                                <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
+                            </li>
+                            <li>
+                                <a href="/exports/backup" class="nav-link {{ request()->is('exports/backup*') ? 'active' : '' }}">Backup</a>
+                            </li>
+                            @if(auth()->user()->canAccessDocumentStamper())
                                 <li>
-                                    <a href="/accounts" class="nav-link {{ request()->is('accounts') ? 'active' : '' }}">Accounts desk</a>
+                                    <a href="/stamper" class="nav-link {{ request()->is('stamper*') ? 'active' : '' }}">Document Stamper</a>
                                 </li>
-                                @if(auth()->user()->canAccessProPackage('arch'))
-                                    <li>
-                                        <a href="/ledger" class="nav-link {{ request()->is('ledger*') ? 'active' : '' }}">Invoices</a>
-                                    </li>
-                                @endif
-                                @if(auth()->user()->canAccessReports())
-                                    <li>
-                                        <a href="/reports" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Tax &amp; VAT</a>
-                                    </li>
-                                    <li>
-                                        <a href="/expenses" class="nav-link {{ request()->is('expenses*') ? 'active' : '' }}">Expenses</a>
-                                    </li>
-                                    <li>
-                                        <a href="/exports/accountant" class="nav-link {{ request()->is('exports/accountant*') ? 'active' : '' }}">For accountant</a>
-                                    </li>
-                                @endif
+                            @endif
+
+                            @if(auth()->user()->canAccessProPackage('arch') || auth()->user()->canAccessReports() || auth()->user()->hasStandardFinancial() || auth()->user()->isPracticeOnly())
+                                <li class="nav-section-label" aria-hidden="true">Books</li>
+                                <li>
+                                    <a href="/accounts" class="nav-link {{ request()->is('accounts') || request()->is('reports*') || request()->is('expenses*') || request()->is('exports/accountant*') ? 'active' : '' }}">Books</a>
+                                </li>
                             @endif
 
                             <li class="nav-section-label" aria-hidden="true">Community</li>

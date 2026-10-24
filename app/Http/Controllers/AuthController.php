@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BetaInviteCode;
 use App\Models\Promotion;
 use App\Models\User;
+use App\Support\ProfessionStart;
 use App\Support\PromotionEngine;
 use App\Support\ReferralRewardService;
 use Illuminate\Http\Request;
@@ -112,7 +113,7 @@ class AuthController extends Controller
                 'referral_code' => strtoupper(Str::random(8)),
                 'referred_by_id' => $referrer?->id,
                 'profession' => $invite ? $invite->profession() : null,
-                'tier' => $invite ? $invite->tier() : 'free',
+                'tier' => $invite ? $invite->tier() : ProfessionStart::PLAN_PENDING,
                 'beta_invite_code_id' => $invite?->id,
             ]);
 
@@ -137,7 +138,9 @@ class AuthController extends Controller
         Auth::login($user);
 
         if ($user->beta_invite_code_id) {
-            return redirect('/onboarding/financial');
+            ProfessionStart::applyVatDefault($user);
+
+            return redirect($this->homePath($user));
         }
 
         return redirect('/onboarding/profession');
@@ -147,9 +150,8 @@ class AuthController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->beta_invite_code_id) {
-            return redirect('/onboarding/financial')
-                ->with('success', 'Your profession is locked to your access code.');
+        if ($user->beta_invite_code_id && filled($user->profession)) {
+            return redirect($this->homePath($user));
         }
 
         $request->validate([
@@ -181,8 +183,14 @@ class AuthController extends Controller
             'warrant_type' => $warrantType,
             'warrant_number' => filled($request->warrant_number) ? trim($request->warrant_number) : null,
         ]);
+        $user->refresh();
+        ProfessionStart::applyVatDefault($user);
 
-        return redirect('/onboarding/financial');
+        if ($user->beta_invite_code_id) {
+            return redirect($this->homePath($user));
+        }
+
+        return redirect('/onboarding/plans');
     }
 
     public function saveFinancial(Request $request)
@@ -231,11 +239,8 @@ class AuthController extends Controller
         $user->refresh();
         \App\Support\RegimeHistory::ensureBaseline($user);
 
-        if ($user->beta_invite_code_id) {
-            $home = $user->canAccessCompanyBooks() ? '/company' : '/dashboard';
-
-            return redirect($home)
-                ->with('success', 'Welcome to PractisBase. Your Pro access is active.');
+        if ($user->beta_invite_code_id || ProfessionStart::onboardingComplete($user->profession, $user->tier)) {
+            return redirect($this->homePath($user));
         }
 
         return redirect('/onboarding/plans');
@@ -246,9 +251,7 @@ class AuthController extends Controller
         $user = Auth::user();
 
         if ($user->beta_invite_code_id) {
-            $home = $user->canAccessCompanyBooks() ? '/company' : '/dashboard';
-
-            return redirect($home);
+            return redirect($this->homePath($user));
         }
 
         $request->validate([
@@ -268,9 +271,12 @@ class AuthController extends Controller
             'tier' => $tier,
         ]);
 
-        $home = Auth::user()->canAccessCompanyBooks() ? '/company' : '/dashboard';
+        return redirect($this->homePath(Auth::user()));
+    }
 
-        return redirect($home);
+    private function homePath(User $user): string
+    {
+        return $user->canAccessCompanyBooks() ? '/company' : '/dashboard';
     }
 
     public function loginSubmit(Request $request)
@@ -283,9 +289,7 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
-            $home = Auth::user()->canAccessCompanyBooks() ? '/company' : '/dashboard';
-
-            return redirect()->intended($home);
+            return redirect()->intended($this->homePath(Auth::user()));
         }
 
         return back()->withErrors([

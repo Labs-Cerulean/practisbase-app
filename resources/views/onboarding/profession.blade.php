@@ -93,10 +93,8 @@
 
     <div class="auth-card">
         <div class="auth-header">
-            <div class="step-indicator">Step 2 of 3</div>
+            <div class="step-indicator">Step 1 of 2</div>
             <h2>What is your profession?</h2>
-            <p>This sets your dashboard and profession tools for your sole trader work.</p>
-            <p class="resume-note">Your account is already saved. If you leave, sign in again to continue from here.</p>
         </div>
 
         <form action="/onboarding/profession-submit" method="POST">
