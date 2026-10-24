@@ -15,8 +15,8 @@ class Deployment
     public static function isStaging(?string $appEnv = null, ?string $railwayEnvironment = null): bool
     {
         if (func_num_args() === 0) {
-            $appEnv = (string) env('APP_ENV', config('app.env'));
-            $railwayEnvironment = (string) env('RAILWAY_ENVIRONMENT_NAME', '');
+            $appEnv = (string) config('app.env');
+            $railwayEnvironment = (string) config('deployment.railway_environment');
         }
 
         return strtolower((string) $appEnv) === 'staging'

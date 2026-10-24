@@ -227,7 +227,7 @@
                     <a href="/community/feedback">Community feedback</a>
                 </div>
                 <div class="app-footer-build">
-                    <strong>Build {{ env('APP_VERSION', '1.0') }}.{{ substr(env('RAILWAY_GIT_COMMIT_SHA', 'dev'), 0, 7) }}</strong>
+                    <strong>Build {{ config('app.version') }}.{{ substr((string) config('deployment.commit'), 0, 7) }}</strong>
                 </div>
             </footer>
         </main>

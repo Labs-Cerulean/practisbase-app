@@ -19,10 +19,11 @@ RUN apt-get update \
     && install-php-extensions gd pdo_pgsql zip
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache-launch.ini
 COPY . .
 COPY --from=assets /app/public/build ./public/build
 
-RUN composer install --optimize-autoloader --no-scripts --no-interaction \
+RUN composer install --optimize-autoloader --classmap-authoritative --no-scripts --no-interaction \
     && mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs bootstrap/cache \
     && chmod -R a+rwx storage bootstrap/cache \
     && chmod +x /app/docker/start.sh
