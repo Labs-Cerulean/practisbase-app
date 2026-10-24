@@ -855,21 +855,40 @@ class CompanyLedger
     }
 
     /**
-     * A split match ties several ledger lines to one statement movement.
-     * Releasing any of them puts the whole movement back to unmatched.
+     * One match may be several bank lines, several ledger lines, or both.
+     * Releasing any line in the group puts the whole group back to unmatched.
      */
     private static function detachBankStatement(int $userId, int $statementLineId): void
     {
-        $entryIds = CompanyJournalLine::where('user_id', $userId)
-            ->where('bank_statement_line_id', $statementLineId)
-            ->pluck('journal_entry_id');
+        $statements = CompanyBankStatementLine::where('user_id', $userId)
+            ->where('status', 'matched')
+            ->get(['id', 'matched_journal_line_id'])
+            ->map(fn (CompanyBankStatementLine $row) => [
+                'id' => (int) $row->id,
+                'matched_journal_line_id' => $row->matched_journal_line_id ? (int) $row->matched_journal_line_id : null,
+            ])
+            ->all();
 
-        CompanyJournalLine::where('user_id', $userId)
-            ->where('bank_statement_line_id', $statementLineId)
-            ->update(['bank_statement_line_id' => null]);
+        $journals = CompanyJournalLine::where('user_id', $userId)
+            ->whereNotNull('bank_statement_line_id')
+            ->get(['id', 'bank_statement_line_id', 'journal_entry_id']);
+
+        $group = BankMatch::matchGroup($statementLineId, $statements, $journals->map(fn (CompanyJournalLine $row) => [
+            'id' => (int) $row->id,
+            'bank_statement_line_id' => (int) $row->bank_statement_line_id,
+        ])->all());
+
+        $journalIds = $group['journals'];
+        $entryIds = $journals->whereIn('id', $journalIds)->pluck('journal_entry_id');
+
+        if ($journalIds !== []) {
+            CompanyJournalLine::where('user_id', $userId)
+                ->whereIn('id', $journalIds)
+                ->update(['bank_statement_line_id' => null]);
+        }
 
         CompanyBankStatementLine::where('user_id', $userId)
-            ->where('id', $statementLineId)
+            ->whereIn('id', $group['statements'])
             ->update([
                 'status' => 'unreconciled',
                 'matched_journal_line_id' => null,

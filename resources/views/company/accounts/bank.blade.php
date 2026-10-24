@@ -39,7 +39,7 @@
             <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer;">Add</button>
         </form>
         <p style="margin: 0.75rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
-            Money in is positive; payments out are negative. One bank movement can cover several invoices or expenses when the ticked lines add up to it.
+            Money in is positive; payments out are negative. Tick every bank line and every invoice or expense in the same payment. The amounts must add up.
         </p>
     </div>
 
@@ -63,7 +63,24 @@
                         @if($line->status === 'unreconciled')
                             <form method="POST" action="/company/bank/{{ $line->id }}/match" data-statement="{{ number_format((float) $line->amount, 2, '.', '') }}" style="margin-top: 0.65rem;">
                                 @csrf
-                                <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem;">Tick the ledger lines in this movement</div>
+                                @php
+                                    $otherLines = $lines->filter(fn ($other) => $other->id !== $line->id && $other->status === 'unreconciled');
+                                @endphp
+                                @if($otherLines->isNotEmpty())
+                                    <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem;">Other bank lines in this payment</div>
+                                    <div style="max-height: 8rem; overflow: auto; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.35rem 0.55rem; margin-bottom: 0.55rem;">
+                                        @foreach($otherLines as $other)
+                                            <label style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; padding: 0.28rem 0; font-size: 0.78rem; cursor: pointer;">
+                                                <span style="display: flex; gap: 0.4rem; align-items: flex-start;">
+                                                    <input type="checkbox" name="statement_line_ids[]" value="{{ $other->id }}" data-signed="{{ number_format((float) $other->amount, 2, '.', '') }}" onchange="bankMatchSum(this.form)" style="margin-top: 0.15rem;">
+                                                    <span style="color: var(--primary-navy);">{{ $other->statement_date->format('d M') }} · {{ \Illuminate\Support\Str::limit($other->description, 42) }}</span>
+                                                </span>
+                                                <span style="font-variant-numeric: tabular-nums; font-weight: 600; color: {{ (float) $other->amount >= 0 ? '#059669' : '#b91c1c' }};">€{{ number_format((float) $other->amount, 2) }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                <div style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem;">Ledger lines in this payment</div>
                                 <div style="max-height: 11rem; overflow: auto; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.35rem 0.55rem;">
                                     @if($unmatchedLedger->isEmpty())
                                         <div style="font-size: 0.78rem; color: var(--text-muted); padding: 0.35rem 0;">No unmatched bank ledger lines.</div>
@@ -81,17 +98,32 @@
                                     @endif
                                 </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.45rem;">
-                                    <div data-match-sum style="font-size: 0.75rem; color: var(--text-muted);">Selected €0.00 of €{{ number_format((float) $line->amount, 2) }}</div>
+                                    <div data-match-sum style="font-size: 0.75rem; color: var(--text-muted);">Bank €{{ number_format((float) $line->amount, 2) }} · ledger €0.00</div>
                                     <button type="submit" style="background: #059669; color: white; border: none; padding: 0.45rem 0.75rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer;">Match</button>
                                 </div>
                             </form>
                         @else
-                            @php $matched = $matchedByStatement->get($line->id, collect()); @endphp
+                            @php
+                                $matched = $matchedByStatement->get($line->id, collect());
+                                if ($matched->isEmpty() && $line->matched_journal_line_id) {
+                                    foreach ($matchedByStatement as $group) {
+                                        if ($group->contains('id', $line->matched_journal_line_id)) {
+                                            $matched = $group;
+                                            break;
+                                        }
+                                    }
+                                }
+                                $withBankLines = $lines->filter(fn ($other) => $other->status === 'matched' && $matched->contains('id', $other->matched_journal_line_id))->count();
+                            @endphp
                             <div style="margin-top: 0.45rem; font-size: 0.8rem; color: #059669;">
                                 @if($matched->isEmpty())
                                     Matched
                                 @else
-                                    Matched to {{ $matched->count() }} {{ $matched->count() === 1 ? 'ledger line' : 'ledger lines' }}
+                                    @if($withBankLines > 1)
+                                        {{ $withBankLines }} bank lines
+                                        ·
+                                    @endif
+                                    {{ $matched->count() }} {{ $matched->count() === 1 ? 'ledger line' : 'ledger lines' }}
                                     @foreach($matched as $jl)
                                         <div style="color: var(--text-muted); margin-top: 0.15rem;">€{{ number_format($jl->signedAmount(), 2) }} · {{ $jl->entry->description }}</div>
                                     @endforeach
@@ -126,17 +158,22 @@
 
     <script>
         function bankMatchSum(form) {
+            var target = parseFloat(form.getAttribute('data-statement') || '0');
+            form.querySelectorAll('input[name="statement_line_ids[]"]:checked').forEach(function (box) {
+                target += parseFloat(box.getAttribute('data-signed') || '0');
+            });
             var sum = 0;
+            var ledgerCount = 0;
             form.querySelectorAll('input[name="journal_line_ids[]"]:checked').forEach(function (box) {
                 sum += parseFloat(box.getAttribute('data-signed') || '0');
+                ledgerCount += 1;
             });
-            var target = parseFloat(form.getAttribute('data-statement') || '0');
             var label = form.querySelector('[data-match-sum]');
             if (!label) {
                 return;
             }
-            label.textContent = 'Selected €' + sum.toFixed(2) + ' of €' + target.toFixed(2);
-            label.style.color = (Math.abs(sum - target) < 0.01 && form.querySelectorAll('input[name="journal_line_ids[]"]:checked').length > 0) ? '#059669' : '#b45309';
+            label.textContent = 'Bank €' + target.toFixed(2) + ' · ledger €' + sum.toFixed(2);
+            label.style.color = (ledgerCount > 0 && Math.abs(sum - target) < 0.01) ? '#059669' : '#b45309';
         }
     </script>
 @endsection
