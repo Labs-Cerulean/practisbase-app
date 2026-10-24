@@ -3,6 +3,9 @@
 @section('page_title', 'Patient')
 
 @section('content')
+    @if(session('clear_note_draft'))
+        <script>try { sessionStorage.removeItem('pb-note:' + @json(session('clear_note_draft'))); } catch (e) {}</script>
+    @endif
     <a href="{{ $patient->archived_at ? '/pro/medical/patients?archived=1' : '/pro/medical/patients' }}" style="color: var(--text-muted); font-weight: 600; text-decoration: none; font-size: 0.85rem;">&larr; Patients</a>
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin: 0.75rem 0 1.25rem; flex-wrap: wrap;">
         <div>
@@ -13,6 +16,7 @@
             @php
                 $patientActionStyle = 'display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 2.55rem; padding: 0 1rem; border-radius: var(--radius-md); font-family: inherit; font-size: 0.9rem; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer;';
             @endphp
+            <a href="/pro/medical/patients/{{ $patient->id }}/report" style="{{ $patientActionStyle }} background: white; border: 1px solid var(--border-light); color: var(--primary-navy);">Patient report</a>
             @if($patient->archived_at)
                 <form action="/pro/medical/patients/{{ $patient->id }}/restore" method="POST" style="margin: 0; display: inline-flex;">
                     @csrf
@@ -102,6 +106,10 @@
             @endif
         @endif
     </div>
+
+    @include('pro.medical._patient-actions')
+    @include('pro.medical._chart-files')
+    @include('pro.medical._chart-library')
 
     @unless($patient->archived_at)
     @php
@@ -468,6 +476,11 @@
                 setComposing(true);
             }
 
+            document.addEventListener('note-draft-restored', function () {
+                activateTab('journal');
+                setComposing(true);
+            });
+
             async function fetchPdfBlob(url) {
                 var res = await fetch(url, { credentials: 'same-origin' });
                 if (!res.ok) throw new Error('PDF fetch failed');
@@ -588,4 +601,5 @@
             @endif
         })();
     </script>
+    @include('pro.medical._note-draft')
 @endsection

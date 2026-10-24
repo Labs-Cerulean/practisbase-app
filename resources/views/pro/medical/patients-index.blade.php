@@ -9,6 +9,7 @@
             <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">
                 Clinical vault
                 <a href="/pro/medical/stampables" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none; border-bottom: 1px dotted var(--primary-navy); margin-left: 0.35rem;">Documents</a>
+                <a href="/pro/medical/library" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none; border-bottom: 1px dotted var(--primary-navy); margin-left: 0.35rem;">Library</a>
             </p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
@@ -56,10 +57,35 @@
         </div>
     </div>
 
-    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;">
         <a href="/pro/medical/patients" style="padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; {{ empty($showArchived) ? 'background: var(--primary-navy); color: white;' : 'background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;' }}">Active</a>
         <a href="/pro/medical/patients?archived=1" style="padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none; {{ !empty($showArchived) ? 'background: var(--primary-navy); color: white;' : 'background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;' }}">Archived{{ ($archivedCount ?? 0) > 0 ? ' ('.$archivedCount.')' : '' }}</a>
     </div>
+
+    @if(! empty($clinicDeskReady))
+        <details style="margin: 0 0 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
+            <summary style="cursor: pointer; font-weight: 700; color: var(--primary-navy);">Labels</summary>
+            <div style="margin-top: 0.75rem; display: grid; gap: 0.55rem;">
+                @forelse($labels ?? [] as $label)
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <form action="/pro/medical/labels/{{ $label->id }}" method="POST" style="display: flex; gap: 0.4rem; align-items: center; margin: 0; flex: 1; min-width: 220px;">
+                            @csrf
+                            @method('PUT')
+                            <input type="text" name="name" value="{{ $label->name }}" maxlength="80" required style="flex: 1; padding: 0.45rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                            <button type="submit" style="background: white; border: 1px solid var(--border-light); color: var(--primary-navy); padding: 0.45rem 0.7rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Rename</button>
+                        </form>
+                        <form action="/pro/medical/labels/{{ $label->id }}" method="POST" style="margin: 0;" onsubmit="return confirm('Remove this label from every chart?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" style="background: white; border: 1px solid #fecaca; color: #b91c1c; padding: 0.45rem 0.7rem; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Delete</button>
+                        </form>
+                    </div>
+                @empty
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Add a label from a patient chart, for example Check lab results.</p>
+                @endforelse
+            </div>
+        </details>
+    @endif
 
     @if($rows->isEmpty())
         <div style="padding: 3rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
@@ -84,6 +110,18 @@
                         <input id="patient-search" type="search" placeholder="Name, ID, tel, DOB, ref…"
                                style="width: 100%; padding: 0.75rem 0.9rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.95rem;">
                     </div>
+                    @if(! empty($clinicDeskReady))
+                        <div style="min-width: 180px;">
+                            <label for="filter-action" style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem;">Action</label>
+                            <select id="filter-action" style="width: 100%; padding: 0.75rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                <option value="all">Any</option>
+                                <option value="open">Has an open action</option>
+                                @foreach($labels ?? [] as $label)
+                                    <option value="{{ $label->id }}">{{ $label->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     <button type="button" id="patient-advanced-toggle" aria-expanded="false" aria-controls="patient-advanced-filters"
                             style="padding: 0.75rem 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 700; color: var(--primary-navy); cursor: pointer; font-size: 0.85rem;">
                         Advanced
@@ -160,6 +198,7 @@
                    data-referral="{{ $row['referral_count'] }}"
                    data-certificate="{{ $row['certificate_count'] }}"
                    data-attachment="{{ $row['attachment_count'] }}"
+                   data-action-ids="{{ implode(',', $row['open_action_ids'] ?? []) }}"
                    data-created="{{ $row['created_ts'] }}"
                    style="display: flex; justify-content: space-between; gap: 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem 1.25rem; box-shadow: var(--shadow-sm); align-items: center;">
                     <div>
@@ -179,6 +218,13 @@
                                 · Linked: {{ $row['client_name'] }}
                             @endif
                         </div>
+                        @if(! empty($row['open_action_names']))
+                            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.4rem;">
+                                @foreach($row['open_action_names'] as $actionName)
+                                    <span style="font-size: 0.72rem; font-weight: 700; color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 999px; padding: 0.15rem 0.5rem;">{{ $actionName }}</span>
+                                @endforeach
+                            </div>
+                        @endif
                         <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;">
                             Notes {{ $row['journal_count'] }} · Rx {{ $row['prescription_count'] }} · Ref {{ $row['referral_count'] }} · Cert {{ $row['certificate_count'] }} · Files {{ $row['attachment_count'] }}
                         </div>
@@ -209,6 +255,7 @@
     <script>
         (function () {
             var search = document.getElementById('patient-search');
+            var action = document.getElementById('filter-action');
             var link = document.getElementById('filter-link');
             var entry = document.getElementById('filter-entry');
             var sort = document.getElementById('filter-sort');
@@ -242,6 +289,7 @@
             function apply() {
                 var q = (search.value || '').trim().toLowerCase();
                 var qDigits = digits(q);
+                var actionMode = action ? action.value : 'all';
                 var linkMode = link.value;
                 var entryMode = entry.value;
                 var from = seenFrom ? seenFrom.value : '';
@@ -274,12 +322,17 @@
                         matchEntry = parseInt(el.dataset.journal, 10) + parseInt(el.dataset.prescription, 10) + parseInt(el.dataset.referral, 10) + parseInt(el.dataset.certificate, 10) === 0;
                     }
 
+                    var actionIds = (el.dataset.actionIds || '').split(',').filter(Boolean);
+                    var matchAction = actionMode === 'all'
+                        || (actionMode === 'open' && actionIds.length > 0)
+                        || actionIds.indexOf(actionMode) !== -1;
+
                     var lastSeen = el.dataset.lastSeen || '';
                     var matchSeen = true;
                     if (from && (!lastSeen || lastSeen < from)) matchSeen = false;
                     if (to && (!lastSeen || lastSeen > to)) matchSeen = false;
 
-                    var show = matchQ && matchLink && matchEntry && matchSeen;
+                    var show = matchQ && matchLink && matchEntry && matchSeen && matchAction;
                     el.style.display = show ? 'flex' : 'none';
                     if (show) visible++;
                 });
@@ -300,6 +353,7 @@
             }
 
             search.addEventListener('input', apply);
+            if (action) action.addEventListener('change', apply);
             link.addEventListener('change', apply);
             entry.addEventListener('change', apply);
             sort.addEventListener('change', apply);
@@ -307,6 +361,7 @@
             if (seenTo) seenTo.addEventListener('change', apply);
             reset.addEventListener('click', function () {
                 search.value = '';
+                if (action) action.value = 'all';
                 link.value = 'all';
                 entry.value = 'all';
                 sort.value = 'newest';

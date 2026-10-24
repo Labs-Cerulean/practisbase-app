@@ -120,7 +120,8 @@ class ClinicalEntryController extends Controller
                 $duplicate = $this->recentDuplicateEntry($patient, $key, $validated['entry_type'], $payload);
                 if ($duplicate) {
                     return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$validated['entry_type'])
-                        ->with('success', 'That entry was just saved. A second copy was not created.');
+                        ->with('success', 'That entry was just saved. A second copy was not created.')
+                        ->with('clear_note_draft', $validated['entry_type'] === 'journal' ? $user->id.'-'.$patient->id.'-new' : null);
                 }
 
                 $encrypted = MedicalVaultCrypto::encrypt($payload, $key);
@@ -155,7 +156,8 @@ class ClinicalEntryController extends Controller
                     : 'Patient note saved.';
 
                 return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$validated['entry_type'])
-                    ->with('success', $msg);
+                    ->with('success', $msg)
+                    ->with('clear_note_draft', $validated['entry_type'] === 'journal' ? $user->id.'-'.$patient->id.'-new' : null);
             });
         } catch (LockTimeoutException) {
             return back()->withErrors([
@@ -300,7 +302,8 @@ class ClinicalEntryController extends Controller
         }
 
         return redirect('/pro/medical/patients/'.$patient->id.'#tab-'.$entry->entry_type)
-            ->with('success', 'Entry updated.');
+            ->with('success', 'Entry updated.')
+            ->with('clear_note_draft', $entry->entry_type === 'journal' ? $user->id.'-'.$patient->id.'-'.$entry->id : null);
     }
 
     public function issueGetFallback(Patient $patient, ClinicalEntry $entry)

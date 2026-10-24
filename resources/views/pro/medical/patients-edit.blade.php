@@ -56,6 +56,7 @@
                 </label>
                 <textarea name="notes" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">{{ old('notes', $payload['notes'] ?? '') }}</textarea>
             </div>
+            @include('pro.medical._patient-match', ['ignorePatientId' => $patient->id])
             <button type="submit" style="width: 100%; padding: 0.85rem; background: var(--primary-cerulean); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Save patient</button>
         </form>
     </div>

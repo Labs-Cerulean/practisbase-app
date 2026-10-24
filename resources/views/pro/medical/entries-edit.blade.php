@@ -32,9 +32,14 @@
                 @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
             </div>
         @endif
-        <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry->id }}" method="POST" enctype="multipart/form-data">
+        <form action="/pro/medical/patients/{{ $patient->id }}/entries/{{ $entry->id }}" method="POST" enctype="multipart/form-data"
+              @if($isJournal) data-note-draft="{{ auth()->id() }}-{{ $patient->id }}-{{ $entry->id }}" @endif
+              @if($isJournal && $errors->any()) data-note-draft-hold="1" @endif>
             @csrf
             @method('PUT')
+            @if($isJournal)
+                <div data-note-draft-banner hidden style="background: #eff6ff; color: #1e3a8a; padding: 0.65rem 0.8rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; font-size: 0.85rem; font-weight: 700;">Unsaved note restored.</div>
+            @endif
             <input type="hidden" name="entry_type" value="{{ $entry->entry_type }}">
 
             @if(! $isJournal)
@@ -290,5 +295,6 @@
             syncTemplateFields();
         })();
     </script>
+    @include('pro.medical._note-draft')
     @endif
 @endsection
