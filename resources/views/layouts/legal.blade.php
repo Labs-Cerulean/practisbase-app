@@ -85,6 +85,7 @@
     @include('partials.pwa-head')
 </head>
 <body>
+    @include('partials.staging-banner')
     <div class="legal-shell">
         <div class="legal-top">
             <a href="{{ auth()->check() ? '/dashboard' : '/' }}">

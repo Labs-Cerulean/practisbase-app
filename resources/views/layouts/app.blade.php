@@ -15,6 +15,7 @@
     @include('partials.pwa-head')
 </head>
 <body>
+    @include('partials.staging-banner')
     @php
         $companyMode = auth()->check() && auth()->user()->canAccessCompanyBooks();
     @endphp

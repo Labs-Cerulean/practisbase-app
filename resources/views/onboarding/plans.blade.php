@@ -66,6 +66,7 @@
     @include('partials.pwa-head')
 </head>
 <body>
+    @include('partials.staging-banner')
 @php
     $allowed = $allowedTiers ?? [];
     $practiceTier = collect($allowed)->first(fn ($t) => str_starts_with($t, 'practice-'));

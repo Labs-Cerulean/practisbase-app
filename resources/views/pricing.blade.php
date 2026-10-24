@@ -482,6 +482,7 @@
     </style>
 </head>
 <body>
+    @include('partials.staging-banner')
 @php
     $std = \App\Support\TierPolicy::PRICE_STANDARD;
     $prac = \App\Support\TierPolicy::PRICE_PRACTICE;

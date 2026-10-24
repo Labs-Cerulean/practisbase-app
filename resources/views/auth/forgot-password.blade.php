@@ -21,6 +21,7 @@
     </style>
 </head>
 <body>
+    @include('partials.staging-banner')
     <div class="auth-card">
         <div class="auth-header">
             <img src="/images/logo.png" alt="PractisBase">
