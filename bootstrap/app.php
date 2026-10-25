@@ -1,5 +1,15 @@
 <?php
 
+use App\Http\Middleware\EnsureCompanyBooks;
+use App\Http\Middleware\EnsureDocumentStamper;
+use App\Http\Middleware\EnsureEmailVerified;
+use App\Http\Middleware\EnsureMedicalVaultUnlocked;
+use App\Http\Middleware\EnsureOnboardingComplete;
+use App\Http\Middleware\EnsureProPackage;
+use App\Http\Middleware\EnsureTermsAccepted;
+use App\Http\Middleware\EnsureUserTier;
+use App\Http\Middleware\ForceHttps;
+use App\Http\Middleware\PreferCompanyBooksShell;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,17 +24,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // Railway terminates TLS. Trust the forwarded protocol so https
         // requests are not treated as the plain connection inside the container.
         $middleware->trustProxies(at: '*');
-        $middleware->append(\App\Http\Middleware\ForceHttps::class);
+        $middleware->append(ForceHttps::class);
 
         $middleware->alias([
-            'tier' => \App\Http\Middleware\EnsureUserTier::class,
-            'terms' => \App\Http\Middleware\EnsureTermsAccepted::class,
-            'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
-            'pro' => \App\Http\Middleware\EnsureProPackage::class,
-            'vault' => \App\Http\Middleware\EnsureMedicalVaultUnlocked::class,
-            'company_books' => \App\Http\Middleware\EnsureCompanyBooks::class,
-            'company_shell' => \App\Http\Middleware\PreferCompanyBooksShell::class,
-            'stamper' => \App\Http\Middleware\EnsureDocumentStamper::class,
+            'tier' => EnsureUserTier::class,
+            'terms' => EnsureTermsAccepted::class,
+            'onboarded' => EnsureOnboardingComplete::class,
+            'verified' => EnsureEmailVerified::class,
+            'pro' => EnsureProPackage::class,
+            'vault' => EnsureMedicalVaultUnlocked::class,
+            'company_books' => EnsureCompanyBooks::class,
+            'company_shell' => PreferCompanyBooksShell::class,
+            'stamper' => EnsureDocumentStamper::class,
         ]);
 
         // Mobile WebAuthn often drops session/CSRF cookies during the biometric UI.
@@ -32,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'pro/medical/vault/devices/register',
             'pro/medical/vault/devices/unlock',
+            'stripe/webhook',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

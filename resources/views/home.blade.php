@@ -653,7 +653,7 @@
 
     <section class="community" id="join">
         <h2>Register and start building.</h2>
-        <p>Register free. Add a Founding code at signup if you have one.</p>
+        <p>Register free, start a 14-day card trial, or use an access code.</p>
         <div class="community-actions">
             <a href="/register" class="btn btn-sea">Register</a>
             <button type="button" class="btn btn-ghost" id="openJoinForm">Have a promo code?</button>
@@ -662,7 +662,7 @@
         <form class="join-panel" id="heroJoinForm" method="GET" action="/register" aria-label="Register with promo or referral code">
             <label for="landingPromoCode">Access / promo code</label>
             <input id="landingPromoCode" type="text" name="promo_code" maxlength="40" placeholder="e.g. FOUNDING-50" value="{{ request('promo_code') }}" autocomplete="off">
-            <p class="hint">Profession access codes unlock Full Pro. Cohort promos apply free months or discounts.</p>
+            <p class="hint">An access code registers that profession plan with no card. A promo code extends the card trial.</p>
             <label for="landingRefCode">Referral code (optional)</label>
             <input id="landingRefCode" type="text" name="ref" maxlength="40" placeholder="Friend's code" value="{{ request('ref') }}" autocomplete="off">
             <div class="join-actions">

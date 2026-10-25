@@ -57,7 +57,7 @@
         <li><strong>Railway</strong> — application hosting and database</li>
         <li><strong>Cloudflare</strong> — CDN/security and R2 file storage</li>
         <li><strong>Google Workspace / Google LLC</strong> — transactional email</li>
-        <li><strong>Stripe</strong> — billing and payments (when live)</li>
+        <li><strong>Stripe</strong> — card billing and subscriptions</li>
     </ul>
 
     <h2>8. International Transfers</h2>

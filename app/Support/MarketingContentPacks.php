@@ -218,7 +218,7 @@ class MarketingContentPacks
                 'ready' => true,
                 'kicker' => 'Founding seats',
                 'headline' => '3 months free for the first 25.',
-                'subline' => 'Use code FOUNDING-J1EDKG at registration. Card billing comes later. Founding access is free now.',
+                'subline' => 'Use code '.$code.' at registration. Card saved now. Billing starts after 3 free months.',
                 'highlight' => $code,
                 'cta' => 'Register with the code',
                 'caption' => "Still seats left on the Founding cohort.\n\n"

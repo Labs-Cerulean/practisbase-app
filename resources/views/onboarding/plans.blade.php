@@ -75,7 +75,7 @@
     $prac = \App\Support\TierPolicy::PRICE_PRACTICE;
     $pro = \App\Support\TierPolicy::PRICE_PRO;
     $vatSuffix = \App\Support\TierPolicy::priceVatSuffix();
-    $canPaid = $user->canActivatePaidTierWithoutStripe();
+    $promoUntil = $user->trial_ends_at && $user->trial_ends_at->gt(now()->addDays(14));
 @endphp
 
     <main class="pricing-container">
@@ -90,10 +90,10 @@
             </div>
         @endif
 
-        @if($canPaid && $user->trial_ends_at)
-            <div class="promo-banner">Founding access until {{ $user->trial_ends_at->format('d M Y') }}.</div>
-        @elseif(! $canPaid)
-            <div class="promo-banner">Paid plans need an access code.</div>
+        @if($promoUntil)
+            <div class="promo-banner">Card required. Billing starts {{ $user->trial_ends_at->timezone('Europe/Malta')->format('j M Y') }}.</div>
+        @else
+            <div class="promo-banner">14-day trial. Card required. Billing starts when the trial ends.</div>
         @endif
 
         @if($practiceTier || $proTier)
@@ -124,15 +124,11 @@
                                 <li>Equipment certificates and project files</li>
                             @endif
                         </ul>
-                        @if($canPaid)
-                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                                @csrf
-                                <input type="hidden" name="tier" value="{{ $practiceTier }}">
-                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select</button>
-                            </form>
-                        @else
-                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
-                        @endif
+                        <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                            @csrf
+                            <input type="hidden" name="tier" value="{{ $practiceTier }}">
+                            <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Start free trial</button>
+                        </form>
                     </div>
                 @endif
 
@@ -157,15 +153,11 @@
                                 <li>Field certificates, reports, and projects</li>
                             @endif
                         </ul>
-                        @if($canPaid)
-                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                                @csrf
-                                <input type="hidden" name="tier" value="{{ $proTier }}">
-                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select</button>
-                            </form>
-                        @else
-                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
-                        @endif
+                        <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                            @csrf
+                            <input type="hidden" name="tier" value="{{ $proTier }}">
+                            <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Start free trial</button>
+                        </form>
                     </div>
                 @endif
             </div>
@@ -203,15 +195,11 @@
                     <li>Custom branding</li>
                     <li>Document Stamper (PDF)</li>
                 </ul>
-                @if($canPaid)
-                    <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                        @csrf
-                        <input type="hidden" name="tier" value="standard">
-                        <button type="submit" class="btn-tier btn-solid">Select Standard</button>
-                    </form>
-                @else
-                    <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
-                @endif
+                <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                    @csrf
+                    <input type="hidden" name="tier" value="standard">
+                    <button type="submit" class="btn-tier btn-solid">Start free trial</button>
+                </form>
             </div>
         </div>
     </main>

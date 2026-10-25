@@ -75,9 +75,14 @@
                 @endunless
 
                 <div style="background: #eff6ff; color: #1e3a8a; text-align: left; padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; margin-bottom: 1rem; border: 1px solid #bfdbfe;">
-                    Change plan below. No card charge during Founding access.
+                    @if($user->beta_invite_code_id)
+                        This plan is locked to your access code. Contact Cerulean Labs to change it.
+                    @else
+                        Paid plans collect a card and run a 14-day trial. Billing starts when the trial ends. Free does not need a card.
+                    @endif
                 </div>
 
+                @unless($user->beta_invite_code_id)
                 <form action="/settings/plan" method="POST" id="plan-change-form">
                     @csrf
                     @method('PUT')
@@ -103,6 +108,7 @@
                         Practice and Pro packages are limited to your registered profession.
                     </div>
                 </form>
+                @endunless
             </div>
         </div>
 
@@ -111,7 +117,7 @@
             <div class="pb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="downgrade-modal-title">
                 <h2 id="downgrade-modal-title" style="margin: 0 0 0.75rem; color: var(--primary-navy); font-size: 1.15rem;">Confirm downgrade</h2>
                 <p style="margin: 0 0 0.85rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-                    Are you sure? Access changes apply immediately. Existing data is kept, but locked or hidden tools will not be available on the lower plan.
+                    Are you sure? Access changes when the plan change is confirmed. Existing data is kept, but locked or hidden tools will not be available on the lower plan.
                 </p>
                 <ul id="downgrade-modal-list" style="margin: 0 0 1rem; padding-left: 1.2rem; color: #991b1b; font-size: 0.85rem; line-height: 1.45;"></ul>
                 <label style="display: flex; gap: 0.55rem; align-items: flex-start; margin-bottom: 0.85rem; font-size: 0.85rem; line-height: 1.4; cursor: pointer;">
@@ -702,6 +708,8 @@
             var initial = resolveTab(location.hash);
             @if(old('settings_section'))
                 initial = @json(old('settings_section'));
+            @elseif($errors->has('tier') || $errors->has('confirm_downgrade') || $errors->has('confirm_downgrade_typed'))
+                initial = 'plan';
             @elseif($errors->has('regime_effective_from') || $errors->has('employment_type') || $errors->has('vat_status') || $errors->has('tax_computation') || $errors->has('primary_salary') || $errors->has('estimated_expenses') || $errors->has('date_of_birth'))
                 initial = 'tax';
             @elseif($errors->has('name') || $errors->has('email') || $errors->has('warrant_number') || $errors->has('postnominals'))

@@ -510,7 +510,7 @@
             <a href="#plans" class="btn btn-primary">Compare plans</a>
             <a href="/register" class="btn btn-ghost">Register</a>
         </div>
-        <div class="beta-chip">Founding promos available. Card billing soon.</div>
+        <div class="beta-chip">Paid plans start with a 14-day card trial. An access code skips the card.</div>
     </section>
 
     <section class="section" id="plans">

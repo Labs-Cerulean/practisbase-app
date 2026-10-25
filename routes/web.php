@@ -1,65 +1,69 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ClientController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\AccountantDownloadController;
+use App\Http\Controllers\Admin\PromotionController as AdminPromotionController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CommunityFeedbackController;
+use App\Http\Controllers\CommunityFeedbackOperatorController;
+use App\Http\Controllers\Company\AccountsController as CompanyAccountsController;
+use App\Http\Controllers\Company\BankController as CompanyBankController;
+use App\Http\Controllers\Company\BetaInviteController as CompanyBetaInviteController;
+use App\Http\Controllers\Company\ClientController as CompanyClientController;
+use App\Http\Controllers\Company\ContentStudioController as CompanyContentStudioController;
+use App\Http\Controllers\Company\DeskController as CompanyDeskController;
+use App\Http\Controllers\Company\DividendController as CompanyDividendController;
+use App\Http\Controllers\Company\ExpenseController as CompanyExpenseController;
+use App\Http\Controllers\Company\InvoiceController as CompanyInvoiceController;
+use App\Http\Controllers\Company\PersonalReceiptController as CompanyPersonalReceiptController;
+use App\Http\Controllers\Company\PlatformDashboardController as CompanyPlatformDashboardController;
+use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
+use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringInvoiceController;
+use App\Http\Controllers\Company\SupplierController as CompanySupplierController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DataBackupController;
+use App\Http\Controllers\DocumentStampController;
+use App\Http\Controllers\DocumentStamperController;
+use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\PasswordResetController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\Pro\Medical\VaultController as MedicalVaultController;
-use App\Http\Controllers\Pro\Medical\PatientController;
-use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
+use App\Http\Controllers\Pro\Architect\ConditionReportController as ArchitectConditionReportController;
+use App\Http\Controllers\Pro\Architect\DocumentController as ArchitectDocumentController;
+use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
+use App\Http\Controllers\Pro\Architect\MethodStatementController as ArchitectMethodStatementController;
+use App\Http\Controllers\Pro\Architect\NeighbourController as ArchitectNeighbourController;
+use App\Http\Controllers\Pro\Architect\PaApplicationController as ArchitectPaController;
+use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
+use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateController;
+use App\Http\Controllers\Pro\CertificateController;
+use App\Http\Controllers\Pro\Engineer\CertificateController as EngineerCertificateController;
+use App\Http\Controllers\Pro\Engineer\DocumentController as EngineerDocumentController;
+use App\Http\Controllers\Pro\Engineer\EquipmentController as EngineerEquipmentController;
+use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
+use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
+use App\Http\Controllers\Pro\Engineer\ReportController as EngineerReportController;
 use App\Http\Controllers\Pro\Medical\ClinicalAttachmentController;
+use App\Http\Controllers\Pro\Medical\ClinicalEntryController;
 use App\Http\Controllers\Pro\Medical\ClinicalEntryPdfController;
 use App\Http\Controllers\Pro\Medical\ClinicalImportController;
 use App\Http\Controllers\Pro\Medical\ClinicalLibraryController;
 use App\Http\Controllers\Pro\Medical\ClinicalNoteTemplateController;
-use App\Http\Controllers\Pro\Medical\PatientActionController;
-use App\Http\Controllers\Pro\Medical\PatientReportController;
 use App\Http\Controllers\Pro\Medical\MedicalBackupController;
+use App\Http\Controllers\Pro\Medical\PatientActionController;
+use App\Http\Controllers\Pro\Medical\PatientController;
+use App\Http\Controllers\Pro\Medical\PatientReportController;
 use App\Http\Controllers\Pro\Medical\PrescriptionCatalogController;
 use App\Http\Controllers\Pro\Medical\StampableLedgerController;
+use App\Http\Controllers\Pro\Medical\VaultController as MedicalVaultController;
 use App\Http\Controllers\Pro\Medical\VaultDeviceController;
-use App\Http\Controllers\Pro\Architect\ProjectController as ArchitectProjectController;
-use App\Http\Controllers\Pro\Architect\PaApplicationController as ArchitectPaController;
-use App\Http\Controllers\Pro\Architect\DocumentController as ArchitectDocumentController;
-use App\Http\Controllers\Pro\Architect\TemplateController as ArchitectTemplateController;
-use App\Http\Controllers\Pro\Architect\LicenceController as ArchitectLicenceController;
-use App\Http\Controllers\Pro\Architect\ConditionReportController as ArchitectConditionReportController;
-use App\Http\Controllers\Pro\Architect\MethodStatementController as ArchitectMethodStatementController;
-use App\Http\Controllers\Pro\Architect\NeighbourController as ArchitectNeighbourController;
-use App\Http\Controllers\Pro\CertificateController;
-use App\Http\Controllers\Pro\Engineer\ProjectController as EngineerProjectController;
-use App\Http\Controllers\Pro\Engineer\PaApplicationController as EngineerPaController;
-use App\Http\Controllers\Pro\Engineer\DocumentController as EngineerDocumentController;
-use App\Http\Controllers\Pro\Engineer\CertificateController as EngineerCertificateController;
-use App\Http\Controllers\Pro\Engineer\ReportController as EngineerReportController;
-use App\Http\Controllers\Pro\Engineer\EquipmentController as EngineerEquipmentController;
-use App\Http\Controllers\Company\DeskController as CompanyDeskController;
-use App\Http\Controllers\Company\PlatformDashboardController as CompanyPlatformDashboardController;
-use App\Http\Controllers\Company\ProfileController as CompanyProfileController;
-use App\Http\Controllers\Company\ClientController as CompanyClientController;
-use App\Http\Controllers\Company\InvoiceController as CompanyInvoiceController;
-use App\Http\Controllers\Company\ExpenseController as CompanyExpenseController;
-use App\Http\Controllers\Company\SupplierController as CompanySupplierController;
-use App\Http\Controllers\Company\AccountsController as CompanyAccountsController;
-use App\Http\Controllers\Company\BankController as CompanyBankController;
-use App\Http\Controllers\Company\DividendController as CompanyDividendController;
-use App\Http\Controllers\Company\PersonalReceiptController as CompanyPersonalReceiptController;
-use App\Http\Controllers\Company\RecurringInvoiceController as CompanyRecurringInvoiceController;
-use App\Http\Controllers\Company\BetaInviteController as CompanyBetaInviteController;
-use App\Http\Controllers\Company\ContentStudioController as CompanyContentStudioController;
-use App\Http\Controllers\Admin\PromotionController as AdminPromotionController;
-use App\Http\Controllers\CommunityFeedbackController;
-use App\Http\Controllers\CommunityFeedbackOperatorController;
-use App\Http\Controllers\DocumentStampController;
-use App\Http\Controllers\DocumentStamperController;
-use App\Http\Controllers\LegalController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
+use App\Models\User;
+use App\Support\TierPolicy;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -99,6 +103,18 @@ Route::get('/register-submit', function () {
 
 Route::post('/register-submit', [AuthController::class, 'registerSubmit']);
 
+Route::post('/stripe/webhook', [BillingController::class, 'webhook']);
+
+Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:6,1');
+});
+
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
 Route::get('/forgot-password', [PasswordResetController::class, 'showForgotForm'])->middleware('guest');
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])
     ->middleware(['guest', 'throttle:5,1']);
@@ -121,15 +137,15 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'terms'])->group(function () {
+Route::middleware(['auth', 'terms', 'verified'])->group(function () {
     Route::get('/onboarding/profession', function () {
         $user = auth()->user();
         if ($user->beta_invite_code_id && filled($user->profession)) {
             return redirect($user->canAccessCompanyBooks() ? '/company' : '/dashboard');
         }
 
-        $customProfessions = \App\Models\User::whereNotIn('profession', [
-            'Medical Professional', 'Architect / Perit', 'Engineer', 'Tutor / Lecturer', 'Other'
+        $customProfessions = User::whereNotIn('profession', [
+            'Medical Professional', 'Architect / Perit', 'Engineer', 'Tutor / Lecturer', 'Other',
         ])->whereNotNull('profession')->distinct()->pluck('profession');
 
         return view('onboarding.profession', compact('customProfessions'));
@@ -150,12 +166,14 @@ Route::middleware(['auth', 'terms'])->group(function () {
 
             return redirect($home);
         }
-        $allowedTiers = \App\Support\TierPolicy::allowedTiersForProfession($user->profession);
+        $allowedTiers = TierPolicy::allowedTiersForProfession($user->profession);
 
         return view('onboarding.plans', compact('user', 'allowedTiers'));
     });
 
     Route::post('/onboarding/plans-submit', [AuthController::class, 'savePlan']);
+
+    Route::get('/onboarding/billing/success', [BillingController::class, 'success']);
 });
 
 /*
@@ -175,7 +193,7 @@ Route::post('/pro/medical/vault/devices/unlock', [VaultDeviceController::class, 
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'terms', 'onboarded', 'company_shell'])->group(function () {
+Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/accounts', [DashboardController::class, 'accounts']);
 
