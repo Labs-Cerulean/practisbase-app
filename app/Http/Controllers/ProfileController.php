@@ -2,15 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DocumentStamp;
+use App\Models\MedicalVault;
+use App\Models\MedicalVaultDevice;
+use App\Support\BillingVatChoice;
+use App\Support\ClinicalNoteTemplates;
+use App\Support\CompanyBooks;
+use App\Support\EmailVerification;
+use App\Support\FiscalReportEngine;
+use App\Support\FiscalYearGuard;
+use App\Support\MedicalVaultCrypto;
+use App\Support\RegimeHistory;
+use App\Support\StripeBilling;
+use App\Support\TenantStorage;
+use App\Support\TierPolicy;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
-use App\Support\CompanyBooks;
-use App\Support\FiscalReportEngine;
-use App\Support\FiscalYearGuard;
-use App\Support\RegimeHistory;
-use App\Support\TenantStorage;
+use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
 {
@@ -28,23 +39,23 @@ class ProfileController extends Controller
             ]);
         }
 
-        $allowedTiers = \App\Support\TierPolicy::allowedTiersForProfession($user->profession);
+        $allowedTiers = TierPolicy::allowedTiersForProfession($user->profession);
         $planConsequences = [];
         foreach ($allowedTiers as $tierOption) {
-            $planConsequences[$tierOption] = \App\Support\TierPolicy::changeConsequences($user->tier, $tierOption);
+            $planConsequences[$tierOption] = TierPolicy::changeConsequences($user->tier, $tierOption);
         }
 
         $showMedicalVaultDevices = $user->canAccessProPackage('med');
         $medicalVaultDevices = [];
         if ($showMedicalVaultDevices) {
-            $vault = \App\Models\MedicalVault::activeForUser($user->id);
+            $vault = MedicalVault::activeForUser($user->id);
             if ($vault) {
-                $medicalVaultDevices = \App\Models\MedicalVaultDevice::where('user_id', $user->id)
+                $medicalVaultDevices = MedicalVaultDevice::where('user_id', $user->id)
                     ->where('vault_id', $vault->id)
                     ->orderByDesc('last_used_at')
                     ->orderByDesc('id')
                     ->get()
-                    ->map(fn (\App\Models\MedicalVaultDevice $d) => [
+                    ->map(fn (MedicalVaultDevice $d) => [
                         'id' => $d->id,
                         'credential_id' => $d->credential_id,
                         'device_label' => $d->device_label,
@@ -64,10 +75,10 @@ class ProfileController extends Controller
             'user' => $user,
             'allowedTiers' => $allowedTiers,
             'planConsequences' => $planConsequences,
-            'currentTier' => \App\Support\TierPolicy::normalize($user->tier),
+            'currentTier' => TierPolicy::normalize($user->tier),
             'showMedicalVaultDevices' => $showMedicalVaultDevices,
             'medicalVaultUnlocked' => $showMedicalVaultDevices
-                && \App\Support\MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null,
+                && MedicalVaultCrypto::keyFromSession(session('medical_vault_key')) !== null,
             'medicalVaultDevices' => $medicalVaultDevices,
             'hasClosedFiscalYears' => $hasClosedFiscalYears,
             'dobLocked' => $dobLocked,
@@ -87,20 +98,29 @@ class ProfileController extends Controller
             return redirect('/settings')->with('error', 'Plan locked to your access code. Contact Cerulean Labs to change.');
         }
 
-        $currentTier = \App\Support\TierPolicy::normalize($user->tier);
+        $currentTier = TierPolicy::normalize($user->tier);
 
         $request->validate([
-            'tier' => \App\Support\TierPolicy::validationRule(),
+            'tier' => TierPolicy::validationRule(),
         ]);
 
-        $newTier = \App\Support\TierPolicy::normalize($request->tier);
-        \App\Support\TierPolicy::assertTierAllowedForProfession($user, $newTier);
+        $newTier = TierPolicy::normalize($request->tier);
+        TierPolicy::assertTierAllowedForProfession($user, $newTier);
+
+        BillingVatChoice::remember(
+            $user,
+            $request->boolean('include_billing_vat'),
+            $request->input('billing_vat_number'),
+        );
+        $user->refresh();
 
         if ($newTier === $currentTier) {
-            return back()->with('success', 'You are already on '.\App\Support\TierPolicy::label($currentTier).'.');
+            StripeBilling::syncSavedVat($user);
+
+            return back()->with('success', 'Billing details saved. You are already on '.TierPolicy::label($currentTier).'.');
         }
 
-        if (\App\Support\TierPolicy::isDowngrade($currentTier, $newTier)) {
+        if (TierPolicy::isDowngrade($currentTier, $newTier)) {
             $request->validate([
                 'confirm_downgrade' => 'accepted',
                 'confirm_downgrade_typed' => ['required', 'string', function ($attribute, $value, $fail) {
@@ -113,21 +133,25 @@ class ProfileController extends Controller
             ]);
         }
 
-        $user->update([
-            'tier' => $newTier,
-        ]);
+        if ($newTier === TierPolicy::TIER_FREE) {
+            if (! StripeBilling::releasePaidSubscription($user)) {
+                return back()->withErrors([
+                    'tier' => 'The card subscription could not be cancelled, so the plan was left unchanged.',
+                ]);
+            }
 
-        if (\App\Support\TierPolicy::isDowngrade($currentTier, $newTier)) {
+            $user->update([
+                'tier' => $newTier,
+                'trial_ends_at' => null,
+            ]);
+
             return back()->with(
                 'success',
-                'Plan downgraded from '.\App\Support\TierPolicy::label($currentTier).' to '.\App\Support\TierPolicy::label($newTier).'. Restricted tools are hidden; existing data was not deleted.'
+                'Plan downgraded from '.TierPolicy::label($currentTier).' to Free. Restricted tools are hidden; existing data was not deleted.'
             );
         }
 
-        return back()->with(
-            'success',
-            'Plan updated to '.\App\Support\TierPolicy::label($newTier).'.'
-        );
+        return redirect()->away(StripeBilling::checkoutUrl($user, $newTier, 'settings'));
     }
 
     public function updateProfile(Request $request)
@@ -140,10 +164,15 @@ class ProfileController extends Controller
                 'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             ]);
 
-            $user->update([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-            ]);
+            $user->name = $validated['name'];
+            $reverify = EmailVerification::applyEmailChange($user, $validated['email']);
+            $user->save();
+
+            if ($reverify) {
+                $this->sendVerification($user);
+
+                return redirect('/email/verify')->with('status', 'Confirm the new email address to continue.');
+            }
 
             return redirect('/settings')->with('success', 'Login details updated.');
         }
@@ -203,40 +232,54 @@ class ProfileController extends Controller
                         if ($value === null || $value === '') {
                             return;
                         }
-                        $allowed = array_keys(\App\Support\ClinicalNoteTemplates::optionsForUser($user));
+                        $allowed = array_keys(ClinicalNoteTemplates::optionsForUser($user));
                         if (! in_array((string) $value, $allowed, true)) {
                             $fail('Choose a valid journal template.');
                         }
                     },
                 ],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e->redirectTo(url('/settings#practice'));
         }
 
         $warrantNumber = filled($request->warrant_number) ? trim($request->warrant_number) : null;
 
-        $user->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'postnominals' => filled($request->postnominals) ? trim($request->postnominals) : null,
-            'warrant_type' => filled($request->warrant_type) ? trim($request->warrant_type) : null,
-            'warrant_number' => $warrantNumber,
-            'clinic_phone' => filled($request->clinic_phone) ? trim($request->clinic_phone) : null,
-            'clinic_address' => filled($request->clinic_address) ? trim($request->clinic_address) : null,
-            'clinical_note_template' => $isMedical
-                ? \App\Support\ClinicalNoteTemplates::normalizeForUser($user, $request->input('clinical_note_template'))
-                : ($user->clinical_note_template ?? 'general'),
-        ]);
+        $user->name = $request->name;
+        $reverify = EmailVerification::applyEmailChange($user, $request->email);
+        $user->postnominals = filled($request->postnominals) ? trim($request->postnominals) : null;
+        $user->warrant_type = filled($request->warrant_type) ? trim($request->warrant_type) : null;
+        $user->warrant_number = $warrantNumber;
+        $user->clinic_phone = filled($request->clinic_phone) ? trim($request->clinic_phone) : null;
+        $user->clinic_address = filled($request->clinic_address) ? trim($request->clinic_address) : null;
+        $user->clinical_note_template = $isMedical
+            ? ClinicalNoteTemplates::normalizeForUser($user, $request->input('clinical_note_template'))
+            : ($user->clinical_note_template ?? 'general');
+        $user->save();
 
         if ($warrantNumber !== null) {
-            \App\Models\DocumentStamp::query()
+            DocumentStamp::query()
                 ->where('user_id', $user->id)
                 ->where('is_default', true)
                 ->update(['warrant_number' => $warrantNumber]);
         }
 
+        if ($reverify) {
+            $this->sendVerification($user);
+
+            return redirect('/email/verify')->with('status', 'Confirm the new email address to continue.');
+        }
+
         return $this->settingsRedirect('practice', 'Practice profile saved.');
+    }
+
+    private function sendVerification($user): void
+    {
+        try {
+            EmailVerification::send($user);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     private function updateTaxSection(Request $request, $user)
@@ -255,7 +298,7 @@ class ProfileController extends Controller
                     'date',
                     'before_or_equal:today',
                     $dobLocked ? null : function (string $attribute, mixed $value, \Closure $fail) use ($adultCutoff) {
-                        if ($value && \Illuminate\Support\Carbon::parse($value)->gt($adultCutoff)) {
+                        if ($value && Carbon::parse($value)->gt($adultCutoff)) {
                             $fail('You must be 18 years of age or older to use PractisBase.');
                         }
                     },
@@ -267,7 +310,7 @@ class ProfileController extends Controller
                 'estimated_expenses' => 'required|numeric|min:0',
                 'regime_effective_from' => 'nullable|date|before_or_equal:today',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e->redirectTo(url('/settings#tax'));
         }
 
@@ -310,7 +353,7 @@ class ProfileController extends Controller
                 ], [
                     'regime_effective_from.required' => 'Choose the date this tax setup applies from (invoices and expenses before that date keep the previous setup).',
                 ]);
-            } catch (\Illuminate\Validation\ValidationException $e) {
+            } catch (ValidationException $e) {
                 throw $e->redirectTo(url('/settings#tax'));
             }
             $regimeEffectiveFrom = $request->input('regime_effective_from');
@@ -364,7 +407,7 @@ class ProfileController extends Controller
                 'pm_bov_number' => 'required_if:pm_bov,1|nullable|string',
                 'pm_revolut_number' => 'required_if:pm_revolut,1|nullable|string',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e->redirectTo(url('/settings#payments'));
         }
 
@@ -409,7 +452,7 @@ class ProfileController extends Controller
                 'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
                 'remove_logo' => 'nullable|boolean',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e->redirectTo(url('/settings#branding'));
         }
 
@@ -450,15 +493,15 @@ class ProfileController extends Controller
                 'password' => [
                     'required',
                     'confirmed',
-                    Password::min(12)->mixedCase()->numbers()->symbols()->uncompromised()
+                    Password::min(12)->mixedCase()->numbers()->symbols()->uncompromised(),
                 ],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e->redirectTo(url('/settings#security'));
         }
 
         Auth::user()->update([
-            'password' => Hash::make($request->password)
+            'password' => Hash::make($request->password),
         ]);
 
         return redirect('/settings#security')->with('success', 'Password changed successfully.');

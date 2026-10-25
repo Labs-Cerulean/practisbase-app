@@ -334,7 +334,11 @@ class TierPolicy
         $notes = [];
 
         if (self::isDowngrade($from, $to)) {
-            $notes[] = 'Access changes from '.self::label($from).' to '.self::label($to).'. Existing data is not deleted, but some tools stop immediately.';
+            $notes[] = 'Access changes from '.self::label($from).' to '.self::label($to).'. Existing data is not deleted, but some tools stop when the change is confirmed.';
+        }
+
+        if ($to === self::TIER_FREE && $from !== self::TIER_FREE) {
+            $notes[] = 'Any card subscription is cancelled and is not charged again.';
         }
 
         $fromPractice = self::tierHasPracticeTools($from);
@@ -375,7 +379,7 @@ class TierPolicy
         }
 
         if (! self::isDowngrade($from, $to) && self::tierRank($to) >= self::tierRank($from)) {
-            $notes[] = 'Upgrade to '.self::label($to).'. No card charge during Founding access.';
+            $notes[] = 'Upgrade to '.self::label($to).'. A card is required. New card trials run for 14 days, then billing starts.';
         }
 
         return array_values(array_unique($notes));

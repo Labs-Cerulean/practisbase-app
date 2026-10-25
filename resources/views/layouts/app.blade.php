@@ -181,7 +181,22 @@
                     @if($companyMode)
                         <strong>Cerulean Labs Ltd desk</strong> — internal company books (Art 10). Sole-trader tax tools are disabled on this account.
                     @else
-                        <strong>Founding access.</strong> Card billing soon.
+                        @php
+                            $bannerUser = auth()->user();
+                            $bannerTier = \App\Support\TierPolicy::normalize($bannerUser->tier);
+                            $bannerStatus = (string) ($bannerUser->subscription_status ?? '');
+                        @endphp
+                        @if($bannerUser->beta_invite_code_id)
+                            <strong>Access code plan.</strong>
+                        @elseif($bannerStatus === 'trialing' && $bannerUser->trial_ends_at)
+                            <strong>Card trial</strong> until {{ $bannerUser->trial_ends_at->timezone('Europe/Malta')->format('j M Y') }}. Billing starts when it ends.
+                        @elseif(in_array($bannerStatus, ['active', 'past_due'], true))
+                            <strong>Card billing is active.</strong>
+                        @elseif(! in_array($bannerTier, ['free', 'pending'], true))
+                            <strong>Plan active.</strong> A card is required the next time you change plan.
+                        @else
+                            <strong>Free plan.</strong>
+                        @endif
                     @endif
                 </div>
             @endauth

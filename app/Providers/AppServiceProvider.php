@@ -24,7 +24,6 @@ class AppServiceProvider extends ServiceProvider
         if (Deployment::isStaging()) {
             Deployment::guardLiveAddress();
             config([
-                'mail.default' => 'log',
                 'filesystems.tenant_disk' => 'local',
             ]);
         }

@@ -6,6 +6,7 @@ use App\Models\BetaInviteCode;
 use App\Models\Promotion;
 use App\Models\Referral;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -148,7 +149,7 @@ class PlatformKpi
             ->selectRaw('COUNT(*) as total')
             ->selectRaw('SUM(CASE WHEN redeemed_at IS NOT NULL THEN 1 ELSE 0 END) as redeemed')
             ->selectRaw('SUM(CASE WHEN revoked_at IS NOT NULL THEN 1 ELSE 0 END) as revoked')
-            ->selectRaw("SUM(CASE WHEN redeemed_at IS NULL AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) THEN 1 ELSE 0 END) as available", [$nowSql])
+            ->selectRaw('SUM(CASE WHEN redeemed_at IS NULL AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) THEN 1 ELSE 0 END) as available', [$nowSql])
             ->first();
 
         $promotions = Promotion::query()
@@ -203,7 +204,7 @@ class PlatformKpi
                 'credit_balance' => $creditBalance,
                 'list_mrr_ex_vat' => round($listMrr, 2),
                 'list_mrr_inc_vat' => round($listMrr * (1 + ((float) TierPolicy::VAT_RATE_PERCENT / 100)), 2),
-                'stripe_live' => false,
+                'stripe_live' => StripeKeyMode::mode(config('services.stripe.secret')) === 'live' && ! Deployment::isStaging(),
             ],
             'tier_cards' => $tierCards,
             'by_profession' => $byProfession,
@@ -299,7 +300,7 @@ class PlatformKpi
                     'profession' => $user->profession ?: '—',
                     'created_at' => $user->created_at,
                     'last_activity' => $lastTs
-                        ? \Carbon\Carbon::createFromTimestamp((int) $lastTs)
+                        ? Carbon::createFromTimestamp((int) $lastTs)
                         : null,
                     'clients' => (int) $user->clients_count,
                     'invoices' => (int) $user->invoices_count,

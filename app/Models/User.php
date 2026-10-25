@@ -3,6 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\DomPdfImage;
+use App\Support\EmailVerification;
+use App\Support\ProfessionStart;
+use App\Support\RegisterBillingSchema;
+use App\Support\TenantStorage;
+use App\Support\TierPolicy;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,8 +17,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable([
-    'name', 
-    'email', 
+    'name',
+    'email',
     'password',
     // Legal & Compliance
     'terms_accepted_at',
@@ -37,7 +43,7 @@ use Illuminate\Notifications\Notifiable;
     'vat_number',
     'payment_instructions',
     'payment_methods',
-    
+
     // Live Fiscal Report Settings (NEW)
     'tax_computation',
     'primary_salary',
@@ -56,6 +62,12 @@ use Illuminate\Notifications\Notifiable;
     'exclude_from_kpis',
     'exclude_from_mrr',
     'beta_invite_code_id',
+    'must_verify_email',
+    'stripe_customer_id',
+    'stripe_subscription_id',
+    'subscription_status',
+    'include_billing_vat',
+    'billing_vat_number',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -89,6 +101,8 @@ class User extends Authenticatable
             'credit_balance' => 'decimal:2',
             'trial_ends_at' => 'datetime',
             'last_data_backup_at' => 'datetime',
+            'must_verify_email' => 'boolean',
+            'include_billing_vat' => 'boolean',
         ];
     }
 
@@ -227,13 +241,13 @@ class User extends Authenticatable
     /** DomPDF-safe logo (omits/converts when needed). */
     public function logoDataUriForPdf(): ?string
     {
-        return \App\Support\DomPdfImage::embeddable($this->logoDataUri());
+        return DomPdfImage::embeddable($this->logoDataUri());
     }
 
     /** DomPDF-safe clinical / professional stamp. */
     public function clinicalStampDataUriForPdf(): ?string
     {
-        return \App\Support\DomPdfImage::embeddable($this->clinicalStampDataUri());
+        return DomPdfImage::embeddable($this->clinicalStampDataUri());
     }
 
     public function defaultDocumentStamp(): ?DocumentStamp
@@ -255,7 +269,7 @@ class User extends Authenticatable
             return null;
         }
 
-        $disk = \App\Support\TenantStorage::disk();
+        $disk = TenantStorage::disk();
 
         if (! $disk->exists($path)) {
             return null;
@@ -270,7 +284,7 @@ class User extends Authenticatable
             default => 'image/png',
         };
 
-        return 'data:' . $mime . ';base64,' . base64_encode($binary);
+        return 'data:'.$mime.';base64,'.base64_encode($binary);
     }
 
     /** Letters after the name on PDFs / stamps (e.g. MD, MRCS). */
@@ -283,62 +297,62 @@ class User extends Authenticatable
 
     public function lifetimeClientCount(): int
     {
-        return \App\Support\TierPolicy::lifetimeClientCount($this);
+        return TierPolicy::lifetimeClientCount($this);
     }
 
     public function canAddClient(): bool
     {
-        return \App\Support\TierPolicy::canAddClient($this);
+        return TierPolicy::canAddClient($this);
     }
 
     public function canAccessReports(): bool
     {
-        return \App\Support\TierPolicy::canAccessReports($this);
+        return TierPolicy::canAccessReports($this);
     }
 
     public function canAccessDocumentStamper(): bool
     {
-        return \App\Support\TierPolicy::canAccessDocumentStamper($this);
+        return TierPolicy::canAccessDocumentStamper($this);
     }
 
     public function canAccessStandardTools(): bool
     {
-        return \App\Support\TierPolicy::canAccessStandardTools($this);
+        return TierPolicy::canAccessStandardTools($this);
     }
 
     public function hasStandardFinancial(): bool
     {
-        return \App\Support\TierPolicy::hasStandardFinancial($this);
+        return TierPolicy::hasStandardFinancial($this);
     }
 
     public function hasPracticeTools(): bool
     {
-        return \App\Support\TierPolicy::hasPracticeTools($this);
+        return TierPolicy::hasPracticeTools($this);
     }
 
     public function hasUnlimitedClients(): bool
     {
-        return \App\Support\TierPolicy::hasUnlimitedClients($this);
+        return TierPolicy::hasUnlimitedClients($this);
     }
 
     public function isPracticeOnly(): bool
     {
-        return \App\Support\TierPolicy::isPracticeOnly($this);
+        return TierPolicy::isPracticeOnly($this);
     }
 
     public function isPaid(): bool
     {
-        return \App\Support\TierPolicy::isPaid($this);
+        return TierPolicy::isPaid($this);
     }
 
     public function isPro(): bool
     {
-        return \App\Support\TierPolicy::isPro($this);
+        return TierPolicy::isPro($this);
     }
 
     public function canAccessProPackage(string $package): bool
     {
-        return \App\Support\TierPolicy::canAccessProPackage($this, $package);
+        return TierPolicy::canAccessProPackage($this, $package);
     }
 
     /** Internal Cerulean Labs Ltd desk — not a sellable product tier. */
@@ -349,7 +363,7 @@ class User extends Authenticatable
 
     public function proPackage(): ?string
     {
-        return \App\Support\TierPolicy::proPackage($this);
+        return TierPolicy::proPackage($this);
     }
 
     public function hasAcceptedTerms(): bool
@@ -373,29 +387,35 @@ class User extends Authenticatable
 
     public function isOnboardingComplete(): bool
     {
-        return \App\Support\ProfessionStart::onboardingComplete($this->profession, $this->tier);
+        return ProfessionStart::onboardingComplete($this->profession, $this->tier);
     }
 
     /**
-     * Paid tiers without live Stripe: access-code Pro, or an active promo trial window.
+     * Access-code plans never collect a card. Existing rows stay exempt from
+     * email confirmation because must_verify_email defaults to false.
      */
     public function canActivatePaidTierWithoutStripe(): bool
     {
-        if ($this->beta_invite_code_id) {
-            return true;
-        }
+        return (bool) $this->beta_invite_code_id;
+    }
 
-        return $this->trial_ends_at !== null && $this->trial_ends_at->isFuture();
+    public function mustVerifyEmailNow(): bool
+    {
+        return EmailVerification::required(
+            RegisterBillingSchema::ensure(),
+            (bool) ($this->getAttributes()['must_verify_email'] ?? false),
+            $this->email_verified_at !== null,
+        );
     }
 
     public function onboardingRedirectPath(): string
     {
-        return \App\Support\ProfessionStart::redirectPath($this->profession, $this->tier);
+        return ProfessionStart::redirectPath($this->profession, $this->tier);
     }
 
     public function freeClientCap(): int
     {
-        return \App\Support\TierPolicy::FREE_CLIENT_LIFETIME_CAP;
+        return TierPolicy::FREE_CLIENT_LIFETIME_CAP;
     }
 
     public function clientUsageLabel(): string
@@ -403,9 +423,9 @@ class User extends Authenticatable
         $used = $this->lifetimeClientCount();
 
         if ($this->hasUnlimitedClients()) {
-            return $used . ' lifetime clients created (unlimited on your plan)';
+            return $used.' lifetime clients created (unlimited on your plan)';
         }
 
-        return $used . ' / ' . $this->freeClientCap() . ' lifetime clients used';
+        return $used.' / '.$this->freeClientCap().' lifetime clients used';
     }
 }

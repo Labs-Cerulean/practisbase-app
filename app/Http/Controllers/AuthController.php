@@ -5,10 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\BetaInviteCode;
 use App\Models\Promotion;
 use App\Models\User;
+use App\Support\BillingVatChoice;
+use App\Support\EmailVerification;
 use App\Support\ProfessionStart;
 use App\Support\PromotionEngine;
 use App\Support\ReferralRewardService;
+use App\Support\RegimeHistory;
+use App\Support\RegisterBillingSchema;
+use App\Support\StripeBilling;
+use App\Support\TierPolicy;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -89,6 +96,8 @@ class AuthController extends Controller
             }
         }
 
+        RegisterBillingSchema::ensure();
+
         $user = DB::transaction(function () use ($request, $invite, $promo, $referrer, $promoEngine) {
             if ($invite) {
                 $invite = BetaInviteCode::query()
@@ -103,7 +112,7 @@ class AuthController extends Controller
                 }
             }
 
-            $user = User::create([
+            $attributes = [
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
@@ -115,7 +124,12 @@ class AuthController extends Controller
                 'profession' => $invite ? $invite->profession() : null,
                 'tier' => $invite ? $invite->tier() : ProfessionStart::PLAN_PENDING,
                 'beta_invite_code_id' => $invite?->id,
-            ]);
+            ];
+            if (RegisterBillingSchema::ready()) {
+                $attributes['must_verify_email'] = true;
+            }
+
+            $user = User::create($attributes);
 
             if ($invite) {
                 $invite->uses_count = $invite->uses_count + 1;
@@ -139,11 +153,11 @@ class AuthController extends Controller
 
         if ($user->beta_invite_code_id) {
             ProfessionStart::applyVatDefault($user);
-
-            return redirect($this->homePath($user));
         }
 
-        return redirect('/onboarding/profession');
+        $this->sendVerificationIfRequired($user);
+
+        return redirect(EmailVerification::nextPath($user));
     }
 
     public function saveProfession(Request $request)
@@ -207,7 +221,7 @@ class AuthController extends Controller
                 'date',
                 'before_or_equal:today',
                 function (string $attribute, mixed $value, \Closure $fail) use ($adultCutoff) {
-                    if ($value && \Illuminate\Support\Carbon::parse($value)->gt($adultCutoff)) {
+                    if ($value && Carbon::parse($value)->gt($adultCutoff)) {
                         $fail('You must be 18 years of age or older to use PractisBase.');
                     }
                 },
@@ -237,7 +251,7 @@ class AuthController extends Controller
 
         $user->update($updates);
         $user->refresh();
-        \App\Support\RegimeHistory::ensureBaseline($user);
+        RegimeHistory::ensureBaseline($user);
 
         if ($user->beta_invite_code_id || ProfessionStart::onboardingComplete($user->profession, $user->tier)) {
             return redirect($this->homePath($user));
@@ -255,28 +269,55 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'tier' => \App\Support\TierPolicy::validationRule(),
+            'tier' => TierPolicy::validationRule(),
         ]);
 
-        \App\Support\TierPolicy::assertTierAllowedForProfession($user, $request->tier);
+        TierPolicy::assertTierAllowedForProfession($user, $request->tier);
 
-        $tier = \App\Support\TierPolicy::normalize($request->tier);
-        if ($tier !== \App\Support\TierPolicy::TIER_FREE && ! $user->canActivatePaidTierWithoutStripe()) {
-            throw ValidationException::withMessages([
-                'tier' => 'Paid plans need a Founding or access promo code until card billing launches. Select Free, or register with a Founding promo from Cerulean Labs.',
-            ]);
+        BillingVatChoice::remember(
+            $user,
+            $request->boolean('include_billing_vat'),
+            $request->input('billing_vat_number'),
+        );
+        $user->refresh();
+
+        $tier = TierPolicy::normalize($request->tier);
+        if ($tier === TierPolicy::TIER_FREE) {
+            if (! StripeBilling::releasePaidSubscription($user)) {
+                throw ValidationException::withMessages([
+                    'tier' => 'The card subscription could not be cancelled, so the plan was left unchanged.',
+                ]);
+            }
+
+            $updates = ['tier' => $tier];
+            $rawTier = (string) $user->tier;
+            if ($rawTier !== '' && $rawTier !== ProfessionStart::PLAN_PENDING && $rawTier !== $tier) {
+                $updates['trial_ends_at'] = null;
+            }
+            $user->update($updates);
+
+            return redirect(EmailVerification::nextPath($user->fresh()));
         }
 
-        $user->update([
-            'tier' => $tier,
-        ]);
-
-        return redirect($this->homePath(Auth::user()));
+        return redirect()->away(StripeBilling::checkoutUrl($user, $tier, 'onboarding'));
     }
 
     private function homePath(User $user): string
     {
         return $user->canAccessCompanyBooks() ? '/company' : '/dashboard';
+    }
+
+    private function sendVerificationIfRequired(User $user): void
+    {
+        if (! $user->mustVerifyEmailNow()) {
+            return;
+        }
+
+        try {
+            EmailVerification::send($user);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function loginSubmit(Request $request)
@@ -289,7 +330,7 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
-            return redirect()->intended($this->homePath(Auth::user()));
+            return redirect()->intended(EmailVerification::nextPath(Auth::user()));
         }
 
         return back()->withErrors([

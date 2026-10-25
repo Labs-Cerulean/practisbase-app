@@ -241,7 +241,7 @@
             <div class="form-group">
                 <label for="register-access-code">Access code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
                 <input id="register-access-code" type="text" name="promo_code" value="{{ old('promo_code', request('promo_code', request('code'))) }}" maxlength="40" placeholder="e.g. MED-XXXX-XXXX" autocomplete="off" style="text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">
-                <p class="field-hint">Profession unlock from Cerulean Labs (or a promo). Not your friend's referral code.</p>
+                <p class="field-hint">Leave this blank to choose Free, or a 14-day card trial, after you confirm your email. An access code registers that profession plan with no card.</p>
             </div>
             <div class="form-group">
                 <label for="register-friend-code">Friend's referral code <span style="font-weight: 500; color: var(--text-muted);">(optional)</span></label>
@@ -267,7 +267,7 @@
                 <h2>Privacy Policy</h2>
                 <p>
                     By accepting, you also agree to the PractisBase Privacy Policy (R01), including the controller/processor split,
-                    Medical Vault rules, sub-processors (Railway, Cloudflare, Google Workspace, Stripe when live), and your GDPR rights.
+                    Medical Vault rules, sub-processors (Railway, Cloudflare, Google Workspace, Stripe), and your GDPR rights.
                     The full Privacy Policy is at <a href="/privacy" target="_blank" rel="noopener" style="color: var(--primary-cerulean); font-weight: 600;">/privacy</a>.
                 </p>
             </div>

@@ -15,6 +15,7 @@ class CompanyPayment extends Model
         'payment_method',
         'notes',
         'is_transfer',
+        'stripe_invoice_id',
     ];
 
     protected function casts(): array

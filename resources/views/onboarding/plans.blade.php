@@ -62,6 +62,20 @@
             margin-bottom: 1rem;
             font-size: 0.85rem;
         }
+        .billing-vat {
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 1rem 1.1rem;
+            margin-bottom: 1.25rem;
+        }
+        .billing-vat label { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.88rem; line-height: 1.4; cursor: pointer; color: var(--text-main); }
+        .billing-vat input[type="checkbox"] { margin-top: 0.15rem; }
+        .billing-vat .vat-field { margin-top: 0.75rem; }
+        .billing-vat .vat-field span { display: block; font-weight: 600; font-size: 0.82rem; margin-bottom: 0.35rem; }
+        .billing-vat input[type="text"] { width: 100%; max-width: 280px; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); }
+        .billing-vat p { margin: 0.7rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
     </style>
     @include('partials.pwa-head')
 </head>
@@ -75,7 +89,7 @@
     $prac = \App\Support\TierPolicy::PRICE_PRACTICE;
     $pro = \App\Support\TierPolicy::PRICE_PRO;
     $vatSuffix = \App\Support\TierPolicy::priceVatSuffix();
-    $canPaid = $user->canActivatePaidTierWithoutStripe();
+    $promoUntil = $user->trial_ends_at && $user->trial_ends_at->gt(now()->addDays(14));
 @endphp
 
     <main class="pricing-container">
@@ -90,11 +104,37 @@
             </div>
         @endif
 
-        @if($canPaid && $user->trial_ends_at)
-            <div class="promo-banner">Founding access until {{ $user->trial_ends_at->format('d M Y') }}.</div>
-        @elseif(! $canPaid)
-            <div class="promo-banner">Paid plans need an access code.</div>
+        @if($promoUntil)
+            <div class="promo-banner">Card required. Billing starts {{ $user->trial_ends_at->timezone('Europe/Malta')->format('j M Y') }}.</div>
+        @else
+            <div class="promo-banner">14-day trial. Card required. Billing starts when the trial ends.</div>
         @endif
+
+        @if(\App\Support\Deployment::isStaging())
+            <div class="promo-banner">
+                @if(\App\Support\StripeBilling::sandboxLinked())
+                    Stripe sandbox is linked to this staging site. Test card 4242 4242 4242 4242. A real card is refused.
+                @else
+                    This staging site is waiting for the Stripe sandbox secret key.
+                @endif
+            </div>
+        @endif
+
+        @php
+            $includeBillingVat = (string) old('include_billing_vat', $user->include_billing_vat ? '1' : '0') === '1';
+            $billingVatNumber = old('billing_vat_number', $user->billing_vat_number ?: $user->vat_number);
+        @endphp
+        <div class="billing-vat">
+            <label for="include-billing-vat">
+                <input type="checkbox" id="include-billing-vat" value="1" {{ $includeBillingVat ? 'checked' : '' }}>
+                <span>Include my VAT number on the Cerulean Labs Limited invoice and receipt.</span>
+            </label>
+            <div class="vat-field" id="billing-vat-field" style="{{ $includeBillingVat ? '' : 'display: none;' }}">
+                <span>VAT number</span>
+                <input type="text" id="billing-vat-number" value="{{ $billingVatNumber }}" maxlength="32" autocomplete="off" placeholder="MT12345678">
+            </div>
+            <p>Invoices and receipts are issued by Cerulean Labs Limited. Leave this unticked when you do not want a VAT number printed.</p>
+        </div>
 
         @if($practiceTier || $proTier)
             <div class="section-label">Desk</div>
@@ -124,15 +164,11 @@
                                 <li>Equipment certificates and project files</li>
                             @endif
                         </ul>
-                        @if($canPaid)
-                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                                @csrf
-                                <input type="hidden" name="tier" value="{{ $practiceTier }}">
-                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select</button>
-                            </form>
-                        @else
-                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
-                        @endif
+                        <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                            @csrf
+                            <input type="hidden" name="tier" value="{{ $practiceTier }}">
+                            <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Start free trial</button>
+                        </form>
                     </div>
                 @endif
 
@@ -157,15 +193,11 @@
                                 <li>Field certificates, reports, and projects</li>
                             @endif
                         </ul>
-                        @if($canPaid)
-                            <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                                @csrf
-                                <input type="hidden" name="tier" value="{{ $proTier }}">
-                                <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Select</button>
-                            </form>
-                        @else
-                            <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
-                        @endif
+                        <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                            @csrf
+                            <input type="hidden" name="tier" value="{{ $proTier }}">
+                            <button type="submit" class="btn-tier btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">Start free trial</button>
+                        </form>
                     </div>
                 @endif
             </div>
@@ -203,18 +235,42 @@
                     <li>Custom branding</li>
                     <li>Document Stamper (PDF)</li>
                 </ul>
-                @if($canPaid)
-                    <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
-                        @csrf
-                        <input type="hidden" name="tier" value="standard">
-                        <button type="submit" class="btn-tier btn-solid">Select Standard</button>
-                    </form>
-                @else
-                    <button type="button" class="btn-tier btn-muted" disabled style="margin-top: auto;">Needs an access code</button>
-                @endif
+                <form action="/onboarding/plans-submit" method="POST" style="margin-top: auto;">
+                    @csrf
+                    <input type="hidden" name="tier" value="standard">
+                    <button type="submit" class="btn-tier btn-solid">Start free trial</button>
+                </form>
             </div>
         </div>
     </main>
+    <script>
+        (function () {
+            var box = document.getElementById('include-billing-vat');
+            var field = document.getElementById('billing-vat-field');
+            var number = document.getElementById('billing-vat-number');
+            if (box && field) {
+                box.addEventListener('change', function () {
+                    field.style.display = box.checked ? '' : 'none';
+                });
+            }
+            document.querySelectorAll('form[action="/onboarding/plans-submit"]').forEach(function (form) {
+                form.addEventListener('submit', function () {
+                    function hidden(name, value) {
+                        var input = form.querySelector('input[type="hidden"][name="' + name + '"]');
+                        if (!input) {
+                            input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = name;
+                            form.appendChild(input);
+                        }
+                        input.value = value;
+                    }
+                    hidden('include_billing_vat', box && box.checked ? '1' : '0');
+                    hidden('billing_vat_number', number ? number.value : '');
+                });
+            });
+        })();
+    </script>
 
 </body>
 </html>
