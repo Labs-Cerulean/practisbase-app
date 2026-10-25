@@ -110,6 +110,16 @@
             <div class="promo-banner">14-day trial. Card required. Billing starts when the trial ends.</div>
         @endif
 
+        @if(\App\Support\Deployment::isStaging())
+            <div class="promo-banner">
+                @if(\App\Support\StripeBilling::sandboxLinked())
+                    Stripe sandbox is linked to this staging site. Test card 4242 4242 4242 4242. A real card is refused.
+                @else
+                    This staging site is waiting for the Stripe sandbox secret key.
+                @endif
+            </div>
+        @endif
+
         @php
             $includeBillingVat = (string) old('include_billing_vat', $user->include_billing_vat ? '1' : '0') === '1';
             $billingVatNumber = old('billing_vat_number', $user->billing_vat_number ?: $user->vat_number);

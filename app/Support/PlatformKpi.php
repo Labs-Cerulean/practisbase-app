@@ -204,7 +204,7 @@ class PlatformKpi
                 'credit_balance' => $creditBalance,
                 'list_mrr_ex_vat' => round($listMrr, 2),
                 'list_mrr_inc_vat' => round($listMrr * (1 + ((float) TierPolicy::VAT_RATE_PERCENT / 100)), 2),
-                'stripe_live' => StripeBilling::configured(),
+                'stripe_live' => StripeKeyMode::mode(config('services.stripe.secret')) === 'live' && ! Deployment::isStaging(),
             ],
             'tier_cards' => $tierCards,
             'by_profession' => $byProfession,

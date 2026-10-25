@@ -55,6 +55,10 @@ class BillingController extends Controller
             return response('Invalid signature.', 400);
         }
 
+        if (! StripeBilling::acceptsLivemode((bool) data_get($event, 'livemode', false))) {
+            return response(StripeBilling::livemodeIgnoreMessage(), 200);
+        }
+
         try {
             StripeBilling::handleEvent($event);
         } catch (\Throwable $e) {

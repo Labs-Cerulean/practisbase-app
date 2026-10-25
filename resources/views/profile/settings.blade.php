@@ -79,6 +79,15 @@
                         This plan is locked to your access code. Contact Cerulean Labs to change it.
                     @else
                         Paid plans collect a card and run a 14-day trial. Billing starts when the trial ends. Free does not need a card. Invoices and receipts are issued by Cerulean Labs Limited.
+                        @if(\App\Support\Deployment::isStaging())
+                            <div style="margin-top: 0.35rem;">
+                                @if(\App\Support\StripeBilling::sandboxLinked())
+                                    Stripe sandbox is linked to this staging site. Test card 4242 4242 4242 4242. A real card is refused.
+                                @else
+                                    This staging site is waiting for the Stripe sandbox secret key.
+                                @endif
+                            </div>
+                        @endif
                     @endif
                 </div>
 

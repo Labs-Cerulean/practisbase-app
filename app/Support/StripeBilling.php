@@ -13,7 +13,31 @@ class StripeBilling
 {
     public static function configured(): bool
     {
-        return filled(config('services.stripe.secret'));
+        return StripeKeyMode::allowed(
+            (string) config('app.env'),
+            Deployment::isStaging(),
+            config('services.stripe.secret'),
+        );
+    }
+
+    public static function sandboxLinked(): bool
+    {
+        return Deployment::isStaging()
+            && StripeKeyMode::mode(config('services.stripe.secret')) === 'test';
+    }
+
+    public static function acceptsLivemode(bool $livemode): bool
+    {
+        return StripeKeyMode::acceptsLivemode(
+            (string) config('app.env'),
+            Deployment::isStaging(),
+            $livemode,
+        );
+    }
+
+    public static function livemodeIgnoreMessage(): string
+    {
+        return StripeKeyMode::ignoreMessage((string) config('app.env'), Deployment::isStaging());
     }
 
     public static function priceIdForTier(string $tier): ?string
@@ -109,6 +133,10 @@ class StripeBilling
 
     public static function handleEvent(object $event): void
     {
+        if (! self::acceptsLivemode((bool) data_get($event, 'livemode', false))) {
+            return;
+        }
+
         $type = (string) data_get($event, 'type', '');
         $object = data_get($event, 'data.object');
         if (! is_object($object)) {
@@ -179,9 +207,10 @@ class StripeBilling
             ]);
         }
 
-        if (! self::configured()) {
+        $secret = config('services.stripe.secret');
+        if (! StripeKeyMode::allowed((string) config('app.env'), Deployment::isStaging(), $secret)) {
             throw ValidationException::withMessages([
-                'tier' => 'Card billing is not configured on this server.',
+                'tier' => StripeKeyMode::refusal((string) config('app.env'), Deployment::isStaging(), $secret),
             ]);
         }
     }
