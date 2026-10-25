@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BetaInviteCode;
 use App\Models\Promotion;
 use App\Models\User;
+use App\Support\BillingVatChoice;
 use App\Support\EmailVerification;
 use App\Support\ProfessionStart;
 use App\Support\PromotionEngine;
@@ -272,6 +273,13 @@ class AuthController extends Controller
         ]);
 
         TierPolicy::assertTierAllowedForProfession($user, $request->tier);
+
+        BillingVatChoice::remember(
+            $user,
+            $request->boolean('include_billing_vat'),
+            $request->input('billing_vat_number'),
+        );
+        $user->refresh();
 
         $tier = TierPolicy::normalize($request->tier);
         if ($tier === TierPolicy::TIER_FREE) {

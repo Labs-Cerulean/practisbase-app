@@ -62,6 +62,20 @@
             margin-bottom: 1rem;
             font-size: 0.85rem;
         }
+        .billing-vat {
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 1rem 1.1rem;
+            margin-bottom: 1.25rem;
+        }
+        .billing-vat label { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.88rem; line-height: 1.4; cursor: pointer; color: var(--text-main); }
+        .billing-vat input[type="checkbox"] { margin-top: 0.15rem; }
+        .billing-vat .vat-field { margin-top: 0.75rem; }
+        .billing-vat .vat-field span { display: block; font-weight: 600; font-size: 0.82rem; margin-bottom: 0.35rem; }
+        .billing-vat input[type="text"] { width: 100%; max-width: 280px; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); }
+        .billing-vat p { margin: 0.7rem 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
     </style>
     @include('partials.pwa-head')
 </head>
@@ -95,6 +109,22 @@
         @else
             <div class="promo-banner">14-day trial. Card required. Billing starts when the trial ends.</div>
         @endif
+
+        @php
+            $includeBillingVat = (string) old('include_billing_vat', $user->include_billing_vat ? '1' : '0') === '1';
+            $billingVatNumber = old('billing_vat_number', $user->billing_vat_number ?: $user->vat_number);
+        @endphp
+        <div class="billing-vat">
+            <label for="include-billing-vat">
+                <input type="checkbox" id="include-billing-vat" value="1" {{ $includeBillingVat ? 'checked' : '' }}>
+                <span>Include my VAT number on the Cerulean Labs Limited invoice and receipt.</span>
+            </label>
+            <div class="vat-field" id="billing-vat-field" style="{{ $includeBillingVat ? '' : 'display: none;' }}">
+                <span>VAT number</span>
+                <input type="text" id="billing-vat-number" value="{{ $billingVatNumber }}" maxlength="32" autocomplete="off" placeholder="MT12345678">
+            </div>
+            <p>Invoices and receipts are issued by Cerulean Labs Limited. Leave this unticked when you do not want a VAT number printed.</p>
+        </div>
 
         @if($practiceTier || $proTier)
             <div class="section-label">Desk</div>
@@ -203,6 +233,34 @@
             </div>
         </div>
     </main>
+    <script>
+        (function () {
+            var box = document.getElementById('include-billing-vat');
+            var field = document.getElementById('billing-vat-field');
+            var number = document.getElementById('billing-vat-number');
+            if (box && field) {
+                box.addEventListener('change', function () {
+                    field.style.display = box.checked ? '' : 'none';
+                });
+            }
+            document.querySelectorAll('form[action="/onboarding/plans-submit"]').forEach(function (form) {
+                form.addEventListener('submit', function () {
+                    function hidden(name, value) {
+                        var input = form.querySelector('input[type="hidden"][name="' + name + '"]');
+                        if (!input) {
+                            input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = name;
+                            form.appendChild(input);
+                        }
+                        input.value = value;
+                    }
+                    hidden('include_billing_vat', box && box.checked ? '1' : '0');
+                    hidden('billing_vat_number', number ? number.value : '');
+                });
+            });
+        })();
+    </script>
 
 </body>
 </html>

@@ -66,6 +66,8 @@ use Illuminate\Notifications\Notifiable;
     'stripe_customer_id',
     'stripe_subscription_id',
     'subscription_status',
+    'include_billing_vat',
+    'billing_vat_number',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -100,6 +102,7 @@ class User extends Authenticatable
             'trial_ends_at' => 'datetime',
             'last_data_backup_at' => 'datetime',
             'must_verify_email' => 'boolean',
+            'include_billing_vat' => 'boolean',
         ];
     }
 

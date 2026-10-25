@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use App\Support\BillingVatChoice;
+use App\Support\CeruleanBillingDocument;
 use App\Support\EmailVerification;
 use App\Support\StripeCheckoutPlan;
 use App\Support\TierPolicy;
@@ -48,6 +50,14 @@ class RegistrationBillingTest extends TestCase
         $this->assertSame('month', $payload['line_items'][0]['price_data']['recurring']['interval']);
         $this->assertSame('ada@example.com', $payload['customer_email']);
         $this->assertArrayNotHasKey('customer', $payload);
+        $this->assertSame('required', $payload['billing_address_collection']);
+        $this->assertSame('Cerulean Labs Limited', $payload['subscription_data']['description']);
+        $this->assertSame(
+            'Invoices and receipts are issued by Cerulean Labs Limited.',
+            $payload['custom_text']['submit']['message']
+        );
+        $this->assertArrayNotHasKey('tax_id_collection', $payload);
+        $this->assertArrayNotHasKey('customer_update', $payload);
     }
 
     public function test_repeat_checkout_omits_the_trial_and_reuses_the_customer(): void
@@ -71,6 +81,50 @@ class RegistrationBillingTest extends TestCase
         $this->assertSame('cus_123', $payload['customer']);
         $this->assertArrayNotHasKey('customer_email', $payload);
         $this->assertSame('settings', $payload['metadata']['billing_return']);
+        $this->assertSame('auto', $payload['customer_update']['address']);
+        $this->assertSame('auto', $payload['customer_update']['name']);
+        $this->assertArrayNotHasKey('tax_id_collection', $payload);
+    }
+
+    public function test_vat_opt_in_is_sent_to_checkout_and_normalised(): void
+    {
+        $payload = StripeCheckoutPlan::sessionPayload([
+            'userId' => 7,
+            'email' => 'ada@example.com',
+            'tier' => 'standard',
+            'label' => 'Standard',
+            'trialDays' => 14,
+            'successUrl' => 'https://example.test/ok',
+            'cancelUrl' => 'https://example.test/plans',
+            'customerId' => 'cus_123',
+            'includeVat' => true,
+        ]);
+
+        $this->assertTrue($payload['tax_id_collection']['enabled']);
+        $this->assertSame('1', $payload['metadata']['include_billing_vat']);
+        $this->assertSame('MT12345678', BillingVatChoice::normalize('12345678'));
+        $this->assertSame('MT12345678', BillingVatChoice::normalize('mt 1234 5678'));
+        $this->assertSame('MT12345678', BillingVatChoice::normalize('MT12345678'));
+    }
+
+    public function test_paid_gross_splits_into_net_and_maltese_vat(): void
+    {
+        $split = CeruleanBillingDocument::splitGross(18.87);
+
+        $this->assertSame(15.99, $split['subtotal']);
+        $this->assertSame(2.88, $split['vat']);
+        $this->assertSame(18.87, $split['total']);
+        $this->assertSame(
+            ['2026-10-01', '2026-10-31'],
+            CeruleanBillingDocument::coverageBounds(
+                (new \DateTimeImmutable('2026-10-01 00:00:00', new \DateTimeZone('Europe/Malta')))->getTimestamp(),
+                (new \DateTimeImmutable('2026-11-01 00:00:00', new \DateTimeZone('Europe/Malta')))->getTimestamp(),
+            )
+        );
+        $zero = CeruleanBillingDocument::splitGross(0.0);
+        $this->assertSame(0.0, $zero['subtotal']);
+        $this->assertSame(0.0, $zero['vat']);
+        $this->assertSame(0.0, $zero['total']);
     }
 
     public function test_access_codes_and_existing_accounts_are_not_forced_through_billing_states(): void

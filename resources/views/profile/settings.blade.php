@@ -78,7 +78,7 @@
                     @if($user->beta_invite_code_id)
                         This plan is locked to your access code. Contact Cerulean Labs to change it.
                     @else
-                        Paid plans collect a card and run a 14-day trial. Billing starts when the trial ends. Free does not need a card.
+                        Paid plans collect a card and run a 14-day trial. Billing starts when the trial ends. Free does not need a card. Invoices and receipts are issued by Cerulean Labs Limited.
                     @endif
                 </div>
 
@@ -107,7 +107,29 @@
                     <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
                         Practice and Pro packages are limited to your registered profession.
                     </div>
+                    @php
+                        $includeBillingVat = (string) old('include_billing_vat', $user->include_billing_vat ? '1' : '0') === '1';
+                    @endphp
+                    <input type="hidden" name="include_billing_vat" value="0">
+                    <label for="include-billing-vat" style="display: flex; gap: 0.55rem; align-items: flex-start; margin-top: 1rem; font-size: 0.85rem; line-height: 1.4; cursor: pointer;">
+                        <input type="checkbox" name="include_billing_vat" id="include-billing-vat" value="1" {{ $includeBillingVat ? 'checked' : '' }} style="margin-top: 0.15rem;">
+                        <span>Include my VAT number on the Cerulean Labs Limited invoice and receipt.</span>
+                    </label>
+                    <div id="billing-vat-field" style="margin-top: 0.75rem; {{ $includeBillingVat ? '' : 'display: none;' }}">
+                        <label for="billing-vat-number" style="display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.85rem;">VAT number</label>
+                        <input type="text" name="billing_vat_number" id="billing-vat-number" value="{{ old('billing_vat_number', $user->billing_vat_number ?: $user->vat_number) }}" maxlength="32" autocomplete="off" placeholder="MT12345678" style="width: 100%; max-width: 280px; padding: 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    </div>
                 </form>
+                <script>
+                    (function () {
+                        var box = document.getElementById('include-billing-vat');
+                        var field = document.getElementById('billing-vat-field');
+                        if (!box || !field) return;
+                        box.addEventListener('change', function () {
+                            field.style.display = box.checked ? '' : 'none';
+                        });
+                    })();
+                </script>
                 @endunless
             </div>
         </div>
@@ -708,7 +730,7 @@
             var initial = resolveTab(location.hash);
             @if(old('settings_section'))
                 initial = @json(old('settings_section'));
-            @elseif($errors->has('tier') || $errors->has('confirm_downgrade') || $errors->has('confirm_downgrade_typed'))
+            @elseif($errors->has('tier') || $errors->has('confirm_downgrade') || $errors->has('confirm_downgrade_typed') || $errors->has('billing_vat_number'))
                 initial = 'plan';
             @elseif($errors->has('regime_effective_from') || $errors->has('employment_type') || $errors->has('vat_status') || $errors->has('tax_computation') || $errors->has('primary_salary') || $errors->has('estimated_expenses') || $errors->has('date_of_birth'))
                 initial = 'tax';

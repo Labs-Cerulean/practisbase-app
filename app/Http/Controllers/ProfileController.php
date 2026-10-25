@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DocumentStamp;
 use App\Models\MedicalVault;
 use App\Models\MedicalVaultDevice;
+use App\Support\BillingVatChoice;
 use App\Support\ClinicalNoteTemplates;
 use App\Support\CompanyBooks;
 use App\Support\EmailVerification;
@@ -106,8 +107,17 @@ class ProfileController extends Controller
         $newTier = TierPolicy::normalize($request->tier);
         TierPolicy::assertTierAllowedForProfession($user, $newTier);
 
+        BillingVatChoice::remember(
+            $user,
+            $request->boolean('include_billing_vat'),
+            $request->input('billing_vat_number'),
+        );
+        $user->refresh();
+
         if ($newTier === $currentTier) {
-            return back()->with('success', 'You are already on '.TierPolicy::label($currentTier).'.');
+            StripeBilling::syncSavedVat($user);
+
+            return back()->with('success', 'Billing details saved. You are already on '.TierPolicy::label($currentTier).'.');
         }
 
         if (TierPolicy::isDowngrade($currentTier, $newTier)) {

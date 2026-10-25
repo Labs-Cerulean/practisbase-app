@@ -31,6 +31,7 @@ class CompanyInvoice extends Model
         'company_recurring_invoice_id',
         'items',
         'notes',
+        'stripe_invoice_id',
     ];
 
     protected function casts(): array

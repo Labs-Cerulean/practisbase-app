@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CompanyProfile;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -48,21 +49,24 @@ class StripeBilling
             $user->trial_ends_at?->getTimestamp(),
         );
 
-        $payload = StripeCheckoutPlan::sessionPayload([
-            'userId' => $user->id,
-            'email' => (string) $user->email,
-            'tier' => $tier,
-            'label' => TierPolicy::label($tier),
-            'trialDays' => $trialDays,
-            'successUrl' => url('/onboarding/billing/success').'?session_id={CHECKOUT_SESSION_ID}',
-            'cancelUrl' => $returnTo === 'settings' ? url('/settings').'#plan' : url('/onboarding/plans'),
-            'priceId' => self::priceIdForTier($tier),
-            'customerId' => $user->stripe_customer_id,
-            'returnTo' => $returnTo,
-        ]);
-
         try {
+            $thisCustomer = self::ensureCustomer($user);
+            $payload = StripeCheckoutPlan::sessionPayload([
+                'userId' => $user->id,
+                'email' => (string) $user->email,
+                'tier' => $tier,
+                'label' => TierPolicy::label($tier),
+                'trialDays' => $trialDays,
+                'successUrl' => url('/onboarding/billing/success').'?session_id={CHECKOUT_SESSION_ID}',
+                'cancelUrl' => $returnTo === 'settings' ? url('/settings').'#plan' : url('/onboarding/plans'),
+                'priceId' => self::priceIdForTier($tier),
+                'customerId' => $thisCustomer,
+                'returnTo' => $returnTo,
+                'includeVat' => (bool) $user->include_billing_vat,
+            ]);
             $session = self::client()->checkout->sessions->create($payload);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             report($e);
             throw ValidationException::withMessages([
@@ -119,6 +123,20 @@ class StripeBilling
 
         if (in_array($type, ['customer.subscription.updated', 'customer.subscription.deleted'], true)) {
             self::applySubscriptionObject($object);
+
+            return;
+        }
+
+        if (in_array($type, ['invoice.created', 'invoice.finalized', 'invoice.paid'], true)) {
+            try {
+                self::brandStripeInvoice($object);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        if ($type === 'invoice.paid') {
+            CeruleanSubscriptionBooks::recordPaidInvoice($object);
         }
     }
 
@@ -291,5 +309,117 @@ class StripeBilling
     private static function client(): StripeClient
     {
         return new StripeClient((string) config('services.stripe.secret'));
+    }
+
+    public static function syncSavedVat(User $user): void
+    {
+        if (! self::configured() || ! filled($user->stripe_customer_id) || ! RegisterBillingSchema::ready()) {
+            return;
+        }
+
+        self::syncCustomerVat($user);
+    }
+
+    private static function ensureCustomer(User $user): string
+    {
+        if (! filled($user->stripe_customer_id)) {
+            $customer = self::client()->customers->create([
+                'email' => (string) $user->email,
+                'name' => (string) $user->name,
+                'metadata' => [
+                    'user_id' => (string) $user->id,
+                ],
+            ]);
+            $user->forceFill([
+                'stripe_customer_id' => (string) data_get($customer, 'id'),
+            ])->save();
+        }
+
+        self::syncCustomerVat($user);
+
+        return (string) $user->stripe_customer_id;
+    }
+
+    private static function syncCustomerVat(User $user): void
+    {
+        $customerId = (string) $user->stripe_customer_id;
+        if ($customerId === '') {
+            return;
+        }
+
+        $wanted = $user->include_billing_vat
+            ? BillingVatChoice::normalize((string) $user->billing_vat_number)
+            : '';
+
+        try {
+            $existing = self::client()->customers->allTaxIds($customerId, ['limit' => 10]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return;
+        }
+
+        $already = false;
+        foreach (data_get($existing, 'data', []) as $tax) {
+            $value = BillingVatChoice::normalize((string) data_get($tax, 'value', ''));
+            $id = (string) data_get($tax, 'id', '');
+            if ($wanted !== '' && $value === $wanted) {
+                $already = true;
+
+                continue;
+            }
+            if ($id !== '' && strtolower((string) data_get($tax, 'type', '')) === 'eu_vat') {
+                try {
+                    self::client()->customers->deleteTaxId($customerId, $id, []);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        }
+
+        if ($wanted === '' || $already) {
+            return;
+        }
+
+        try {
+            self::client()->customers->createTaxId($customerId, [
+                'type' => 'eu_vat',
+                'value' => $wanted,
+            ]);
+        } catch (InvalidRequestException $e) {
+            throw ValidationException::withMessages([
+                'billing_vat_number' => 'Stripe did not accept that VAT number. Check it and try again.',
+            ]);
+        }
+    }
+
+    private static function brandStripeInvoice(object $invoice): void
+    {
+        $id = (string) data_get($invoice, 'id', '');
+        if (! str_starts_with($id, 'in_') || ! self::configured()) {
+            return;
+        }
+
+        $status = (string) data_get($invoice, 'status', '');
+        if (in_array($status, ['paid', 'void', 'uncollectible'], true)) {
+            return;
+        }
+
+        $footer = CompanyBooks::DEFAULT_LEGAL_NAME."\n"
+            .'Company Reg. No. '.CompanyBooks::DEFAULT_REGISTRATION_NUMBER."\n"
+            .CompanyBooks::DEFAULT_REGISTERED_OFFICE;
+
+        $operator = CeruleanSubscriptionBooks::operator();
+        if ($operator) {
+            $vat = CompanyProfile::query()->where('user_id', $operator->id)->value('vat_number');
+            if (is_string($vat) && $vat !== '') {
+                $footer .= "\nVAT No. ".$vat;
+            }
+        }
+
+        self::client()->invoices->update($id, [
+            'account_name' => CompanyBooks::DEFAULT_LEGAL_NAME,
+            'footer' => $footer,
+        ]);
     }
 }

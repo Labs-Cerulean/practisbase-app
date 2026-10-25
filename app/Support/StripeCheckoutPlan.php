@@ -102,9 +102,11 @@ class StripeCheckoutPlan
         }
 
         $subscription = [
+            'description' => 'Cerulean Labs Limited',
             'metadata' => [
                 'user_id' => (string) $input['userId'],
                 'tier' => (string) $input['tier'],
+                'include_billing_vat' => ! empty($input['includeVat']) ? '1' : '0',
             ],
         ];
         $trialDays = (int) ($input['trialDays'] ?? 0);
@@ -122,14 +124,29 @@ class StripeCheckoutPlan
                 'user_id' => (string) $input['userId'],
                 'tier' => (string) $input['tier'],
                 'billing_return' => (string) ($input['returnTo'] ?? 'onboarding'),
+                'include_billing_vat' => ! empty($input['includeVat']) ? '1' : '0',
+            ],
+            'billing_address_collection' => 'required',
+            'custom_text' => [
+                'submit' => [
+                    'message' => 'Invoices and receipts are issued by Cerulean Labs Limited.',
+                ],
             ],
             'success_url' => $input['successUrl'],
             'cancel_url' => $input['cancelUrl'],
         ];
 
+        if (! empty($input['includeVat'])) {
+            $payload['tax_id_collection'] = ['enabled' => true];
+        }
+
         $customerId = $input['customerId'] ?? null;
         if (is_string($customerId) && $customerId !== '') {
             $payload['customer'] = $customerId;
+            $payload['customer_update'] = [
+                'address' => 'auto',
+                'name' => 'auto',
+            ];
         } else {
             $payload['customer_email'] = $input['email'];
         }
