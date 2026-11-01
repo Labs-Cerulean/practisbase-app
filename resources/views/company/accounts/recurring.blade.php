@@ -26,7 +26,7 @@
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <a href="/company/invoices" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">All invoices &amp; RFPs</a>
-            <form method="POST" action="/company/recurring/generate">
+            <form method="POST" action="/company/recurring/generate" data-mail-sends="0" data-mail-title="Issue the waiting proformas?" data-mail-body="This creates the due proformas on the Cerulean books. No email is sent. Each company is emailed only when you press Email on that proforma and confirm.">
                 @csrf
                 <button type="submit" style="background: var(--primary-cerulean); color: white; border: none; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer;">
                     {{ $dueCatchUpCount > 0 ? 'Catch up due months ('.$dueCatchUpCount.')' : 'Generate due proformas' }}
@@ -60,7 +60,7 @@
 
     @if($dueCatchUpCount > 0)
         <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-lg); padding: 0.85rem 1.1rem; margin-bottom: 1rem; font-size: 0.88rem; color: #92400e; line-height: 1.45;">
-            {{ $dueCatchUpCount }} schedule(s) have months waiting. Press <strong>Catch up due months</strong> to issue July / August (and any other gaps) in one go.
+            {{ $dueCatchUpCount }} schedule(s) have months waiting. <strong>Catch up due months</strong> issues those proformas. It does not send email.
         </div>
     @endif
 
@@ -140,7 +140,7 @@
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">Start date</label>
                     <input type="date" name="start_date" value="{{ old('start_date', date('Y-m-d')) }}" required style="width: 100%; padding: 0.5rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Past starts auto-issue missing months on save.</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Past starts issue the missing months on save. No email is sent.</div>
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">Billing day (1–28)</label>
@@ -158,17 +158,10 @@
             </div>
 
             <div style="display: grid; gap: 0.45rem; margin-bottom: 1rem; padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 600; color: var(--primary-navy); cursor: pointer;">
-                    <input type="checkbox" name="auto_email" value="1" @checked(old('auto_email')) style="width: 1.05rem; height: 1.05rem;">
-                    Auto-email proforma when generated
-                </label>
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 600; color: var(--primary-navy); cursor: pointer;">
-                    <input type="checkbox" name="auto_reminders" value="1" @checked(old('auto_reminders')) style="width: 1.05rem; height: 1.05rem;">
-                    Include in batch payment reminders
-                </label>
+                <p style="margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">Saving this schedule does not send email. You confirm each email on the company card.</p>
                 <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 600; color: var(--primary-navy); cursor: pointer;">
                     <input type="checkbox" name="reminder_include_statement" value="1" @checked(old('reminder_include_statement', true)) style="width: 1.05rem; height: 1.05rem;">
-                    Attach open-balance statement to reminders
+                    Attach the open-balance statement when you email a proforma or reminder
                 </label>
             </div>
 
@@ -189,6 +182,9 @@
                 $subtotal = $schedule->monthlySubtotal();
                 $issued = $issuedBySchedule[$schedule->id] ?? collect();
                 $behind = $schedule->is_active && $schedule->next_issue_on->lte(now()->startOfDay());
+                $clientEmail = trim((string) ($schedule->client->email ?? ''));
+                $clientName = $schedule->client->name ?? 'this client';
+                $clientCanEmail = $clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL);
             @endphp
             <div id="schedule-{{ $schedule->id }}" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; box-shadow: var(--shadow-sm);">
                 <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
@@ -263,6 +259,18 @@
                                             <td style="padding: 0.5rem 0.65rem; text-align: right; font-variant-numeric: tabular-nums; color: {{ $superseded ? 'var(--text-muted)' : ($bal > 0.009 ? '#b45309' : '#059669') }};">{{ $superseded ? 'Superseded' : '€'.number_format($bal, 2) }}</td>
                                             <td style="padding: 0.5rem 0.65rem; text-align: right; white-space: nowrap;">
                                                 <a href="/company/invoices/{{ $doc->id }}/pdf" style="font-size: 0.78rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">PDF</a>
+                                                @if($doc->type === 'rfp' && $doc->status !== 'converted')
+                                                    @if($clientCanEmail)
+                                                        <form method="POST" action="/company/recurring/{{ $schedule->id }}/email/{{ $doc->id }}" style="display: inline; margin-left: 0.45rem;" data-mail-sends="1" data-mail-title="Send this proforma by email?" data-mail-body="This sends one email to {{ $clientName }} at {{ $clientEmail }}. It attaches the proforma PDF {{ $doc->document_number }}@if($schedule->reminder_include_statement) and the account statement@endif. No other company is emailed.">
+                                                            @csrf
+                                                            <input type="hidden" name="confirm_send" value="">
+                                                            <input type="hidden" name="include_statement" value="{{ $schedule->reminder_include_statement ? '1' : '0' }}">
+                                                            <button type="submit" style="font-size: 0.78rem; font-weight: 700; background: none; border: none; color: var(--primary-navy); cursor: pointer; padding: 0; border-bottom: 1px dotted var(--primary-navy);">Email</button>
+                                                        </form>
+                                                    @else
+                                                        <span style="font-size: 0.75rem; color: #92400e; margin-left: 0.45rem;">Add a client email before sending.</span>
+                                                    @endif
+                                                @endif
                                                 @if($doc->canDelete())
                                                     <form method="POST" action="/company/invoices/{{ $doc->id }}" style="display: inline; margin-left: 0.45rem;" onsubmit="return confirm('Delete this unpaid proforma? It has no tax effect.');">
                                                         @csrf
@@ -311,14 +319,9 @@
                             <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.45rem;">Email &amp; reminders</div>
                             <form method="POST" action="/company/recurring/{{ $schedule->id }}/settings" style="display: grid; gap: 0.35rem;">
                                 @csrf
+                                <p style="margin: 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">Email goes out only from Email or Send reminder, after you confirm.</p>
                                 <label style="font-size: 0.8rem; display: flex; gap: 0.4rem; align-items: center; cursor: pointer;">
-                                    <input type="checkbox" name="auto_email" value="1" @checked($schedule->auto_email)> Auto-email on generate
-                                </label>
-                                <label style="font-size: 0.8rem; display: flex; gap: 0.4rem; align-items: center; cursor: pointer;">
-                                    <input type="checkbox" name="auto_reminders" value="1" @checked($schedule->auto_reminders)> Batch reminders
-                                </label>
-                                <label style="font-size: 0.8rem; display: flex; gap: 0.4rem; align-items: center; cursor: pointer;">
-                                    <input type="checkbox" name="reminder_include_statement" value="1" @checked($schedule->reminder_include_statement)> Include statement PDF
+                                    <input type="checkbox" name="reminder_include_statement" value="1" @checked($schedule->reminder_include_statement)> Attach statement PDF
                                 </label>
                                 <button type="submit" style="justify-self: start; margin-top: 0.25rem; font-size: 0.78rem; font-weight: 600; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.35rem 0.65rem; cursor: pointer;">Save</button>
                             </form>
@@ -326,15 +329,16 @@
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; margin-top: 0.65rem;">
                         <a href="/company/recurring/{{ $schedule->id }}/statement" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none; padding: 0.4rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">Statement PDF</a>
-                        <form method="POST" action="/company/recurring/{{ $schedule->id }}/remind" style="display: inline;">
-                            @csrf
-                            <input type="hidden" name="include_statement" value="{{ $schedule->reminder_include_statement ? '1' : '0' }}">
-                            <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Send reminder</button>
-                        </form>
-                        <form method="POST" action="/company/recurring/reminders" style="display: inline;">
-                            @csrf
-                            <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Send all auto-reminders</button>
-                        </form>
+                        @if($clientCanEmail)
+                            <form method="POST" action="/company/recurring/{{ $schedule->id }}/remind" style="display: inline;" data-mail-sends="1" data-mail-title="Send a payment reminder?" data-mail-body="This sends one email to {{ $clientName }} at {{ $clientEmail }}.@if($schedule->reminder_include_statement) It attaches the account statement.@else It does not attach a statement.@endif It does not attach a proforma. No other company is emailed.">
+                                @csrf
+                                <input type="hidden" name="confirm_send" value="">
+                                <input type="hidden" name="include_statement" value="{{ $schedule->reminder_include_statement ? '1' : '0' }}">
+                                <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Send reminder</button>
+                            </form>
+                        @else
+                            <span style="font-size: 0.78rem; color: #92400e;">Add a client email before sending a reminder.</span>
+                        @endif
                         <form method="POST" action="/company/recurring/{{ $schedule->id }}/toggle" style="margin-left: auto;">
                             @csrf
                             <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: var(--primary-navy); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">
@@ -387,5 +391,65 @@
             document.getElementById('packageVat').textContent = ' · +18% VAT after payment (€' + (total * 1.18).toFixed(2) + ' est.)';
         }
         syncPackage();
+    </script>
+
+    <div id="mail-confirm-modal" class="pb-modal" hidden>
+        <div class="pb-modal-backdrop" data-close-mail></div>
+        <div class="pb-modal-panel" role="dialog" aria-modal="true" aria-labelledby="mail-confirm-title">
+            <h2 id="mail-confirm-title" style="margin: 0 0 0.75rem; color: var(--primary-navy); font-size: 1.15rem;">Confirm</h2>
+            <p id="mail-confirm-body" style="margin: 0 0 1rem; color: var(--text-main); font-size: 0.9rem; line-height: 1.45;"></p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                <button type="button" data-close-mail style="padding: 0.65rem 1rem; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">No</button>
+                <button type="button" id="mail-confirm-yes" style="padding: 0.65rem 1rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 700; cursor: pointer;">Yes</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var modal = document.getElementById('mail-confirm-modal');
+            var title = document.getElementById('mail-confirm-title');
+            var body = document.getElementById('mail-confirm-body');
+            var yes = document.getElementById('mail-confirm-yes');
+            var pending = null;
+            if (!modal || !title || !body || !yes) return;
+
+            function close() {
+                modal.hidden = true;
+                pending = null;
+            }
+
+            function open(form) {
+                pending = form;
+                title.textContent = form.getAttribute('data-mail-title') || 'Confirm';
+                body.textContent = form.getAttribute('data-mail-body') || '';
+                yes.textContent = form.getAttribute('data-mail-sends') === '1' ? 'Yes, send email' : 'Yes, issue proformas';
+                modal.hidden = false;
+                yes.focus();
+            }
+
+            document.querySelectorAll('form[data-mail-title]').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    open(form);
+                });
+            });
+
+            yes.addEventListener('click', function () {
+                if (!pending) return;
+                var form = pending;
+                var hidden = form.querySelector('input[name="confirm_send"]');
+                if (hidden) hidden.value = '1';
+                close();
+                form.submit();
+            });
+
+            modal.querySelectorAll('[data-close-mail]').forEach(function (el) {
+                el.addEventListener('click', close);
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !modal.hidden) close();
+            });
+        })();
     </script>
 @endsection

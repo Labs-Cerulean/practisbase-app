@@ -123,7 +123,7 @@ class RecurringInvoiceController extends Controller
 
         $msg = $title.' saved · €'.number_format($subtotal, 2).' ex-VAT / month.';
         if ($caughtUp['created'] > 0) {
-            $msg .= ' Generated '.$caughtUp['created'].' proforma(s) from start date through today.';
+            $msg .= ' Generated '.$caughtUp['created'].' proforma(s) from the start date through today. No email was sent.';
         } else {
             $msg .= ' Next issue '.$schedule->fresh()->next_issue_on->format('d M Y').'.';
         }
@@ -150,19 +150,14 @@ class RecurringInvoiceController extends Controller
             ->get();
 
         $created = 0;
-        $emailed = 0;
         foreach ($due as $schedule) {
             $result = $this->catchUpSchedule($user, $profile, $schedule);
             $created += $result['created'];
-            $emailed += $result['emailed'];
         }
 
         $msg = $created === 0
-            ? 'No proformas were due — all schedules are caught up.'
-            : $created.' proforma(s) generated (catch-up through today). VAT commits when paid and converted.';
-        if ($emailed > 0) {
-            $msg .= ' '.$emailed.' emailed.';
-        }
+            ? 'No proformas were due. All schedules are caught up. No email was sent.'
+            : $created.' proforma(s) issued. No email was sent. Use Email on each proforma when that company should receive it.';
 
         return redirect('/company/recurring')->with('success', $msg);
     }
@@ -248,8 +243,60 @@ class RecurringInvoiceController extends Controller
         return $pdf->download('statement-'.$slug.'-'.date('Ymd').'.pdf');
     }
 
+    public function sendProforma(Request $request, int $schedule, int $document)
+    {
+        $request->validate([
+            'confirm_send' => 'accepted',
+        ], [
+            'confirm_send.accepted' => 'Confirm that this email should be sent.',
+        ]);
+
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        $model = CompanyRecurringInvoice::with('client')
+            ->where('user_id', $user->id)
+            ->where('id', $schedule)
+            ->firstOrFail();
+
+        $rfp = CompanyInvoice::where('user_id', $user->id)
+            ->where('id', $document)
+            ->where('company_client_id', $model->company_client_id)
+            ->where('type', 'rfp')
+            ->firstOrFail();
+
+        if ($rfp->status === 'converted') {
+            return back()->withErrors([
+                'email' => 'That proforma was already replaced by a tax invoice, so it was not emailed.',
+            ]);
+        }
+
+        if ($this->hasRecurringLinkColumn()
+            && $rfp->company_recurring_invoice_id
+            && (int) $rfp->company_recurring_invoice_id !== (int) $model->id) {
+            abort(404);
+        }
+
+        $includeStatement = $request->boolean('include_statement', (bool) $model->reminder_include_statement);
+        $result = $this->sendBillingMail($profile, $model, 'proforma', $rfp, $includeStatement);
+
+        if (! $result['ok']) {
+            return back()->withErrors(['email' => $result['error']]);
+        }
+
+        $extra = $result['warning'] ? ' '.$result['warning'] : '';
+        $via = $result['mailer'] ? ' via '.$result['mailer'] : '';
+
+        return back()->with('success', 'Proforma '.$rfp->document_number.' emailed to '.$result['to'].$via.'.'.$extra);
+    }
+
     public function sendReminder(Request $request, int $schedule)
     {
+        $request->validate([
+            'confirm_send' => 'accepted',
+        ], [
+            'confirm_send.accepted' => 'Confirm that this email should be sent.',
+        ]);
+
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
         $model = CompanyRecurringInvoice::with('client')
@@ -272,39 +319,9 @@ class RecurringInvoiceController extends Controller
 
     public function sendDueReminders()
     {
-        $user = Auth::user();
-        $profile = CompanyBooks::ensureProfile($user);
-        $schedules = CompanyRecurringInvoice::with('client')
-            ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->where('auto_reminders', true)
-            ->get();
-
-        $sent = 0;
-        $skipped = 0;
-        $lastError = null;
-        foreach ($schedules as $schedule) {
-            $statement = CompanyClientStatement::forClient($schedule->client, $user->id);
-            if ($statement['total_owed'] <= 0.009) {
-                $skipped++;
-                continue;
-            }
-            $result = $this->sendBillingMail($profile, $schedule, 'reminder', null, (bool) $schedule->reminder_include_statement);
-            if ($result['ok']) {
-                $sent++;
-            } else {
-                $skipped++;
-                $lastError = $result['error'];
-            }
-        }
-
-        if ($sent === 0 && $lastError) {
-            return back()->withErrors(['email' => $lastError]);
-        }
-
-        return back()->with('success', $sent === 0
-            ? 'No auto-reminders sent (no open balances or missing client emails).'
-            : $sent.' payment reminder(s) sent'.($skipped ? ' ('.$skipped.' skipped).' : '.'));
+        return back()->withErrors([
+            'email' => 'Reminders are sent one company at a time. Use Send reminder on that company.',
+        ]);
     }
 
     /**
@@ -315,7 +332,6 @@ class RecurringInvoiceController extends Controller
     private function catchUpSchedule($user, CompanyProfile $profile, CompanyRecurringInvoice $schedule): array
     {
         $created = 0;
-        $emailed = 0;
         $today = Carbon::today();
         $guard = 0;
 
@@ -323,9 +339,8 @@ class RecurringInvoiceController extends Controller
 
         while ($schedule->is_active && $schedule->next_issue_on->lte($today) && $guard < 36) {
             $guard++;
-            $rfp = null;
 
-            DB::transaction(function () use ($user, $profile, $schedule, &$created, &$rfp) {
+            DB::transaction(function () use ($user, $profile, $schedule, &$created) {
                 $locked = CompanyRecurringInvoice::where('user_id', $user->id)
                     ->where('id', $schedule->id)
                     ->lockForUpdate()
@@ -378,22 +393,9 @@ class RecurringInvoiceController extends Controller
                 $schedule->refresh();
                 $created++;
             });
-
-            if ($rfp && $schedule->auto_email) {
-                $mail = $this->sendBillingMail(
-                    $profile,
-                    $schedule,
-                    'proforma',
-                    $rfp,
-                    (bool) $schedule->reminder_include_statement
-                );
-                if ($mail['ok']) {
-                    $emailed++;
-                }
-            }
         }
 
-        return ['created' => $created, 'emailed' => $emailed];
+        return ['created' => $created, 'emailed' => 0];
     }
 
     /**
@@ -554,22 +556,66 @@ class RecurringInvoiceController extends Controller
             }
         }
 
-        $pdfBinary = null;
         $warning = $status['hint'];
+        $files = [];
+        $statementAttached = false;
+        $dompdfReady = class_exists(\Barryvdh\DomPDF\Facade\Pdf::class) || class_exists(\Barryvdh\DomPDF\PDF::class);
+
+        if ($document) {
+            if (! $dompdfReady) {
+                return [
+                    'ok' => false,
+                    'error' => 'The proforma PDF could not be built, so the email was not sent.',
+                    'warning' => null,
+                    'to' => $to,
+                    'mailer' => $status['mailer'],
+                ];
+            }
+
+            try {
+                $document->loadMissing('client');
+                $proformaPdf = Pdf::loadView('company.pdf.document', [
+                    'document' => $document,
+                    'profile' => $profile,
+                    'creditedInvoice' => null,
+                ])->output();
+                if (! is_string($proformaPdf) || $proformaPdf === '') {
+                    throw new \RuntimeException('Empty proforma PDF.');
+                }
+                $files[] = [
+                    'name' => $document->pdfDownloadName(),
+                    'bytes' => $proformaPdf,
+                ];
+            } catch (\Throwable $e) {
+                report($e);
+
+                return [
+                    'ok' => false,
+                    'error' => 'The proforma PDF could not be built, so the email was not sent.',
+                    'warning' => null,
+                    'to' => $to,
+                    'mailer' => $status['mailer'],
+                ];
+            }
+        }
+
         if ($includeStatement && $statement) {
-            if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class) && ! class_exists(\Barryvdh\DomPDF\PDF::class)) {
-                $warning = trim(($warning ? $warning.' ' : '').'Reminder emailed without PDF (DomPDF not installed on this server).');
+            if (! $dompdfReady) {
+                $warning = trim(($warning ? $warning.' ' : '').'Emailed without the statement PDF (DomPDF not installed on this server).');
             } else {
                 try {
-                    $pdfBinary = Pdf::loadView('company.pdf.client-statement', [
-                        'profile' => $profile,
-                        'client' => $client,
-                        'statement' => $statement,
-                    ])->output();
+                    $files[] = [
+                        'name' => 'account-statement.pdf',
+                        'bytes' => Pdf::loadView('company.pdf.client-statement', [
+                            'profile' => $profile,
+                            'client' => $client,
+                            'statement' => $statement,
+                        ])->output(),
+                    ];
+                    $statementAttached = true;
                 } catch (\Throwable $e) {
                     report($e);
-                    $warning = trim(($warning ? $warning.' ' : '').'Reminder emailed without PDF (statement render failed).');
-                    $pdfBinary = null;
+                    $warning = trim(($warning ? $warning.' ' : '').'Emailed without the statement PDF (statement render failed).');
                 }
             }
         }
@@ -597,6 +643,7 @@ class RecurringInvoiceController extends Controller
                     'totalOwed' => $statement
                         ? number_format((float) $statement['total_owed'], 2)
                         : null,
+                    'statementAttached' => $statementAttached,
                 ])->render();
             } catch (\Throwable $e) {
                 report($e);
@@ -622,7 +669,7 @@ class RecurringInvoiceController extends Controller
             $operatorName = filled($profile->legal_name) ? (string) $profile->legal_name : null;
             $mailerName = $status['mailer'];
 
-            Mail::mailer($mailerName)->html($html, function ($message) use ($to, $subject, $pdfBinary, $operatorEmail, $operatorName) {
+            Mail::mailer($mailerName)->html($html, function ($message) use ($to, $subject, $files, $operatorEmail, $operatorName) {
                 $message->to($to)->subject($subject);
                 if ($copy = CompanyBooks::accountsCopyAddress($to)) {
                     $message->cc($copy);
@@ -636,8 +683,11 @@ class RecurringInvoiceController extends Controller
                     }
                 }
 
-                if (is_string($pdfBinary) && $pdfBinary !== '') {
-                    $message->attachData($pdfBinary, 'account-statement.pdf', [
+                foreach ($files as $file) {
+                    if (! is_string($file['bytes'] ?? null) || $file['bytes'] === '') {
+                        continue;
+                    }
+                    $message->attachData($file['bytes'], (string) $file['name'], [
                         'mime' => 'application/pdf',
                     ]);
                 }
