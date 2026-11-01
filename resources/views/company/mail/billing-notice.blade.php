@@ -13,11 +13,18 @@
             </p>
         @endif
         <p style="margin: 0 0 1rem; font-size: 13px; color: #475569;">
-            This is a request for payment (proforma). A tax invoice with VAT is issued once payment is received.
+            This is a request for payment (proforma). The proforma PDF is attached.
+            @if(!empty($statementAttached))
+                The account statement is attached as well.
+            @endif
+            A tax invoice with VAT is issued once payment is received.
         </p>
     @elseif($kind === 'reminder')
         <p style="margin: 0 0 1rem; font-size: 14px;">
             This is a friendly reminder regarding open balances on your Estate Hub account with {{ $companyName }}.
+            @if(!empty($statementAttached))
+                The account statement is attached.
+            @endif
         </p>
     @else
         <p style="margin: 0 0 1rem; font-size: 14px;">

@@ -558,6 +558,7 @@ Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->
         Route::get('/recurring/{schedule}/sla', [CompanyRecurringInvoiceController::class, 'downloadSla']);
         Route::get('/recurring/{schedule}/statement', [CompanyRecurringInvoiceController::class, 'statementPdf']);
         Route::post('/recurring/{schedule}/remind', [CompanyRecurringInvoiceController::class, 'sendReminder']);
+        Route::post('/recurring/{schedule}/email/{document}', [CompanyRecurringInvoiceController::class, 'sendProforma']);
 
         Route::get('/beta-invites', [CompanyBetaInviteController::class, 'index']);
         Route::post('/beta-invites', [CompanyBetaInviteController::class, 'store']);
