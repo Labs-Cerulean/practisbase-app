@@ -19,6 +19,28 @@
         $amountValue = old('amount', isset($read['net']) && $read['net'] !== null ? number_format((float) $read['net'], 2, '.', '') : '');
         $vatValue = old('vat_amount', isset($read['vat']) && $read['vat'] !== null ? number_format((float) $read['vat'], 2, '.', '') : '0');
         $rcOn = $errors->any() ? (bool) old('is_reverse_charge') : (bool) ($read['reverse_charge'] ?? false);
+        $computerGrossValue = old('computer_invoice_total');
+        $computerTreatment = old('computer_treatment');
+        if ($computerGrossValue === null && ! $errors->any()) {
+            $seedTotal = $read['total'] ?? $read['net'] ?? null;
+            $computerGrossValue = $seedTotal !== null ? number_format((float) $seedTotal, 2, '.', '') : '';
+        }
+        if ($computerTreatment === null) {
+            $seedNet = isset($read['net']) ? (float) $read['net'] : 0.0;
+            $seedVat = isset($read['vat']) ? (float) $read['vat'] : 0.0;
+            if ($rcOn || $seedVat <= 0.009) {
+                $computerTreatment = 'zero';
+            } elseif ($seedNet > 0 && abs(($seedVat / $seedNet) - 0.19) < 0.015) {
+                $computerTreatment = 'de19';
+            } elseif ($seedNet > 0 && abs(($seedVat / $seedNet) - 0.18) < 0.015) {
+                $computerTreatment = 'mt18';
+            } else {
+                $computerTreatment = 'irrecoverable';
+            }
+        }
+        if ($computerGrossValue === null) {
+            $computerGrossValue = '';
+        }
     @endphp
 
     <div style="max-width: 720px; margin: 0 auto;">
@@ -139,22 +161,22 @@
                     </select>
                     <div id="computerGuide" style="display: none; margin-top: 0.65rem; padding: 0.85rem 1rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #f8fafc;">
                         <div style="font-size: 0.8rem; color: var(--primary-navy); line-height: 1.45;">
-                            A computer is written off at 25% of the ex-VAT cost each year for four years. The first slice uses the invoice date. The next three use 1 January. VAT the company can reclaim is not part of that cost.
+                            The 25% is wear and tear, separate from VAT. The ex-VAT cost goes on the balance sheet, then a quarter of it is written off each year for four years. The first slice uses the invoice date. The next three use 1 January. VAT you can reclaim is not written off.
                         </div>
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; margin-top: 0.75rem;">
                             <div style="flex: 1; min-width: 9rem;">
-                                <label for="computerGross" style="display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.8rem;">Invoice total, VAT included</label>
-                                <input type="number" id="computerGross" step="0.01" min="0" placeholder="1848.75" style="width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                                <label for="computerGross" style="display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.8rem;">Invoice total on the PDF</label>
+                                <input type="number" name="computer_invoice_total" id="computerGross" step="0.01" min="0" value="{{ $computerGrossValue }}" placeholder="1553.57" style="width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                             </div>
-                            <div>
-                                <label for="computerVatRate" style="display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.8rem;">VAT rate</label>
-                                <select id="computerVatRate" style="padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
-                                    <option value="0.19">19% Germany</option>
-                                    <option value="0.18">18% Malta</option>
+                            <div style="flex: 1.4; min-width: 14rem;">
+                                <label for="computerTreatment" style="display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.8rem;">How VAT was charged</label>
+                                <select name="computer_treatment" id="computerTreatment" style="width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: white;">
+                                    <option value="zero" @selected($computerTreatment === 'zero')>0% — supplier charged no VAT (reverse charge)</option>
+                                    <option value="de19" @selected($computerTreatment === 'de19')>19% German VAT is inside the total</option>
+                                    <option value="mt18" @selected($computerTreatment === 'mt18')>18% Maltese VAT is inside the total</option>
+                                    <option value="irrecoverable" @selected($computerTreatment === 'irrecoverable')>VAT was charged and cannot be reclaimed</option>
                                 </select>
                             </div>
-                            <button type="button" id="computerSplit" style="background: var(--primary-navy); color: white; border: none; padding: 0.55rem 0.8rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">Split out the VAT</button>
-                            <button type="button" id="computerKeepGross" style="background: white; color: var(--primary-navy); border: 1px solid var(--border-light); padding: 0.55rem 0.8rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;">VAT cannot be reclaimed</button>
                         </div>
                         <div id="computerSchedule" style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.55rem;"></div>
                     </div>
@@ -169,7 +191,7 @@
                         <input type="number" name="amount" id="expenseAmount" step="0.01" min="0.01" value="{{ $amountValue }}" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     </div>
                     <div>
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Supplier VAT (€)</label>
+                        <label id="expenseVatLabel" style="display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem;">Supplier VAT (€)</label>
                         <input type="number" name="vat_amount" id="expenseVatAmount" step="0.01" min="0" value="{{ $vatValue }}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                         <div id="vatHint" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">Maltese supplier invoice VAT, if any. Leave €0 for US SaaS with no VAT.</div>
                     </div>
@@ -254,12 +276,12 @@
             var categoryEl = document.getElementById('expenseCategory');
             var computerGuide = document.getElementById('computerGuide');
             var computerGross = document.getElementById('computerGross');
-            var computerRate = document.getElementById('computerVatRate');
-            var computerSplit = document.getElementById('computerSplit');
-            var computerKeep = document.getElementById('computerKeepGross');
+            var computerTreatment = document.getElementById('computerTreatment');
             var computerSchedule = document.getElementById('computerSchedule');
             var amountElEarly = document.getElementById('expenseAmount');
             var vatElEarly = document.getElementById('expenseVatAmount');
+            var reverseChargeRate = {{ \App\Models\CompanyExpense::REVERSE_CHARGE_RATE }};
+            var applyingComputer = false;
 
             function money(n) {
                 return (Math.round(n * 100) / 100).toFixed(2);
@@ -270,50 +292,94 @@
                 if (computerGuide) computerGuide.style.display = isComputer ? 'block' : 'none';
                 if (!isComputer || !computerSchedule || !amountElEarly) return;
                 var cost = parseFloat(amountElEarly.value) || 0;
-                if (cost <= 0) {
-                    computerSchedule.textContent = 'Enter the ex-VAT cost. A VAT-inclusive total can be split above. If the VAT cannot be reclaimed, put the full total in Amount and leave Supplier VAT at €0.';
+                var gross = parseFloat(computerGross && computerGross.value) || 0;
+                var treatment = computerTreatment ? computerTreatment.value : 'zero';
+                if (cost <= 0 && gross <= 0) {
+                    computerSchedule.textContent = 'Type the invoice total from the PDF. The cost, the VAT, and the 25% write-off follow that total.';
                     return;
                 }
-                var annual = Math.round(cost / 4 * 100) / 100;
-                var last = Math.round((cost - annual * 3) * 100) / 100;
-                computerSchedule.textContent = 'Writes off €' + money(annual) + ' in the invoice year and on the next two 1 January dates, then €' + money(last) + ' in the fourth year.';
+                var base = cost > 0 ? cost : gross;
+                var annual = Math.round(base / 4 * 100) / 100;
+                var last = Math.round((base - annual * 3) * 100) / 100;
+                var writeOff = 'The cost €' + money(base) + ' is written off at €' + money(annual) + ' in the invoice year and on the next two 1 January dates, then €' + money(last) + ' in the fourth year.';
+                var link = '';
+                if (gross > 0 && treatment === 'zero') {
+                    var rcVat = Math.round(gross * reverseChargeRate * 100) / 100;
+                    link = 'Invoice total €' + money(gross) + ' is the cost. The supplier charged €0 VAT. Malta self-assesses €' + money(rcVat) + ' at 18%. That VAT is not added to the invoice total and is not written off. ';
+                } else if (gross > 0 && (treatment === 'de19' || treatment === 'mt18')) {
+                    var included = treatment === 'de19' ? 0.19 : 0.18;
+                    var net = Math.round(gross / (1 + included) * 100) / 100;
+                    var vatPart = Math.round((gross - net) * 100) / 100;
+                    var where = treatment === 'de19' ? 'German' : 'Maltese';
+                    link = 'Invoice total €' + money(gross) + ' = cost €' + money(net) + ' + ' + where + ' VAT €' + money(vatPart) + '. The VAT can be reclaimed, so it is not written off. ';
+                } else if (gross > 0) {
+                    link = 'Invoice total €' + money(gross) + ' is the full cost, because the VAT cannot be reclaimed. ';
+                }
+                computerSchedule.textContent = link + writeOff;
             }
 
-            function applyComputerGross(reclaim) {
-                var gross = parseFloat(computerGross && computerGross.value) || 0;
-                var rate = parseFloat(computerRate && computerRate.value) || 0;
-                if (!amountElEarly || !vatElEarly || gross <= 0) return;
-                var rcEl = document.getElementById('isReverseCharge');
-                if (rcEl) rcEl.checked = false;
-                if (reclaim && rate > 0) {
-                    var net = Math.round(gross / (1 + rate) * 100) / 100;
-                    amountElEarly.value = money(net);
-                    vatElEarly.value = money(gross - net);
+            function applyComputerTreatment() {
+                if (applyingComputer || !computerGross || !amountElEarly || !vatElEarly) return;
+                var gross = parseFloat(computerGross.value);
+                if (!(gross > 0)) {
+                    syncComputer();
+                    return;
+                }
+                applyingComputer = true;
+                var treatment = computerTreatment ? computerTreatment.value : 'zero';
+                var rcBox = document.getElementById('isReverseCharge');
+                if (treatment === 'de19' || treatment === 'mt18') {
+                    var includedRate = treatment === 'de19' ? 0.19 : 0.18;
+                    var netAmount = Math.round(gross / (1 + includedRate) * 100) / 100;
+                    if (rcBox) rcBox.checked = false;
+                    amountElEarly.value = money(netAmount);
+                    vatElEarly.value = money(gross - netAmount);
+                } else if (treatment === 'zero') {
+                    amountElEarly.value = money(gross);
+                    if (rcBox) rcBox.checked = true;
+                    else vatElEarly.value = '0.00';
                 } else {
+                    if (rcBox) rcBox.checked = false;
                     amountElEarly.value = money(gross);
                     vatElEarly.value = '0.00';
                 }
-                vatElEarly.readOnly = false;
-                vatElEarly.style.background = '';
-                if (rcEl) rcEl.dispatchEvent(new Event('change'));
+                if (rcBox) rcBox.dispatchEvent(new Event('change'));
                 amountElEarly.dispatchEvent(new Event('input'));
+                applyingComputer = false;
                 syncComputer();
             }
 
-            if (categoryEl) categoryEl.addEventListener('change', syncComputer);
+            if (categoryEl) categoryEl.addEventListener('change', function () {
+                if (categoryEl.value === 'computer' && computerGross && computerGross.value === '' && amountElEarly && parseFloat(amountElEarly.value) > 0) {
+                    var rcBox = document.getElementById('isReverseCharge');
+                    var currentVat = parseFloat(vatElEarly && vatElEarly.value) || 0;
+                    var rcOn = rcBox && rcBox.checked;
+                    computerGross.value = money(parseFloat(amountElEarly.value) + (rcOn ? 0 : currentVat));
+                    if (computerTreatment) {
+                        if (rcOn || currentVat <= 0.009) computerTreatment.value = 'zero';
+                        else if (Math.abs(currentVat / parseFloat(amountElEarly.value) - 0.19) < 0.015) computerTreatment.value = 'de19';
+                        else if (Math.abs(currentVat / parseFloat(amountElEarly.value) - 0.18) < 0.015) computerTreatment.value = 'mt18';
+                        else computerTreatment.value = 'irrecoverable';
+                    }
+                }
+                if (categoryEl.value === 'computer' && computerGross && parseFloat(computerGross.value) > 0) {
+                    applyComputerTreatment();
+                } else {
+                    syncComputer();
+                }
+            });
             if (amountElEarly) amountElEarly.addEventListener('input', syncComputer);
-            if (computerSplit) computerSplit.addEventListener('click', function () { applyComputerGross(true); });
-            if (computerKeep) computerKeep.addEventListener('click', function () { applyComputerGross(false); });
+            if (computerGross) computerGross.addEventListener('input', applyComputerTreatment);
+            if (computerTreatment) computerTreatment.addEventListener('change', applyComputerTreatment);
             if (funded) funded.addEventListener('change', syncFunded);
             syncSupplier();
             syncFunded();
-            syncComputer();
 
             @if($canReverseCharge ?? false)
-            var rate = {{ \App\Models\CompanyExpense::REVERSE_CHARGE_RATE }};
             var amountEl = document.getElementById('expenseAmount');
             var vatEl = document.getElementById('expenseVatAmount');
             var rcEl = document.getElementById('isReverseCharge');
+            var vatLabel = document.getElementById('expenseVatLabel');
             var hint = document.getElementById('vatHint');
             var preview = document.getElementById('rcPreview');
             var figure = document.getElementById('rcVatFigure');
@@ -324,27 +390,49 @@
                 function syncRc() {
                     var rc = rcEl.checked;
                     var net = parseFloat(amountEl.value) || 0;
-                    var rcVat = Math.round(Math.max(0, net) * rate * 100) / 100;
+                    var rcVat = Math.round(Math.max(0, net) * reverseChargeRate * 100) / 100;
                     if (rc) {
                         vatEl.value = rcVat.toFixed(2);
                         vatEl.readOnly = true;
                         vatEl.style.background = '#f1f5f9';
-                        hint.textContent = 'Supplier VAT stays €0 — self-assessed 18% is stored for the VAT return.';
+                        if (vatLabel) vatLabel.textContent = 'Self-assessed VAT (€)';
+                        hint.textContent = 'The supplier charged €0. This 18% is for the Malta VAT return only. It is not added to the invoice total and not paid to the supplier.';
                         preview.style.display = 'block';
                         figure.textContent = euro(rcVat);
                     } else {
                         vatEl.readOnly = false;
                         vatEl.style.background = '';
+                        if (vatLabel) vatLabel.textContent = 'Supplier VAT (€)';
                         hint.textContent = 'Maltese supplier invoice VAT, if any. Leave €0 for US SaaS with no VAT.';
                         preview.style.display = 'none';
                     }
                 }
-                rcEl.addEventListener('change', function () { syncRc(); syncComputer(); });
-                amountEl.addEventListener('input', syncRc);
+                rcEl.addEventListener('change', function () {
+                    if (applyingComputer) {
+                        syncRc();
+                        return;
+                    }
+                    if (categoryEl && categoryEl.value === 'computer' && computerTreatment && computerGross && parseFloat(computerGross.value) > 0) {
+                        if (rcEl.checked) computerTreatment.value = 'zero';
+                        else if (computerTreatment.value === 'zero') computerTreatment.value = 'irrecoverable';
+                        applyComputerTreatment();
+                        return;
+                    }
+                    syncRc();
+                    syncComputer();
+                });
+                amountEl.addEventListener('input', function () {
+                    if (!applyingComputer) syncRc();
+                });
                 syncRc();
-                syncComputer();
             }
             @endif
+
+            if (categoryEl && categoryEl.value === 'computer' && computerGross && parseFloat(computerGross.value) > 0) {
+                applyComputerTreatment();
+            } else {
+                syncComputer();
+            }
         })();
     </script>
 @endsection

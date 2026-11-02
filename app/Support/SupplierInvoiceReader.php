@@ -21,6 +21,8 @@ class SupplierInvoiceReader
         'github' => ['name' => 'GitHub', 'category' => 'software'],
         'digitalocean' => ['name' => 'DigitalOcean', 'category' => 'software'],
         'hetzner' => ['name' => 'Hetzner', 'category' => 'software'],
+        'cyberport' => ['name' => 'Cyberport SE', 'category' => 'computer'],
+        'computeruniverse' => ['name' => 'Cyberport SE', 'category' => 'computer'],
         'cloudflare' => ['name' => 'Cloudflare', 'category' => 'software'],
         'namecheap' => ['name' => 'Namecheap', 'category' => 'software'],
         'godaddy' => ['name' => 'GoDaddy', 'category' => 'marketing'],
@@ -109,7 +111,8 @@ class SupplierInvoiceReader
         $invoiceDate = self::invoiceDate($text);
         $currency = self::currency($text);
         $amounts = self::amounts($lines);
-        $reverseCharge = preg_match('/reverse\s+charge/i', $text) === 1;
+        $intraCommunity = preg_match('/innergemeinschaftlich|intra-?community/i', $text) === 1;
+        $reverseCharge = $intraCommunity || preg_match('/reverse\s+charge/i', $text) === 1;
         $category = $vendor['category'] ?? 'general';
 
         $description = null;
@@ -142,7 +145,9 @@ class SupplierInvoiceReader
             $total = null;
         }
 
-        if ($reverseCharge) {
+        if ($intraCommunity) {
+            $notes[] = 'Supplier charged 0% VAT on an intra-community supply. The invoice total is the cost. Reverse charge self-assesses 18% on that total. It is not foreign VAT inside the price.';
+        } elseif ($reverseCharge) {
             $notes[] = 'The invoice mentions reverse charge. Check the box if you must self-assess 18% Maltese VAT.';
         }
 
@@ -421,6 +426,21 @@ class SupplierInvoiceReader
         if (preg_match($pattern, $head, $match)) {
             return strtoupper($match[1]);
         }
+
+        $usedByCustomer = null;
+        if (preg_match('/verwendete\s+USt\.?-?IdNr\.?\s*([A-Z]{2}[A-Z0-9]{6,14})/i', $text, $usedMatch)) {
+            $usedByCustomer = strtoupper($usedMatch[1]);
+        }
+        if (preg_match_all('/USt\.?-?IdNr\.?:?\s*([A-Z]{2}[A-Z0-9]{6,14})/i', $text, $vatIds)) {
+            foreach ($vatIds[1] as $vatId) {
+                $vatId = strtoupper($vatId);
+                if ($usedByCustomer !== null && $vatId === $usedByCustomer) {
+                    continue;
+                }
+
+                return $vatId;
+            }
+        }
         if (preg_match('/\b((?:MT|IE|DE|GB|FR|IT|ES|NL|LU|BE|AT|CY|PL|SE)[A-Z0-9]{6,14})\b/', $head, $match)) {
             return strtoupper($match[1]);
         }
@@ -496,6 +516,9 @@ class SupplierInvoiceReader
         if (preg_match('/invoice\s*(?:number|no\.?|#|id)\s*[:#]?\s*([A-Z0-9][A-Z0-9\/\-]{2,40})/i', $text, $match)) {
             return strtoupper($match[1]);
         }
+        if (preg_match('/rechnungsnr\.?(?:\/-datum)?\s*[:.]?\s*([0-9]{5,})/i', $text, $match)) {
+            return $match[1];
+        }
 
         return null;
     }
@@ -503,7 +526,7 @@ class SupplierInvoiceReader
     private static function invoiceDate(string $text): ?string
     {
         $pattern = '/(?:invoice\s*date|date\s*of\s*issue|issue\s*date|dated)\s*[:\-]?\s*([0-9]{1,2}[\/.\-][0-9]{1,2}[\/.\-][0-9]{2,4}|[0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{4}|[A-Za-z]{3,9}\s+[0-9]{1,2},?\s+[0-9]{4})/i';
-        if (! preg_match($pattern, $text, $match)) {
+        if (! preg_match($pattern, $text, $match) && ! preg_match('/rechnungsnr[^\n]{0,48}?(\d{1,2}\.\d{1,2}\.\d{4})/i', $text, $match)) {
             return null;
         }
 
@@ -563,9 +586,9 @@ class SupplierInvoiceReader
      */
     private static function amounts(array $lines): array
     {
-        $subtotal = self::amountAfterLabel($lines, ['subtotal', 'sub-total', 'total excl. vat', 'total excluding vat', 'net amount', 'amount excl. vat']);
+        $subtotal = self::amountAfterLabel($lines, ['subtotal', 'sub-total', 'total excl. vat', 'total excluding vat', 'net amount', 'amount excl. vat', 'summe netto', 'nettobetrag', 'zwischensumme']);
         $vat = self::vatAmount($lines);
-        $total = self::amountAfterLabel($lines, ['amount due', 'grand total', 'balance due', 'total due', 'total']);
+        $total = self::amountAfterLabel($lines, ['amount due', 'grand total', 'balance due', 'total due', 'gesamtbetrag', 'total']);
 
         if ($subtotal !== null) {
             $net = $subtotal;
@@ -629,7 +652,7 @@ class SupplierInvoiceReader
     private static function vatAmount(array $lines): ?float
     {
         foreach ($lines as $i => $line) {
-            if (! preg_match('/^(?:vat|tax|gst)\b/i', $line)) {
+            if (! preg_match('/^(?:vat|tax|gst|umsatzsteuer|mwst)\b/i', $line)) {
                 continue;
             }
             if (preg_match('/\b(?:number|no\.?|id|reg|registration)\b/i', $line) && ! preg_match('/\d+[.,]\d{2}\s*$/', $line)) {
