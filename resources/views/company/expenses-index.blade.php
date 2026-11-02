@@ -8,7 +8,7 @@
             'owed' => 'Director-funded costs still waiting for a refund.',
             'unpaid' => 'Supplier invoices logged, still waiting for the company to pay.',
             'company' => 'Paid from the company bank or card when the invoice was logged.',
-            'reversed' => 'These no longer count in totals. The original journal is still in Accounts.',
+            'reversed' => 'These no longer count in totals. Open a line to remove a mistaken pair from the books.',
             default => 'Open a line for the receipt, a refund, or a reversal. Older months stay closed.',
         };
     @endphp

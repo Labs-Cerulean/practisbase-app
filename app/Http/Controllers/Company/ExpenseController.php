@@ -475,6 +475,21 @@ class ExpenseController extends Controller
         return back()->with('success', $message);
     }
 
+    public function remove(int $expense)
+    {
+        $user = Auth::user();
+        $model = CompanyExpense::where('user_id', $user->id)->where('id', $expense)->firstOrFail();
+        $description = (string) $model->description;
+
+        try {
+            CompanyLedger::purgeReversedExpense($model);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('success', 'Removed '.$description.' and its reversal. Both lines are off the bank ledger.');
+    }
+
     public function assignSupplier(Request $request, int $expense)
     {
         $user = Auth::user();

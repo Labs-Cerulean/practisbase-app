@@ -103,6 +103,15 @@
                     <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: #991b1b; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Reverse</button>
                 </form>
             @endif
+            @if($expense->isReversed() && !$expense->company_expense_payment_id)
+                @php
+                    $removeConfirm = 'Remove '.$expense->description.' and its reversal? Both lines leave the books. They already cancel, so the totals stay the same.';
+                @endphp
+                <form method="POST" action="/company/expenses/{{ $expense->id }}/remove" onsubmit="return confirm(@js($removeConfirm));">
+                    @csrf
+                    <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: white; color: #991b1b; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Remove mistaken entry</button>
+                </form>
+            @endif
         </div>
     </div>
 </details>
