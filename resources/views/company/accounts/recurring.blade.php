@@ -181,20 +181,23 @@
                 $sections = $schedule->package_sections ?? [];
                 $subtotal = $schedule->monthlySubtotal();
                 $issued = $issuedBySchedule[$schedule->id] ?? collect();
-                $behind = $schedule->is_active && $schedule->next_issue_on->lte(now()->startOfDay());
-                $clientEmail = trim((string) ($schedule->client->email ?? ''));
-                $clientName = $schedule->client->name ?? 'this client';
+                $behind = $schedule->is_active && $schedule->next_issue_on && $schedule->next_issue_on->lte(now()->startOfDay());
+                $clientName = optional($schedule->client)->name ?: 'this client';
+                $clientEmail = trim((string) (optional($schedule->client)->email ?? ''));
                 $clientCanEmail = $clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL);
+                $reminderMailBody = 'This sends one email to '.$clientName.' at '.$clientEmail.'. '
+                    .($schedule->reminder_include_statement ? 'It attaches the account statement. ' : 'It does not attach a statement. ')
+                    .'It does not attach a proforma. No other company is emailed.';
             @endphp
             <div id="schedule-{{ $schedule->id }}" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; box-shadow: var(--shadow-sm);">
                 <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
                     <div>
                         <div style="font-weight: 700; color: var(--primary-navy); font-size: 1.05rem;">{{ $schedule->title }}</div>
                         <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.45;">
-                            <a href="/company/clients/{{ $schedule->company_client_id }}" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">{{ $schedule->client->name ?? 'Client' }}</a>
+                            <a href="/company/clients/{{ $schedule->company_client_id }}" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">{{ $clientName }}</a>
                             · start {{ optional($schedule->start_date)->format('d M Y') ?? '—' }}
                             · billing day {{ $schedule->day_of_month }}
-                            · next {{ $schedule->next_issue_on->format('d M Y') }}
+                            · next {{ optional($schedule->next_issue_on)->format('d M Y') ?? '—' }}
                             · {{ $schedule->is_active ? 'active' : 'paused' }}
                             @if($behind)
                                 <span style="color: #b45309; font-weight: 700;"> · catch-up needed</span>
@@ -248,9 +251,13 @@
                                             $proforma = ($doc->type === 'invoice' && $doc->linkedDocument && $doc->linkedDocument->type === 'rfp')
                                                 ? $doc->linkedDocument
                                                 : null;
+                                            $proformaMailBody = 'This sends one email to '.$clientName.' at '.$clientEmail
+                                                .'. It attaches the proforma PDF '.$doc->document_number
+                                                .($schedule->reminder_include_statement ? ' and the account statement.' : '.')
+                                                .' No other company is emailed.';
                                         @endphp
                                         <tr style="border-top: 1px solid var(--border-light);">
-                                            <td style="padding: 0.5rem 0.65rem; white-space: nowrap;">{{ $doc->issue_date->format('d M Y') }}</td>
+                                            <td style="padding: 0.5rem 0.65rem; white-space: nowrap;">{{ optional($doc->issue_date)->format('d M Y') ?? '—' }}</td>
                                             <td style="padding: 0.5rem 0.65rem; white-space: nowrap; color: var(--text-muted);">{{ $doc->coverageLabel() }}</td>
                                             <td style="padding: 0.5rem 0.65rem; font-weight: 600; color: var(--primary-navy);">{{ $doc->document_number }}</td>
                                             <td style="padding: 0.5rem 0.65rem;">{{ $typeLabel }}</td>
@@ -261,7 +268,7 @@
                                                 <a href="/company/invoices/{{ $doc->id }}/pdf" style="font-size: 0.78rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">PDF</a>
                                                 @if($doc->type === 'rfp' && $doc->status !== 'converted')
                                                     @if($clientCanEmail)
-                                                        <form method="POST" action="/company/recurring/{{ $schedule->id }}/email/{{ $doc->id }}" style="display: inline; margin-left: 0.45rem;" data-mail-sends="1" data-mail-title="Send this proforma by email?" data-mail-body="This sends one email to {{ $clientName }} at {{ $clientEmail }}. It attaches the proforma PDF {{ $doc->document_number }}@if($schedule->reminder_include_statement) and the account statement@endif. No other company is emailed.">
+                                                        <form method="POST" action="/company/recurring/{{ $schedule->id }}/email/{{ $doc->id }}" style="display: inline; margin-left: 0.45rem;" data-mail-sends="1" data-mail-title="Send this proforma by email?" data-mail-body="{{ $proformaMailBody }}">
                                                             @csrf
                                                             <input type="hidden" name="confirm_send" value="">
                                                             <input type="hidden" name="include_statement" value="{{ $schedule->reminder_include_statement ? '1' : '0' }}">
@@ -330,7 +337,7 @@
                     <div style="display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; margin-top: 0.65rem;">
                         <a href="/company/recurring/{{ $schedule->id }}/statement" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none; padding: 0.4rem 0.7rem; border: 1px solid var(--border-light); border-radius: var(--radius-md);">Statement PDF</a>
                         @if($clientCanEmail)
-                            <form method="POST" action="/company/recurring/{{ $schedule->id }}/remind" style="display: inline;" data-mail-sends="1" data-mail-title="Send a payment reminder?" data-mail-body="This sends one email to {{ $clientName }} at {{ $clientEmail }}.@if($schedule->reminder_include_statement) It attaches the account statement.@else It does not attach a statement.@endif It does not attach a proforma. No other company is emailed.">
+                            <form method="POST" action="/company/recurring/{{ $schedule->id }}/remind" style="display: inline;" data-mail-sends="1" data-mail-title="Send a payment reminder?" data-mail-body="{{ $reminderMailBody }}">
                                 @csrf
                                 <input type="hidden" name="confirm_send" value="">
                                 <input type="hidden" name="include_statement" value="{{ $schedule->reminder_include_statement ? '1' : '0' }}">
