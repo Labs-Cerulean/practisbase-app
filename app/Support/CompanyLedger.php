@@ -16,6 +16,7 @@ use App\Models\CompanyPersonalReceipt;
 use App\Models\CompanyProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -25,6 +26,21 @@ use RuntimeException;
  */
 class CompanyLedger
 {
+    /**
+     * Journals that belong to one expense and may be deleted with it.
+     * A supplier-payment batch is keyed by the payment, so it is not in this list.
+     *
+     * @var list<string>
+     */
+    public const EXPENSE_PURGE_SOURCE_TYPES = [
+        'company_expense',
+        'company_expense_reversal',
+        'company_expense_refund',
+        'company_expense_refund_reversal',
+        'company_expense_depreciation',
+        'company_expense_depreciation_reversal',
+    ];
+
     /** @var array<int, true> */
     private static array $chartReadyForUser = [];
 
@@ -810,6 +826,221 @@ class CompanyLedger
 
             return $released;
         });
+    }
+
+    /**
+     * Why a reversed expense cannot be removed, or null when removal is allowed.
+     * Removal is only for a mistake whose journals already cancel each other.
+     *
+     * @param  list<string>  $sourceTypes
+     */
+    public static function reversedExpensePurgeBlock(?string $reversedAt, ?int $paymentId, array $sourceTypes, bool $matched): ?string
+    {
+        if ($reversedAt === null || $reversedAt === '') {
+            return 'Reverse the expense first. Removing it is only for an entry that was a mistake and already cancels itself out.';
+        }
+
+        if ($paymentId) {
+            return 'This expense is tied to a supplier payment, so the reversal stays on the books.';
+        }
+
+        if ($matched) {
+            return 'A line from this expense is matched to the bank statement. Unmatch it before removing the entry.';
+        }
+
+        $counts = array_count_values($sourceTypes);
+        if (($counts['company_expense'] ?? 0) !== 1 || ($counts['company_expense_reversal'] ?? 0) !== 1) {
+            return 'The original journal and its reversal both need to be on the books before they can be removed together.';
+        }
+
+        if (($counts['company_expense_refund'] ?? 0) !== ($counts['company_expense_refund_reversal'] ?? 0)) {
+            return 'The director refund and its reversal both need to be on the books before they can be removed together.';
+        }
+
+        if (($counts['company_expense_depreciation'] ?? 0) !== ($counts['company_expense_depreciation_reversal'] ?? 0)) {
+            return 'Computer wear and tear and its reversal both need to be on the books before they can be removed together.';
+        }
+
+        foreach (array_keys($counts) as $type) {
+            if (in_array($type, self::EXPENSE_PURGE_SOURCE_TYPES, true)) {
+                continue;
+            }
+            if ($type === 'company_expense_supplier_payment_reversal' || $type === 'company_expense_payment') {
+                return 'This expense is tied to a supplier payment, so the reversal stays on the books.';
+            }
+
+            return 'This expense has other journal entries, so it stays on the books.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Every account in the set nets to zero, so deleting the set does not change the totals.
+     *
+     * @param  list<array{account: string, side: string, amount: float|int|string}>  $lines
+     */
+    public static function journalsAlreadyCancel(array $lines): bool
+    {
+        if ($lines === []) {
+            return false;
+        }
+
+        $balances = [];
+        foreach ($lines as $line) {
+            $signed = ($line['side'] === 'debit' ? 1 : -1) * (float) $line['amount'];
+            $account = (string) $line['account'];
+            $balances[$account] = ($balances[$account] ?? 0) + $signed;
+        }
+
+        foreach ($balances as $balance) {
+            if (abs($balance) >= 0.005) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  list<string>  $sourceTypes
+     * @param  list<array{account: string, side: string, amount: float|int|string}>  $lines
+     * @param  list<int|string|null>  $bankStatementLineIds
+     * @param  list<int>  $statementMatchedLineIds
+     */
+    public static function canRemoveReversedExpense(
+        ?string $reversedAt,
+        ?int $paymentId,
+        array $sourceTypes,
+        array $lines,
+        array $bankStatementLineIds,
+        array $statementMatchedLineIds
+    ): bool {
+        $matched = false;
+        foreach ($bankStatementLineIds as $id) {
+            if ($id) {
+                $matched = true;
+                break;
+            }
+        }
+        if (! $matched) {
+            foreach ($statementMatchedLineIds as $id) {
+                if ($id) {
+                    $matched = true;
+                    break;
+                }
+            }
+        }
+
+        return self::reversedExpensePurgeBlock($reversedAt, $paymentId, $sourceTypes, $matched) === null
+            && self::journalsAlreadyCancel($lines);
+    }
+
+    /**
+     * Delete a reversed expense and every journal that belongs to it.
+     * Refuses unless the journals already cancel, so the totals do not move.
+     */
+    public static function purgeReversedExpense(CompanyExpense $expense): void
+    {
+        $userId = (int) $expense->user_id;
+        $receiptPath = null;
+
+        DB::transaction(function () use ($expense, $userId, &$receiptPath) {
+            $locked = CompanyExpense::where('user_id', $userId)
+                ->where('id', $expense->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                throw ValidationException::withMessages([
+                    'expense' => 'This expense is no longer on your books.',
+                ]);
+            }
+
+            $entries = CompanyJournalEntry::where('user_id', $userId)
+                ->where('source_id', $locked->id)
+                ->where('source_type', 'like', 'company_expense%')
+                ->lockForUpdate()
+                ->get();
+
+            $expenseDate = $locked->expense_date instanceof \DateTimeInterface
+                ? $locked->expense_date->format('Y-m-d')
+                : (string) $locked->expense_date;
+            self::assertDateOpen($userId, $expenseDate);
+
+            foreach ($entries as $entry) {
+                $date = $entry->entry_date instanceof \DateTimeInterface
+                    ? $entry->entry_date->format('Y-m-d')
+                    : (string) $entry->entry_date;
+                self::assertDateOpen($userId, $date);
+            }
+
+            $entryIds = $entries->pluck('id')->all();
+            $lines = $entryIds === []
+                ? collect()
+                : CompanyJournalLine::where('user_id', $userId)
+                    ->whereIn('journal_entry_id', $entryIds)
+                    ->lockForUpdate()
+                    ->get();
+
+            $matched = $lines->contains(fn (CompanyJournalLine $line) => $line->bank_statement_line_id !== null);
+            if (! $matched && $lines->isNotEmpty()) {
+                $matched = CompanyBankStatementLine::where('user_id', $userId)
+                    ->whereIn('matched_journal_line_id', $lines->pluck('id')->all())
+                    ->exists();
+            }
+
+            $reversalDate = $locked->reversed_at instanceof \DateTimeInterface
+                ? $locked->reversed_at->format('Y-m-d')
+                : ($locked->reversed_at ? (string) $locked->reversed_at : null);
+
+            $block = self::reversedExpensePurgeBlock(
+                $reversalDate,
+                $locked->company_expense_payment_id ? (int) $locked->company_expense_payment_id : null,
+                $entries->pluck('source_type')->all(),
+                $matched
+            );
+
+            if ($block !== null) {
+                throw ValidationException::withMessages([
+                    'expense' => $block,
+                ]);
+            }
+
+            $signed = [];
+            foreach ($lines as $line) {
+                $signed[] = [
+                    'account' => (string) $line->gl_account_id,
+                    'side' => (string) $line->side,
+                    'amount' => (float) $line->amount,
+                ];
+            }
+
+            if (! self::journalsAlreadyCancel($signed)) {
+                throw ValidationException::withMessages([
+                    'expense' => 'These journals do not cancel each other, so they stay on the books.',
+                ]);
+            }
+
+            CompanyJournalLine::where('user_id', $userId)
+                ->whereIn('journal_entry_id', $entryIds)
+                ->delete();
+
+            CompanyJournalEntry::where('user_id', $userId)
+                ->whereIn('id', $entryIds)
+                ->delete();
+
+            $receiptPath = $locked->receipt_path;
+            $locked->delete();
+        });
+
+        if (is_string($receiptPath) && $receiptPath !== '') {
+            try {
+                Storage::disk(TenantStorage::diskName())->delete($receiptPath);
+            } catch (\Throwable) {
+                // The books are already clear. A leftover receipt file can be removed later.
+            }
+        }
     }
 
     private static function releaseExpenseBankMatches(CompanyExpense $expense): int

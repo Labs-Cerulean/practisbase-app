@@ -139,13 +139,35 @@
 
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.15rem 1.35rem; box-shadow: var(--shadow-sm);">
             <h2 style="font-size: 1.05rem; color: var(--primary-navy); margin: 0 0 1rem;">Unmatched bank ledger</h2>
+            @php $removableExpenses = $removableExpenses ?? []; @endphp
             <div style="display: grid; gap: 0.55rem;">
                 @forelse($unmatchedLedger as $jl)
-                    @php $signed = $jl->side === 'debit' ? (float) $jl->amount : -1 * (float) $jl->amount; @endphp
-                    <div style="display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.55rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem;">
-                        <div>
+                    @php
+                        $signed = $jl->signedAmount();
+                        $removeExpenseId = null;
+                        $removeDescription = null;
+                        $entry = $jl->entry;
+                        if ($entry && in_array($entry->source_type, ['company_expense', 'company_expense_reversal'], true)) {
+                            $candidateId = (int) $entry->source_id;
+                            if (isset($removableExpenses[$candidateId])) {
+                                $removeExpenseId = $candidateId;
+                                $removeDescription = $removableExpenses[$candidateId];
+                            }
+                        }
+                        $removeConfirm = $removeDescription
+                            ? 'Remove '.$removeDescription.' and its reversal? Both lines leave the books. They already cancel, so the totals stay the same.'
+                            : '';
+                    @endphp
+                    <div style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; padding: 0.55rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem;">
+                        <div style="min-width: 0;">
                             <div style="color: var(--primary-navy); font-weight: 600;">{{ $jl->entry->description }}</div>
                             <div style="font-size: 0.75rem; color: var(--text-muted);">{{ $jl->entry->entry_date->format('d M Y') }} · line #{{ $jl->id }}</div>
+                            @if($removeExpenseId)
+                                <form method="POST" action="/company/expenses/{{ $removeExpenseId }}/remove" style="margin-top: 0.4rem;" onsubmit="return confirm(@js($removeConfirm));">
+                                    @csrf
+                                    <button type="submit" style="font-size: 0.75rem; font-weight: 600; background: white; color: #991b1b; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 0.28rem 0.55rem; cursor: pointer;">Remove both lines</button>
+                                </form>
+                            @endif
                         </div>
                         <div style="font-weight: 700; font-variant-numeric: tabular-nums; color: {{ $signed >= 0 ? '#059669' : '#b91c1c' }};">€{{ number_format($signed, 2) }}</div>
                     </div>
