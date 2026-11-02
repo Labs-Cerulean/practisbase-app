@@ -9,6 +9,34 @@ use PHPUnit\Framework\TestCase;
 
 class CompanyComputerAllowanceTest extends TestCase
 {
+    public function test_zero_rated_invoice_keeps_the_total_as_the_cost_and_self_assesses_eighteen_percent(): void
+    {
+        $applied = CompanyComputerAllowance::fromInvoiceTotal(1553.57, 'zero');
+
+        $this->assertSame(1553.57, $applied['amount']);
+        $this->assertSame(279.64, $applied['vat_amount']);
+        $this->assertTrue($applied['reverse_charge']);
+        $this->assertSame(1553.57, round($applied['amount'], 2));
+
+        $slices = CompanyComputerAllowance::slices($applied['amount'], '2026-10-30', '2026-12-31');
+        $this->assertSame(388.39, $slices[0]['amount']);
+        $this->assertSame(388.40, $slices[3]['amount']);
+        $this->assertSame(1553.57, round(array_sum(array_column($slices, 'amount')), 2));
+
+        $lines = CompanyLedger::expenseJournalLines(
+            $applied['amount'],
+            $applied['vat_amount'],
+            $applied['reverse_charge'],
+            'company',
+            'computer',
+            'Cyberport computer parts'
+        );
+        $this->assertSame(1553.57, $this->line($lines, CompanyChartOfAccounts::COMPUTER_EQUIPMENT, 'debit')['amount']);
+        $this->assertSame(279.64, $this->line($lines, CompanyChartOfAccounts::INPUT_VAT, 'debit')['amount']);
+        $this->assertSame(279.64, $this->line($lines, CompanyChartOfAccounts::OUTPUT_VAT, 'credit')['amount']);
+        $this->assertSame(1553.57, $this->line($lines, CompanyChartOfAccounts::BANK, 'credit')['amount']);
+    }
+
     public function test_german_inclusive_total_splits_off_nineteen_percent_vat(): void
     {
         $split = CompanyComputerAllowance::splitInclusive(1848.75, 0.19);
@@ -16,6 +44,11 @@ class CompanyComputerAllowanceTest extends TestCase
         $this->assertSame(1553.57, $split['amount']);
         $this->assertSame(295.18, $split['vat']);
         $this->assertSame(1848.75, round($split['amount'] + $split['vat'], 2));
+
+        $applied = CompanyComputerAllowance::fromInvoiceTotal(1848.75, 'de19');
+        $this->assertSame($split['amount'], $applied['amount']);
+        $this->assertSame($split['vat'], $applied['vat_amount']);
+        $this->assertFalse($applied['reverse_charge']);
     }
 
     public function test_maltese_inclusive_total_splits_off_eighteen_percent_vat(): void

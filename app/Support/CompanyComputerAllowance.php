@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\CompanyExpense;
+
 /**
  * Malta wear and tear for computers and electronic equipment: 25% a year for four years.
  * The amount written off is the ex-VAT cost. Reclaimable VAT is not part of it.
@@ -9,6 +11,42 @@ namespace App\Support;
 class CompanyComputerAllowance
 {
     public const YEARS = 4;
+
+    /**
+     * Turn the invoice total into the cost and the VAT figure the form should store.
+     * zero: supplier charged no VAT, so the total is the cost and Malta self-assesses 18%.
+     * de19 / mt18: that rate is already inside the total.
+     * irrecoverable: the whole total is the cost, including VAT that cannot be reclaimed.
+     *
+     * @return array{amount: float, vat_amount: float, reverse_charge: bool}
+     */
+    public static function fromInvoiceTotal(float $total, string $treatment): array
+    {
+        $total = round($total, 2);
+        if ($treatment === 'de19' || $treatment === 'mt18') {
+            $split = self::splitInclusive($total, $treatment === 'de19' ? 0.19 : 0.18);
+
+            return [
+                'amount' => $split['amount'],
+                'vat_amount' => $split['vat'],
+                'reverse_charge' => false,
+            ];
+        }
+
+        if ($treatment === 'zero') {
+            return [
+                'amount' => $total,
+                'vat_amount' => round(max(0, $total) * CompanyExpense::REVERSE_CHARGE_RATE, 2),
+                'reverse_charge' => true,
+            ];
+        }
+
+        return [
+            'amount' => $total,
+            'vat_amount' => 0.0,
+            'reverse_charge' => false,
+        ];
+    }
 
     /**
      * Split a VAT-inclusive total into the ex-VAT cost and the VAT.

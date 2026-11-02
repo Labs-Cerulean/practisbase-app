@@ -75,6 +75,46 @@ TXT;
         $this->assertSame([], $read['matched_supplier_ids']);
     }
 
+    public function test_german_intra_community_computer_invoice_is_zero_rated_reverse_charge(): void
+    {
+        $text = <<<'TXT'
+computeruniverse | Justus-von-Liebig-Straße 1 | 61352 Bad Homburg
+Cerulean Labs Ltd
+Herr Nicholas Vassallo
+Flat 6b Marigold Court, Triq Carmelo Schembri
+MST2840 MOSTA
+MALTA
+Rechnungsnr./-datum 6007450790 / 30.10.2026
+verwendete USt-IdNr. MT33078324
+Steuerfreie innergemeinschaftliche Lieferung
+Pos. Produkt- bzw. Leistungsbeschreibung Menge USt. (%) Einzelpreis Betrag Netto
+1 ASRock Z890I NOVA WiFi ITX Mainboard 1 0,0 % 220,96 220,96 EUR
+Zwischensumme: 1.553,57 EUR
+Summe Netto 1.553,57 EUR
+Nettobetrag EUR 1.553,57 EUR
+Umsatzsteuer 0,00 % auf 1.553,57 EUR 0,00 EUR
+Gesamtbetrag 1.553,57 EUR
+Eine Marke der Cyberport SE
+Mail: info@computeruniverse.net
+Ust.-IdNr.: DE360955897
+TXT;
+
+        $read = SupplierInvoiceReader::read($text, [], ['Cerulean Labs Limited', 'Cerulean Labs']);
+
+        $this->assertSame('Cyberport SE', $read['supplier_name']);
+        $this->assertSame('DE360955897', $read['vat_number']);
+        $this->assertSame('Germany', $read['country']);
+        $this->assertSame('info@computeruniverse.net', $read['email']);
+        $this->assertSame('6007450790', $read['invoice_number']);
+        $this->assertSame('2026-10-30', $read['invoice_date']);
+        $this->assertSame(1553.57, $read['net']);
+        $this->assertSame(0.0, $read['vat']);
+        $this->assertSame(1553.57, $read['total']);
+        $this->assertSame('computer', $read['category']);
+        $this->assertTrue($read['reverse_charge']);
+        $this->assertStringContainsString('0% VAT', implode(' ', $read['notes']));
+    }
+
     public function test_reverse_charge_is_flagged_and_foreign_currency_amounts_stay_blank(): void
     {
         $text = <<<'TXT'

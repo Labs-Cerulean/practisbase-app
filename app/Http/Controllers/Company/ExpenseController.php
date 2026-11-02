@@ -363,7 +363,9 @@ class ExpenseController extends Controller
             $msg = 'Computer logged for '.$supplier->name.'. €'.number_format($amount, 2)
                 .' is on the balance sheet. €'.number_format($first, 2)
                 .' is written off this year, then again on 1 January for the next three years.';
-            if ($vatAmount <= 0) {
+            if ($isReverseCharge) {
+                $msg .= ' Supplier charged no VAT. Self-assessed 18% (€'.number_format($vatAmount, 2).') is on the VAT return and is not part of the cost being written off.';
+            } elseif ($vatAmount <= 0) {
                 $msg .= ' Supplier VAT is €0, so any VAT inside that amount is part of the cost being written off.';
             } else {
                 $msg .= ' The VAT stays out of the amount that is written off.';
