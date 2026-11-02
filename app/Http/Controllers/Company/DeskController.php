@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
+use App\Models\CompanyClient;
 use App\Models\CompanyExpense;
 use App\Models\CompanyGlAccount;
 use App\Models\CompanyInvoice;
@@ -10,6 +11,7 @@ use App\Models\CompanyPayment;
 use App\Support\CompanyBooks;
 use App\Support\CompanyChartOfAccounts;
 use App\Support\CompanyComplianceCalendar;
+use App\Support\CompanyDeskReport;
 use App\Support\CompanyLedger;
 use App\Support\CompanyLiquidFunds;
 use App\Support\CompanyVatReturn;
@@ -111,6 +113,56 @@ class DeskController extends Controller
             $profile->shareCapitalReceived() ? (float) $profile->share_capital_eur : 0.0
         );
 
+        $today = now()->timezone('Europe/Malta')->toDateString();
+        $clientNames = CompanyClient::query()->where('user_id', $userId)->pluck('name', 'id');
+        $deskDocuments = CompanyInvoice::query()
+            ->where('user_id', $userId)
+            ->get(['id', 'company_client_id', 'type', 'status', 'issue_date', 'total', 'amount_paid', 'linked_document_id', 'parent_document_id'])
+            ->map(function (CompanyInvoice $doc) use ($clientNames) {
+                $clientId = $doc->company_client_id ? (int) $doc->company_client_id : null;
+
+                return [
+                    'id' => (int) $doc->id,
+                    'client_id' => $clientId,
+                    'client_name' => $clientId ? (string) ($clientNames[$clientId] ?? '') : '',
+                    'type' => (string) $doc->type,
+                    'status' => (string) $doc->status,
+                    'issue_date' => optional($doc->issue_date)->toDateString(),
+                    'total' => (float) $doc->total,
+                    'amount_paid' => (float) $doc->amount_paid,
+                    'linked_document_id' => $doc->linked_document_id ? (int) $doc->linked_document_id : null,
+                    'parent_document_id' => $doc->parent_document_id ? (int) $doc->parent_document_id : null,
+                ];
+            })
+            ->values()
+            ->all();
+        $deskPayments = CompanyPayment::query()
+            ->where('user_id', $userId)
+            ->get(['company_invoice_id', 'amount', 'payment_date', 'is_transfer'])
+            ->map(function (CompanyPayment $payment) {
+                return [
+                    'invoice_id' => $payment->company_invoice_id ? (int) $payment->company_invoice_id : null,
+                    'amount' => (float) $payment->amount,
+                    'payment_date' => optional($payment->payment_date)->toDateString(),
+                    'is_transfer' => (bool) $payment->is_transfer,
+                ];
+            })
+            ->values()
+            ->all();
+        $deskExpenses = CompanyExpense::query()
+            ->where('user_id', $userId)
+            ->get(['expense_date', 'amount', 'category', 'reversed_at'])
+            ->map(function (CompanyExpense $expense) {
+                return [
+                    'expense_date' => optional($expense->expense_date)->toDateString(),
+                    'amount' => (float) $expense->amount,
+                    'category' => (string) $expense->category,
+                    'reversed' => $expense->reversed_at !== null,
+                ];
+            })
+            ->values()
+            ->all();
+
         return view('company.desk', [
             'profile' => $profile,
             'periodLabel' => CompanyBooks::periodLabel($profile),
@@ -130,6 +182,7 @@ class DeskController extends Controller
             'bankBalance' => $bankBalance,
             'liquidFunds' => $liquidFunds,
             'complianceUpcoming' => CompanyComplianceCalendar::upcoming($profile, 8),
+            'deskReport' => CompanyDeskReport::build($deskDocuments, $deskPayments, $deskExpenses, $today),
         ]);
     }
 
