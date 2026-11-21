@@ -11,6 +11,7 @@ use App\Models\CompanyPayment;
 use App\Support\CompanyBooks;
 use App\Support\CompanyChartOfAccounts;
 use App\Support\CompanyComplianceCalendar;
+use App\Support\CompanyCorporateTax;
 use App\Support\CompanyDeskReport;
 use App\Support\CompanyLedger;
 use App\Support\CompanyLiquidFunds;
@@ -196,12 +197,19 @@ class DeskController extends Controller
             $year = (int) date('Y');
         }
 
+        $companyTax = CompanyCorporateTax::sync($user->id);
+        $taxForYear = ((int) ($companyTax['period_year'] ?? 0) === $year)
+            ? $companyTax
+            : CompanyCorporateTax::forFinancialYear($user->id, $year);
+
         return view('company.compliance', [
             'profile' => $profile,
             'year' => $year,
             'events' => CompanyComplianceCalendar::events($profile, $year),
             'upcoming' => CompanyComplianceCalendar::upcoming($profile, 12),
             'vatReturn' => CompanyVatReturn::nextFor($profile, $user->id),
+            'companyTax' => $companyTax,
+            'taxForYear' => $taxForYear,
         ]);
     }
 

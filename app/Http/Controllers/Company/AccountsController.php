@@ -10,6 +10,7 @@ use App\Models\CompanyJournalEntry;
 use App\Models\CompanyJournalLine;
 use App\Support\CompanyBooks;
 use App\Support\CompanyChartOfAccounts;
+use App\Support\CompanyCorporateTax;
 use App\Support\CompanyLedger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class AccountsController extends Controller
         $from = $request->input('from', $profile->first_period_start->format('Y-m-d'));
         $to = $request->input('to', $asOf);
 
+        $companyTax = CompanyCorporateTax::sync($user->id);
         $profitAndLoss = CompanyLedger::profitAndLoss($user->id, $from, $to);
         $balanceSheet = CompanyLedger::balanceSheet($user->id, $asOf, $from, $profitAndLoss);
         $trialBalance = CompanyLedger::trialBalance($user->id, $asOf, $balanceSheet['balances'] ?? null);
@@ -39,6 +41,7 @@ class AccountsController extends Controller
             'trialBalance' => $trialBalance,
             'profitAndLoss' => $profitAndLoss,
             'balanceSheet' => $balanceSheet,
+            'companyTax' => $companyTax,
             'lock' => CompanyBooksLock::where('user_id', $user->id)->first(),
             'journalCount' => CompanyJournalEntry::where('user_id', $user->id)->count(),
             'accountCount' => CompanyGlAccount::where('user_id', $user->id)->count(),

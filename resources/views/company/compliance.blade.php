@@ -111,6 +111,13 @@
         </div>
     @endif
 
+    @isset($companyTax)
+        @include('company.partials.corporate-tax', ['companyTax' => $companyTax, 'modalId' => 'companyTaxModal', 'cardId' => 'company-tax'])
+        @if(isset($taxForYear) && is_array($taxForYear) && ($taxForYear['period_end'] ?? null) !== ($companyTax['period_end'] ?? null))
+            @include('company.partials.corporate-tax', ['companyTax' => $taxForYear, 'modalId' => 'companyTaxYearModal', 'cardId' => 'company-tax-year'])
+        @endif
+    @endisset
+
     @php
         $catColors = [
             'vat' => ['bg' => '#eff6ff', 'fg' => '#1e40af', 'border' => '#bfdbfe'],
@@ -152,6 +159,7 @@
                         <tr style="text-align: left; border-bottom: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em;">
                             <th style="padding: 0.5rem 0.4rem; font-weight: 700;">Due</th>
                             <th style="padding: 0.5rem 0.4rem; font-weight: 700;">Item</th>
+                            <th style="padding: 0.5rem 0.4rem; font-weight: 700;">Liability</th>
                             <th style="padding: 0.5rem 0.4rem; font-weight: 700;">Type</th>
                             <th style="padding: 0.5rem 0.4rem; font-weight: 700;">Notes</th>
                         </tr>
@@ -164,6 +172,18 @@
                                 $isNote = $severity === 'note';
                                 $isInfo = $severity === 'info';
                                 $rowBg = $item['overdue'] ? '#fef2f2;' : (($isNote || $isInfo) ? 'background:#f8fafc;' : '');
+                                $returnLiability = null;
+                                $returnModal = 'companyTaxModal';
+                                if (str_starts_with((string) ($item['key'] ?? ''), 'ct_return_') && isset($taxForYear) && is_array($taxForYear)) {
+                                    $returnYear = (int) substr((string) $item['key'], 10);
+                                    if ((int) ($taxForYear['period_year'] ?? 0) === $returnYear) {
+                                        $returnLiability = (float) $taxForYear['liability'];
+                                        if (isset($companyTax) && ($taxForYear['period_end'] ?? null) !== ($companyTax['period_end'] ?? null)) {
+                                            $returnModal = 'companyTaxYearModal';
+                                        }
+                                    }
+                                }
+                                $ptNil = ($item['category'] ?? '') === 'tax' && $isNote;
                             @endphp
                             <tr style="border-bottom: 1px solid var(--border-light); {{ $rowBg }}">
                                 <td style="padding: 0.65rem 0.4rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: {{ $item['overdue'] ? '#991b1b' : (($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)') }};">
@@ -171,6 +191,15 @@
                                 </td>
                                 <td style="padding: 0.65rem 0.4rem;">
                                     <a href="{{ $item['href'] }}" style="color: {{ ($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)' }}; font-weight: 600; text-decoration: none; border-bottom: 1px dotted {{ ($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)' }};">{{ $item['label'] }}</a>
+                                </td>
+                                <td style="padding: 0.65rem 0.4rem; font-variant-numeric: tabular-nums; white-space: nowrap;">
+                                    @if($returnLiability !== null)
+                                        <button type="button" onclick="document.getElementById('{{ $returnModal }}').style.display='flex'" style="background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">€{{ number_format($returnLiability, 2) }}</button>
+                                    @elseif($ptNil)
+                                        <span style="font-weight: 700; color: var(--text-muted);">€0.00</span>
+                                    @else
+                                        <span style="color: var(--text-muted);">—</span>
+                                    @endif
                                 </td>
                                 <td style="padding: 0.65rem 0.4rem;">
                                     <span style="display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; background: {{ $c['bg'] }}; color: {{ $c['fg'] }}; border: 1px solid {{ $c['border'] }};">{{ $item['category'] }}</span>
@@ -180,7 +209,12 @@
                                         <span style="display: inline-block; margin-left: 0.25rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">Info</span>
                                     @endif
                                 </td>
-                                <td style="padding: 0.65rem 0.4rem; color: var(--text-muted); font-size: 0.82rem; line-height: 1.4;">{{ $item['hint'] }}</td>
+                                <td style="padding: 0.65rem 0.4rem; color: var(--text-muted); font-size: 0.82rem; line-height: 1.4;">
+                                    @if($returnLiability !== null)
+                                        <div style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.2rem;">Liability €{{ number_format($returnLiability, 2) }}. Nothing is filed from this screen.</div>
+                                    @endif
+                                    {{ $item['hint'] }}
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

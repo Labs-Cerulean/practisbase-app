@@ -434,10 +434,10 @@ class CompanyComplianceCalendar
                 'ct_return_'.$year,
                 'Income tax return · FY '.$year,
                 'tax',
-                'Statutory target ~9 months after year end ('.$taxReturnDue->format('d M Y').'). Micro-entities may file from the ledger without an audit — confirm eligibility with your accountant.',
+                'Statutory target ~9 months after year end ('.$taxReturnDue->format('d M Y').'). Micro-entities may file from the ledger without an audit — confirm eligibility with your accountant. The liability is the corporate tax provision on the accounts.',
                 $taxReturnDue,
                 $today,
-                '/company/accounts',
+                '/company/accounts#company-tax',
                 'filing'
             );
         }
