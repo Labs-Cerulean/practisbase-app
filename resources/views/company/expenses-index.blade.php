@@ -9,7 +9,7 @@
             'unpaid' => 'Supplier invoices logged, still waiting for the company to pay.',
             'company' => 'Paid from the company bank or card when the invoice was logged.',
             'reversed' => 'These no longer count in totals. Open a line to remove a mistaken pair from the books.',
-            default => 'Open a line to see the invoice and the receipt next to the posting. Older months stay closed.',
+            default => 'Open a line to see the invoice and the receipt next to the posting. A line with no file is marked. Drop a PDF on that line to attach it. Older months stay closed.',
         };
     @endphp
 
@@ -45,6 +45,10 @@
             border-radius: var(--radius-md);
             overflow: auto;
             max-height: 70vh;
+        }
+        .expense-fold.expense-drop-over {
+            outline: 2px dashed var(--primary-cerulean);
+            outline-offset: 2px;
         }
         @media (min-width: 880px) {
             .expense-audit.has-file {
@@ -228,7 +232,7 @@
             var status = document.getElementById('expenseStatus');
             if (!form || !status) return;
             var notes = {
-                active: 'Open a line to see the invoice and the receipt next to the posting. Older months stay closed.',
+                active: 'Open a line to see the invoice and the receipt next to the posting. A line with no file is marked. Drop a PDF on that line to attach it. Older months stay closed.',
                 owed: 'Director-funded costs still waiting for a refund.',
                 unpaid: 'Supplier invoices logged, still waiting for the company to pay.',
                 company: 'Paid from the company bank or card when the invoice was logged.',
@@ -325,5 +329,64 @@
                 }
             });
         }
+        document.querySelectorAll('[data-drop-url]').forEach(function (line) {
+            function pdfFile(event) {
+                var files = event.dataTransfer && event.dataTransfer.files;
+                if (!files || !files.length) return null;
+                var file = files[0];
+                var name = (file.name || '').toLowerCase();
+                if (file.type === 'application/pdf' || name.slice(-4) === '.pdf') return file;
+                return false;
+            }
+            line.addEventListener('dragover', function (event) {
+                event.preventDefault();
+                line.classList.add('expense-drop-over');
+            });
+            line.addEventListener('dragleave', function () {
+                line.classList.remove('expense-drop-over');
+            });
+            line.addEventListener('drop', function (event) {
+                event.preventDefault();
+                line.classList.remove('expense-drop-over');
+                var file = pdfFile(event);
+                if (file === false) {
+                    window.alert('Drop a PDF. The expense can still be saved without a file.');
+                    return;
+                }
+                if (!file) return;
+                var body = new FormData();
+                body.append('receipt', file);
+                var token = document.querySelector('meta[name="csrf-token"]');
+                var hint = line.querySelector('[data-drop-hint]');
+                if (hint) hint.textContent = 'Attaching the PDF…';
+                fetch(line.getAttribute('data-drop-url'), {
+                    method: 'POST',
+                    body: body,
+                    credentials: 'same-origin',
+                    redirect: 'manual',
+                    headers: {
+                        'X-CSRF-TOKEN': token ? token.getAttribute('content') : '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                }).then(function (response) {
+                    if (response.type === 'opaqueredirect' || (response.status >= 200 && response.status < 400)) {
+                        window.location.reload();
+                        return;
+                    }
+                    return response.json().then(function (data) {
+                        var errors = data && data.errors ? data.errors : {};
+                        var keys = Object.keys(errors);
+                        var message = keys.length ? errors[keys[0]][0] : 'The PDF was not attached.';
+                        window.alert(message);
+                        if (hint) hint.textContent = 'Drop a PDF here to attach it. The expense can be saved without one.';
+                    }).catch(function () {
+                        window.alert('The PDF was not attached.');
+                    });
+                }).catch(function () {
+                    window.alert('The PDF was not attached.');
+                });
+            });
+        });
     </script>
 @endsection

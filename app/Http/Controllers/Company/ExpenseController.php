@@ -8,6 +8,7 @@ use App\Models\CompanyExpensePayment;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
 use App\Support\CompanyComputerAllowance;
+use App\Support\CompanyCorrectionGuard;
 use App\Support\CompanyExpenseFiles;
 use App\Support\CompanyExpenseMonths;
 use App\Support\CompanyLedger;
@@ -824,6 +825,41 @@ class ExpenseController extends Controller
         return back()->with('success', 'Director refund recorded and posted.');
     }
 
+    public function attachReceipt(Request $request, int $expense)
+    {
+        $user = Auth::user();
+        $model = CompanyExpense::where('user_id', $user->id)->where('id', $expense)->firstOrFail();
+
+        $request->validate([
+            'receipt' => 'required|file|mimes:pdf|max:8192',
+        ]);
+
+        $date = $model->expense_date->format('Y-m-d');
+        if ($date > now()->toDateString()) {
+            throw ValidationException::withMessages([
+                'receipt' => 'The expense date is in the future, so the file cannot be attached.',
+            ]);
+        }
+
+        CompanyCorrectionGuard::assertDatesMutable((int) $user->id, [$date]);
+
+        $stored = $request->file('receipt')->store(
+            TenantStorage::companyReceiptsPath($user->id),
+            TenantStorage::diskName()
+        );
+        if (! is_string($stored) || $stored === '' || CompanyStoredFile::owned($stored, TenantStorage::companyReceiptsPath($user->id)) === null) {
+            return back()->withErrors([
+                'receipt' => 'The PDF could not be stored.',
+            ]);
+        }
+
+        $previous = $model->receipt_path;
+        $model->update(['receipt_path' => $stored]);
+        $this->deleteReplacedReceipt((int) $user->id, (int) $model->id, is_string($previous) ? $previous : null);
+
+        return back()->with('success', 'PDF attached to '.$model->description.'.');
+    }
+
     public function receipt(Request $request, int $expense)
     {
         $userId = (int) Auth::id();
@@ -873,6 +909,33 @@ class ExpenseController extends Controller
             'Content-Security-Policy' => "frame-ancestors 'self'",
             'Cache-Control' => 'private, no-store',
         ], $download ? 'attachment' : 'inline');
+    }
+
+    private function deleteReplacedReceipt(int $userId, int $expenseId, ?string $previous): void
+    {
+        $prefix = TenantStorage::companyReceiptsPath($userId);
+        $safe = CompanyStoredFile::owned($previous, $prefix);
+        if ($safe === null) {
+            return;
+        }
+
+        $stillUsed = CompanyExpense::where('user_id', $userId)
+            ->where('id', '!=', $expenseId)
+            ->where(function ($query) use ($safe, $previous) {
+                $query->where('receipt_path', $safe);
+                if (is_string($previous) && $previous !== $safe) {
+                    $query->orWhere('receipt_path', $previous);
+                }
+            })
+            ->exists();
+        if ($stillUsed) {
+            return;
+        }
+
+        $disk = TenantStorage::disk();
+        if ($disk->exists($safe)) {
+            $disk->delete($safe);
+        }
     }
 
     private function draftFromRequest(Request $request): ?array

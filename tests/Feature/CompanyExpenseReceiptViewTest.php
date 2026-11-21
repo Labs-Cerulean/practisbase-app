@@ -2,16 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\Models\CompanyBooksLock;
 use App\Models\CompanyExpense;
 use App\Models\CompanyExpensePayment;
 use App\Models\CompanyProfile;
 use App\Models\CompanySupplier;
 use App\Models\User;
 use App\Support\CompanyExpenseFiles;
+use App\Support\FiscalYearGuard;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use ReflectionClass;
 use Tests\TestCase;
 
 class CompanyExpenseReceiptViewTest extends TestCase
@@ -23,8 +28,12 @@ class CompanyExpenseReceiptViewTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->flushSession();
         config(['app.key' => 'base64:'.base64_encode(str_repeat('a', 32))]);
         $this->app->forgetInstance('encrypter');
+        $closedYears = (new ReflectionClass(FiscalYearGuard::class))->getProperty('closedYears');
+        $closedYears->setAccessible(true);
+        $closedYears->setValue(null, []);
         Carbon::setTestNow('2026-11-21');
         config(['filesystems.tenant_disk' => 'local']);
         Storage::fake('local');
@@ -218,7 +227,9 @@ class CompanyExpenseReceiptViewTest extends TestCase
         $page->assertDontSee('Foreign filing');
         $page->assertDontSee($secret);
         $page->assertDontSee('/company/expenses/payments/'.$foreignPayment->id.'/proof');
-        $this->assertStringNotContainsString('/company/expenses/'.$pointing->id.'/receipt', $page->getContent());
+        $this->assertStringNotContainsString('data-file="/company/expenses/'.$pointing->id.'/receipt"', $page->getContent());
+        $page->assertSee('data-drop-url="/company/expenses/'.$pointing->id.'/receipt"', false);
+        $page->assertSee('class="expense-missing-file"', false);
 
         foreach ($queries as $query) {
             if (! str_contains($query->sql, 'company_expenses') && ! str_contains($query->sql, 'company_expense_payments')) {
@@ -394,13 +405,15 @@ class CompanyExpenseReceiptViewTest extends TestCase
         $lunchServed->assertOk();
         $this->assertSame($lunchPdf, $lunchServed->streamedContent());
 
-        $second = $this->invoicePdf('T000902-28933 SECOND-COPY');
-        $secondPath = 'tenants/41/company/receipts/drafts/'.str_repeat('d', 40).'.pdf';
-        $this->store($secondPath, $second);
-        touch(Storage::disk('local')->path($secondPath), time() + 30);
-        $again = $this->actingAs($this->owner)->get('/company/expenses/'.$drink->id.'/receipt');
+        $this->store(
+            'tenants/41/company/receipts/drafts/'.str_repeat('d', 40).'.pdf',
+            $this->invoicePdf('T000902-28933 SECOND-COPY')
+        );
+        $again = $this->actingAs($this->owner)->get('/company/expenses');
         $again->assertOk();
-        $this->assertSame($second, $again->streamedContent());
+        $again->assertDontSee('data-file="/company/expenses/'.$drink->id.'/receipt"', false);
+        $again->assertSee('data-file="/company/expenses/'.$lunch->id.'/receipt"', false);
+        $this->actingAs($this->owner)->get('/company/expenses/'.$drink->id.'/receipt')->assertNotFound();
 
         $this->assertNull(CompanyExpenseFiles::listedObject(
             'tenants/41/company/receipts/drafts',
@@ -416,7 +429,7 @@ class CompanyExpenseReceiptViewTest extends TestCase
         );
     }
 
-    public function test_a_scan_kept_in_drafts_is_shown_for_the_sitting_that_saved_it(): void
+    public function test_a_scan_with_no_text_is_not_guessed_onto_a_line(): void
     {
         $supplier = $this->supplier(41, 'Mr. Fitra');
         $lunch = $this->expense($supplier, [
@@ -430,33 +443,133 @@ class CompanyExpenseReceiptViewTest extends TestCase
             'receipt_path' => null,
         ]);
 
-        $scan = "%PDF-1.4\n%FITRA-SCAN\ntrailer\n%%EOF\n";
-        $path = 'tenants/41/company/receipts/drafts/'.str_repeat('e', 40).'.pdf';
-        $this->store($path, $scan);
-        $mtime = Storage::disk('local')->lastModified($path);
-        DB::table('company_expenses')->where('id', $lunch->id)->update([
-            'created_at' => Carbon::createFromTimestamp($mtime)->format('Y-m-d H:i:s'),
-        ]);
-
-        $old = "%PDF-1.4\n%OLD-SCAN\ntrailer\n%%EOF\n";
-        $oldPath = 'tenants/41/company/receipts/drafts/'.str_repeat('f', 40).'.pdf';
-        $this->store($oldPath, $old);
-        touch(Storage::disk('local')->path($oldPath), $mtime - (5 * 86400));
-
         $this->store(
-            'tenants/42/company/receipts/drafts/'.str_repeat('9', 40).'.pdf',
-            "%PDF-1.4\n%OTHER-USER-SECRET\ntrailer\n%%EOF\n"
+            'tenants/41/company/receipts/drafts/'.str_repeat('e', 40).'.pdf',
+            "%PDF-1.4\n%FITRA-SCAN\ntrailer\n%%EOF\n"
         );
 
         $page = $this->actingAs($this->owner)->get('/company/expenses');
         $page->assertOk();
-        $page->assertSee('data-file="/company/expenses/'.$lunch->id.'/receipt"', false);
-        $page->assertDontSee('OTHER-USER-SECRET');
-        $page->assertDontSee('tenants/41/company/receipts/drafts');
+        $page->assertSee('class="expense-missing-file"', false);
+        $page->assertSee('No file');
+        $page->assertSee('data-drop-url="/company/expenses/'.$lunch->id.'/receipt"', false);
+        $page->assertDontSee('data-file="/company/expenses/'.$lunch->id.'/receipt"', false);
+        $this->actingAs($this->owner)->get('/company/expenses/'.$lunch->id.'/receipt')->assertNotFound();
+    }
 
+    public function test_dropping_a_pdf_attaches_it_to_that_expense_only(): void
+    {
+        $supplier = $this->supplier(41, 'Mr. Fitra');
+        $lunch = $this->expense($supplier, [
+            'expense_date' => '2026-11-20',
+            'description' => 'Bought client a quick lunch',
+            'supplier_invoice_number' => '05/74833',
+            'amount' => 4,
+            'vat_amount' => 0,
+            'category' => 'general',
+            'funded_by' => 'company',
+            'receipt_path' => null,
+        ]);
+        $previous = $this->store('tenants/41/company/receipts/old-lunch.pdf', 'OLD-LUNCH-PDF');
+        $lunch->update(['receipt_path' => $previous]);
+
+        $create = $this->actingAs($this->owner)->get('/company/expenses/create');
+        $create->assertOk();
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]*name="receipt"[^>]*required/', $create->getContent());
+
+        $this->actingAs($this->other)->post('/company/expenses/'.$lunch->id.'/receipt', [
+            'receipt' => UploadedFile::fake()->createWithContent('lunch.pdf', $this->invoicePdf('05/74833')),
+        ])->assertNotFound();
+        $this->assertSame($previous, $lunch->fresh()->receipt_path);
+
+        $pdf = $this->invoicePdf('05/74833 DROPPED');
+        $this->actingAs($this->owner)->post('/company/expenses/'.$lunch->id.'/receipt', [
+            'receipt' => UploadedFile::fake()->createWithContent('lunch.pdf', $pdf),
+        ])->assertRedirect();
+
+        $lunch->refresh();
+        $this->assertSame(4.0, (float) $lunch->amount);
+        $this->assertSame(0.0, (float) $lunch->vat_amount);
+        $this->assertStringStartsWith('tenants/41/company/receipts/', (string) $lunch->receipt_path);
+        $this->assertStringNotContainsString('..', (string) $lunch->receipt_path);
+        $this->assertNotSame($previous, $lunch->receipt_path);
+        Storage::disk('local')->assertMissing($previous);
+
+        $page = $this->actingAs($this->owner)->get('/company/expenses');
+        $page->assertOk();
+        $page->assertSee('data-file="/company/expenses/'.$lunch->id.'/receipt"', false);
+        $page->assertDontSee('class="expense-missing-file"', false);
         $served = $this->actingAs($this->owner)->get('/company/expenses/'.$lunch->id.'/receipt');
         $served->assertOk();
-        $this->assertSame($scan, $served->streamedContent());
+        $this->assertSame($pdf, $served->streamedContent());
+
+        $this->actingAs($this->owner)->post('/company/expenses/'.$lunch->id.'/receipt', [
+            'receipt' => UploadedFile::fake()->create('photo.jpg', 20, 'image/jpeg'),
+        ])->assertSessionHasErrors('receipt');
+        $this->assertSame($lunch->receipt_path, $lunch->fresh()->receipt_path);
+    }
+
+    public function test_a_locked_year_or_a_future_date_blocks_the_dropped_pdf(): void
+    {
+        $supplier = $this->supplier(41, 'Arkadia Development Ltd');
+        $drink = $this->expense($supplier, [
+            'expense_date' => '2026-11-13',
+            'description' => 'Business Development Opportunity - Drink',
+            'supplier_invoice_number' => 'T000902-28933',
+            'amount' => 6.36,
+            'vat_amount' => 1.14,
+            'funded_by' => 'company',
+            'receipt_path' => null,
+        ]);
+        $upload = function () {
+            return UploadedFile::fake()->createWithContent('drink.pdf', $this->invoicePdf('T000902-28933'));
+        };
+
+        $this->withoutExceptionHandling();
+
+        $drink->update(['expense_date' => '2026-11-22']);
+        try {
+            $this->actingAs($this->owner)->post('/company/expenses/'.$drink->id.'/receipt', [
+                'receipt' => $upload(),
+            ]);
+            $this->fail('A future expense date should refuse the PDF.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('receipt', $e->errors());
+        }
+        $this->assertNull($drink->fresh()->receipt_path);
+
+        $drink->update(['expense_date' => '2026-11-13']);
+        DB::table('fiscal_years')->insert([
+            'user_id' => 41,
+            'year' => 2026,
+            'closed_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        try {
+            $this->actingAs($this->owner)->post('/company/expenses/'.$drink->id.'/receipt', [
+                'receipt' => $upload(),
+            ]);
+            $this->fail('A closed year should refuse the PDF.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('books', $e->errors());
+        }
+        $this->assertNull($drink->fresh()->receipt_path);
+
+        DB::table('fiscal_years')->delete();
+        CompanyBooksLock::create([
+            'user_id' => 41,
+            'locked_through' => '2026-11-30',
+        ]);
+        try {
+            $this->actingAs($this->owner)->post('/company/expenses/'.$drink->id.'/receipt', [
+                'receipt' => $upload(),
+            ]);
+            $this->fail('Locked company books should refuse the PDF.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('books', $e->errors());
+        }
+        $this->assertNull($drink->fresh()->receipt_path);
     }
 
     public function test_an_older_receipts_path_and_a_webp_photo_stay_on_this_users_row(): void
@@ -590,7 +703,9 @@ class CompanyExpenseReceiptViewTest extends TestCase
         Schema::dropIfExists('company_expenses');
         Schema::dropIfExists('company_suppliers');
         Schema::dropIfExists('company_expense_payments');
+        Schema::dropIfExists('company_books_locks');
         Schema::dropIfExists('company_profiles');
+        Schema::dropIfExists('fiscal_years');
         Schema::dropIfExists('users');
 
         Schema::create('users', function ($table) {
@@ -604,6 +719,22 @@ class CompanyExpenseReceiptViewTest extends TestCase
             $table->boolean('must_verify_email')->default(false);
             $table->timestamp('email_verified_at')->nullable();
             $table->timestamp('terms_accepted_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('fiscal_years', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->integer('year');
+            $table->timestamp('closed_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('company_books_locks', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id')->unique();
+            $table->date('locked_through');
+            $table->string('note')->nullable();
             $table->timestamps();
         });
 
