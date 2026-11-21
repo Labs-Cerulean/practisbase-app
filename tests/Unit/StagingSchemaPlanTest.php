@@ -26,5 +26,10 @@ class StagingSchemaPlanTest extends TestCase
         $this->assertLessThan($dms, $phase4);
         $this->assertLessThan($unify, $dms);
         $this->assertCount(count(array_unique($files)), $files);
+
+        $patients = array_search('phase4_postgresql.sql', $files, true);
+        $seal = array_search('patient_identity_seal_postgresql.sql', $files, true);
+        $this->assertIsInt($seal);
+        $this->assertLessThan($seal, $patients);
     }
 }

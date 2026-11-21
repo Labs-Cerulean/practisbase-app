@@ -14,6 +14,11 @@ class PatientListSealTest extends TestCase
 {
     protected function tearDown(): void
     {
+        config([
+            'app.env' => 'testing',
+            'app.url' => 'http://localhost',
+            'deployment.railway_environment' => '',
+        ]);
         CatalogColumns::forget();
         parent::tearDown();
     }
@@ -69,5 +74,56 @@ class PatientListSealTest extends TestCase
         $this->assertNull($pending);
         $this->assertSame('Ana Vella', $opened['display_name']);
         $this->assertArrayNotHasKey('notes', $opened);
+    }
+
+    public function test_staging_adds_the_seal_columns_and_live_does_not(): void
+    {
+        $this->createPatientsWithoutSeal();
+        config([
+            'app.env' => 'production',
+            'deployment.railway_environment' => 'production',
+            'app.url' => 'https://practisbase.com',
+        ]);
+        CatalogColumns::forget();
+
+        $this->assertFalse(PatientIdentitySeal::columnsReady());
+        $this->assertFalse(Schema::hasColumn('patients', 'identity_ciphertext'));
+
+        config([
+            'app.env' => 'staging',
+            'deployment.railway_environment' => 'staging',
+            'app.url' => 'https://practisbase-staging.up.railway.app',
+        ]);
+        CatalogColumns::forget();
+
+        $this->assertTrue(PatientIdentitySeal::columnsReady());
+        $this->assertTrue(Schema::hasColumn('patients', 'identity_ciphertext'));
+        $this->assertTrue(Schema::hasColumn('patients', 'identity_nonce'));
+    }
+
+    public function test_staging_pointed_at_the_live_address_does_not_alter_patients(): void
+    {
+        $this->createPatientsWithoutSeal();
+        config([
+            'app.env' => 'staging',
+            'deployment.railway_environment' => 'staging',
+            'app.url' => 'https://practisbase.com',
+        ]);
+        CatalogColumns::forget();
+
+        $this->assertFalse(PatientIdentitySeal::columnsReady());
+        $this->assertFalse(Schema::hasColumn('patients', 'identity_ciphertext'));
+    }
+
+    private function createPatientsWithoutSeal(): void
+    {
+        Schema::dropIfExists('patients');
+        Schema::create('patients', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->text('payload_ciphertext');
+            $table->string('payload_nonce');
+            $table->timestamps();
+        });
     }
 }

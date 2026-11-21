@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Patient;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A second secretbox for the patient list and the duplicate check.
@@ -42,8 +43,58 @@ class PatientIdentitySeal
 
     public static function columnsReady(): bool
     {
+        self::ensure();
+
+        return self::present();
+    }
+
+    /**
+     * Staging creates the seal columns on first use. Live waits for the SQL file.
+     */
+    public static function ensure(): void
+    {
+        if (self::present() || ! Deployment::isStaging()) {
+            return;
+        }
+
+        try {
+            Deployment::guardLiveAddress();
+            foreach (self::statements() as $statement) {
+                DB::unprepared($statement);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+
+            return;
+        }
+
+        CatalogColumns::forget(['patients']);
+    }
+
+    private static function present(): bool
+    {
         return CatalogColumns::hasColumn('patients', 'identity_ciphertext')
             && CatalogColumns::hasColumn('patients', 'identity_nonce');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function statements(): array
+    {
+        $path = database_path('manual/patient_identity_seal_postgresql.sql');
+        $sql = is_file($path) ? (string) file_get_contents($path) : '';
+        if ($sql === '') {
+            return [];
+        }
+
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            $sql = str_replace(' ADD COLUMN IF NOT EXISTS ', ' ADD COLUMN ', $sql);
+        }
+
+        $parts = preg_split('/;\s*/', trim($sql)) ?: [];
+
+        return array_values(array_filter(array_map('trim', $parts), fn (string $statement) => $statement !== ''));
     }
 
     /**
