@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Clinic labels, actions, and the reference library live in manual SQL.
@@ -13,9 +12,15 @@ class ClinicDeskSchema
 {
     public static function ready(): bool
     {
-        return Schema::hasTable('clinical_labels')
-            && Schema::hasTable('patient_actions')
-            && Schema::hasTable('clinical_library_documents');
+        CatalogColumns::load([
+            'clinical_labels',
+            'patient_actions',
+            'clinical_library_documents',
+        ]);
+
+        return CatalogColumns::hasTable('clinical_labels')
+            && CatalogColumns::hasTable('patient_actions')
+            && CatalogColumns::hasTable('clinical_library_documents');
     }
 
     public static function ensure(): bool
@@ -35,7 +40,12 @@ class ClinicDeskSchema
         }
 
         DB::unprepared($sql);
+        CatalogColumns::forget([
+            'clinical_labels',
+            'patient_actions',
+            'clinical_library_documents',
+        ]);
 
-        return true;
+        return self::ready();
     }
 }

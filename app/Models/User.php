@@ -401,11 +401,18 @@ class User extends Authenticatable
 
     public function mustVerifyEmailNow(): bool
     {
-        return EmailVerification::required(
-            RegisterBillingSchema::ensure(),
-            (bool) ($this->getAttributes()['must_verify_email'] ?? false),
-            $this->email_verified_at !== null,
-        );
+        $attributes = $this->getAttributes();
+
+        // The verified middleware runs this before every button. The column is
+        // already on the loaded user once the billing SQL has been applied, so
+        // do not ask information_schema on that path.
+        if (! array_key_exists('must_verify_email', $attributes)) {
+            RegisterBillingSchema::ensure();
+
+            return false;
+        }
+
+        return EmailVerification::requiredForAttributes($attributes);
     }
 
     public function onboardingRedirectPath(): string

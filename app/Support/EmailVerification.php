@@ -12,6 +12,25 @@ class EmailVerification
         return $schemaReady && $mustVerifyEmail && ! $verified;
     }
 
+    /**
+     * Decide from the row already loaded. When must_verify_email is on the
+     * model, the column exists and no catalog lookup is required.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public static function requiredForAttributes(array $attributes): bool
+    {
+        if (! array_key_exists('must_verify_email', $attributes)) {
+            return false;
+        }
+
+        return self::required(
+            true,
+            (bool) $attributes['must_verify_email'],
+            ($attributes['email_verified_at'] ?? null) !== null,
+        );
+    }
+
     public static function nextPath(User $user): string
     {
         if ($user->mustVerifyEmailNow()) {
