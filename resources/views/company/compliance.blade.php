@@ -38,11 +38,21 @@
                 <div>
                     <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Next VAT return</div>
                     <h2 style="margin: 0.2rem 0 0.25rem; font-size: 1.2rem; color: var(--primary-navy);">{{ $vatReturn['label'] }}</h2>
+                    @php
+                        $vatPeriodFrom = $vatReturn['period_from'] ?? $vatReturn['from'];
+                        $vatPeriodTo = $vatReturn['period_to'] ?? $vatReturn['to'];
+                    @endphp
                     <p style="margin: 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.45; max-width: 40rem;">
-                        Period {{ \Illuminate\Support\Carbon::parse($vatReturn['from'])->format('d M Y') }} – {{ \Illuminate\Support\Carbon::parse($vatReturn['to'])->format('d M Y') }}.
-                        File around {{ \Illuminate\Support\Carbon::parse($vatReturn['due'])->format('d M Y') }}.
-                        @if($vatReturn['first_return']) This is the first return, from incorporation. @endif
-                        @if($vatReturn['period_open']) The period is still open, so these figures can still change. @endif
+                        Period {{ \Illuminate\Support\Carbon::parse($vatPeriodFrom)->format('j F Y') }} – {{ \Illuminate\Support\Carbon::parse($vatPeriodTo)->format('j F Y') }}.
+                        Due {{ \Illuminate\Support\Carbon::parse($vatReturn['due'])->format('j F Y') }}.
+                        @if(! empty($vatReturn['assigned_first']))
+                            MTCA assigned this one first period. 29–31 July 2026 sit outside it. Open proformas stay off the return.
+                        @elseif($vatReturn['first_return'])
+                            This is the first return, from incorporation.
+                        @endif
+                        @if($vatReturn['period_open'])
+                            The period is still open, so these figures can still change. They run through {{ \Illuminate\Support\Carbon::parse($vatReturn['to'])->format('j F Y') }}. The portal will not accept a return while the period end is still in the future.
+                        @endif
                     </p>
                 </div>
                 <a href="/company/compliance/vat.pdf" style="background: var(--primary-cerulean); color: white; padding: 0.55rem 1rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Download PDF</a>
@@ -89,7 +99,10 @@
                 @endforeach
             </ol>
             <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
-                These figures are from your company books. Confirm the online form with your accountant. The due date is the usual CFR window, not a substitute for the date MTCA shows you.
+                These figures are from your company books. Confirm the online form with your accountant. This page does not send a return to MTCA.
+                @if(empty($vatReturn['assigned_first']))
+                    The due date is the usual CFR window, not a substitute for the date MTCA shows you.
+                @endif
             </p>
         </div>
     @elseif(! $profile->isArticle10())
@@ -154,7 +167,7 @@
                             @endphp
                             <tr style="border-bottom: 1px solid var(--border-light); {{ $rowBg }}">
                                 <td style="padding: 0.65rem 0.4rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; color: {{ $item['overdue'] ? '#991b1b' : (($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)') }};">
-                                    {{ \Illuminate\Support\Carbon::parse($item['due'])->format('d M Y') }}
+                                    {{ \Illuminate\Support\Carbon::parse($item['due'])->format(! empty($item['assigned_first']) ? 'j F Y' : 'd M Y') }}
                                 </td>
                                 <td style="padding: 0.65rem 0.4rem;">
                                     <a href="{{ $item['href'] }}" style="color: {{ ($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)' }}; font-weight: 600; text-decoration: none; border-bottom: 1px dotted {{ ($isNote || $isInfo) ? 'var(--text-muted)' : 'var(--primary-navy)' }};">{{ $item['label'] }}</a>

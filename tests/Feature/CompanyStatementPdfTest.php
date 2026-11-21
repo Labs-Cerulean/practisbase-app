@@ -73,23 +73,29 @@ class CompanyStatementPdfTest extends TestCase
         ])->render();
         $this->assertStringContainsString('Closing balance', $arHtml);
 
-        $vat = CompanyVatReturn::fromTotals(1000, 180, 0, 0, 50, 0, 0);
+        $vat = CompanyVatReturn::fromTotals(1000, 180, 0, 0, 50, 0, 0, 2, 590);
         $vat = array_merge($vat, [
-            'label' => 'VAT Q3 2026',
-            'from' => '2026-07-01',
-            'to' => '2026-09-30',
-            'due' => '2026-11-15',
+            'label' => 'VAT · 1 August 2026 – 31 August 2027',
+            'from' => '2026-08-01',
+            'to' => '2026-11-21',
+            'period_from' => '2026-08-01',
+            'period_to' => '2027-08-31',
+            'due' => '2027-10-15',
             'first_return' => true,
-            'period_open' => false,
-            'open_rfp_count' => 0,
-            'open_rfp_total' => 0,
+            'assigned_first' => true,
+            'period_open' => true,
         ]);
         $vatHtml = view('company.pdf.vat-return', [
             'profile' => $profile,
             'vatReturn' => $vat,
         ])->render();
         $this->assertStringContainsString('VAT to pay MTCA', $vatHtml);
-        $this->assertStringContainsString('15 Nov 2026', $vatHtml);
+        $this->assertStringContainsString('1 August 2026', $vatHtml);
+        $this->assertStringContainsString('31 August 2027', $vatHtml);
+        $this->assertStringContainsString('15 October 2027', $vatHtml);
+        $this->assertStringContainsString('left off this return', $vatHtml);
+        $this->assertStringNotContainsString('Q3 2026', $vatHtml);
+        $this->assertStringNotContainsString('overdue', strtolower($vatHtml));
         $this->assertStringStartsWith('%PDF', Pdf::loadHTML($vatHtml)->output());
     }
 }

@@ -18,6 +18,16 @@ class CompanyBooks
 
     public const FIRST_PERIOD_END = '2026-12-31';
 
+    /**
+     * MTCA assigned one first Article 10 period. This is not the financial year.
+     * 29–31 July 2026 are after incorporation and still outside this VAT period.
+     */
+    public const VAT_FIRST_PERIOD_START = '2026-08-01';
+
+    public const VAT_FIRST_PERIOD_END = '2027-08-31';
+
+    public const VAT_FIRST_PERIOD_DUE = '2027-10-15';
+
     public const SHARE_CAPITAL_EUR = 1200.00;
 
     public const ACCOUNTS_COPY_EMAIL = 'accounts@labscerulean.com';

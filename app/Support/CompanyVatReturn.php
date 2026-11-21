@@ -67,19 +67,20 @@ class CompanyVatReturn
         $companyStart = $profile->first_period_start
             ? $profile->first_period_start->copy()->startOfDay()
             : null;
-        $from = ($companyStart && $companyStart->gt($periodFrom)) ? $companyStart->copy() : $periodFrom->copy();
-        $to = $periodTo->copy();
-        $open = $today->lt($to);
-        if ($open) {
-            $to = $today->copy();
-        }
-        if ($from->gt($to)) {
-            $from = $to->copy();
-        }
+        $window = self::activityWindow($periodFrom, $periodTo, $companyStart, $today);
+        $first = ! empty($filing['assigned_first'])
+            || ($companyStart && $companyStart->gt($periodFrom) && $companyStart->lte($periodTo));
 
-        $first = $companyStart && $companyStart->gt($periodFrom) && $companyStart->lte($periodTo);
-
-        return self::build($userId, $filing, $from, $to, $periodFrom, $periodTo, $open, $first);
+        return self::build(
+            $userId,
+            $filing,
+            $window['from'],
+            $window['to'],
+            $periodFrom,
+            $periodTo,
+            $window['open'],
+            $first
+        );
     }
 
     /**
@@ -160,10 +161,42 @@ class CompanyVatReturn
             'period_to' => $periodTo->toDateString(),
             'period_open' => $periodOpen,
             'first_return' => $firstReturn,
+            'assigned_first' => ! empty($filing['assigned_first']),
             'sales_count' => $sales->count(),
             'credit_count' => $credits->count(),
             'expense_count' => $expenses->count(),
         ]);
+    }
+
+    /**
+     * Inclusive dates of tax invoices and expenses on this return.
+     * While the period is still open, figures stop at today.
+     * Days before the VAT period stay out, including 29–31 July 2026.
+     *
+     * @return array{from: Carbon, to: Carbon, open: bool}
+     */
+    public static function activityWindow(Carbon $periodFrom, Carbon $periodTo, ?Carbon $companyStart, Carbon $today): array
+    {
+        $periodFrom = $periodFrom->copy()->startOfDay();
+        $periodTo = $periodTo->copy()->startOfDay();
+        $today = $today->copy()->startOfDay();
+        $from = ($companyStart && $companyStart->copy()->startOfDay()->gt($periodFrom))
+            ? $companyStart->copy()->startOfDay()
+            : $periodFrom->copy();
+        $to = $periodTo->copy();
+        $open = $today->lt($periodTo);
+        if ($open) {
+            $to = $today->copy();
+        }
+        if ($from->gt($to)) {
+            $from = $to->copy();
+        }
+
+        return [
+            'from' => $from,
+            'to' => $to,
+            'open' => $open,
+        ];
     }
 
     /**
