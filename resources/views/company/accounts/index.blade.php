@@ -99,6 +99,10 @@
         </div>
     </div>
 
+    @isset($companyTax)
+        @include('company.partials.corporate-tax', ['companyTax' => $companyTax, 'modalId' => 'companyTaxModal', 'cardId' => 'company-tax'])
+    @endisset
+
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
         <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem 1.4rem; box-shadow: var(--shadow-sm);">
             <h2 style="font-size: 1.05rem; color: var(--primary-navy); margin: 0 0 1rem;">Profit &amp; loss</h2>
@@ -116,7 +120,11 @@
                     @foreach($section['rows'] as $row)
                         <div style="display: flex; justify-content: space-between; gap: 1rem; font-size: 0.88rem; padding: 0.25rem 0; border-bottom: 1px solid #f1f5f9;">
                             <span style="color: var(--primary-navy);">{{ $row['account_code'] }} · {{ $row['name'] }}</span>
-                            <span style="font-variant-numeric: tabular-nums; white-space: nowrap;">€{{ number_format($row['amount'], 2) }}</span>
+                            @if(($row['account_code'] ?? '') === '7000' && isset($companyTax))
+                                <button type="button" onclick="document.getElementById('companyTaxModal').style.display='flex'" style="background: none; border: none; padding: 0; font: inherit; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--primary-navy); font-weight: 700; cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">€{{ number_format($row['amount'], 2) }}</button>
+                            @else
+                                <span style="font-variant-numeric: tabular-nums; white-space: nowrap;">€{{ number_format($row['amount'], 2) }}</span>
+                            @endif
                         </div>
                     @endforeach
                     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; padding: 0.35rem 0; color: var(--primary-navy);">
@@ -132,6 +140,14 @@
             <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 0.35rem; color: var(--primary-navy);">
                 <span>Profit before tax</span>
                 <span>€{{ number_format($profitAndLoss['profit_before_tax'], 2) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 0.35rem; color: var(--primary-navy);">
+                <span>Corporate tax</span>
+                @if(isset($companyTax))
+                    <button type="button" onclick="document.getElementById('companyTaxModal').style.display='flex'" style="background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--primary-navy); cursor: pointer; border-bottom: 1px dotted var(--primary-navy);">€{{ number_format($profitAndLoss['tax_total'], 2) }}</button>
+                @else
+                    <span>€{{ number_format($profitAndLoss['tax_total'], 2) }}</span>
+                @endif
             </div>
             <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 0.35rem; font-size: 1.05rem; color: {{ $profitAndLoss['net_profit'] >= 0 ? '#059669' : '#b91c1c' }};">
                 <span>Net profit</span>

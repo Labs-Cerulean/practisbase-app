@@ -1430,7 +1430,9 @@ class CompanyLedger
             ->groupBy('company_gl_accounts.account_code');
 
         if ($asOfDate) {
-            $query->where('company_journal_entries.entry_date', '<=', $asOfDate);
+            // A journal posted on the as-of day belongs in that day's figures.
+            $end = strlen($asOfDate) === 10 ? $asOfDate.' 23:59:59' : $asOfDate;
+            $query->where('company_journal_entries.entry_date', '<=', $end);
         }
         if ($fromDate) {
             $query->where('company_journal_entries.entry_date', '>=', $fromDate);
@@ -1495,11 +1497,280 @@ class CompanyLedger
     }
 
     /**
+     * Keep one corporate-tax provision for a financial period.
+     * A locked year or a books lock is left untouched. A loss posts nothing,
+     * so account 2500 cannot go negative.
+     *
+     * @return array{posted_amount: float, posted_date: ?string, blocked: bool, reason: ?string}
+     */
+    public static function syncCorporateTaxProvision(
+        int $userId,
+        string $periodEnd,
+        string $entryDate,
+        float $liability,
+        string $description,
+        string $memo
+    ): array {
+        $liability = max(0, round($liability, 2));
+        $entryDate = substr($entryDate, 0, 10);
+        $key = 'company_tax:'.$periodEnd.':provision';
+        $entry = CompanyJournalEntry::where('user_id', $userId)
+            ->where('source_key', $key)
+            ->first();
+
+        if (! $entry) {
+            if ($liability < 0.005) {
+                return [
+                    'posted_amount' => 0.0,
+                    'posted_date' => null,
+                    'blocked' => false,
+                    'reason' => null,
+                ];
+            }
+
+            $block = self::taxMutationBlock($userId, [$entryDate]);
+            if ($block !== null) {
+                return [
+                    'posted_amount' => 0.0,
+                    'posted_date' => null,
+                    'blocked' => true,
+                    'reason' => $block,
+                ];
+            }
+
+            try {
+                self::post(
+                    $userId,
+                    $entryDate,
+                    $description,
+                    [
+                        [
+                            'account_code' => CompanyChartOfAccounts::CORP_TAX_EXPENSE,
+                            'side' => 'debit',
+                            'amount' => $liability,
+                            'memo' => $memo,
+                        ],
+                        [
+                            'account_code' => CompanyChartOfAccounts::CORP_TAX_PAYABLE,
+                            'side' => 'credit',
+                            'amount' => $liability,
+                            'memo' => $memo,
+                        ],
+                    ],
+                    'company_tax',
+                    null,
+                    $key
+                );
+            } catch (ValidationException $e) {
+                return [
+                    'posted_amount' => 0.0,
+                    'posted_date' => null,
+                    'blocked' => true,
+                    'reason' => $e->getMessage(),
+                ];
+            }
+
+            return [
+                'posted_amount' => $liability,
+                'posted_date' => $entryDate,
+                'blocked' => false,
+                'reason' => null,
+            ];
+        }
+
+        $entry->load(['lines.account']);
+        $currentAmount = self::corporateTaxProvisionAmount($entry);
+        $currentDate = $entry->entry_date instanceof \DateTimeInterface
+            ? $entry->entry_date->format('Y-m-d')
+            : substr((string) $entry->entry_date, 0, 10);
+        $amountChanged = abs($currentAmount - $liability) >= 0.005;
+        $dateChanged = $currentDate !== $entryDate;
+
+        if (! $amountChanged && ! $dateChanged) {
+            return [
+                'posted_amount' => $currentAmount,
+                'posted_date' => $currentDate,
+                'blocked' => false,
+                'reason' => null,
+            ];
+        }
+
+        $block = self::taxMutationBlock($userId, [$currentDate, $entryDate]);
+        $lockedShape = $entry->status !== 'posted' || self::corporateTaxProvisionLocked($entry);
+        if ($block !== null || $lockedShape) {
+            return [
+                'posted_amount' => $currentAmount,
+                'posted_date' => $currentDate,
+                'blocked' => $amountChanged,
+                'reason' => $block ?? 'This corporate tax journal can no longer be changed.',
+            ];
+        }
+
+        if ($liability < 0.005) {
+            self::deleteCorporateTaxProvision($userId, $entry);
+
+            return [
+                'posted_amount' => 0.0,
+                'posted_date' => null,
+                'blocked' => false,
+                'reason' => null,
+            ];
+        }
+
+        if (! self::rewriteCorporateTaxProvision($entry, $userId, $entryDate, $liability, $description, $memo)) {
+            self::deleteCorporateTaxProvision($userId, $entry);
+            self::post(
+                $userId,
+                $entryDate,
+                $description,
+                [
+                    [
+                        'account_code' => CompanyChartOfAccounts::CORP_TAX_EXPENSE,
+                        'side' => 'debit',
+                        'amount' => $liability,
+                        'memo' => $memo,
+                    ],
+                    [
+                        'account_code' => CompanyChartOfAccounts::CORP_TAX_PAYABLE,
+                        'side' => 'credit',
+                        'amount' => $liability,
+                        'memo' => $memo,
+                    ],
+                ],
+                'company_tax',
+                null,
+                $key
+            );
+        }
+
+        return [
+            'posted_amount' => $liability,
+            'posted_date' => $entryDate,
+            'blocked' => false,
+            'reason' => null,
+        ];
+    }
+
+    /**
+     * @param  list<string|\DateTimeInterface>  $dates
+     */
+    private static function taxMutationBlock(int $userId, array $dates): ?string
+    {
+        if ($error = FiscalYearGuard::ensureOpenForDates($userId, $dates)) {
+            return $error;
+        }
+
+        $lock = CompanyBooksLock::where('user_id', $userId)->first();
+        if (! $lock) {
+            return null;
+        }
+
+        $through = $lock->locked_through->format('Y-m-d');
+        foreach ($dates as $date) {
+            $day = $date instanceof \DateTimeInterface
+                ? $date->format('Y-m-d')
+                : substr((string) $date, 0, 10);
+            if ($day <= $through) {
+                return 'Company books are locked through '.$lock->locked_through->format('d M Y').'.';
+            }
+        }
+
+        return null;
+    }
+
+    private static function corporateTaxProvisionAmount(CompanyJournalEntry $entry): float
+    {
+        foreach ($entry->lines as $line) {
+            if ((int) $line->user_id !== (int) $entry->user_id) {
+                continue;
+            }
+            $code = $line->account?->account_code;
+            if ($code === CompanyChartOfAccounts::CORP_TAX_EXPENSE && $line->side === 'debit') {
+                return round((float) $line->amount, 2);
+            }
+        }
+
+        return 0.0;
+    }
+
+    private static function corporateTaxProvisionLocked(CompanyJournalEntry $entry): bool
+    {
+        foreach ($entry->lines as $line) {
+            if ($line->bank_statement_line_id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function deleteCorporateTaxProvision(int $userId, CompanyJournalEntry $entry): void
+    {
+        DB::transaction(function () use ($userId, $entry) {
+            CompanyJournalLine::where('user_id', $userId)
+                ->where('journal_entry_id', $entry->id)
+                ->delete();
+            CompanyJournalEntry::where('user_id', $userId)
+                ->where('id', $entry->id)
+                ->delete();
+        });
+    }
+
+    private static function rewriteCorporateTaxProvision(
+        CompanyJournalEntry $entry,
+        int $userId,
+        string $entryDate,
+        float $liability,
+        string $description,
+        string $memo
+    ): bool {
+        $debit = null;
+        $credit = null;
+        foreach ($entry->lines as $line) {
+            if ((int) $line->user_id !== $userId) {
+                continue;
+            }
+            $code = $line->account?->account_code;
+            if ($code === CompanyChartOfAccounts::CORP_TAX_EXPENSE && $line->side === 'debit') {
+                $debit = $line;
+            }
+            if ($code === CompanyChartOfAccounts::CORP_TAX_PAYABLE && $line->side === 'credit') {
+                $credit = $line;
+            }
+        }
+
+        if (! $debit || ! $credit) {
+            return false;
+        }
+
+        $entryId = $entry->id;
+        DB::transaction(function () use ($userId, $entryId, $entryDate, $liability, $description, $memo, $debit, $credit) {
+            $debit->amount = $liability;
+            $debit->memo = $memo;
+            $debit->save();
+            $credit->amount = $liability;
+            $credit->memo = $memo;
+            $credit->save();
+            CompanyJournalEntry::where('user_id', $userId)
+                ->where('id', $entryId)
+                ->update([
+                    'entry_date' => $entryDate,
+                    'description' => $description,
+                    'updated_at' => now(),
+                ]);
+        });
+
+        return true;
+    }
+
+    /**
+     * Profit and loss for a date window, without posting corporate tax.
+     * Tax sync calls this. profitAndLoss() posts the provision first.
+     *
      * @return array<string, mixed>
      */
-    public static function profitAndLoss(int $userId, string $from, string $to): array
+    public static function profitSnapshot(int $userId, string $from, string $to): array
     {
-        self::syncComputerDepreciation($userId);
         self::ensureChartForUserId($userId);
         $balances = self::accountBalances($userId, $to, $from);
         $accounts = CompanyGlAccount::where('user_id', $userId)
@@ -1566,6 +1837,14 @@ class CompanyLedger
     /**
      * @return array<string, mixed>
      */
+    public static function profitAndLoss(int $userId, string $from, string $to): array
+    {
+        self::syncComputerDepreciation($userId);
+        CompanyCorporateTax::sync($userId);
+
+        return self::profitSnapshot($userId, $from, $to);
+    }
+
     /**
      * @param  array<string, mixed>|null  $profitAndLoss  Pass a prior profitAndLoss() result to avoid a second P&L / balance scan.
      */
