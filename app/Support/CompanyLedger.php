@@ -1685,4 +1685,311 @@ class CompanyLedger
 
         return round($net, 2);
     }
+
+    /**
+     * Correct an expense description and date, and the journals that quote them.
+     * Amounts, VAT, category, and who paid stay as posted. Wear-and-tear slices
+     * may stay after the first period end; that date is not a new trading day.
+     */
+    public static function correctExpense(CompanyExpense $expense, string $description, string $expenseDate): void
+    {
+        $description = trim($description);
+        if ($description === '') {
+            throw ValidationException::withMessages([
+                'description' => 'Enter a description.',
+            ]);
+        }
+
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $expenseDate)) {
+            throw ValidationException::withMessages([
+                'expense_date' => 'Enter a valid expense date.',
+            ]);
+        }
+
+        $userId = (int) $expense->user_id;
+
+        DB::transaction(function () use ($expense, $userId, $description, $expenseDate) {
+            $locked = CompanyExpense::where('user_id', $userId)
+                ->where('id', $expense->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                throw ValidationException::withMessages([
+                    'expense' => 'This expense is no longer on your books.',
+                ]);
+            }
+
+            $oldDescription = (string) $locked->description;
+            $oldDate = $locked->expense_date instanceof \DateTimeInterface
+                ? $locked->expense_date->format('Y-m-d')
+                : substr((string) $locked->expense_date, 0, 10);
+            $descriptionChanged = $description !== $oldDescription;
+            $dateChanged = $expenseDate !== $oldDate;
+
+            if (! $descriptionChanged && ! $dateChanged) {
+                return;
+            }
+
+            $profile = CompanyProfile::where('user_id', $userId)->first();
+            $periodEnd = $profile && $profile->first_period_end
+                ? $profile->first_period_end->format('Y-m-d')
+                : CompanyBooks::FIRST_PERIOD_END;
+            $periodStart = $profile && $profile->first_period_start
+                ? $profile->first_period_start->format('Y-m-d')
+                : CompanyBooks::INCORPORATION_DATE;
+
+            if ($dateChanged && $expenseDate > now()->toDateString()) {
+                throw ValidationException::withMessages([
+                    'expense_date' => 'The expense date cannot be in the future.',
+                ]);
+            }
+
+            if ($dateChanged && $expenseDate > $periodEnd) {
+                throw ValidationException::withMessages([
+                    'expense_date' => 'Expense date is after the first financial period end.',
+                ]);
+            }
+
+            if ($dateChanged && $locked->reversed_at) {
+                $reversal = $locked->reversed_at instanceof \DateTimeInterface
+                    ? $locked->reversed_at->format('Y-m-d')
+                    : substr((string) $locked->reversed_at, 0, 10);
+                if ($expenseDate > $reversal) {
+                    throw ValidationException::withMessages([
+                        'expense_date' => 'The expense date cannot be later than the reversal date.',
+                    ]);
+                }
+            }
+
+            if ($dateChanged && $locked->director_refunded_at) {
+                $refunded = $locked->director_refunded_at instanceof \DateTimeInterface
+                    ? $locked->director_refunded_at->format('Y-m-d')
+                    : substr((string) $locked->director_refunded_at, 0, 10);
+                if ($expenseDate > $refunded) {
+                    throw ValidationException::withMessages([
+                        'expense_date' => 'The expense date cannot be later than the director refund.',
+                    ]);
+                }
+            }
+
+            if ($dateChanged && $locked->company_expense_payment_id) {
+                $paidOn = CompanyExpensePayment::where('user_id', $userId)
+                    ->where('id', $locked->company_expense_payment_id)
+                    ->value('paid_on');
+                if ($paidOn) {
+                    $paid = $paidOn instanceof \DateTimeInterface
+                        ? $paidOn->format('Y-m-d')
+                        : substr((string) $paidOn, 0, 10);
+                    if ($expenseDate > $paid) {
+                        throw ValidationException::withMessages([
+                            'expense_date' => 'The expense date cannot be later than the supplier payment.',
+                        ]);
+                    }
+                }
+            }
+
+            $entries = CompanyJournalEntry::where('user_id', $userId)
+                ->where('source_id', $locked->id)
+                ->where('source_type', 'like', 'company_expense%')
+                ->lockForUpdate()
+                ->get();
+
+            $entryReplacements = [];
+            $memoReplacements = [];
+            if ($descriptionChanged) {
+                $entryReplacements = self::expenseEntryNarrativeMap($oldDescription, $description);
+                $memoReplacements = self::expenseMemoNarrativeMap($oldDescription, $description);
+                foreach (array_merge(array_values($entryReplacements), array_values($memoReplacements)) as $next) {
+                    if (mb_strlen($next) > 500) {
+                        throw ValidationException::withMessages([
+                            'description' => 'That description is too long to keep on the ledger line.',
+                        ]);
+                    }
+                }
+            }
+
+            $depreciationDates = [];
+            if ($dateChanged && $locked->category === 'computer') {
+                $slices = CompanyComputerAllowance::slices((float) $locked->amount, $expenseDate, $periodEnd);
+                $byIndex = [];
+                foreach ($slices as $slice) {
+                    $byIndex[(int) $slice['index']] = $slice['date'];
+                }
+                $today = now()->toDateString();
+                foreach ($entries as $entry) {
+                    if ($entry->source_type !== 'company_expense_depreciation') {
+                        continue;
+                    }
+                    if (! preg_match('/:depreciation:(\d+)$/', (string) $entry->source_key, $matches)) {
+                        throw ValidationException::withMessages([
+                            'expense_date' => 'That date does not line up with the wear-and-tear already posted.',
+                        ]);
+                    }
+                    $index = (int) $matches[1];
+                    if (! isset($byIndex[$index])) {
+                        throw ValidationException::withMessages([
+                            'expense_date' => 'That date does not line up with the wear-and-tear already posted.',
+                        ]);
+                    }
+                    $sliceDate = $byIndex[$index];
+                    $current = $entry->entry_date instanceof \DateTimeInterface
+                        ? $entry->entry_date->format('Y-m-d')
+                        : substr((string) $entry->entry_date, 0, 10);
+                    if ($sliceDate === $current) {
+                        continue;
+                    }
+                    if ($sliceDate > $today) {
+                        throw ValidationException::withMessages([
+                            'expense_date' => 'That date would put wear and tear on a future day.',
+                        ]);
+                    }
+                    $depreciationDates[$entry->id] = $sliceDate;
+                }
+            }
+
+            $dates = [$oldDate];
+            if ($dateChanged) {
+                $dates[] = $expenseDate;
+            }
+
+            $memoSkip = [
+                'company_expense_refund',
+                'company_expense_refund_reversal',
+                'company_expense_supplier_payment_reversal',
+                'company_expense_payment',
+            ];
+            $entriesById = $entries->keyBy('id');
+            $lines = $entries->isEmpty()
+                ? collect()
+                : CompanyJournalLine::where('user_id', $userId)
+                    ->whereIn('journal_entry_id', $entries->pluck('id'))
+                    ->lockForUpdate()
+                    ->get();
+
+            foreach ($entries as $entry) {
+                $current = $entry->entry_date instanceof \DateTimeInterface
+                    ? $entry->entry_date->format('Y-m-d')
+                    : substr((string) $entry->entry_date, 0, 10);
+                $touches = false;
+                if ($descriptionChanged && isset($entryReplacements[(string) $entry->description])) {
+                    $touches = true;
+                }
+                if ($dateChanged && $entry->source_type === 'company_expense' && $current !== $expenseDate) {
+                    $touches = true;
+                }
+                if (isset($depreciationDates[$entry->id])) {
+                    $touches = true;
+                    $dates[] = $depreciationDates[$entry->id];
+                }
+                if ($touches) {
+                    $dates[] = $current;
+                }
+            }
+
+            if ($descriptionChanged) {
+                foreach ($lines as $line) {
+                    $entry = $entriesById->get($line->journal_entry_id);
+                    if (! $entry || in_array($entry->source_type, $memoSkip, true)) {
+                        continue;
+                    }
+                    $memo = (string) ($line->memo ?? '');
+                    if (! isset($memoReplacements[$memo])) {
+                        continue;
+                    }
+                    if ($memo === (string) $locked->funded_by && $line->side !== 'debit') {
+                        continue;
+                    }
+                    $current = $entry->entry_date instanceof \DateTimeInterface
+                        ? $entry->entry_date->format('Y-m-d')
+                        : substr((string) $entry->entry_date, 0, 10);
+                    $dates[] = $current;
+                }
+            }
+
+            CompanyCorrectionGuard::assertDatesMutable($userId, $dates);
+
+            $updates = [];
+            if ($descriptionChanged) {
+                $updates['description'] = $description;
+            }
+            if ($dateChanged) {
+                $updates['expense_date'] = $expenseDate;
+                $updates['is_pre_incorporation'] = $expenseDate < $periodStart;
+            }
+            $locked->update($updates);
+
+            foreach ($entries as $entry) {
+                $entryUpdates = [];
+                if ($descriptionChanged && isset($entryReplacements[(string) $entry->description])) {
+                    $entryUpdates['description'] = $entryReplacements[(string) $entry->description];
+                }
+                if ($dateChanged && $entry->source_type === 'company_expense') {
+                    $current = $entry->entry_date instanceof \DateTimeInterface
+                        ? $entry->entry_date->format('Y-m-d')
+                        : substr((string) $entry->entry_date, 0, 10);
+                    if ($current !== $expenseDate) {
+                        $entryUpdates['entry_date'] = $expenseDate;
+                    }
+                }
+                if (isset($depreciationDates[$entry->id])) {
+                    $entryUpdates['entry_date'] = $depreciationDates[$entry->id];
+                }
+                if ($entryUpdates !== []) {
+                    $entry->update($entryUpdates);
+                }
+            }
+
+            if ($descriptionChanged) {
+                foreach ($lines as $line) {
+                    $entry = $entriesById->get($line->journal_entry_id);
+                    if (! $entry || in_array($entry->source_type, $memoSkip, true)) {
+                        continue;
+                    }
+                    $memo = (string) ($line->memo ?? '');
+                    if (! isset($memoReplacements[$memo])) {
+                        continue;
+                    }
+                    if ($memo === (string) $locked->funded_by && $line->side !== 'debit') {
+                        continue;
+                    }
+                    $line->update(['memo' => $memoReplacements[$memo]]);
+                }
+            }
+        });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function expenseEntryNarrativeMap(string $from, string $to): array
+    {
+        $prefixes = [
+            'Expense: ',
+            'Expense (reverse charge): ',
+            'Computer wear and tear: ',
+            'Director refund: ',
+            'Reversal of expense: ',
+            'Reversal of director refund: ',
+            'Reversal of computer wear and tear: ',
+            'Reversal of supplier payment: ',
+        ];
+        $map = [];
+        foreach ($prefixes as $prefix) {
+            $map[$prefix.$from] = $prefix.$to;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function expenseMemoNarrativeMap(string $from, string $to): array
+    {
+        return [
+            $from => $to,
+            'Reverse charge: '.$from => 'Reverse charge: '.$to,
+        ];
+    }
 }

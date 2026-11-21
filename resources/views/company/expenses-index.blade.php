@@ -166,6 +166,29 @@
     </div>
 
     <script>
+        document.querySelectorAll('form[data-correct-date]').forEach(function (form) {
+            var input = form.querySelector('input[type="date"]');
+            var note = form.querySelector('[data-date-note]');
+            if (!input || !note) return;
+            var base = note.textContent;
+            var end = form.getAttribute('data-period-end') || '2026-12-31';
+            input.addEventListener('change', function () {
+                if (!input.value) {
+                    note.textContent = base;
+                    return;
+                }
+                var today = input.getAttribute('max') || '';
+                if (today && input.value > today && input.value <= end) {
+                    note.textContent = 'That date is in the future.';
+                    return;
+                }
+                if (input.value > end) {
+                    note.textContent = 'That date is after the first financial period end (31 December 2026).';
+                    return;
+                }
+                note.textContent = base;
+            });
+        });
         (function () {
             var form = document.getElementById('expenseFilters');
             var note = document.getElementById('expenseFilterNote');

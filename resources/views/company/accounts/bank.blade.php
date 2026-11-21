@@ -60,6 +60,47 @@
                                 €{{ number_format((float) $line->amount, 2) }}
                             </div>
                         </div>
+                        @php
+                            $correctingLine = (string) old('line_id') === (string) $line->id;
+                            $dateMax = date('Y-m-d');
+                            $linePeriodEnd = $periodEnd ?? \App\Support\CompanyBooks::FIRST_PERIOD_END;
+                            if ($dateMax > $linePeriodEnd) {
+                                $dateMax = $linePeriodEnd;
+                            }
+                            $lineDate = $correctingLine
+                                ? old('statement_date', $line->statement_date->format('Y-m-d'))
+                                : $line->statement_date->format('Y-m-d');
+                            $lineNarrative = $correctingLine
+                                ? old('description', $line->description)
+                                : $line->description;
+                            $lineAmount = $correctingLine
+                                ? old('amount', number_format((float) $line->amount, 2, '.', ''))
+                                : number_format((float) $line->amount, 2, '.', '');
+                        @endphp
+                        <form method="POST" action="/company/bank/{{ $line->id }}/correct" data-correct-date data-period-end="{{ $linePeriodEnd }}" style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: end; margin-top: 0.65rem;">
+                            @csrf
+                            <input type="hidden" name="line_id" value="{{ $line->id }}">
+                            <div>
+                                <label for="bank-date-{{ $line->id }}" style="display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Date</label>
+                                <input id="bank-date-{{ $line->id }}" type="date" name="statement_date" value="{{ $lineDate }}" max="{{ $dateMax }}" required style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
+                            </div>
+                            <div style="flex: 1; min-width: 10rem;">
+                                <label for="bank-narrative-{{ $line->id }}" style="display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Narrative</label>
+                                <input id="bank-narrative-{{ $line->id }}" type="text" name="description" value="{{ $lineNarrative }}" maxlength="500" required style="width: 100%; padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
+                            </div>
+                            <div>
+                                <label for="bank-amount-{{ $line->id }}" style="display: block; font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Amount</label>
+                                <input id="bank-amount-{{ $line->id }}" type="number" name="amount" value="{{ $lineAmount }}" step="0.01" required @if($line->status === 'matched') readonly @endif style="width: 7.5rem; padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
+                            </div>
+                            <button type="submit" style="background: var(--primary-navy); color: white; border: none; padding: 0.4rem 0.7rem; border-radius: var(--radius-md); font-weight: 600; font-size: 0.8rem; cursor: pointer;">Save line</button>
+                            <span data-date-note style="flex-basis: 100%; font-size: 0.75rem; color: var(--text-muted);">
+                                @if($line->status === 'matched')
+                                    This line is matched, so the amount stays. Date and narrative can still be corrected.
+                                @else
+                                    Money in is positive; payments out are negative. The date cannot be after today or after 31 December 2026.
+                                @endif
+                            </span>
+                        </form>
                         @if($line->status === 'unreconciled')
                             <form method="POST" action="/company/bank/{{ $line->id }}/match" data-statement="{{ number_format((float) $line->amount, 2, '.', '') }}" style="margin-top: 0.65rem;">
                                 @csrf
@@ -197,5 +238,28 @@
             label.textContent = 'Bank €' + target.toFixed(2) + ' · ledger €' + sum.toFixed(2);
             label.style.color = (ledgerCount > 0 && Math.abs(sum - target) < 0.01) ? '#059669' : '#b45309';
         }
+        document.querySelectorAll('form[data-correct-date]').forEach(function (form) {
+            var input = form.querySelector('input[type="date"]');
+            var note = form.querySelector('[data-date-note]');
+            if (!input || !note) return;
+            var base = note.textContent;
+            var end = form.getAttribute('data-period-end') || '2026-12-31';
+            input.addEventListener('change', function () {
+                if (!input.value) {
+                    note.textContent = base;
+                    return;
+                }
+                if (input.value > end) {
+                    note.textContent = 'That date is after the first financial period end (31 December 2026).';
+                    return;
+                }
+                var today = input.getAttribute('max') || '';
+                if (today && input.value > today) {
+                    note.textContent = 'That date is in the future.';
+                    return;
+                }
+                note.textContent = base;
+            });
+        });
     </script>
 @endsection

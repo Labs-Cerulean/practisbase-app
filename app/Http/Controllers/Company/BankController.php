@@ -8,9 +8,12 @@ use App\Models\CompanyExpense;
 use App\Models\CompanyJournalEntry;
 use App\Models\CompanyJournalLine;
 use App\Support\BankMatch;
+use App\Support\CompanyBooks;
 use App\Support\CompanyChartOfAccounts;
+use App\Support\CompanyCorrectionGuard;
 use App\Support\CompanyLedger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -48,19 +51,22 @@ class BankController extends Controller
                 ->groupBy('bank_statement_line_id');
         }
 
+        $profile = CompanyBooks::ensureProfile($user);
+
         return view('company.accounts.bank', [
             'lines' => $lines,
             'unmatchedLedger' => $unmatchedLedger,
             'matchedByStatement' => $matchedByStatement,
             'unreconciledCount' => $lines->where('status', 'unreconciled')->count(),
             'removableExpenses' => $this->removableReversedExpenses($user->id, $unmatchedLedger),
+            'periodEnd' => $profile->first_period_end->format('Y-m-d'),
         ]);
     }
 
     /**
      * Reversed expenses whose unmatched bank lines already cancel, keyed by expense id.
      *
-     * @param  \Illuminate\Support\Collection<int, CompanyJournalLine>  $unmatchedLedger
+     * @param  Collection<int, CompanyJournalLine>  $unmatchedLedger
      * @return array<int, string>
      */
     private function removableReversedExpenses(int $userId, $unmatchedLedger): array
@@ -263,5 +269,81 @@ class BankController extends Controller
         }
 
         return back()->with('success', $statementCount.' bank '.($statementCount === 1 ? 'line' : 'lines').' matched to '.$ledgerCount.' ledger '.($ledgerCount === 1 ? 'line' : 'lines').'.');
+    }
+
+    public function correct(Request $request, int $line)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+
+        $validated = $request->validate([
+            'statement_date' => 'required|date|before_or_equal:today',
+            'description' => 'required|string|max:500',
+            'amount' => 'required|numeric',
+        ]);
+
+        $statementDate = date('Y-m-d', strtotime($validated['statement_date']));
+        $description = trim($validated['description']);
+        if ($description === '') {
+            return back()->withErrors([
+                'description' => 'Enter the narrative.',
+            ])->withInput();
+        }
+
+        $amount = round((float) $validated['amount'], 2);
+        $periodEnd = $profile->first_period_end
+            ? $profile->first_period_end->format('Y-m-d')
+            : CompanyBooks::FIRST_PERIOD_END;
+        if ($statementDate > $periodEnd) {
+            return back()->withErrors([
+                'statement_date' => 'Statement date is after the first financial period end.',
+            ])->withInput();
+        }
+
+        try {
+            DB::transaction(function () use ($user, $line, $statementDate, $description, $amount) {
+                $model = CompanyBankStatementLine::where('user_id', $user->id)
+                    ->where('id', $line)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $model) {
+                    abort(404);
+                }
+
+                $oldDate = $model->statement_date instanceof \DateTimeInterface
+                    ? $model->statement_date->format('Y-m-d')
+                    : substr((string) $model->statement_date, 0, 10);
+                CompanyCorrectionGuard::assertDatesMutable($user->id, [$oldDate, $statementDate]);
+
+                $oldAmount = round((float) $model->amount, 2);
+                if (abs($amount - $oldAmount) >= 0.005 && $this->lineIsMatched($user->id, $model)) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'This bank line is matched. Leave the amount as it is, or the match would no longer add up. Date and narrative can still be corrected.',
+                    ]);
+                }
+
+                $model->update([
+                    'statement_date' => $statementDate,
+                    'description' => $description,
+                    'amount' => $amount,
+                ]);
+            });
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        return back()->with('success', 'Bank line corrected.');
+    }
+
+    private function lineIsMatched(int $userId, CompanyBankStatementLine $line): bool
+    {
+        if ($line->status === 'matched' || $line->matched_journal_line_id) {
+            return true;
+        }
+
+        return CompanyJournalLine::where('user_id', $userId)
+            ->where('bank_statement_line_id', $line->id)
+            ->exists();
     }
 }

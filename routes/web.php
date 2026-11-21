@@ -511,6 +511,7 @@ Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->
 
         Route::get('/suppliers', [CompanySupplierController::class, 'index']);
         Route::post('/suppliers', [CompanySupplierController::class, 'store']);
+        Route::post('/suppliers/{supplier}/name', [CompanySupplierController::class, 'updateName'])->whereNumber('supplier');
 
         Route::get('/expenses', [CompanyExpenseController::class, 'index']);
         Route::get('/expenses/create', [CompanyExpenseController::class, 'create']);
@@ -521,6 +522,7 @@ Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->
         Route::post('/expenses/pay', [CompanyExpenseController::class, 'storePayment']);
         Route::get('/expenses/payments/{payment}/proof', [CompanyExpenseController::class, 'paymentProof'])->whereNumber('payment');
         Route::post('/expenses/{expense}/supplier', [CompanyExpenseController::class, 'assignSupplier'])->whereNumber('expense');
+        Route::post('/expenses/{expense}/correct', [CompanyExpenseController::class, 'correct'])->whereNumber('expense');
         Route::post('/expenses/{expense}/reverse', [CompanyExpenseController::class, 'reverse'])->whereNumber('expense');
         Route::post('/expenses/{expense}/remove', [CompanyExpenseController::class, 'remove'])->whereNumber('expense');
         Route::post('/expenses/{expense}/refund', [CompanyExpenseController::class, 'markRefunded'])->whereNumber('expense');
@@ -537,6 +539,7 @@ Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->
         Route::get('/bank', [CompanyBankController::class, 'index']);
         Route::post('/bank', [CompanyBankController::class, 'store']);
         Route::post('/bank/{line}/match', [CompanyBankController::class, 'match']);
+        Route::post('/bank/{line}/correct', [CompanyBankController::class, 'correct'])->whereNumber('line');
 
         Route::get('/personal', [CompanyPersonalReceiptController::class, 'index']);
         Route::post('/personal', [CompanyPersonalReceiptController::class, 'store']);

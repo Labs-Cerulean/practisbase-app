@@ -67,25 +67,39 @@
             @php
                 $row = $spend[$supplier->id] ?? ['count' => 0, 'net' => 0, 'cash' => 0];
             @endphp
-            <a href="/company/expenses?year={{ $year }}&supplier={{ $supplier->id }}" style="display: block; background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; box-shadow: var(--shadow-sm); text-decoration: none;">
-                <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-                    <div>
-                        <div style="font-weight: 700; color: var(--primary-navy);">{{ $supplier->name }}</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-                            @if($supplier->vat_number) VAT {{ $supplier->vat_number }} @endif
-                            @if($supplier->country) · {{ $supplier->country }} @endif
-                            @if($supplier->default_category) · {{ $categories[$supplier->default_category] ?? $supplier->default_category }} @endif
+            <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem 1.15rem; box-shadow: var(--shadow-sm);">
+                <a href="/company/expenses?year={{ $year }}&supplier={{ $supplier->id }}" style="display: block; text-decoration: none;">
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--primary-navy);">{{ $supplier->name }}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                                @if($supplier->vat_number) VAT {{ $supplier->vat_number }} @endif
+                                @if($supplier->country) · {{ $supplier->country }} @endif
+                                @if($supplier->default_category) · {{ $categories[$supplier->default_category] ?? $supplier->default_category }} @endif
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: var(--primary-navy); border-bottom: 1px dotted var(--primary-navy);">€{{ number_format($row['cash'], 2) }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                {{ $row['count'] }} {{ $row['count'] === 1 ? 'invoice' : 'invoices' }}
+                                · net €{{ number_format($row['net'], 2) }}
+                            </div>
                         </div>
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 700; color: var(--primary-navy); border-bottom: 1px dotted var(--primary-navy);">€{{ number_format($row['cash'], 2) }}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">
-                            {{ $row['count'] }} {{ $row['count'] === 1 ? 'invoice' : 'invoices' }}
-                            · net €{{ number_format($row['net'], 2) }}
-                        </div>
-                    </div>
-                </div>
-            </a>
+                </a>
+                @php
+                    $nameValue = (string) old('supplier_id') === (string) $supplier->id
+                        ? old('name', $supplier->name)
+                        : $supplier->name;
+                @endphp
+                <form method="POST" action="/company/suppliers/{{ $supplier->id }}/name" style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-top: 0.75rem;">
+                    @csrf
+                    <input type="hidden" name="supplier_id" value="{{ $supplier->id }}">
+                    <label for="supplier-name-{{ $supplier->id }}" style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">Name</label>
+                    <input id="supplier-name-{{ $supplier->id }}" type="text" name="name" value="{{ $nameValue }}" required maxlength="255" style="flex: 1; min-width: 10rem; padding: 0.4rem 0.55rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem;">
+                    <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Save name</button>
+                </form>
+            </div>
         @empty
             <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; text-align: center; color: var(--text-muted);">
                 No suppliers yet. Add Google or your bank here, or create one while logging the next invoice.

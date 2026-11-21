@@ -69,6 +69,30 @@
             @endif
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center;">
+            @php
+                $correctingExpense = (string) old('expense_id') === (string) $expense->id;
+                $dateMax = date('Y-m-d');
+                $periodEnd = isset($profile) && $profile->first_period_end
+                    ? $profile->first_period_end->format('Y-m-d')
+                    : \App\Support\CompanyBooks::FIRST_PERIOD_END;
+                if ($dateMax > $periodEnd) {
+                    $dateMax = $periodEnd;
+                }
+                $dateValue = $correctingExpense
+                    ? old('expense_date', $expense->expense_date->format('Y-m-d'))
+                    : $expense->expense_date->format('Y-m-d');
+                $descriptionValue = $correctingExpense
+                    ? old('description', $expense->description)
+                    : $expense->description;
+            @endphp
+            <form method="POST" action="/company/expenses/{{ $expense->id }}/correct" data-correct-date data-period-end="{{ $periodEnd }}" style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; width: 100%;">
+                @csrf
+                <input type="hidden" name="expense_id" value="{{ $expense->id }}">
+                <input type="date" name="expense_date" value="{{ $dateValue }}" max="{{ $dateMax }}" required aria-label="Expense date" style="padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
+                <input type="text" name="description" value="{{ $descriptionValue }}" maxlength="1000" required aria-label="Expense description" style="flex: 1; min-width: 10rem; padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.8rem;">
+                <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Save correction</button>
+                <span data-date-note style="flex-basis: 100%; font-size: 0.75rem; color: var(--text-muted);">A locked year cannot be changed. The date cannot be after today or after 31 December 2026.</span>
+            </form>
             @if($expense->receipt_path)
                 <a href="/company/expenses/{{ $expense->id }}/receipt" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Receipt</a>
             @endif
