@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Support\DocumentNumber;
 use App\Support\FiscalYearTotals;
 use App\Support\FiscalYearGuard;
+use App\Support\PracticeRfpConversion;
 use App\Support\RegimeHistory;
 
 class InvoiceController extends Controller
@@ -51,7 +52,7 @@ class InvoiceController extends Controller
 
         // Client Filter
         if ($request->filled('client_id')) {
-            $query->where('client_id', $request->client_id);
+            $query->where('client_id', (int) $request->client_id);
         }
 
         // Document type filter (RFP vs official invoice masters)
@@ -59,12 +60,39 @@ class InvoiceController extends Controller
             $query->where('type', $request->doc_type);
         }
 
+        if ($request->filled('q')) {
+            $like = $this->ledgerLikeTerm((string) $request->input('q'));
+            if ($like !== null) {
+                $query->where(function ($q) use ($like, $userId) {
+                    $q->whereRaw("LOWER(invoice_number) LIKE ? ESCAPE '\\'", [$like])
+                        ->orWhereRaw("LOWER(COALESCE(notes, '')) LIKE ? ESCAPE '\\'", [$like])
+                        ->orWhereHas('client', function ($client) use ($like, $userId) {
+                            $client->withTrashed()
+                                ->where('clients.user_id', $userId)
+                                ->whereRaw("LOWER(clients.name) LIKE ? ESCAPE '\\'", [$like]);
+                        })
+                        ->orWhereHas('childDocuments', function ($child) use ($like, $userId) {
+                            $child->where('user_id', $userId)
+                                ->where(function ($nested) use ($like) {
+                                    $nested->whereRaw("LOWER(invoice_number) LIKE ? ESCAPE '\\'", [$like])
+                                        ->orWhereRaw("LOWER(COALESCE(notes, '')) LIKE ? ESCAPE '\\'", [$like]);
+                                });
+                        });
+                });
+            }
+        }
+
         // Sorting (Fixed: Now uses created_at to factor in exact time of day)
         $sort = $request->input('sort', 'date_desc');
+        if (! in_array($sort, ['date_desc', 'date_asc', 'value_desc', 'value_asc', 'client_asc'], true)) {
+            $sort = 'date_desc';
+        }
+        $groupByClient = $request->input('group') === 'client';
         switch ($sort) {
             case 'date_asc': $query->orderBy('created_at', 'asc'); break;
             case 'value_desc': $query->orderBy('total', 'desc'); break;
             case 'value_asc': $query->orderBy('total', 'asc'); break;
+            case 'client_asc': $query->orderBy('created_at', 'desc'); break;
             default: $query->orderBy('created_at', 'desc'); break; // date_desc
         }
 
@@ -87,13 +115,40 @@ class InvoiceController extends Controller
             });
         }
 
+        if ($groupByClient || $sort === 'client_asc') {
+            $invoices = $invoices->sortBy(function ($parent) use ($sort) {
+                $name = mb_strtolower((string) optional($parent->client)->name);
+                $stamp = optional($parent->created_at)->timestamp ?? 0;
+                $secondary = match ($sort) {
+                    'date_asc' => sprintf('%010d', $stamp),
+                    'value_asc' => sprintf('%012.2f', (float) $parent->total),
+                    'value_desc' => sprintf('%012.2f', 100000000 - (float) $parent->total),
+                    default => sprintf('%010d', 9999999999 - $stamp),
+                };
+
+                return $name.'|'.$secondary.'|'.sprintf('%010d', (int) $parent->id);
+            })->values();
+        }
+
         $clients = \App\Models\Client::where('user_id', $userId)->orderBy('name')->get();
 
         return view('invoices.index', compact(
             'invoices', 'clients', 'totalPipeline', 'netInvoiced', 
             'unbilledPipeline', 'totalCollected', 'rfpCash', 'invoiceCash',
-            'totalDues', 'officialDues', 'unbilledDues'
+            'totalDues', 'officialDues', 'unbilledDues', 'groupByClient'
         ));
+    }
+
+    private function ledgerLikeTerm(string $term): ?string
+    {
+        $term = mb_strtolower(trim($term));
+        if ($term === '') {
+            return null;
+        }
+
+        $term = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+
+        return '%'.$term.'%';
     }
 
     // 2. Show the Create Document Form
@@ -531,133 +586,13 @@ class InvoiceController extends Controller
             return back()->withErrors(['fiscal_error' => $lockError]);
         }
 
-        $invNumber = null;
-
         try {
-            DB::transaction(function () use ($user, $document, $conversionAmount, $today, &$invNumber) {
-                $rfp = Invoice::where('user_id', $user->id)
-                    ->where('id', $document->id)
-                    ->where('type', 'rfp')
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                $existingConversions = (float) $rfp->childDocuments()->where('type', 'invoice')->sum('total');
-                $maxAllowable = round((float) $rfp->total - $existingConversions, 2);
-
-                if ($conversionAmount > $maxAllowable + 0.001) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'payment_error' => 'Conversion cannot exceed the remaining RFP value of €'.number_format($maxAllowable, 2),
-                    ]);
-                }
-
-                $partialRegime = RegimeHistory::forDate($user, $today);
-                if (($partialRegime['vat_status'] ?? $user->vat_status) === 'article_11') {
-                    $year = FiscalYearGuard::yearFromDate($today);
-                    $ytdNet = FiscalYearTotals::forUserYear($user->id, $year)['net_total'];
-                    if (($ytdNet + $conversionAmount) > 35000) {
-                        session()->flash('revenue_warning', 'Legal alert: Converting this RFP pushed your annual billed revenue over €35,000 (Article 11). You must apply for Article 10 VAT registration within 30 days.');
-                    }
-                }
-
-                $vatRate = (float) $rfp->vat_total > 0 ? 0.18 : 0;
-                if ($vatRate > 0) {
-                    $subtotal = round($conversionAmount / 1.18, 2);
-                    $vat = round($conversionAmount - $subtotal, 2);
-                } else {
-                    $subtotal = $conversionAmount;
-                    $vat = 0.0;
-                }
-
-                $invNumber = DocumentNumber::next($user->id, 'invoice', FiscalYearGuard::yearFromDate($today));
-
-                $newInvoice = Invoice::create([
-                    'user_id' => $user->id,
-                    'client_id' => $rfp->client_id,
-                    'parent_document_id' => $rfp->id,
-                    'type' => 'invoice',
-                    'invoice_number' => $invNumber,
-                    'issue_date' => $today,
-                    'due_date' => now()->addDays(14)->toDateString(),
-                    'subtotal' => $subtotal,
-                    'vat_total' => $vat,
-                    'total' => $conversionAmount,
-                    'amount_paid' => 0,
-                    'status' => 'unpaid',
-                    'items' => [
-                        [
-                            'description' => 'Milestone Billing for '.$rfp->invoice_number,
-                            'quantity' => 1,
-                            'price' => $subtotal,
-                            'amount' => $subtotal,
-                        ],
-                    ],
-                ]);
-
-                // Reassign existing client cash — never create a second cash receipt.
-                // Split oversized payments so leftover stays on the RFP.
-                $remainingToTransfer = $conversionAmount;
-                $totalTransferred = 0.0;
-
-                $cashPayments = Payment::where('user_id', $user->id)
-                    ->where('invoice_id', $rfp->id)
-                    ->where('is_transfer', false)
-                    ->where('amount', '>', 0)
-                    ->orderBy('payment_date')
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($cashPayments as $payment) {
-                    if ($remainingToTransfer <= 0.009) {
-                        break;
-                    }
-
-                    $payAmount = round((float) $payment->amount, 2);
-                    $take = round(min($payAmount, $remainingToTransfer), 2);
-                    if ($take <= 0) {
-                        continue;
-                    }
-
-                    if (abs($take - $payAmount) < 0.009) {
-                        $payment->update(['invoice_id' => $newInvoice->id]);
-                    } else {
-                        $payment->update(['amount' => round($payAmount - $take, 2)]);
-                        Payment::create([
-                            'user_id' => $user->id,
-                            'invoice_id' => $newInvoice->id,
-                            'amount' => $take,
-                            'payment_date' => $payment->payment_date,
-                            'payment_method' => $payment->payment_method,
-                            'notes' => trim(($payment->notes ? $payment->notes.' · ' : '').'Split from '.$rfp->invoice_number.' on convert'),
-                            'is_transfer' => false,
-                        ]);
-                    }
-
-                    $totalTransferred = round($totalTransferred + $take, 2);
-                    $remainingToTransfer = round($remainingToTransfer - $take, 2);
-                }
-
-                if ($totalTransferred > 0) {
-                    $newInvoice->update([
-                        'amount_paid' => $totalTransferred,
-                        'status' => ($totalTransferred >= $conversionAmount) ? 'paid' : 'partially_paid',
-                    ]);
-
-                    $rfpRemainingCash = (float) Payment::where('invoice_id', $rfp->id)->sum('amount');
-                    $rfp->update([
-                        'amount_paid' => max(0, $rfpRemainingCash),
-                    ]);
-                }
-
-                if (abs($conversionAmount - $maxAllowable) < 0.009) {
-                    $rfp->update(['status' => 'converted']);
-                }
-            });
+            $invoice = PracticeRfpConversion::convert($user, $document, $conversionAmount, $today);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->errors());
         }
 
-        return back()->with('success', 'Tax Invoice '.$invNumber.' generated for €'.number_format($conversionAmount, 2).'. Existing RFP cash was moved across (no double-count).');
+        return back()->with('success', 'Tax Invoice '.$invoice->invoice_number.' generated for €'.number_format($conversionAmount, 2).'. Existing RFP cash was moved across (no double-count).');
     }
 
     // 11. Reverse/Delete a Payment

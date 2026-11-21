@@ -21,8 +21,50 @@
         <div style="margin-bottom: 1rem; padding: 0.85rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-md); color: #991b1b; font-size: 0.9rem;">{{ $errors->first() }}</div>
     @endif
 
+    @isset($clients)
+        <form method="GET" action="/company/invoices" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow-sm);">
+            <input type="search" name="q" value="{{ request('q') }}" placeholder="Search number, client, or note" style="flex: 2; min-width: 12rem; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; color: var(--primary-navy);">
+            <select name="client_id" style="flex: 1; min-width: 10rem; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; color: var(--primary-navy); background: white;">
+                <option value="">All clients</option>
+                @foreach($clients as $client)
+                    <option value="{{ $client->id }}" @selected((string) request('client_id') === (string) $client->id)>{{ $client->name }}</option>
+                @endforeach
+            </select>
+            <select name="type" style="min-width: 8rem; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; background: white;">
+                <option value="">All types</option>
+                <option value="rfp" @selected(request('type') === 'rfp')>Proformas</option>
+                <option value="invoice" @selected(request('type') === 'invoice')>Tax invoices</option>
+            </select>
+            <select name="status" style="min-width: 8rem; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; background: white;">
+                <option value="">All balances</option>
+                <option value="open" @selected(request('status') === 'open')>Open</option>
+                <option value="settled" @selected(request('status') === 'settled')>Settled</option>
+            </select>
+            <select name="sort" style="min-width: 9rem; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; background: white;">
+                <option value="date_desc" @selected(request('sort', 'date_desc') === 'date_desc')>Newest first</option>
+                <option value="date_asc" @selected(request('sort') === 'date_asc')>Oldest first</option>
+                <option value="value_desc" @selected(request('sort') === 'value_desc')>Highest value</option>
+                <option value="value_asc" @selected(request('sort') === 'value_asc')>Lowest value</option>
+                <option value="client_asc" @selected(request('sort') === 'client_asc')>Client name</option>
+            </select>
+            <select name="group" style="min-width: 9rem; padding: 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.85rem; background: white;">
+                <option value="">No grouping</option>
+                <option value="client" @selected(request('group') === 'client')>Group by client</option>
+            </select>
+            <button type="submit" style="padding: 0.5rem 0.9rem; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; cursor: pointer;">Filter</button>
+            @if(request()->anyFilled(['q', 'client_id', 'type', 'status', 'sort', 'group']))
+                <a href="/company/invoices" style="padding: 0.5rem 0.9rem; background: #f1f5f9; color: #475569; text-decoration: none; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem;">Clear</a>
+            @endif
+        </form>
+    @endisset
+
     <div style="display: grid; gap: 1rem;">
+        @php $companyClientHeading = null; @endphp
         @forelse($documents as $doc)
+            @if(!empty($groupByClient) && $companyClientHeading !== $doc->company_client_id)
+                @php $companyClientHeading = $doc->company_client_id; @endphp
+                <h2 style="margin: 0.25rem 0 0; font-size: 1rem; color: var(--primary-navy); border-bottom: 1px solid var(--border-light); padding-bottom: 0.35rem;">{{ $doc->client->name ?? 'Client' }}</h2>
+            @endif
             @php
                 $superseded = $doc->type === 'rfp' && $doc->status === 'converted';
                 $balance = $superseded ? 0.0 : $doc->balance();
@@ -119,7 +161,7 @@
             </div>
         @empty
             <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 2rem; text-align: center; color: var(--text-muted);">
-                No documents yet. Create a proforma (RFP) for your first B2B client — it converts to a tax invoice when paid.
+                {{ request()->anyFilled(['q', 'client_id', 'type', 'status', 'sort', 'group']) ? 'No documents match this search.' : 'No documents yet. Create a proforma (RFP) for your first B2B client — it converts to a tax invoice when paid.' }}
             </div>
         @endforelse
     </div>
