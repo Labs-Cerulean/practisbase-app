@@ -28,23 +28,23 @@
             box-shadow: var(--shadow-sm);
             padding: 0.6rem 0.65rem 0.7rem;
         }
-        .expense-file img {
+        .expense-file img,
+        .expense-pdf canvas {
             display: block;
             width: 100%;
-            max-height: 22rem;
+            height: auto;
+            max-height: none;
             object-fit: contain;
-            background: #f8fafc;
+            background: white;
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
         }
-        .expense-file img:not([src]) { display: none; }
-        .expense-file iframe {
-            display: block;
-            width: 100%;
-            height: 22rem;
+        .expense-pdf {
+            background: white;
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
-            background: #f8fafc;
+            overflow: auto;
+            max-height: 70vh;
         }
         @media (min-width: 880px) {
             .expense-audit.has-file {
@@ -243,16 +243,85 @@
         })();
         document.querySelectorAll('details[data-expense-line]').forEach(function (fold) {
             function showFiles() {
-                fold.querySelectorAll('[data-file]').forEach(function (el) {
-                    if (!el.getAttribute('src')) {
-                        el.setAttribute('src', el.getAttribute('data-file'));
-                    }
-                });
+                fold.querySelectorAll('[data-pdf]').forEach(drawPdf);
             }
             if (fold.open) showFiles();
             fold.addEventListener('toggle', function () {
                 if (fold.open) showFiles();
             });
         });
+        var pdfjsPromise = null;
+        function loadPdfJs() {
+            if (!pdfjsPromise) {
+                pdfjsPromise = import('/js/pdfjs/pdf.min.js').then(function (pdfjs) {
+                    pdfjs.GlobalWorkerOptions.workerSrc = '/js/pdfjs/pdf.worker.min.js';
+                    return pdfjs;
+                });
+            }
+            return pdfjsPromise;
+        }
+        function drawPdf(node) {
+            var state = node.getAttribute('data-rendered');
+            if (state === '1' || state === 'failed') return;
+            node.setAttribute('data-rendered', '1');
+            var url = node.getAttribute('data-file');
+            var status = node.querySelector('[data-pdf-status]');
+            loadPdfJs().then(function (pdfjs) {
+                return pdfjs.getDocument({
+                    url: url,
+                    withCredentials: true,
+                    isEvalSupported: false,
+                    disableRange: true,
+                    disableStream: true,
+                    standardFontDataUrl: '/js/pdfjs/standard_fonts/'
+                }).promise;
+            }).then(function (pdf) {
+                if (status) status.remove();
+                var pages = Math.min(pdf.numPages, 8);
+                var chain = Promise.resolve();
+                function renderPage(pageNumber) {
+                    return pdf.getPage(pageNumber).then(function (page) {
+                        var width = node.clientWidth || node.parentElement.clientWidth || 320;
+                        var ratio = Math.min(window.devicePixelRatio || 1, 2);
+                        var base = page.getViewport({ scale: 1 });
+                        var scale = (width / base.width) * ratio;
+                        var viewport = page.getViewport({ scale: scale });
+                        var canvas = document.createElement('canvas');
+                        var ctx = canvas.getContext('2d');
+                        canvas.width = Math.floor(viewport.width);
+                        canvas.height = Math.floor(viewport.height);
+                        canvas.style.width = Math.floor(viewport.width / ratio) + 'px';
+                        canvas.style.height = Math.floor(viewport.height / ratio) + 'px';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        node.appendChild(canvas);
+                        return page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                    });
+                }
+                for (var n = 1; n <= pages; n++) {
+                    chain = chain.then(renderPage.bind(null, n));
+                }
+                return chain.then(function () {
+                    if (pdf.numPages > pages) {
+                        var more = document.createElement('p');
+                        more.style.cssText = 'margin: 0.5rem 0.75rem; font-size: 0.75rem; color: var(--text-muted);';
+                        more.textContent = 'The rest of this invoice is in the download.';
+                        node.appendChild(more);
+                    }
+                });
+            }).catch(function () {
+                node.setAttribute('data-rendered', 'failed');
+                if (status) {
+                    status.textContent = '';
+                    var link = document.createElement('a');
+                    link.href = url;
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.textContent = 'Open the invoice';
+                    link.style.cssText = 'font-weight: 600; color: var(--primary-cerulean); text-decoration: none;';
+                    status.appendChild(link);
+                }
+            });
+        }
     </script>
 @endsection

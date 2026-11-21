@@ -8,6 +8,7 @@ use App\Models\CompanyExpensePayment;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
 use App\Support\CompanyComputerAllowance;
+use App\Support\CompanyExpenseFiles;
 use App\Support\CompanyExpenseMonths;
 use App\Support\CompanyLedger;
 use App\Support\CompanyStoredFile;
@@ -182,6 +183,7 @@ class ExpenseController extends Controller
             'suggestions' => $suggestions,
             'suggestedCount' => count(array_filter($suggestions)),
             'filtersOn' => $search !== '' || $supplierFilter !== null || $status !== 'active',
+            'linkedReceipts' => CompanyExpenseFiles::forExpenses((int) $user->id, $expenses),
         ]);
     }
 
@@ -823,9 +825,14 @@ class ExpenseController extends Controller
         $userId = (int) Auth::id();
         $model = CompanyExpense::where('user_id', $userId)->where('id', $expense)->firstOrFail();
 
+        $key = CompanyExpenseFiles::forExpense($model);
+        $stored = CompanyExpenseFiles::direct($model) === $key && $key !== null
+            ? $model->receipt_path
+            : $key;
+
         return $this->ownedFile(
-            $model->receipt_path,
-            TenantStorage::companyReceiptsPath($userId),
+            is_string($stored) ? $stored : $key,
+            CompanyExpenseFiles::prefixFor($userId, $key) ?? '',
             $request->boolean('download'),
             'receipt'
         );
@@ -834,8 +841,19 @@ class ExpenseController extends Controller
     private function ownedFile(?string $path, string $prefix, bool $download, string $name)
     {
         $safe = CompanyStoredFile::owned($path, $prefix);
-        if ($safe === null || ! TenantStorage::disk()->exists($safe)) {
+        if ($safe === null) {
             abort(404);
+        }
+
+        $disk = TenantStorage::disk();
+        $key = $safe;
+        if (! $disk->exists($key)) {
+            $raw = CompanyStoredFile::rawKey($path);
+            if ($raw !== null && str_ends_with($raw, '/'.$safe) && $disk->exists($raw)) {
+                $key = $raw;
+            } else {
+                abort(404);
+            }
         }
 
         $extension = CompanyStoredFile::extension($safe);
@@ -844,7 +862,7 @@ class ExpenseController extends Controller
             abort(404);
         }
 
-        return TenantStorage::disk()->response($safe, $name.'.'.$extension, [
+        return $disk->response($key, $name.'.'.$extension, [
             'Content-Type' => $mime,
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'SAMEORIGIN',

@@ -1,8 +1,10 @@
 @php
     $receiptKind = null;
     $receiptUrl = null;
-    if (filled($expense->receipt_path) && \App\Support\CompanyStoredFile::owned($expense->receipt_path, \App\Support\TenantStorage::companyReceiptsPath((int) $expense->user_id))) {
-        $receiptKind = \App\Support\CompanyStoredFile::previewKind($expense->receipt_path);
+    $receiptPath = ($linkedReceipts[$expense->id] ?? null)
+        ?: \App\Support\CompanyStoredFile::owned($expense->receipt_path, \App\Support\TenantStorage::companyReceiptsPath((int) $expense->user_id));
+    if ($receiptPath !== null) {
+        $receiptKind = \App\Support\CompanyStoredFile::previewKind($receiptPath);
         $receiptUrl = '/company/expenses/'.$expense->id.'/receipt';
     }
     $proofKind = null;
@@ -14,8 +16,11 @@
             ($expense->funded_by === 'director' && $expense->director_refunded_at)
             || $expense->funded_by === 'payable'
         );
-    if ($paidWithProof && \App\Support\CompanyStoredFile::owned($expense->payment->proof_path, \App\Support\TenantStorage::companyPaymentsPath((int) $expense->user_id))) {
-        $proofKind = \App\Support\CompanyStoredFile::previewKind($expense->payment->proof_path);
+    $proofPath = $paidWithProof
+        ? \App\Support\CompanyStoredFile::owned($expense->payment->proof_path, \App\Support\TenantStorage::companyPaymentsPath((int) $expense->user_id))
+        : null;
+    if ($proofPath !== null) {
+        $proofKind = \App\Support\CompanyStoredFile::previewKind($proofPath);
         $proofUrl = '/company/expenses/payments/'.$expense->payment->id.'/proof';
     }
     $hasFile = $receiptUrl || $proofUrl;
