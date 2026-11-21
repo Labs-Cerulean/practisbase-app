@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\CompanyExpense;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
+use App\Support\CompanyCorrectionGuard;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -35,6 +39,7 @@ class SupplierController extends Controller
             if (! $expense->company_supplier_id) {
                 $unassignedCount++;
                 $unassignedCash += $expense->cashTotal();
+
                 continue;
             }
             $id = (int) $expense->company_supplier_id;
@@ -80,5 +85,62 @@ class SupplierController extends Controller
         ]);
 
         return redirect('/company/suppliers')->with('success', 'Supplier saved: '.$supplier->name.'.');
+    }
+
+    public function updateName(Request $request, int $supplier)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $name = trim(preg_replace('/\s+/', ' ', $validated['name']) ?? '');
+        if ($name === '') {
+            return back()->withErrors([
+                'name' => 'Enter the supplier name.',
+            ])->withInput();
+        }
+
+        try {
+            DB::transaction(function () use ($user, $supplier, $name) {
+                $model = CompanySupplier::where('user_id', $user->id)
+                    ->where('id', $supplier)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $model) {
+                    abort(404);
+                }
+
+                $duplicate = CompanySupplier::where('user_id', $user->id)
+                    ->where('id', '!=', $model->id)
+                    ->whereRaw('lower(name) = ?', [mb_strtolower($name)])
+                    ->exists();
+                if ($duplicate) {
+                    throw ValidationException::withMessages([
+                        'name' => 'A supplier with that name is already saved.',
+                    ]);
+                }
+
+                $dates = CompanyExpense::where('user_id', $user->id)
+                    ->where('company_supplier_id', $model->id)
+                    ->pluck('expense_date')
+                    ->all();
+                CompanyCorrectionGuard::assertDatesMutable($user->id, $dates);
+
+                if ($model->name !== $name) {
+                    $model->update(['name' => $name]);
+                }
+            });
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        } catch (QueryException) {
+            return back()->withErrors([
+                'name' => 'A supplier with that name is already saved.',
+            ])->withInput();
+        }
+
+        return redirect('/company/suppliers')->with('success', 'Supplier name saved: '.$name.'.');
     }
 }

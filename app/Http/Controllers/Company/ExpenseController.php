@@ -410,6 +410,33 @@ class ExpenseController extends Controller
         return redirect('/company/expenses')->with('success', $msg);
     }
 
+    public function correct(Request $request, int $expense)
+    {
+        $user = Auth::user();
+        CompanyBooks::ensureProfile($user);
+
+        $validated = $request->validate([
+            'expense_date' => 'required|date|before_or_equal:today',
+            'description' => 'required|string|max:1000',
+        ]);
+
+        $model = CompanyExpense::where('user_id', $user->id)
+            ->where('id', $expense)
+            ->firstOrFail();
+
+        try {
+            CompanyLedger::correctExpense(
+                $model,
+                $validated['description'],
+                date('Y-m-d', strtotime($validated['expense_date']))
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        return back()->with('success', 'Expense corrected.');
+    }
+
     public function assignSuggested(Request $request)
     {
         $user = Auth::user();
