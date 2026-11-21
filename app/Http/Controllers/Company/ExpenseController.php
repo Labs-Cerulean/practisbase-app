@@ -163,7 +163,7 @@ class ExpenseController extends Controller
             );
         }
 
-        return view('company.expenses-index', [
+        return response()->view('company.expenses-index', [
             'expensesById' => $expenses->keyBy('id'),
             'months' => $months,
             'categories' => CompanyExpense::CATEGORIES,
@@ -184,7 +184,7 @@ class ExpenseController extends Controller
             'suggestedCount' => count(array_filter($suggestions)),
             'filtersOn' => $search !== '' || $supplierFilter !== null || $status !== 'active',
             'linkedReceipts' => CompanyExpenseFiles::forExpenses((int) $user->id, $expenses),
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function create(Request $request)
@@ -356,12 +356,16 @@ class ExpenseController extends Controller
         $receiptPath = null;
         $draft = $this->draftFromToken((string) ($validated['draft_token'] ?? ''));
         if ($request->hasFile('receipt')) {
-            $receiptPath = $request->file('receipt')->store(
+            $stored = $request->file('receipt')->store(
                 TenantStorage::companyReceiptsPath($user->id),
                 TenantStorage::diskName()
             );
-            $this->forgetDraftFile();
-        } elseif ($draft && filled($draft['path'] ?? null)) {
+            if (is_string($stored) && $stored !== '') {
+                $receiptPath = $stored;
+                $this->forgetDraftFile();
+            }
+        }
+        if ($receiptPath === null && $draft && filled($draft['path'] ?? null)) {
             $receiptPath = $this->promoteDraft($user->id, $draft);
         }
 
@@ -907,7 +911,14 @@ class ExpenseController extends Controller
         }
 
         $final = TenantStorage::companyReceiptsPath($userId).'/'.Str::random(40).'.pdf';
-        TenantStorage::disk()->move($path, $final);
+        try {
+            TenantStorage::disk()->move($path, $final);
+        } catch (\Throwable) {
+            return $path;
+        }
+        if (! TenantStorage::disk()->exists($final)) {
+            return TenantStorage::disk()->exists($path) ? $path : null;
+        }
 
         return $final;
     }

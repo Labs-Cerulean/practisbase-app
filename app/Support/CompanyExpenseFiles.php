@@ -9,19 +9,19 @@ use App\Models\CompanyExpense;
  *
  * A supplier PDF read on the way in is stored at
  * tenants/{user}/company/receipts/drafts/{token}.pdf on the tenant disk.
- * Saving promotes that file to tenants/{user}/company/receipts/{name}.pdf
- * and writes the new key on receipt_path. A photo taken with the expense
- * is stored directly under tenants/{user}/company/receipts/{name}.jpg.
- * Older sole-trader uploads use tenants/{user}/receipts/. A payment proof
- * uses tenants/{user}/company/payments/.
- *
- * The drafts key is not on the expense when the save did not promote it.
- * The invoice number on the row is the text read from that PDF. This class
- * reads only this user's folders and attaches the one PDF that contains
- * that number.
+ * The token is forty letters. Saving is supposed to move that file to
+ * tenants/{user}/company/receipts/{name}.pdf and write that key on
+ * receipt_path. When the save did not, the object is still the drafts key.
+ * A photo taken with the expense is tenants/{user}/company/receipts/{name}.jpg
+ * and that key is receipt_path. A payment proof is
+ * tenants/{user}/company/payments/{name}.ext. Older sole-trader uploads are
+ * tenants/{user}/receipts/{name}.ext. Same disk, this user's folders only.
  */
 class CompanyExpenseFiles
 {
+    /** A scan uploaded with the form and the row saved in the same sitting. */
+    private const SITTING_SECONDS = 3 * 3600;
+
     public static function prefixes(int $userId): array
     {
         return [
@@ -32,6 +32,38 @@ class CompanyExpenseFiles
     }
 
     /**
+     * A name returned by a directory listing, joined back onto the directory
+     * when the listing omitted it. The result must still sit under that
+     * directory. A name that climbs out is refused.
+     */
+    public static function listedObject(string $directory, string $listed): ?string
+    {
+        $directory = trim(str_replace('\\', '/', $directory), '/');
+        $listed = str_replace('\\', '/', trim($listed));
+        if ($directory === '' || $listed === '' || str_contains($directory, "\0") || str_contains($listed, "\0")) {
+            return null;
+        }
+        if (str_contains($directory, '..') || str_contains($listed, '..')) {
+            return null;
+        }
+
+        if (! str_starts_with($listed, $directory.'/') && $listed !== $directory) {
+            if (str_starts_with($listed, 'tenants/')) {
+                return null;
+            }
+            if (str_contains($listed, '/') && ! preg_match('#^[A-Za-z0-9._/-]{1,240}$#', $listed)) {
+                return null;
+            }
+            if (! str_contains($listed, '/') && ! preg_match('/^[A-Za-z0-9._-]{1,180}$/', $listed)) {
+                return null;
+            }
+            $listed = $directory.'/'.ltrim($listed, '/');
+        }
+
+        return CompanyStoredFile::owned($listed, $directory);
+    }
+
+    /**
      * @param  iterable<int, CompanyExpense>  $expenses
      * @return array<int, string>
      */
@@ -39,6 +71,7 @@ class CompanyExpenseFiles
     {
         $direct = [];
         $needed = [];
+        $savedAt = [];
         $used = [];
 
         foreach ($expenses as $expense) {
@@ -55,6 +88,7 @@ class CompanyExpenseFiles
             $number = trim((string) ($expense->supplier_invoice_number ?? ''));
             if ($number !== '') {
                 $needed[(int) $expense->id] = $number;
+                $savedAt[(int) $expense->id] = self::savedAt($expense);
             }
         }
 
@@ -62,7 +96,7 @@ class CompanyExpenseFiles
             return $direct;
         }
 
-        return $direct + self::matchUnlinked($userId, $needed, $used);
+        return $direct + self::matchUnlinked($userId, $needed, $used, $savedAt);
     }
 
     public static function forExpense(CompanyExpense $expense): ?string
@@ -89,9 +123,15 @@ class CompanyExpenseFiles
             }
         }
 
-        $found = self::matchUnlinked((int) $expense->user_id, [(int) $expense->id => $number], $used);
+        $id = (int) $expense->id;
+        $found = self::matchUnlinked(
+            (int) $expense->user_id,
+            [$id => $number],
+            $used,
+            [$id => self::savedAt($expense)]
+        );
 
-        return $found[(int) $expense->id] ?? null;
+        return $found[$id] ?? null;
     }
 
     public static function prefixFor(int $userId, ?string $key): ?string
@@ -128,11 +168,13 @@ class CompanyExpenseFiles
     /**
      * @param  array<int, string>  $needed
      * @param  array<string, bool>  $used
+     * @param  array<int, int>  $savedAt
      * @return array<int, string>
      */
-    private static function matchUnlinked(int $userId, array $needed, array $used): array
+    private static function matchUnlinked(int $userId, array $needed, array $used, array $savedAt): array
     {
         $hits = [];
+        $silent = [];
         foreach (self::candidatePdfs($userId) as $path) {
             if (isset($used[$path])) {
                 continue;
@@ -151,6 +193,10 @@ class CompanyExpenseFiles
             }
             $text = PdfPlainText::fromBinary($bytes);
             if ($text === '') {
+                if (str_contains($path, '/drafts/')) {
+                    $silent[$path] = $path;
+                }
+
                 continue;
             }
             foreach ($needed as $expenseId => $number) {
@@ -165,7 +211,7 @@ class CompanyExpenseFiles
             return strlen($right) <=> strlen($left);
         });
 
-        $taken = [];
+        $taken = $used;
         $found = [];
         foreach ($ordered as $expenseId => $number) {
             $paths = array_values(array_unique($hits[$expenseId] ?? []));
@@ -178,7 +224,14 @@ class CompanyExpenseFiles
             $taken[$chosen] = true;
         }
 
-        return $found;
+        $waiting = [];
+        foreach ($needed as $expenseId => $number) {
+            if (! isset($found[$expenseId]) && isset($savedAt[$expenseId])) {
+                $waiting[$expenseId] = $savedAt[$expenseId];
+            }
+        }
+
+        return $found + self::pairSilentDrafts($waiting, $silent, $taken);
     }
 
     /**
@@ -186,16 +239,148 @@ class CompanyExpenseFiles
      */
     private static function choose(array $paths): ?string
     {
-        if (count($paths) === 1) {
-            return $paths[0];
+        if ($paths === []) {
+            return null;
         }
 
         $drafts = array_values(array_filter(
             $paths,
             fn (string $path) => str_contains($path, '/drafts/')
         ));
+        $pool = $drafts !== [] ? $drafts : $paths;
+        usort($pool, function (string $left, string $right): int {
+            $byTime = self::modifiedAt($right) <=> self::modifiedAt($left);
 
-        return count($drafts) === 1 ? $drafts[0] : null;
+            return $byTime !== 0 ? $byTime : strcmp($right, $left);
+        });
+
+        return $pool[0];
+    }
+
+    /**
+     * A photographed bill has no text layer, so the invoice number on the
+     * row is not inside the file. The object is still the drafts PDF from
+     * the same sitting. Pair only when each side is the other's closest
+     * file, and only inside this user's drafts listing.
+     *
+     * @param  array<int, int>  $savedAt
+     * @param  array<string, string>  $silent
+     * @param  array<string, bool>  $taken
+     * @return array<int, string>
+     */
+    private static function pairSilentDrafts(array $savedAt, array $silent, array $taken): array
+    {
+        $files = [];
+        foreach ($silent as $path) {
+            if (isset($taken[$path]) || ! str_contains($path, '/drafts/')) {
+                continue;
+            }
+            $mtime = self::modifiedAt($path);
+            if ($mtime > 0) {
+                $files[$path] = $mtime;
+            }
+        }
+
+        $pending = [];
+        foreach ($savedAt as $id => $when) {
+            if (is_int($when) && $when > 0) {
+                $pending[(int) $id] = $when;
+            }
+        }
+
+        $found = [];
+        do {
+            $paired = false;
+            foreach (array_keys($pending) as $id) {
+                if (isset($found[$id])) {
+                    continue;
+                }
+                $choice = self::mutualDraft($id, $pending, $found, $files, $taken);
+                if ($choice === null) {
+                    continue;
+                }
+                $found[$id] = $choice;
+                $taken[$choice] = true;
+                $paired = true;
+            }
+        } while ($paired);
+
+        return $found;
+    }
+
+    /**
+     * @param  array<int, int>  $pending
+     * @param  array<int, string>  $found
+     * @param  array<string, int>  $files
+     * @param  array<string, bool>  $taken
+     */
+    private static function mutualDraft(int $id, array $pending, array $found, array $files, array $taken): ?string
+    {
+        $path = self::closestFile($pending[$id], $files, $taken);
+        if ($path === null) {
+            return null;
+        }
+        $owner = self::closestExpense($files[$path], $pending, $found);
+
+        return $owner === $id ? $path : null;
+    }
+
+    /**
+     * @param  array<string, int>  $files
+     * @param  array<string, bool>  $taken
+     */
+    private static function closestFile(int $savedAt, array $files, array $taken): ?string
+    {
+        $bestPath = null;
+        $bestGap = null;
+        $tie = false;
+        foreach ($files as $path => $mtime) {
+            if (isset($taken[$path])) {
+                continue;
+            }
+            $gap = abs($mtime - $savedAt);
+            if ($gap > self::SITTING_SECONDS) {
+                continue;
+            }
+            if ($bestGap === null || $gap < $bestGap) {
+                $bestGap = $gap;
+                $bestPath = $path;
+                $tie = false;
+            } elseif ($gap === $bestGap) {
+                $tie = true;
+            }
+        }
+
+        return $tie ? null : $bestPath;
+    }
+
+    /**
+     * @param  array<int, int>  $pending
+     * @param  array<int, string>  $found
+     */
+    private static function closestExpense(int $mtime, array $pending, array $found): ?int
+    {
+        $bestId = null;
+        $bestGap = null;
+        $tie = false;
+        foreach ($pending as $id => $savedAt) {
+            if (isset($found[$id])) {
+                continue;
+            }
+            $gap = abs($mtime - $savedAt);
+            if ($gap > self::SITTING_SECONDS) {
+                continue;
+            }
+            if ($bestGap === null || $gap < $bestGap) {
+                $bestGap = $gap;
+                $bestId = (int) $id;
+                $tie = false;
+            } elseif ($gap === $bestGap) {
+                $tie = true;
+            }
+        }
+
+        return $tie ? null : $bestId;
     }
 
     /**
@@ -213,9 +398,13 @@ class CompanyExpenseFiles
         $paths = [];
         foreach ($dirs as $dir) {
             try {
-                $files = $disk->files($dir);
+                $files = $disk->allFiles($dir);
             } catch (\Throwable) {
-                continue;
+                try {
+                    $files = $disk->files($dir);
+                } catch (\Throwable) {
+                    continue;
+                }
             }
             if (! is_array($files)) {
                 continue;
@@ -224,7 +413,7 @@ class CompanyExpenseFiles
                 if (! is_string($file)) {
                     continue;
                 }
-                $safe = self::ownedPath($userId, $file);
+                $safe = self::listedObject($dir, $file);
                 if ($safe === null || CompanyStoredFile::extension($safe) !== 'pdf') {
                     continue;
                 }
@@ -233,6 +422,24 @@ class CompanyExpenseFiles
         }
 
         return array_values($paths);
+    }
+
+    private static function savedAt(CompanyExpense $expense): int
+    {
+        $created = $expense->created_at;
+
+        return $created instanceof \DateTimeInterface ? $created->getTimestamp() : 0;
+    }
+
+    private static function modifiedAt(string $path): int
+    {
+        try {
+            $mtime = TenantStorage::disk()->lastModified($path);
+
+            return is_int($mtime) ? $mtime : 0;
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 
     private static function textHasNumber(string $text, string $invoiceNumber): bool
