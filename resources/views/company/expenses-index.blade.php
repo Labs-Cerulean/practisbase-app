@@ -9,7 +9,7 @@
             'unpaid' => 'Supplier invoices logged, still waiting for the company to pay.',
             'company' => 'Paid from the company bank or card when the invoice was logged.',
             'reversed' => 'These no longer count in totals. Open a line to remove a mistaken pair from the books.',
-            default => 'Open a line for the receipt, a refund, or a reversal. Older months stay closed.',
+            default => 'Open a line to see the invoice and the receipt next to the posting. Older months stay closed.',
         };
     @endphp
 
@@ -19,6 +19,39 @@
         .expense-fold > summary::marker { content: ''; }
         .expense-fold[open] > summary .fold-mark { transform: rotate(90deg); }
         .expense-fold > summary .fold-mark { transition: transform 0.15s ease; }
+        .expense-audit { display: grid; gap: 0.85rem; }
+        .expense-files { display: grid; gap: 0.65rem; }
+        .expense-file {
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 0.6rem 0.65rem 0.7rem;
+        }
+        .expense-file img {
+            display: block;
+            width: 100%;
+            max-height: 22rem;
+            object-fit: contain;
+            background: #f8fafc;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+        }
+        .expense-file img:not([src]) { display: none; }
+        .expense-file iframe {
+            display: block;
+            width: 100%;
+            height: 22rem;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            background: #f8fafc;
+        }
+        @media (min-width: 880px) {
+            .expense-audit.has-file {
+                grid-template-columns: minmax(0, 1.15fr) minmax(16rem, 22rem);
+                align-items: start;
+            }
+        }
     </style>
 
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
@@ -195,7 +228,7 @@
             var status = document.getElementById('expenseStatus');
             if (!form || !status) return;
             var notes = {
-                active: 'Open a line for the receipt, a refund, or a reversal. Older months stay closed.',
+                active: 'Open a line to see the invoice and the receipt next to the posting. Older months stay closed.',
                 owed: 'Director-funded costs still waiting for a refund.',
                 unpaid: 'Supplier invoices logged, still waiting for the company to pay.',
                 company: 'Paid from the company bank or card when the invoice was logged.',
@@ -208,5 +241,18 @@
                 el.addEventListener('change', function () { form.submit(); });
             });
         })();
+        document.querySelectorAll('details[data-expense-line]').forEach(function (fold) {
+            function showFiles() {
+                fold.querySelectorAll('[data-file]').forEach(function (el) {
+                    if (!el.getAttribute('src')) {
+                        el.setAttribute('src', el.getAttribute('data-file'));
+                    }
+                });
+            }
+            if (fold.open) showFiles();
+            fold.addEventListener('toggle', function () {
+                if (fold.open) showFiles();
+            });
+        });
     </script>
 @endsection

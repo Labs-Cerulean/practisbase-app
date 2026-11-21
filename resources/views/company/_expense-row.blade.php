@@ -1,4 +1,26 @@
-<details class="expense-fold" style="background: {{ $expense->isReversed() ? '#f8fafc' : 'white' }}; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+@php
+    $receiptKind = null;
+    $receiptUrl = null;
+    if (filled($expense->receipt_path) && \App\Support\CompanyStoredFile::owned($expense->receipt_path, \App\Support\TenantStorage::companyReceiptsPath((int) $expense->user_id))) {
+        $receiptKind = \App\Support\CompanyStoredFile::previewKind($expense->receipt_path);
+        $receiptUrl = '/company/expenses/'.$expense->id.'/receipt';
+    }
+    $proofKind = null;
+    $proofUrl = null;
+    $paidWithProof = $expense->payment
+        && filled($expense->payment->proof_path)
+        && ! $expense->isReversed()
+        && (
+            ($expense->funded_by === 'director' && $expense->director_refunded_at)
+            || $expense->funded_by === 'payable'
+        );
+    if ($paidWithProof && \App\Support\CompanyStoredFile::owned($expense->payment->proof_path, \App\Support\TenantStorage::companyPaymentsPath((int) $expense->user_id))) {
+        $proofKind = \App\Support\CompanyStoredFile::previewKind($expense->payment->proof_path);
+        $proofUrl = '/company/expenses/payments/'.$expense->payment->id.'/proof';
+    }
+    $hasFile = $receiptUrl || $proofUrl;
+@endphp
+<details class="expense-fold" data-expense-line style="background: {{ $expense->isReversed() ? '#f8fafc' : 'white' }}; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
     <summary style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; padding: 0.7rem 0.85rem; cursor: pointer;">
         <span class="fold-mark" aria-hidden="true" style="color: var(--text-muted); font-size: 0.75rem; flex: 0 0 auto;">▸</span>
         <span style="min-width: 0; flex: 1;">
@@ -30,42 +52,68 @@
         </span>
     </summary>
     <div style="padding: 0.75rem 0.9rem 0.9rem; border-top: 1px solid var(--border-light);">
-        <div style="font-size: 0.85rem; color: var(--primary-navy); line-height: 1.45;">{{ $expense->description }}</div>
-        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.45;">
-            {{ $expense->expense_date->format('d M Y') }}
-            @if($expense->supplier_invoice_number)
-                · {{ $expense->supplier_invoice_number }}
-            @endif
-            · {{ $categories[$expense->category] ?? $expense->category }}
-            · {{ $expense->fundingLabel() }}
-            @if($expense->is_pre_incorporation) · pre-incorporation @endif
-            <br>
-            ex-VAT €{{ number_format((float) $expense->amount, 2) }}
-            @if($expense->is_reverse_charge)
-                · RC VAT €{{ number_format((float) $expense->vat_amount, 2) }} (out=in)
-            @else
-                · VAT €{{ number_format((float) $expense->vat_amount, 2) }}
-            @endif
-            @if($expense->category === 'computer' && !$expense->isReversed())
-                <br>Wear and tear
-                @foreach($expense->computerWearAndTear() as $slice)
-                    €{{ number_format($slice['amount'], 2) }} on {{ \Illuminate\Support\Carbon::parse($slice['date'])->format('j M Y') }}@if(!$loop->last), @endif
-                @endforeach
-            @endif
-            @if($expense->isReversed())
-                <br>Reversed {{ $expense->reversed_at->format('d M Y') }}@if($expense->reversal_note) · {{ $expense->reversal_note }}@endif
-            @endif
-            @if($expense->funded_by === 'director' && $expense->director_refunded_at && !$expense->isReversed())
-                <br><span style="color: #059669;">Refunded {{ $expense->director_refunded_at->format('d M Y') }}</span>
-                @if($expense->payment && $expense->payment->proof_path)
-                    · <a href="/company/expenses/payments/{{ $expense->payment->id }}/proof" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payment proof</a>
-                @endif
-            @endif
-            @if($expense->funded_by === 'payable' && $expense->payment && !$expense->isReversed())
-                <br><span style="color: #059669;">Paid {{ $expense->payment->paid_on->format('d M Y') }}</span>
-                @if($expense->payment->proof_path)
-                    · <a href="/company/expenses/payments/{{ $expense->payment->id }}/proof" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payment proof</a>
-                @endif
+        <div class="expense-audit{{ $hasFile ? ' has-file' : '' }}">
+            <div>
+                <div style="font-size: 0.85rem; color: var(--primary-navy); line-height: 1.45;">{{ $expense->description }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; line-height: 1.45;">
+                    {{ $expense->expense_date->format('d M Y') }}
+                    @if($expense->supplier_invoice_number)
+                        · {{ $expense->supplier_invoice_number }}
+                    @endif
+                    · {{ $categories[$expense->category] ?? $expense->category }}
+                    · {{ $expense->fundingLabel() }}
+                    @if($expense->is_pre_incorporation) · pre-incorporation @endif
+                    <br>
+                    ex-VAT €{{ number_format((float) $expense->amount, 2) }}
+                    @if($expense->is_reverse_charge)
+                        · RC VAT €{{ number_format((float) $expense->vat_amount, 2) }} (out=in)
+                    @else
+                        · VAT €{{ number_format((float) $expense->vat_amount, 2) }}
+                    @endif
+                    @if($expense->category === 'computer' && !$expense->isReversed())
+                        <br>Wear and tear
+                        @foreach($expense->computerWearAndTear() as $slice)
+                            €{{ number_format($slice['amount'], 2) }} on {{ \Illuminate\Support\Carbon::parse($slice['date'])->format('j M Y') }}@if(!$loop->last), @endif
+                        @endforeach
+                    @endif
+                    @if($expense->isReversed())
+                        <br>Reversed {{ $expense->reversed_at->format('d M Y') }}@if($expense->reversal_note) · {{ $expense->reversal_note }}@endif
+                    @endif
+                    @if($expense->funded_by === 'director' && $expense->director_refunded_at && !$expense->isReversed())
+                        <br><span style="color: #059669;">Refunded {{ $expense->director_refunded_at->format('d M Y') }}</span>
+                        @if($proofUrl)
+                            · <a href="#expense-proof-{{ $expense->id }}" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payment proof</a>
+                        @endif
+                    @endif
+                    @if($expense->funded_by === 'payable' && $expense->payment && !$expense->isReversed())
+                        <br><span style="color: #059669;">Paid {{ $expense->payment->paid_on->format('d M Y') }}</span>
+                        @if($proofUrl)
+                            · <a href="#expense-proof-{{ $expense->id }}" style="color: var(--primary-cerulean); font-weight: 600; text-decoration: none;">Payment proof</a>
+                        @endif
+                    @endif
+                </div>
+            </div>
+            @if($hasFile)
+                <div class="expense-files">
+                    @if($receiptUrl)
+                        @include('company._expense-file', [
+                            'anchor' => 'expense-receipt-'.$expense->id,
+                            'label' => 'Receipt',
+                            'title' => 'Receipt for '.$expense->description,
+                            'url' => $receiptUrl,
+                            'kind' => $receiptKind,
+                        ])
+                    @endif
+                    @if($proofUrl)
+                        @include('company._expense-file', [
+                            'anchor' => 'expense-proof-'.$expense->id,
+                            'label' => 'Payment proof',
+                            'title' => 'Payment proof for '.$expense->description,
+                            'url' => $proofUrl,
+                            'kind' => $proofKind,
+                        ])
+                    @endif
+                </div>
             @endif
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center;">
@@ -93,9 +141,6 @@
                 <button type="submit" style="font-size: 0.8rem; font-weight: 600; background: var(--primary-navy); color: white; border: none; border-radius: var(--radius-md); padding: 0.4rem 0.7rem; cursor: pointer;">Save correction</button>
                 <span data-date-note style="flex-basis: 100%; font-size: 0.75rem; color: var(--text-muted);">A locked year cannot be changed. The date cannot be after today or after 31 December 2026.</span>
             </form>
-            @if($expense->receipt_path)
-                <a href="/company/expenses/{{ $expense->id }}/receipt" style="font-size: 0.8rem; font-weight: 600; color: var(--primary-cerulean); text-decoration: none;">Receipt</a>
-            @endif
             @if(!$expense->isReversed() && !$expense->supplier && $suppliers->isNotEmpty())
                 <form method="POST" action="/company/expenses/{{ $expense->id }}/supplier" style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;">
                     @csrf

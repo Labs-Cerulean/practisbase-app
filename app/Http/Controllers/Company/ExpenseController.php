@@ -10,6 +10,7 @@ use App\Support\CompanyBooks;
 use App\Support\CompanyComputerAllowance;
 use App\Support\CompanyExpenseMonths;
 use App\Support\CompanyLedger;
+use App\Support\CompanyStoredFile;
 use App\Support\PdfPlainText;
 use App\Support\SupplierInvoiceReader;
 use App\Support\TenantStorage;
@@ -771,17 +772,19 @@ class ExpenseController extends Controller
         );
     }
 
-    public function paymentProof(int $payment)
+    public function paymentProof(Request $request, int $payment)
     {
-        $model = CompanyExpensePayment::where('user_id', Auth::id())
+        $userId = (int) Auth::id();
+        $model = CompanyExpensePayment::where('user_id', $userId)
             ->where('id', $payment)
             ->firstOrFail();
 
-        if (! filled($model->proof_path)) {
-            abort(404);
-        }
-
-        return TenantStorage::disk()->download($model->proof_path);
+        return $this->ownedFile(
+            $model->proof_path,
+            TenantStorage::companyPaymentsPath($userId),
+            $request->boolean('download'),
+            'payment-proof'
+        );
     }
 
     public function markRefunded(Request $request, int $expense)
@@ -815,16 +818,39 @@ class ExpenseController extends Controller
         return back()->with('success', 'Director refund recorded and posted.');
     }
 
-    public function receipt(int $expense)
+    public function receipt(Request $request, int $expense)
     {
-        $user = Auth::user();
-        $model = CompanyExpense::where('user_id', $user->id)->where('id', $expense)->firstOrFail();
+        $userId = (int) Auth::id();
+        $model = CompanyExpense::where('user_id', $userId)->where('id', $expense)->firstOrFail();
 
-        if (! filled($model->receipt_path)) {
+        return $this->ownedFile(
+            $model->receipt_path,
+            TenantStorage::companyReceiptsPath($userId),
+            $request->boolean('download'),
+            'receipt'
+        );
+    }
+
+    private function ownedFile(?string $path, string $prefix, bool $download, string $name)
+    {
+        $safe = CompanyStoredFile::owned($path, $prefix);
+        if ($safe === null || ! TenantStorage::disk()->exists($safe)) {
             abort(404);
         }
 
-        return TenantStorage::disk()->download($model->receipt_path);
+        $extension = CompanyStoredFile::extension($safe);
+        $mime = CompanyStoredFile::mime($safe);
+        if ($extension === null || $mime === null) {
+            abort(404);
+        }
+
+        return TenantStorage::disk()->response($safe, $name.'.'.$extension, [
+            'Content-Type' => $mime,
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'SAMEORIGIN',
+            'Content-Security-Policy' => "frame-ancestors 'self'",
+            'Cache-Control' => 'private, no-store',
+        ], $download ? 'attachment' : 'inline');
     }
 
     private function draftFromRequest(Request $request): ?array
