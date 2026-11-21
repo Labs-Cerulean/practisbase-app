@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureTermsAccepted;
 use App\Http\Middleware\EnsureUserTier;
 use App\Http\Middleware\ForceHttps;
 use App\Http\Middleware\PreferCompanyBooksShell;
+use App\Http\Middleware\SignalDownloadFinished;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // requests are not treated as the plain connection inside the container.
         $middleware->trustProxies(at: '*');
         $middleware->append(ForceHttps::class);
+        $middleware->append(SignalDownloadFinished::class);
+        $middleware->encryptCookies(except: [
+            SignalDownloadFinished::WAIT,
+            SignalDownloadFinished::DONE,
+        ]);
 
         $middleware->alias([
             'tier' => EnsureUserTier::class,
