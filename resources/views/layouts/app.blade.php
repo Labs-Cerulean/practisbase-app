@@ -235,6 +235,7 @@
         @include('partials.install-app')
     @endunless
 
+    <script src="/js/submit-guard.js?v=1"></script>
     <script>
         (function () {
             var layout = document.getElementById('app-layout');

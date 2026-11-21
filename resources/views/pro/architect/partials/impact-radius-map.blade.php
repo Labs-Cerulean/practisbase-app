@@ -712,13 +712,24 @@
     }
     if (finishBtn) {
         finishBtn.addEventListener('click', function () {
+            if (finishBtn.getAttribute('data-pb-submitting') === '1') return;
             if (draftLatLngs.length < 3) {
                 setHint('Need at least 3 corners to close the site outline.');
                 return;
             }
+            var label = finishBtn.textContent;
+            finishBtn.setAttribute('data-pb-submitting', '1');
+            finishBtn.setAttribute('aria-busy', 'true');
+            finishBtn.textContent = 'Working…';
             var geo = latLngsToGeoJsonPolygon(draftLatLngs);
             setHint('Saving site outline…');
+            function settle() {
+                finishBtn.removeAttribute('data-pb-submitting');
+                finishBtn.removeAttribute('aria-busy');
+                finishBtn.textContent = label;
+            }
             saveBoundary(geo).then(function (res) {
+                settle();
                 if (!res.ok || !res.data || !res.data.ok) {
                     setHint((res.data && res.data.message) || 'Could not save site outline.');
                     return;
@@ -730,6 +741,7 @@
                 redrawImpact();
                 setHint(res.data.message || 'Site outline saved. Offset now follows the boundary.', true);
             }).catch(function () {
+                settle();
                 setHint('Could not save site outline — check your connection.');
             });
         });

@@ -348,17 +348,22 @@
             line.addEventListener('drop', function (event) {
                 event.preventDefault();
                 line.classList.remove('expense-drop-over');
+                if (line.getAttribute('data-pb-submitting') === '1') return;
                 var file = pdfFile(event);
                 if (file === false) {
                     window.alert('Drop a PDF. The expense can still be saved without a file.');
                     return;
                 }
                 if (!file) return;
+                line.setAttribute('data-pb-submitting', '1');
                 var body = new FormData();
                 body.append('receipt', file);
                 var token = document.querySelector('meta[name="csrf-token"]');
                 var hint = line.querySelector('[data-drop-hint]');
                 if (hint) hint.textContent = 'Attaching the PDF…';
+                function finished() {
+                    line.removeAttribute('data-pb-submitting');
+                }
                 fetch(line.getAttribute('data-drop-url'), {
                     method: 'POST',
                     body: body,
@@ -374,6 +379,7 @@
                         window.location.reload();
                         return;
                     }
+                    finished();
                     return response.json().then(function (data) {
                         var errors = data && data.errors ? data.errors : {};
                         var keys = Object.keys(errors);
@@ -384,6 +390,7 @@
                         window.alert('The PDF was not attached.');
                     });
                 }).catch(function () {
+                    finished();
                     window.alert('The PDF was not attached.');
                 });
             });
