@@ -142,4 +142,23 @@ class RegistrationBillingTest extends TestCase
         $this->assertFalse(EmailVerification::required(true, true, true));
         $this->assertTrue(EmailVerification::required(true, true, false));
     }
+
+    public function test_email_verification_uses_the_loaded_row_and_skips_a_missing_flag(): void
+    {
+        $this->assertTrue(EmailVerification::requiredForAttributes([
+            'must_verify_email' => true,
+            'email_verified_at' => null,
+        ]));
+        $this->assertFalse(EmailVerification::requiredForAttributes([
+            'must_verify_email' => false,
+            'email_verified_at' => null,
+        ]));
+        $this->assertFalse(EmailVerification::requiredForAttributes([
+            'must_verify_email' => true,
+            'email_verified_at' => '2026-11-01 00:00:00',
+        ]));
+        $this->assertFalse(EmailVerification::requiredForAttributes([
+            'email_verified_at' => null,
+        ]));
+    }
 }

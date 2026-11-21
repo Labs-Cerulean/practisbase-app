@@ -7,6 +7,7 @@ use App\Models\ClinicalEntry;
 use App\Models\MedicalVault;
 use App\Models\Patient;
 use App\Support\MedicalVaultCrypto;
+use App\Support\PatientIdentitySeal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -66,20 +67,20 @@ class ClinicalImportController extends Controller
             DB::transaction(function () use ($validated, $user, $vault, $key, &$imported) {
                 foreach ($validated['records'] as $record) {
                     // Integrity check only — payload is not persisted in cleartext.
-                    MedicalVaultCrypto::decrypt(
+                    $chart = MedicalVaultCrypto::decrypt(
                         $record['patient']['payload_ciphertext'],
                         $record['patient']['payload_nonce'],
                         $key
                     );
 
-                    $patient = Patient::create([
+                    $patient = Patient::create(array_merge([
                         'user_id' => $user->id,
                         'vault_id' => $vault->id,
                         'public_ref' => 'PAT-' . strtoupper(Str::random(8)),
                         'billing_client_id' => null,
                         'payload_ciphertext' => $record['patient']['payload_ciphertext'],
                         'payload_nonce' => $record['patient']['payload_nonce'],
-                    ]);
+                    ], PatientIdentitySeal::attributes($chart, $key)));
 
                     foreach ($record['entries'] as $entry) {
                         MedicalVaultCrypto::decrypt(

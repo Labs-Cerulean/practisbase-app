@@ -15,6 +15,7 @@ use App\Support\ClinicalNoteTemplates;
 use App\Support\ClinicDeskSchema;
 use App\Support\MedicalVaultCrypto;
 use App\Support\PatientIdentity;
+use App\Support\PatientIdentitySeal;
 use App\Support\TierPolicy;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
@@ -43,43 +44,63 @@ class PatientController extends Controller
             ->when($showArchived, fn ($q) => $q->whereNotNull('archived_at'), fn ($q) => $q->whereNull('archived_at'))
             ->with('billingClient')
             ->orderByDesc('id')
-            ->get();
+            ->get(PatientIdentitySeal::listColumns());
+        PatientIdentitySeal::attachPayloads($patients, $user->id);
 
-        $entryStats = ClinicalEntry::where('user_id', $user->id)
-            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
-            ->whereNull('archived_at')
-            ->selectRaw('patient_id, entry_type, COUNT(*) as total')
-            ->groupBy('patient_id', 'entry_type')
-            ->get()
-            ->groupBy('patient_id');
+        $patientIds = $patients->pluck('id');
+        $entryStats = collect();
+        $latestEntry = collect();
+        $attachmentCounts = collect();
+        if ($patientIds->isNotEmpty()) {
+            $entryStats = ClinicalEntry::where('user_id', $user->id)
+                ->whereIn('patient_id', $patientIds)
+                ->whereNull('archived_at')
+                ->selectRaw('patient_id, entry_type, COUNT(*) as total, MAX(entry_date) as last_seen')
+                ->groupBy('patient_id', 'entry_type')
+                ->get()
+                ->groupBy('patient_id');
 
-        $latestEntry = ClinicalEntry::where('user_id', $user->id)
-            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
-            ->whereNull('archived_at')
-            ->selectRaw('patient_id, MAX(entry_date) as last_seen')
-            ->groupBy('patient_id')
-            ->pluck('last_seen', 'patient_id');
+            foreach ($entryStats as $patientId => $typeRows) {
+                $lastSeen = null;
+                foreach ($typeRows as $typeRow) {
+                    $seen = $typeRow->last_seen;
+                    if ($seen && ($lastSeen === null || $seen > $lastSeen)) {
+                        $lastSeen = $seen;
+                    }
+                }
+                $latestEntry[$patientId] = $lastSeen;
+            }
 
-        $attachmentCounts = ClinicalAttachment::where('user_id', $user->id)
-            ->when($vault, fn ($q) => $q->where('vault_id', $vault->id))
-            ->selectRaw('patient_id, COUNT(*) as total')
-            ->groupBy('patient_id')
-            ->pluck('total', 'patient_id');
+            $attachmentCounts = ClinicalAttachment::where('user_id', $user->id)
+                ->whereIn('patient_id', $patientIds)
+                ->selectRaw('patient_id, COUNT(*) as total')
+                ->groupBy('patient_id')
+                ->pluck('total', 'patient_id');
+        }
 
         $clinicDeskReady = ClinicDeskSchema::ensure();
         $labels = $clinicDeskReady
             ? ClinicalLabel::where('user_id', $user->id)->orderBy('name')->get()
             : collect();
-        $openByPatient = $clinicDeskReady
-            ? PatientAction::where('user_id', $user->id)->whereNull('done_at')->get()->groupBy('patient_id')
+        $openByPatient = ($clinicDeskReady && $patientIds->isNotEmpty())
+            ? PatientAction::where('user_id', $user->id)
+                ->whereIn('patient_id', $patientIds)
+                ->whereNull('done_at')
+                ->get()
+                ->groupBy('patient_id')
             : collect();
         $labelNames = $labels->pluck('name', 'id');
 
-        $rows = $patients->map(function (Patient $patient) use ($key, $entryStats, $attachmentCounts, $latestEntry, $openByPatient, $labelNames) {
+        $rows = $patients->map(function (Patient $patient) use ($key, $user, $entryStats, $attachmentCounts, $latestEntry, $openByPatient, $labelNames) {
             try {
-                $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+                [$payload, $seal] = $key
+                    ? PatientIdentitySeal::open($patient, $key)
+                    : [['display_name' => '[Unable to decrypt]'], null];
+                if ($seal) {
+                    PatientIdentitySeal::persist($user->id, $patient->id, $seal);
+                }
             } catch (\Throwable) {
-                $payload = ['display_name' => '[Unable to decrypt]', 'date_of_birth' => null, 'notes' => null];
+                $payload = ['display_name' => '[Unable to decrypt]', 'date_of_birth' => null];
             }
 
             $byType = ($entryStats->get($patient->id) ?? collect())->pluck('total', 'entry_type');
@@ -114,7 +135,6 @@ class PatientController extends Controller
                 'tel' => $payload['tel'] ?? '',
                 'id_card' => $payload['id_card'] ?? '',
                 'email' => $payload['email'] ?? '',
-                'notes' => $payload['notes'] ?? '',
                 'public_ref' => $patient->public_ref,
                 'linked' => (bool) $patient->billing_client_id,
                 'client_name' => $patient->billingClient?->name,
@@ -217,7 +237,7 @@ class PatientController extends Controller
                         ->with('success', 'That patient was just saved. Opened the existing record so a second copy was not created.');
                 }
 
-                $encrypted = MedicalVaultCrypto::encrypt([
+                $chart = [
                     'display_name' => $validated['display_name'],
                     'date_of_birth' => $validated['date_of_birth'] ?? null,
                     'age' => $validated['age'] ?? null,
@@ -226,16 +246,17 @@ class PatientController extends Controller
                     'email' => $validated['email'] ?? null,
                     'address' => $validated['address'] ?? null,
                     'notes' => $validated['notes'] ?? null,
-                ], $key);
+                ];
+                $encrypted = MedicalVaultCrypto::encrypt($chart, $key);
 
-                $patient = Patient::create([
+                $patient = Patient::create(array_merge([
                     'user_id' => $user->id,
                     'vault_id' => $vault->id,
                     'public_ref' => 'PAT-'.strtoupper(Str::random(8)),
                     'billing_client_id' => $billingClientId,
                     'payload_ciphertext' => $encrypted['ciphertext'],
                     'payload_nonce' => $encrypted['nonce'],
-                ]);
+                ], PatientIdentitySeal::attributes($chart, $key)));
 
                 return redirect('/pro/medical/patients/'.$patient->id)
                     ->with('success', 'Patient record created in the encrypted vault.');
@@ -644,7 +665,7 @@ class PatientController extends Controller
             ]);
         }
 
-        $encrypted = MedicalVaultCrypto::encrypt([
+        $chart = [
             'display_name' => $validated['display_name'],
             'date_of_birth' => $validated['date_of_birth'] ?? null,
             'age' => $validated['age'] ?? null,
@@ -653,10 +674,14 @@ class PatientController extends Controller
             'email' => $validated['email'] ?? null,
             'address' => $validated['address'] ?? null,
             'notes' => $validated['notes'] ?? null,
-        ], $key);
+        ];
+        $encrypted = MedicalVaultCrypto::encrypt($chart, $key);
 
         $patient->payload_ciphertext = $encrypted['ciphertext'];
         $patient->payload_nonce = $encrypted['nonce'];
+        foreach (PatientIdentitySeal::attributes($chart, $key) as $column => $value) {
+            $patient->{$column} = $value;
+        }
         $patient->save();
 
         return redirect('/pro/medical/patients/' . $patient->id)
@@ -675,11 +700,15 @@ class PatientController extends Controller
         $candidates = [];
         $patients = Patient::where('user_id', $userId)
             ->orderByDesc('id')
-            ->get(['id', 'payload_ciphertext', 'payload_nonce', 'archived_at']);
+            ->get(PatientIdentitySeal::listColumns());
+        PatientIdentitySeal::attachPayloads($patients, $userId);
 
         foreach ($patients as $existing) {
             try {
-                $payload = MedicalVaultCrypto::decrypt($existing->payload_ciphertext, $existing->payload_nonce, $key);
+                [$payload, $seal] = PatientIdentitySeal::open($existing, $key);
+                if ($seal) {
+                    PatientIdentitySeal::persist($userId, $existing->id, $seal);
+                }
             } catch (\Throwable) {
                 continue;
             }
@@ -761,11 +790,12 @@ class PatientController extends Controller
             ->where('created_at', '>=', now()->subMinutes(2))
             ->orderByDesc('id')
             ->limit(8)
-            ->get();
+            ->get(PatientIdentitySeal::listColumns());
+        PatientIdentitySeal::attachPayloads($recent, $userId);
 
         foreach ($recent as $existing) {
             try {
-                $payload = MedicalVaultCrypto::decrypt($existing->payload_ciphertext, $existing->payload_nonce, $key);
+                [$payload] = PatientIdentitySeal::open($existing, $key);
             } catch (\Throwable) {
                 continue;
             }

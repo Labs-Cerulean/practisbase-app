@@ -15,6 +15,8 @@ class Patient extends Model
         'billing_client_id',
         'payload_ciphertext',
         'payload_nonce',
+        'identity_ciphertext',
+        'identity_nonce',
         'archived_at',
     ];
 

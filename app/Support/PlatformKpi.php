@@ -9,7 +9,6 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * PractisBase SaaS KPIs for the company operator login only.
@@ -20,6 +19,7 @@ class PlatformKpi
 {
     public static function snapshot(): array
     {
+        self::warmCatalog();
         $now = now();
         $day7 = $now->copy()->subDays(7);
         $day30 = $now->copy()->subDays(30);
@@ -224,6 +224,7 @@ class PlatformKpi
     public static function usersTable(int $perPage = 40, string $view = 'all'): LengthAwarePaginator
     {
         $view = in_array($view, ['all', 'counted', 'beta', 'test'], true) ? $view : 'all';
+        self::warmCatalog();
 
         $activityMap = [];
         if (self::hasSessionsTable()) {
@@ -395,22 +396,32 @@ class PlatformKpi
         return $query;
     }
 
+    private static function warmCatalog(): void
+    {
+        CatalogColumns::load([
+            'users',
+            'sessions',
+            'clients',
+            'invoices',
+            'expenses',
+            'document_stamps',
+            'patients',
+            'architect_projects',
+            'engineer_projects',
+            'certificates',
+            'clinical_entries',
+            'community_feedback',
+        ]);
+    }
+
     private static function hasExcludeColumn(): bool
     {
-        try {
-            return Schema::hasColumn('users', 'exclude_from_kpis');
-        } catch (\Throwable) {
-            return false;
-        }
+        return CatalogColumns::hasColumn('users', 'exclude_from_kpis');
     }
 
     private static function hasMrrColumn(): bool
     {
-        try {
-            return Schema::hasColumn('users', 'exclude_from_mrr');
-        } catch (\Throwable) {
-            return false;
-        }
+        return CatalogColumns::hasColumn('users', 'exclude_from_mrr');
     }
 
     private static function listPriceExVat(string $tier): float
@@ -427,11 +438,7 @@ class PlatformKpi
 
     private static function hasSessionsTable(): bool
     {
-        try {
-            return Schema::hasTable('sessions');
-        } catch (\Throwable) {
-            return false;
-        }
+        return CatalogColumns::hasTable('sessions');
     }
 
     private static function activeUserCount(int $days): int
@@ -453,7 +460,7 @@ class PlatformKpi
 
     private static function usersWithRows(string $table): int
     {
-        if (! Schema::hasTable($table)) {
+        if (! CatalogColumns::hasTable($table)) {
             return 0;
         }
 
@@ -462,7 +469,7 @@ class PlatformKpi
 
         self::applyCountedUserJoin($q);
 
-        if (Schema::hasColumn($table, 'deleted_at')) {
+        if (CatalogColumns::hasColumn($table, 'deleted_at')) {
             $q->whereNull($table.'.deleted_at');
         }
 
@@ -471,7 +478,7 @@ class PlatformKpi
 
     private static function safeCount(string $table, ?string $whereSql = null): int
     {
-        if (! Schema::hasTable($table)) {
+        if (! CatalogColumns::hasTable($table)) {
             return 0;
         }
 
@@ -480,7 +487,7 @@ class PlatformKpi
 
         self::applyCountedUserJoin($q);
 
-        if (Schema::hasColumn($table, 'deleted_at')) {
+        if (CatalogColumns::hasColumn($table, 'deleted_at')) {
             $q->whereNull($table.'.deleted_at');
         }
 

@@ -185,7 +185,6 @@
                    data-name="{{ strtolower($row['display_name']) }}"
                    data-ref="{{ strtolower($row['public_ref']) }}"
                    data-client="{{ strtolower($row['client_name'] ?? '') }}"
-                   data-notes="{{ strtolower($row['notes'] ?? '') }}"
                    data-tel="{{ preg_replace('/\D+/', '', (string) ($row['tel'] ?? '')) }}"
                    data-idcard="{{ strtolower($row['id_card'] ?? '') }}"
                    data-email="{{ strtolower($row['email'] ?? '') }}"
@@ -302,7 +301,6 @@
                         el.dataset.name,
                         el.dataset.ref,
                         el.dataset.client,
-                        el.dataset.notes,
                         el.dataset.idcard,
                         el.dataset.email,
                         el.dataset.dob,

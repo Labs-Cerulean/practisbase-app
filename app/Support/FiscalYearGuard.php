@@ -6,12 +6,23 @@ use Illuminate\Support\Facades\DB;
 
 class FiscalYearGuard
 {
+    /** @var array<int, array<int, true>> */
+    private static array $closedYears = [];
+
     public static function isClosed(int $userId, int $year): bool
     {
-        return DB::table('fiscal_years')
-            ->where('user_id', $userId)
-            ->where('year', $year)
-            ->exists();
+        if (! isset(self::$closedYears[$userId])) {
+            $closed = [];
+            $years = DB::table('fiscal_years')
+                ->where('user_id', $userId)
+                ->pluck('year');
+            foreach ($years as $closedYear) {
+                $closed[(int) $closedYear] = true;
+            }
+            self::$closedYears[$userId] = $closed;
+        }
+
+        return isset(self::$closedYears[$userId][$year]);
     }
 
     public static function ensureOpen(int $userId, int $year): ?string
