@@ -25,7 +25,9 @@ class ExpenseController extends Controller
     {
         $user = Auth::user();
         $profile = CompanyBooks::ensureProfile($user);
-        CompanyLedger::syncComputerDepreciation($user->id);
+        // The list shows the wear-and-tear schedule. It does not read the ledger.
+        // Due slices are posted when the computer is saved and when the accounts
+        // are opened, so this read does not wait on those journal lookups.
         $year = (int) $request->input('year', $profile->first_period_end->format('Y'));
         $status = (string) $request->input('status', 'active');
         if (! in_array($status, ['active', 'owed', 'unpaid', 'company', 'reversed'], true)) {
@@ -46,20 +48,27 @@ class ExpenseController extends Controller
         }
 
         $years = CompanyExpense::where('user_id', $user->id)
-            ->selectRaw('EXTRACT(YEAR FROM expense_date) as expense_year')
-            ->distinct()
-            ->orderByDesc('expense_year')
-            ->pluck('expense_year')
-            ->map(fn ($value) => (int) $value)
+            ->orderByDesc('expense_date')
+            ->pluck('expense_date')
+            ->map(function ($value) {
+                if ($value instanceof \DateTimeInterface) {
+                    return (int) $value->format('Y');
+                }
+
+                return (int) substr((string) $value, 0, 4);
+            })
+            ->unique()
+            ->values()
             ->all();
         if (! in_array($year, $years, true)) {
             $years[] = $year;
             rsort($years);
         }
 
+        $from = sprintf('%04d-01-01', $year);
+        $to = sprintf('%04d-12-31', $year);
         $query = CompanyExpense::where('user_id', $user->id)
-            ->with(['supplier', 'payment'])
-            ->whereYear('expense_date', $year);
+            ->whereBetween('expense_date', [$from, $to]);
 
         if ($supplierFilter) {
             $query->where('company_supplier_id', $supplierFilter->id);
@@ -67,11 +76,12 @@ class ExpenseController extends Controller
 
         if ($search !== '') {
             $like = CompanyExpenseMonths::likeTerm($search);
-            $query->where(function ($inner) use ($like) {
+            $query->where(function ($inner) use ($like, $user) {
                 $inner->where('description', 'ilike', $like)
                     ->orWhere('supplier_invoice_number', 'ilike', $like)
-                    ->orWhereHas('supplier', function ($supplierQuery) use ($like) {
-                        $supplierQuery->where('name', 'ilike', $like);
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($like, $user) {
+                        $supplierQuery->where('user_id', $user->id)
+                            ->where('name', 'ilike', $like);
                     });
             });
         }
@@ -90,6 +100,25 @@ class ExpenseController extends Controller
             ->orderByDesc('expense_date')
             ->orderByDesc('id')
             ->get();
+
+        $suppliersById = $suppliers->keyBy('id');
+        $paymentIds = $expenses->pluck('company_expense_payment_id')->filter()->unique()->values();
+        $payments = $paymentIds->isEmpty()
+            ? collect()
+            : CompanyExpensePayment::where('user_id', $user->id)
+                ->whereIn('id', $paymentIds->all())
+                ->get()
+                ->keyBy('id');
+        foreach ($expenses as $expense) {
+            $expense->setRelation(
+                'supplier',
+                $expense->company_supplier_id ? $suppliersById->get($expense->company_supplier_id) : null
+            );
+            $expense->setRelation(
+                'payment',
+                $expense->company_expense_payment_id ? $payments->get($expense->company_expense_payment_id) : null
+            );
+        }
 
         $rows = [];
         foreach ($expenses as $expense) {
