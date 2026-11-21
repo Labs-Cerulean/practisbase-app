@@ -526,6 +526,7 @@ Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->
         Route::post('/expenses/{expense}/reverse', [CompanyExpenseController::class, 'reverse'])->whereNumber('expense');
         Route::post('/expenses/{expense}/remove', [CompanyExpenseController::class, 'remove'])->whereNumber('expense');
         Route::post('/expenses/{expense}/refund', [CompanyExpenseController::class, 'markRefunded'])->whereNumber('expense');
+        Route::post('/expenses/{expense}/receipt', [CompanyExpenseController::class, 'attachReceipt'])->whereNumber('expense');
         Route::get('/expenses/{expense}/receipt', [CompanyExpenseController::class, 'receipt'])->whereNumber('expense');
 
         Route::get('/accounts', [CompanyAccountsController::class, 'index']);

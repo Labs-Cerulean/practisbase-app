@@ -25,7 +25,7 @@
     }
     $hasFile = $receiptUrl || $proofUrl;
 @endphp
-<details class="expense-fold" data-expense-line style="background: {{ $expense->isReversed() ? '#f8fafc' : 'white' }}; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+<details class="expense-fold" data-expense-line data-drop-url="/company/expenses/{{ $expense->id }}/receipt" style="background: {{ $expense->isReversed() ? '#f8fafc' : 'white' }}; border: 1px solid var(--border-light); border-radius: var(--radius-md);">
     <summary style="display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; padding: 0.7rem 0.85rem; cursor: pointer;">
         <span class="fold-mark" aria-hidden="true" style="color: var(--text-muted); font-size: 0.75rem; flex: 0 0 auto;">▸</span>
         <span style="min-width: 0; flex: 1;">
@@ -45,6 +45,9 @@
                 @endif
                 @if($expense->is_reverse_charge)
                     <span style="margin-left: 0.3rem; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.1rem 0.35rem; vertical-align: middle;">Reverse charge</span>
+                @endif
+                @if(!$hasFile)
+                    <span class="expense-missing-file" style="margin-left: 0.3rem; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 0.1rem 0.35rem; vertical-align: middle;">No file</span>
                 @endif
             </span>
             <span style="display: block; margin-top: 0.15rem; font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -121,6 +124,9 @@
                 </div>
             @endif
         </div>
+        @if(!$hasFile)
+            <p data-drop-hint style="margin: 0.65rem 0 0; font-size: 0.8rem; color: var(--text-muted);">Drop a PDF here to attach it. The expense can be saved without one.</p>
+        @endif
         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; align-items: center;">
             @php
                 $correctingExpense = (string) old('expense_id') === (string) $expense->id;

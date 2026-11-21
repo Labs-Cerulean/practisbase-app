@@ -12,6 +12,8 @@ use App\Models\CompanyExpense;
  * The token is forty letters. Saving is supposed to move that file to
  * tenants/{user}/company/receipts/{name}.pdf and write that key on
  * receipt_path. When the save did not, the object is still the drafts key.
+ * That draft is shown only when its text contains the invoice number on the row.
+ * A file with no text is not matched.
  * A photo taken with the expense is tenants/{user}/company/receipts/{name}.jpg
  * and that key is receipt_path. A payment proof is
  * tenants/{user}/company/payments/{name}.ext. Older sole-trader uploads are
@@ -19,9 +21,6 @@ use App\Models\CompanyExpense;
  */
 class CompanyExpenseFiles
 {
-    /** A scan uploaded with the form and the row saved in the same sitting. */
-    private const SITTING_SECONDS = 3 * 3600;
-
     public static function prefixes(int $userId): array
     {
         return [
@@ -71,7 +70,6 @@ class CompanyExpenseFiles
     {
         $direct = [];
         $needed = [];
-        $savedAt = [];
         $used = [];
 
         foreach ($expenses as $expense) {
@@ -88,7 +86,6 @@ class CompanyExpenseFiles
             $number = trim((string) ($expense->supplier_invoice_number ?? ''));
             if ($number !== '') {
                 $needed[(int) $expense->id] = $number;
-                $savedAt[(int) $expense->id] = self::savedAt($expense);
             }
         }
 
@@ -96,7 +93,7 @@ class CompanyExpenseFiles
             return $direct;
         }
 
-        return $direct + self::matchUnlinked($userId, $needed, $used, $savedAt);
+        return $direct + self::matchUnlinked($userId, $needed, $used);
     }
 
     public static function forExpense(CompanyExpense $expense): ?string
@@ -127,8 +124,7 @@ class CompanyExpenseFiles
         $found = self::matchUnlinked(
             (int) $expense->user_id,
             [$id => $number],
-            $used,
-            [$id => self::savedAt($expense)]
+            $used
         );
 
         return $found[$id] ?? null;
@@ -168,13 +164,11 @@ class CompanyExpenseFiles
     /**
      * @param  array<int, string>  $needed
      * @param  array<string, bool>  $used
-     * @param  array<int, int>  $savedAt
      * @return array<int, string>
      */
-    private static function matchUnlinked(int $userId, array $needed, array $used, array $savedAt): array
+    private static function matchUnlinked(int $userId, array $needed, array $used): array
     {
         $hits = [];
-        $silent = [];
         foreach (self::candidatePdfs($userId) as $path) {
             if (isset($used[$path])) {
                 continue;
@@ -193,10 +187,6 @@ class CompanyExpenseFiles
             }
             $text = PdfPlainText::fromBinary($bytes);
             if ($text === '') {
-                if (str_contains($path, '/drafts/')) {
-                    $silent[$path] = $path;
-                }
-
                 continue;
             }
             foreach ($needed as $expenseId => $number) {
@@ -224,163 +214,27 @@ class CompanyExpenseFiles
             $taken[$chosen] = true;
         }
 
-        $waiting = [];
-        foreach ($needed as $expenseId => $number) {
-            if (! isset($found[$expenseId]) && isset($savedAt[$expenseId])) {
-                $waiting[$expenseId] = $savedAt[$expenseId];
-            }
-        }
-
-        return $found + self::pairSilentDrafts($waiting, $silent, $taken);
+        return $found;
     }
 
     /**
+     * One file, or the single draft when a copy also sits outside drafts.
+     * Two drafts with the same number are not a match.
+     *
      * @param  array<int, string>  $paths
      */
     private static function choose(array $paths): ?string
     {
-        if ($paths === []) {
-            return null;
+        if (count($paths) === 1) {
+            return $paths[0];
         }
 
         $drafts = array_values(array_filter(
             $paths,
             fn (string $path) => str_contains($path, '/drafts/')
         ));
-        $pool = $drafts !== [] ? $drafts : $paths;
-        usort($pool, function (string $left, string $right): int {
-            $byTime = self::modifiedAt($right) <=> self::modifiedAt($left);
 
-            return $byTime !== 0 ? $byTime : strcmp($right, $left);
-        });
-
-        return $pool[0];
-    }
-
-    /**
-     * A photographed bill has no text layer, so the invoice number on the
-     * row is not inside the file. The object is still the drafts PDF from
-     * the same sitting. Pair only when each side is the other's closest
-     * file, and only inside this user's drafts listing.
-     *
-     * @param  array<int, int>  $savedAt
-     * @param  array<string, string>  $silent
-     * @param  array<string, bool>  $taken
-     * @return array<int, string>
-     */
-    private static function pairSilentDrafts(array $savedAt, array $silent, array $taken): array
-    {
-        $files = [];
-        foreach ($silent as $path) {
-            if (isset($taken[$path]) || ! str_contains($path, '/drafts/')) {
-                continue;
-            }
-            $mtime = self::modifiedAt($path);
-            if ($mtime > 0) {
-                $files[$path] = $mtime;
-            }
-        }
-
-        $pending = [];
-        foreach ($savedAt as $id => $when) {
-            if (is_int($when) && $when > 0) {
-                $pending[(int) $id] = $when;
-            }
-        }
-
-        $found = [];
-        do {
-            $paired = false;
-            foreach (array_keys($pending) as $id) {
-                if (isset($found[$id])) {
-                    continue;
-                }
-                $choice = self::mutualDraft($id, $pending, $found, $files, $taken);
-                if ($choice === null) {
-                    continue;
-                }
-                $found[$id] = $choice;
-                $taken[$choice] = true;
-                $paired = true;
-            }
-        } while ($paired);
-
-        return $found;
-    }
-
-    /**
-     * @param  array<int, int>  $pending
-     * @param  array<int, string>  $found
-     * @param  array<string, int>  $files
-     * @param  array<string, bool>  $taken
-     */
-    private static function mutualDraft(int $id, array $pending, array $found, array $files, array $taken): ?string
-    {
-        $path = self::closestFile($pending[$id], $files, $taken);
-        if ($path === null) {
-            return null;
-        }
-        $owner = self::closestExpense($files[$path], $pending, $found);
-
-        return $owner === $id ? $path : null;
-    }
-
-    /**
-     * @param  array<string, int>  $files
-     * @param  array<string, bool>  $taken
-     */
-    private static function closestFile(int $savedAt, array $files, array $taken): ?string
-    {
-        $bestPath = null;
-        $bestGap = null;
-        $tie = false;
-        foreach ($files as $path => $mtime) {
-            if (isset($taken[$path])) {
-                continue;
-            }
-            $gap = abs($mtime - $savedAt);
-            if ($gap > self::SITTING_SECONDS) {
-                continue;
-            }
-            if ($bestGap === null || $gap < $bestGap) {
-                $bestGap = $gap;
-                $bestPath = $path;
-                $tie = false;
-            } elseif ($gap === $bestGap) {
-                $tie = true;
-            }
-        }
-
-        return $tie ? null : $bestPath;
-    }
-
-    /**
-     * @param  array<int, int>  $pending
-     * @param  array<int, string>  $found
-     */
-    private static function closestExpense(int $mtime, array $pending, array $found): ?int
-    {
-        $bestId = null;
-        $bestGap = null;
-        $tie = false;
-        foreach ($pending as $id => $savedAt) {
-            if (isset($found[$id])) {
-                continue;
-            }
-            $gap = abs($mtime - $savedAt);
-            if ($gap > self::SITTING_SECONDS) {
-                continue;
-            }
-            if ($bestGap === null || $gap < $bestGap) {
-                $bestGap = $gap;
-                $bestId = (int) $id;
-                $tie = false;
-            } elseif ($gap === $bestGap) {
-                $tie = true;
-            }
-        }
-
-        return $tie ? null : $bestId;
+        return count($drafts) === 1 ? $drafts[0] : null;
     }
 
     /**
@@ -422,24 +276,6 @@ class CompanyExpenseFiles
         }
 
         return array_values($paths);
-    }
-
-    private static function savedAt(CompanyExpense $expense): int
-    {
-        $created = $expense->created_at;
-
-        return $created instanceof \DateTimeInterface ? $created->getTimestamp() : 0;
-    }
-
-    private static function modifiedAt(string $path): int
-    {
-        try {
-            $mtime = TenantStorage::disk()->lastModified($path);
-
-            return is_int($mtime) ? $mtime : 0;
-        } catch (\Throwable) {
-            return 0;
-        }
     }
 
     private static function textHasNumber(string $text, string $invoiceNumber): bool
