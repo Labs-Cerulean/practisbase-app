@@ -12,7 +12,12 @@
                 <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Internal company desk</div>
                 <h1 style="font-size: 1.5rem; color: var(--primary-navy); margin: 0 0 0.25rem;">{{ $profile->legal_name }}</h1>
                 <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
-                    {{ $profile->registration_number }} · First period {{ $periodLabel }} · Art 10 · {{ ucfirst($profile->vat_filing_frequency) }} VAT
+                    {{ $profile->registration_number }} · First period {{ $periodLabel }} · Art 10
+                    @if(! empty($assignedVat))
+                        · VAT {{ \Illuminate\Support\Carbon::parse($assignedVat['period_from'])->format('j F Y') }} – {{ \Illuminate\Support\Carbon::parse($assignedVat['period_to'])->format('j F Y') }}, due {{ \Illuminate\Support\Carbon::parse($assignedVat['due'])->format('j F Y') }}
+                    @else
+                        · {{ ucfirst($profile->vat_filing_frequency) }} VAT
+                    @endif
                 </p>
             </div>
         </div>
@@ -131,12 +136,21 @@
         @else
             <div style="display: grid; gap: 0.5rem;">
                 @foreach($complianceUpcoming as $item)
+                    @php
+                        $dueText = \Illuminate\Support\Carbon::parse($item['due'])->format(! empty($item['assigned_first']) ? 'j F Y' : 'd M');
+                    @endphp
                     <a href="{{ $item['href'] }}" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; text-decoration: none; padding: 0.55rem 0.7rem; border-radius: var(--radius-md); border: 1px solid {{ $item['overdue'] ? '#fecaca' : 'var(--border-light)' }}; background: {{ $item['overdue'] ? '#fef2f2' : '#f8fafc' }};">
                         <div>
                             <div style="font-weight: 600; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }}; font-size: 0.9rem;">{{ $item['label'] }}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">{{ ucfirst($item['category']) }}{{ $item['overdue'] ? ' · overdue' : ($item['urgent'] ? ' · due soon' : '') }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                @if(! empty($item['assigned_first']))
+                                    Due {{ $dueText }}{{ $item['overdue'] ? ' · overdue' : '' }}
+                                @else
+                                    {{ ucfirst($item['category']) }}{{ $item['overdue'] ? ' · overdue' : ($item['urgent'] ? ' · due soon' : '') }}
+                                @endif
+                            </div>
                         </div>
-                        <div style="font-weight: 700; font-variant-numeric: tabular-nums; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }}; white-space: nowrap;">{{ \Illuminate\Support\Carbon::parse($item['due'])->format('d M') }}</div>
+                        <div style="font-weight: 700; font-variant-numeric: tabular-nums; color: {{ $item['overdue'] ? '#991b1b' : 'var(--primary-navy)' }}; white-space: nowrap;">{{ $dueText }}</div>
                     </a>
                 @endforeach
             </div>

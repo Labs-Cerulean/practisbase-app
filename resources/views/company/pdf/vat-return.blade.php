@@ -17,12 +17,23 @@
 <body>
     <h1>{{ $profile->legal_name }}</h1>
     <div class="muted">VAT return worksheet · {{ $vatReturn['label'] }}</div>
+    @php
+        $vatPeriodFrom = $vatReturn['period_from'] ?? $vatReturn['from'];
+        $vatPeriodTo = $vatReturn['period_to'] ?? $vatReturn['to'];
+    @endphp
     <p>
-        Period {{ \Carbon\Carbon::parse($vatReturn['from'])->format('d M Y') }}
-        – {{ \Carbon\Carbon::parse($vatReturn['to'])->format('d M Y') }}.
-        File around {{ \Carbon\Carbon::parse($vatReturn['due'])->format('d M Y') }}.
-        @if($vatReturn['first_return']) This is the first return, from incorporation. @endif
-        @if($vatReturn['period_open']) The period is still open, so these figures can still change. @endif
+        Period {{ \Carbon\Carbon::parse($vatPeriodFrom)->format('j F Y') }}
+        – {{ \Carbon\Carbon::parse($vatPeriodTo)->format('j F Y') }}.
+        Due {{ \Carbon\Carbon::parse($vatReturn['due'])->format('j F Y') }}.
+        @if(! empty($vatReturn['assigned_first']))
+            MTCA assigned this one first period. 29–31 July 2026 sit outside it. Open proformas stay off the return.
+        @elseif(! empty($vatReturn['first_return']))
+            This is the first return, from incorporation.
+        @endif
+        @if(! empty($vatReturn['period_open']))
+            The period is still open, so these figures can still change. They run through {{ \Carbon\Carbon::parse($vatReturn['to'])->format('j F Y') }}.
+            The portal will not accept a return while the period end is still in the future.
+        @endif
     </p>
 
     <table>
@@ -82,7 +93,7 @@
         @endforeach
     </ol>
     <p class="muted">
-        Figures come from the company books. Confirm the online form and the exact CFR date. Proformas are excluded until they become tax invoices.
+        Figures come from the company books. This worksheet does not send a return to MTCA. Proformas are excluded until they become tax invoices.
     </p>
 </body>
 </html>

@@ -2,12 +2,20 @@
 
 namespace Tests\Unit;
 
+use App\Models\CompanyProfile;
+use App\Support\CompanyComplianceCalendar;
 use App\Support\CompanyVatReturn;
 use Illuminate\Support\Carbon;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class CompanyVatReturnTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_reverse_charge_is_output_and_input_and_proformas_are_not_in_the_net(): void
     {
         $math = CompanyVatReturn::fromTotals(
@@ -75,5 +83,50 @@ class CompanyVatReturnTest extends TestCase
         $this->assertSame('2026-11-15', $next['due']);
         $this->assertSame('2026-07-01', $next['period_from']);
         $this->assertSame('2026-09-30', $next['period_to']);
+    }
+
+    public function test_july_incorporation_days_sit_outside_the_assigned_vat_period(): void
+    {
+        $window = CompanyVatReturn::activityWindow(
+            Carbon::parse('2026-08-01'),
+            Carbon::parse('2027-08-31'),
+            Carbon::parse('2026-07-29'),
+            Carbon::parse('2026-11-21')
+        );
+
+        $this->assertSame('2026-08-01', $window['from']->toDateString());
+        $this->assertSame('2026-11-21', $window['to']->toDateString());
+        $this->assertTrue($window['open']);
+        $this->assertTrue(Carbon::parse('2026-07-29')->startOfDay()->lt($window['from']));
+        $this->assertTrue(Carbon::parse('2026-07-30')->startOfDay()->lt($window['from']));
+        $this->assertTrue(Carbon::parse('2026-07-31')->startOfDay()->lt($window['from']));
+        $this->assertFalse(Carbon::parse('2026-08-01')->startOfDay()->lt($window['from']));
+    }
+
+    public function test_on_21_november_2026_the_next_return_is_the_assigned_first_period(): void
+    {
+        $profile = new CompanyProfile([
+            'vat_status' => 'article_10',
+            'vat_filing_frequency' => 'quarterly',
+            'financial_year_end_month' => 12,
+            'financial_year_end_day' => 31,
+            'first_period_start' => '2026-07-29',
+            'first_period_end' => '2026-12-31',
+        ]);
+        Carbon::setTestNow(Carbon::parse('2026-11-21'));
+        $today = Carbon::parse('2026-11-21');
+        $events = array_merge(
+            CompanyComplianceCalendar::events($profile, 2026),
+            CompanyComplianceCalendar::events($profile, 2027)
+        );
+
+        $next = CompanyVatReturn::pickNext($events, $today);
+
+        $this->assertSame('vat_first_20260801', $next['key']);
+        $this->assertSame('2027-10-15', $next['due']);
+        $this->assertSame('2026-08-01', $next['period_from']);
+        $this->assertSame('2027-08-31', $next['period_to']);
+        $this->assertTrue($next['assigned_first']);
+        $this->assertStringNotContainsString('Q3 2026', $next['label']);
     }
 }

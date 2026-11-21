@@ -36,7 +36,7 @@ class DeskController extends Controller
         $invoiceRows = CompanyInvoice::query()
             ->where('user_id', $userId)
             ->whereBetween('issue_date', [$yearStart, $yearEnd])
-            ->selectRaw("type, COALESCE(SUM(total), 0) as total_sum, COALESCE(SUM(vat_total), 0) as vat_sum")
+            ->selectRaw('type, COALESCE(SUM(total), 0) as total_sum, COALESCE(SUM(vat_total), 0) as vat_sum')
             ->groupBy('type')
             ->get()
             ->keyBy('type');
@@ -80,7 +80,7 @@ class DeskController extends Controller
             ->where('user_id', $userId)
             ->whereBetween('issue_date', [$monthStart, $monthEnd])
             ->whereIn('type', ['invoice', 'credit_note'])
-            ->selectRaw("type, COALESCE(SUM(total), 0) as total_sum")
+            ->selectRaw('type, COALESCE(SUM(total), 0) as total_sum')
             ->groupBy('type')
             ->get()
             ->keyBy('type');
@@ -181,7 +181,8 @@ class DeskController extends Controller
             'booksBalanced' => $bs['balanced'],
             'bankBalance' => $bankBalance,
             'liquidFunds' => $liquidFunds,
-            'complianceUpcoming' => CompanyComplianceCalendar::upcoming($profile, 8),
+            'complianceUpcoming' => CompanyComplianceCalendar::deskDeadlines($profile, 8),
+            'assignedVat' => CompanyComplianceCalendar::assignedFiling($profile),
             'deskReport' => CompanyDeskReport::build($deskDocuments, $deskPayments, $deskExpenses, $today),
         ]);
     }

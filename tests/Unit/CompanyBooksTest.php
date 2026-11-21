@@ -13,6 +13,9 @@ class CompanyBooksTest extends TestCase
         $this->assertSame('C 116764', CompanyBooks::DEFAULT_REGISTRATION_NUMBER);
         $this->assertSame('2026-07-29', CompanyBooks::INCORPORATION_DATE);
         $this->assertSame('2026-12-31', CompanyBooks::FIRST_PERIOD_END);
+        $this->assertSame('2026-08-01', CompanyBooks::VAT_FIRST_PERIOD_START);
+        $this->assertSame('2027-08-31', CompanyBooks::VAT_FIRST_PERIOD_END);
+        $this->assertSame('2027-10-15', CompanyBooks::VAT_FIRST_PERIOD_DUE);
         $this->assertSame(1200.0, CompanyBooks::SHARE_CAPITAL_EUR);
         $this->assertSame('accounts@labscerulean.com', CompanyBooks::ACCOUNTS_COPY_EMAIL);
     }
