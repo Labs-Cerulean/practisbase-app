@@ -113,27 +113,28 @@ class CompanyExpenseReceiptViewTest extends TestCase
 
         $this->assertStringContainsString('data-expense-line', $html);
         $this->assertStringContainsString('class="expense-audit has-file"', $html);
+        $this->assertStringNotContainsString('<iframe', $html);
+        $this->assertStringContainsString('/js/pdfjs/pdf.min.js', $html);
         $this->assertMatchesRegularExpression(
-            '/<img\b[^>]*alt="Receipt for Hosting invoice"[^>]*data-file="\/company\/expenses\/'.$hosting->id.'\/receipt"/',
+            '/<img\b[^>]*alt="Receipt for Hosting invoice"[^>]*src="\/company\/expenses\/'.$hosting->id.'\/receipt"/',
             $html
         );
         $this->assertMatchesRegularExpression(
-            '/<iframe\b[^>]*title="Payment proof for Hosting invoice"[^>]*data-file="\/company\/expenses\/payments\/'.$hostingPayment->id.'\/proof"/',
+            '/<div\b[^>]*data-pdf[^>]*data-file="\/company\/expenses\/payments\/'.$hostingPayment->id.'\/proof"/',
             $html
         );
         $this->assertMatchesRegularExpression(
-            '/<img\b[^>]*data-file="\/company\/expenses\/'.$photo->id.'\/receipt"/',
+            '/<img\b[^>]*src="\/company\/expenses\/'.$photo->id.'\/receipt"/',
             $html
         );
         $this->assertMatchesRegularExpression(
-            '/<img\b[^>]*alt="Payment proof for Director lunch"[^>]*data-file="\/company\/expenses\/payments\/'.$lunchPayment->id.'\/proof"/',
+            '/<img\b[^>]*alt="Payment proof for Director lunch"[^>]*src="\/company\/expenses\/payments\/'.$lunchPayment->id.'\/proof"/',
             $html
         );
         $this->assertStringContainsString('/company/expenses/'.$reversed->id.'/receipt', $html);
         $this->assertStringNotContainsString('/company/expenses/payments/'.$reversedPayment->id.'/proof', $html);
         $this->assertStringNotContainsString('/company/expenses/'.$foreign->id.'/', $html);
         $this->assertStringContainsString('/company/expenses/'.$hosting->id.'/receipt?download=1', $html);
-        $this->assertDoesNotMatchRegularExpression('/<(img|iframe)\b[^>]*\ssrc="\/company\/expenses/', $html);
         $this->assertDoesNotMatchRegularExpression('/<a\b[^>]*href="\/company\/expenses\/\d+\/receipt"/', $html);
         $this->assertDoesNotMatchRegularExpression('/<a\b[^>]*href="\/company\/expenses\/payments\/\d+\/proof"/', $html);
 
@@ -289,6 +290,57 @@ class CompanyExpenseReceiptViewTest extends TestCase
         $list->assertDontSee('alert(1)');
 
         $expense->update(['receipt_path' => 'tenants/41/company/receipts/missing.png']);
+        $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt')->assertNotFound();
+
+        $png = $this->pngBytes();
+        $this->store('tenants/41/company/receipts/slash.png', $png);
+        $expense->update(['receipt_path' => '/tenants/41/company/receipts/slash.png']);
+        $slash = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $slash->assertOk();
+        $this->assertSame($png, $slash->streamedContent());
+
+        $expense->update(['receipt_path' => 'storage/app/private/tenants/41/company/receipts/slash.png']);
+        $rooted = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $rooted->assertOk();
+        $this->assertSame($png, $rooted->streamedContent());
+
+        $this->store('tenants/41/company/receipts/photo.jfif', $png);
+        $expense->update(['receipt_path' => 'tenants/41/company/receipts/photo.jfif']);
+        $jfif = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $jfif->assertOk();
+        $jfif->assertHeader('content-type', 'image/jpeg');
+
+        $expense->update(['receipt_path' => 'storage/app/private/tenants/42/company/receipts/foreign.pdf']);
+        $foreign = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $foreign->assertNotFound();
+        $this->assertStringNotContainsString($secret, $foreign->getContent());
+
+        $this->store('var/www/html/storage/app/private/tenants/41/company/receipts/buried.png', $png);
+        $expense->update(['receipt_path' => '/var/www/html/storage/app/private/tenants/41/company/receipts/buried.png']);
+        $buried = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $buried->assertOk();
+        $this->assertSame($png, $buried->streamedContent());
+
+        $expense->update(['receipt_path' => 'https://files.example.test/bucket/tenants/41/company/receipts/slash.png?sig=abc']);
+        $linked = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $linked->assertOk();
+        $this->assertSame($png, $linked->streamedContent());
+        $page = $this->actingAs($this->owner)->get('/company/expenses');
+        $page->assertOk();
+        $page->assertSee('src="/company/expenses/'.$expense->id.'/receipt"', false);
+
+        $expense->update(['receipt_path' => 'https://evil.example/tenants/42/company/receipts/foreign.pdf']);
+        $remote = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $remote->assertNotFound();
+        $this->assertStringNotContainsString($secret, $remote->getContent());
+
+        $expense->update(['receipt_path' => 'https://evil.example/tenants/41/company/receipts/../../42/company/receipts/foreign.pdf']);
+        $climbedUrl = $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt');
+        $climbedUrl->assertNotFound();
+        $this->assertStringNotContainsString($secret, $climbedUrl->getContent());
+
+        $this->store('evil-tenants/41/company/receipts/slash.png', 'NOT-THE-FILE');
+        $expense->update(['receipt_path' => 'evil-tenants/41/company/receipts/slash.png']);
         $this->actingAs($this->owner)->get('/company/expenses/'.$expense->id.'/receipt')->assertNotFound();
     }
 

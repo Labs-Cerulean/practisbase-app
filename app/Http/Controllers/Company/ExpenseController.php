@@ -834,8 +834,19 @@ class ExpenseController extends Controller
     private function ownedFile(?string $path, string $prefix, bool $download, string $name)
     {
         $safe = CompanyStoredFile::owned($path, $prefix);
-        if ($safe === null || ! TenantStorage::disk()->exists($safe)) {
+        if ($safe === null) {
             abort(404);
+        }
+
+        $disk = TenantStorage::disk();
+        $key = $safe;
+        if (! $disk->exists($key)) {
+            $raw = CompanyStoredFile::rawKey($path);
+            if ($raw !== null && str_ends_with($raw, '/'.$safe) && $disk->exists($raw)) {
+                $key = $raw;
+            } else {
+                abort(404);
+            }
         }
 
         $extension = CompanyStoredFile::extension($safe);
@@ -844,7 +855,7 @@ class ExpenseController extends Controller
             abort(404);
         }
 
-        return TenantStorage::disk()->response($safe, $name.'.'.$extension, [
+        return $disk->response($key, $name.'.'.$extension, [
             'Content-Type' => $mime,
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'SAMEORIGIN',
