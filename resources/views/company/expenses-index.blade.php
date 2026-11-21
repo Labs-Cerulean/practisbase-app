@@ -271,6 +271,7 @@
                     url: url,
                     withCredentials: true,
                     isEvalSupported: false,
+                    disableWorker: true,
                     disableRange: true,
                     disableStream: true,
                     standardFontDataUrl: '/js/pdfjs/standard_fonts/'
@@ -281,7 +282,8 @@
                 var chain = Promise.resolve();
                 function renderPage(pageNumber) {
                     return pdf.getPage(pageNumber).then(function (page) {
-                        var width = node.clientWidth || node.parentElement.clientWidth || 320;
+                        var width = node.clientWidth || (node.parentElement && node.parentElement.clientWidth) || 320;
+                        if (width < 80) width = 320;
                         var ratio = Math.min(window.devicePixelRatio || 1, 2);
                         var base = page.getViewport({ scale: 1 });
                         var scale = (width / base.width) * ratio;
@@ -295,7 +297,7 @@
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                         node.appendChild(canvas);
-                        return page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                        return page.render({ canvasContext: ctx, canvas: canvas, viewport: viewport }).promise;
                     });
                 }
                 for (var n = 1; n <= pages; n++) {

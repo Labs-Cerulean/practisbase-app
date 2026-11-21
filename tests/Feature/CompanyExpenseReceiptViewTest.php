@@ -7,6 +7,7 @@ use App\Models\CompanyExpensePayment;
 use App\Models\CompanyProfile;
 use App\Models\CompanySupplier;
 use App\Models\User;
+use App\Support\CompanyExpenseFiles;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -115,6 +116,7 @@ class CompanyExpenseReceiptViewTest extends TestCase
         $this->assertStringContainsString('class="expense-audit has-file"', $html);
         $this->assertStringNotContainsString('<iframe', $html);
         $this->assertStringContainsString('/js/pdfjs/pdf.min.js', $html);
+        $this->assertStringContainsString('disableWorker: true', $html);
         $this->assertMatchesRegularExpression(
             '/<img\b[^>]*alt="Receipt for Hosting invoice"[^>]*src="\/company\/expenses\/'.$hosting->id.'\/receipt"/',
             $html
@@ -392,9 +394,69 @@ class CompanyExpenseReceiptViewTest extends TestCase
         $lunchServed->assertOk();
         $this->assertSame($lunchPdf, $lunchServed->streamedContent());
 
-        $again = $this->store('tenants/41/company/receipts/drafts/'.str_repeat('d', 40).'.pdf', $this->invoicePdf('T000902-28933'));
-        $this->assertNotSame('', $again);
-        $this->actingAs($this->owner)->get('/company/expenses/'.$drink->id.'/receipt')->assertNotFound();
+        $second = $this->invoicePdf('T000902-28933 SECOND-COPY');
+        $secondPath = 'tenants/41/company/receipts/drafts/'.str_repeat('d', 40).'.pdf';
+        $this->store($secondPath, $second);
+        touch(Storage::disk('local')->path($secondPath), time() + 30);
+        $again = $this->actingAs($this->owner)->get('/company/expenses/'.$drink->id.'/receipt');
+        $again->assertOk();
+        $this->assertSame($second, $again->streamedContent());
+
+        $this->assertNull(CompanyExpenseFiles::listedObject(
+            'tenants/41/company/receipts/drafts',
+            'tenants/42/company/receipts/drafts/abc.pdf'
+        ));
+        $this->assertNull(CompanyExpenseFiles::listedObject(
+            'tenants/41/company/receipts/drafts',
+            '../abc.pdf'
+        ));
+        $this->assertSame(
+            'tenants/41/company/receipts/drafts/abc.pdf',
+            CompanyExpenseFiles::listedObject('tenants/41/company/receipts/drafts', 'abc.pdf')
+        );
+    }
+
+    public function test_a_scan_kept_in_drafts_is_shown_for_the_sitting_that_saved_it(): void
+    {
+        $supplier = $this->supplier(41, 'Mr. Fitra');
+        $lunch = $this->expense($supplier, [
+            'expense_date' => '2026-11-20',
+            'description' => 'Bought client a quick lunch',
+            'supplier_invoice_number' => '05/74833',
+            'amount' => 4,
+            'vat_amount' => 0,
+            'category' => 'general',
+            'funded_by' => 'company',
+            'receipt_path' => null,
+        ]);
+
+        $scan = "%PDF-1.4\n%FITRA-SCAN\ntrailer\n%%EOF\n";
+        $path = 'tenants/41/company/receipts/drafts/'.str_repeat('e', 40).'.pdf';
+        $this->store($path, $scan);
+        $mtime = Storage::disk('local')->lastModified($path);
+        DB::table('company_expenses')->where('id', $lunch->id)->update([
+            'created_at' => Carbon::createFromTimestamp($mtime)->format('Y-m-d H:i:s'),
+        ]);
+
+        $old = "%PDF-1.4\n%OLD-SCAN\ntrailer\n%%EOF\n";
+        $oldPath = 'tenants/41/company/receipts/drafts/'.str_repeat('f', 40).'.pdf';
+        $this->store($oldPath, $old);
+        touch(Storage::disk('local')->path($oldPath), $mtime - (5 * 86400));
+
+        $this->store(
+            'tenants/42/company/receipts/drafts/'.str_repeat('9', 40).'.pdf',
+            "%PDF-1.4\n%OTHER-USER-SECRET\ntrailer\n%%EOF\n"
+        );
+
+        $page = $this->actingAs($this->owner)->get('/company/expenses');
+        $page->assertOk();
+        $page->assertSee('data-file="/company/expenses/'.$lunch->id.'/receipt"', false);
+        $page->assertDontSee('OTHER-USER-SECRET');
+        $page->assertDontSee('tenants/41/company/receipts/drafts');
+
+        $served = $this->actingAs($this->owner)->get('/company/expenses/'.$lunch->id.'/receipt');
+        $served->assertOk();
+        $this->assertSame($scan, $served->streamedContent());
     }
 
     public function test_an_older_receipts_path_and_a_webp_photo_stay_on_this_users_row(): void
