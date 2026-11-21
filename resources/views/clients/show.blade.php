@@ -105,6 +105,48 @@
         </div>
     </div>
 
+    @if(session('receipt'))
+        <div style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.15rem 1.25rem; box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Receipt</div>
+            <div style="font-weight: 700; color: var(--primary-navy); margin-bottom: 0.35rem;">€{{ number_format((float) session('receipt.amount'), 2) }} on {{ \Illuminate\Support\Carbon::parse(session('receipt.date'))->format('d M Y') }}@if(session('receipt.reference')) · {{ session('receipt.reference') }}@endif</div>
+            @foreach(session('receipt.lines', []) as $line)
+                <div style="font-size: 0.85rem; color: var(--text-main); padding: 0.2rem 0;">€{{ number_format((float) $line['amount'], 2) }} · {{ $line['detail'] }}</div>
+            @endforeach
+        </div>
+    @endif
+
+    @if(!$client->trashed() && (($receiptPreview['open_total'] ?? 0) > 0.009 || count($receiptPreview['locked'] ?? []) > 0))
+        <div style="background: white; padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
+            <h3 style="color: var(--primary-navy); margin: 0 0 0.35rem; font-size: 1.1rem;">Take a receipt</h3>
+            <p style="margin: 0 0 1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.45; max-width: 40rem;">
+                One amount is applied to the oldest open document first. A proforma becomes a tax invoice only when this receipt settles it, and that invoice is dated today. Cash left on an open proforma stays at €0 for tax.
+            </p>
+            @if(($receiptPreview['open_total'] ?? 0) > 0.009)
+                <form method="POST" action="/clients/{{ $client->id }}/receipt" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end;">
+                    @csrf
+                    <div>
+                        <label for="client-receipt-date" style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Date</label>
+                        <input id="client-receipt-date" type="date" name="payment_date" value="{{ old('payment_date', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required style="padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; color: var(--primary-navy);">
+                    </div>
+                    <div>
+                        <label for="client-receipt-amount" style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Amount</label>
+                        <input id="client-receipt-amount" type="number" name="amount" step="0.01" min="0.01" value="{{ old('amount', number_format($receiptPreview['open_total'], 2, '.', '')) }}" required style="width: 8rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; font-weight: 700; color: var(--primary-navy);">
+                    </div>
+                    <div style="flex: 1; min-width: 12rem;">
+                        <label for="client-receipt-reference" style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">Bank reference (optional)</label>
+                        <input id="client-receipt-reference" type="text" name="reference" value="{{ old('reference') }}" maxlength="120" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; color: var(--primary-navy);">
+                    </div>
+                    <button type="submit" style="padding: 0.55rem 1rem; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">Record receipt</button>
+                </form>
+                <div id="client-receipt-split" style="margin-top: 0.85rem; font-size: 0.85rem; color: var(--primary-navy); line-height: 1.45;"></div>
+                <script type="application/json" id="client-receipt-lines">@json($receiptPreview['open'])</script>
+            @endif
+            @if(count($receiptPreview['locked'] ?? []) > 0)
+                <p style="margin: 0.85rem 0 0; font-size: 0.8rem; color: #9a3412;">A locked fiscal year is holding €{{ number_format(collect($receiptPreview['locked'])->sum('due'), 2) }} on this client. That amount stays as it is.</p>
+            @endif
+        </div>
+    @endif
+
     <div style="background: white; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-light); box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-light); padding-bottom: 0.75rem;">
             <a href="/clients/{{ $client->id }}?tab=statement"
@@ -238,3 +280,47 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    var amount = document.getElementById('client-receipt-amount');
+    var list = document.getElementById('client-receipt-split');
+    var source = document.getElementById('client-receipt-lines');
+    if (!amount || !list || !source) return;
+    var lines = JSON.parse(source.textContent || '[]');
+    function money(n) {
+        return '€' + (Math.round(n * 100) / 100).toFixed(2);
+    }
+    function paint() {
+        var entered = Math.round((parseFloat(amount.value) || 0) * 100) / 100;
+        var left = entered;
+        var open = 0;
+        lines.forEach(function (line) { open += line.due; });
+        open = Math.round(open * 100) / 100;
+        list.textContent = '';
+        lines.forEach(function (line) {
+            if (left <= 0.009) return;
+            var take = Math.min(line.due, left);
+            take = Math.round(take * 100) / 100;
+            left = Math.round((left - take) * 100) / 100;
+            var settled = (line.due - take) <= 0.009;
+            var tail = line.kind === 'rfp'
+                ? (settled ? 'settles this proforma and converts it' : 'stays on the proforma, €0 for tax')
+                : 'tax invoice';
+            var row = document.createElement('div');
+            row.textContent = line.label + ' · ' + money(take) + ' · ' + tail;
+            list.appendChild(row);
+        });
+        if (entered - open > 0.009) {
+            var warn = document.createElement('div');
+            warn.style.color = '#b91c1c';
+            warn.textContent = 'This is more than the ' + money(open) + ' still open.';
+            list.appendChild(warn);
+        }
+    }
+    amount.addEventListener('input', paint);
+    paint();
+})();
+</script>
+@endpush

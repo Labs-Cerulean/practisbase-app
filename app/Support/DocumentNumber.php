@@ -25,7 +25,9 @@ class DocumentNumber
 
         return DB::transaction(function () use ($userId, $type, $year, $patternPrefix) {
             $lockKey = self::advisoryLockKey($userId, $type, $year);
-            DB::select('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
+            if (DB::getDriverName() === 'pgsql') {
+                DB::select('SELECT pg_advisory_xact_lock(?)', [$lockKey]);
+            }
 
             $latest = Invoice::where('user_id', $userId)
                 ->where('type', $type)

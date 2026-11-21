@@ -53,6 +53,7 @@ class CompanyClientStatement
                 }
                 $officialOwed = round($officialOwed + $due, 2);
                 $rows->push([
+                    'id' => (int) $doc->id,
                     'date' => $doc->issue_date,
                     'label' => $doc->document_number,
                     'kind' => 'invoice',
@@ -71,6 +72,7 @@ class CompanyClientStatement
                 }
                 $rfpOwed = round($rfpOwed + $due, 2);
                 $rows->push([
+                    'id' => (int) $doc->id,
                     'date' => $doc->issue_date,
                     'label' => $doc->document_number.' (RFP)',
                     'kind' => 'rfp',
@@ -191,7 +193,9 @@ class CompanyClientStatement
                     'credit' => $amount > 0 ? $amount : 0.0,
                     'official_balance' => $runningOfficial,
                     'rfp_balance' => $runningRfp,
-                    'note' => $isTransfer ? 'Internal transfer — not client cash collected' : null,
+                    'note' => $isTransfer
+                        ? 'Internal transfer — not client cash collected'
+                        : ($payment->notes ?: null),
                 ]);
             }
         }

@@ -205,6 +205,7 @@ Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->
     Route::put('/clients/{client}', [ClientController::class, 'update'])->withTrashed();
     Route::delete('/clients/{client}', [ClientController::class, 'archive'])->withTrashed();
     Route::post('/clients/{client}/restore', [ClientController::class, 'restore'])->withTrashed();
+    Route::post('/clients/{client}/receipt', [ClientController::class, 'recordReceipt']);
 
     Route::get('/settings', [ProfileController::class, 'edit']);
     Route::put('/settings/profile', [ProfileController::class, 'updateProfile']);
@@ -499,6 +500,7 @@ Route::middleware(['auth', 'terms', 'verified', 'onboarded', 'company_shell'])->
         Route::get('/clients/{client}/history.pdf', [CompanyClientController::class, 'historyPdf'])->whereNumber('client');
         Route::get('/clients/{client}/edit', [CompanyClientController::class, 'edit']);
         Route::put('/clients/{client}', [CompanyClientController::class, 'update']);
+        Route::post('/clients/{client}/receipt', [CompanyInvoiceController::class, 'clientReceipt'])->whereNumber('client');
 
         Route::get('/invoices', [CompanyInvoiceController::class, 'index']);
         Route::get('/invoices/create', [CompanyInvoiceController::class, 'create']);

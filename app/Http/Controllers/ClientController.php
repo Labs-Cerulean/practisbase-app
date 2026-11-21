@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Support\ClientReceipt;
 use App\Support\TierPolicy;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -168,8 +170,42 @@ class ClientController extends Controller
 
         $statement = $this->buildOpenStatement($documents);
         $history = $this->buildTransactionHistory($documents);
+        $receiptPreview = ClientReceipt::preview($documents, (int) Auth::id());
 
-        return view('clients.show', compact('client', 'statement', 'history', 'tab'));
+        return view('clients.show', compact('client', 'statement', 'history', 'tab', 'receiptPreview'));
+    }
+
+    public function recordReceipt(Request $request, Client $client)
+    {
+        $this->authorizeClient($client);
+
+        if ($client->trashed()) {
+            return redirect("/clients/{$client->id}")->withErrors([
+                'archive' => 'Restore this client before recording a receipt.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'payment_date' => 'required|date|before_or_equal:today',
+            'amount' => 'required|numeric|min:0.01',
+            'reference' => 'nullable|string|max:120',
+        ]);
+
+        try {
+            $receipt = ClientReceipt::record(
+                Auth::user(),
+                $client,
+                $validated['payment_date'],
+                round((float) $validated['amount'], 2),
+                $validated['reference'] ?? null,
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        return redirect("/clients/{$client->id}")
+            ->with('success', $receipt['message'])
+            ->with('receipt', $receipt);
     }
 
     /**
@@ -323,7 +359,9 @@ class ClientController extends Controller
                     'credit' => $amount > 0 ? $amount : 0.0,
                     'official_balance' => $runningOfficial,
                     'rfp_balance' => $runningRfp,
-                    'note' => $isTransfer ? 'Internal transfer — not client cash collected' : null,
+                    'note' => $isTransfer
+                        ? 'Internal transfer — not client cash collected'
+                        : ($payment->notes ?: null),
                 ]);
             }
         }

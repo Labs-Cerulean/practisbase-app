@@ -91,7 +91,9 @@
     </div>
 
     <form method="GET" action="/ledger" style="background: white; border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; box-shadow: var(--shadow-sm);">
-        
+
+        <input type="search" name="q" value="{{ request('q') }}" placeholder="Search number, client, or note" style="flex: 2; min-width: 12rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
+
         <select name="client_id" style="flex: 1; min-width: 150px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
             <option value="">All Clients</option>
             @foreach($clients as $client)
@@ -117,11 +119,17 @@
             <option value="date_asc" {{ request('sort') == 'date_asc' ? 'selected' : '' }}>Oldest First</option>
             <option value="value_desc" {{ request('sort') == 'value_desc' ? 'selected' : '' }}>Highest Value</option>
             <option value="value_asc" {{ request('sort') == 'value_asc' ? 'selected' : '' }}>Lowest Value</option>
+            <option value="client_asc" {{ request('sort') == 'client_asc' ? 'selected' : '' }}>Client name</option>
+        </select>
+
+        <select name="group" style="flex: 1; min-width: 150px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; color: var(--primary-navy); outline: none;">
+            <option value="">No grouping</option>
+            <option value="client" {{ request('group') == 'client' ? 'selected' : '' }}>Group by client</option>
         </select>
 
         <div style="display: flex; gap: 0.5rem;">
             <button type="submit" style="padding: 0.5rem 1rem; background: var(--primary-navy); color: white; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">Filter</button>
-            @if(request()->anyFilled(['client_id', 'status', 'sort', 'doc_type']))
+            @if(request()->anyFilled(['q', 'client_id', 'status', 'sort', 'doc_type', 'group']))
                 <a href="/ledger" style="padding: 0.5rem 1rem; background: #f1f5f9; color: #475569; text-decoration: none; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">Clear</a>
             @endif
         </div>
@@ -129,11 +137,16 @@
 
     @if($invoices->isEmpty())
         <div style="padding: 4rem 2rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); text-align: center; background: white;">
-            <p style="color: var(--text-muted); margin-bottom: 1.25rem;">No documents generated yet.</p>
+            <p style="color: var(--text-muted); margin-bottom: 1.25rem;">{{ request()->anyFilled(['q', 'client_id', 'status', 'sort', 'doc_type', 'group']) ? 'No documents match this search.' : 'No documents generated yet.' }}</p>
         </div>
     @else
         <div style="display: flex; flex-direction: column; gap: 2rem;">
+            @php $ledgerClientHeading = null; @endphp
             @foreach($invoices as $parent)
+                @if(!empty($groupByClient) && $ledgerClientHeading !== $parent->client_id)
+                    @php $ledgerClientHeading = $parent->client_id; @endphp
+                    <h2 style="margin: 0.5rem 0 0; font-size: 1rem; color: var(--primary-navy); border-bottom: 1px solid var(--border-light); padding-bottom: 0.35rem;">{{ $parent->client->name }}</h2>
+                @endif
                 @php
                     // --- THE PROJECT SITUATION MATH ---
                     $familyPaid = $parent->amount_paid + $parent->childDocuments->sum('amount_paid');

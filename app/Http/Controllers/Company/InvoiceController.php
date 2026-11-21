@@ -10,7 +10,9 @@ use App\Models\CompanyPayment;
 use App\Models\CompanyProfile;
 use App\Models\User;
 use App\Support\CompanyBooks;
+use App\Support\CompanyClientStatement;
 use App\Support\CompanyLedger;
+use App\Support\ReceiptSplit;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,21 +21,25 @@ use Illuminate\Validation\ValidationException;
 
 class InvoiceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         CompanyBooks::ensureProfile($user);
 
-        $documents = CompanyInvoice::withoutSupersededProformas(
-            CompanyInvoice::with(['client', 'payments', 'childDocuments', 'linkedDocument'])
-                ->where('user_id', $user->id)
-                ->whereNull('parent_document_id')
-                ->orderByDesc('issue_date')
-                ->orderByDesc('id')
-                ->get()
-        );
+        $documents = CompanyInvoice::with(['client', 'payments', 'childDocuments', 'linkedDocument'])
+            ->where('user_id', $user->id)
+            ->whereNull('parent_document_id')
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->get();
 
-        return view('company.invoices-index', compact('documents'));
+        $documents = CompanyInvoice::withoutSupersededProformas($documents);
+        $documents = $this->filterCompanyDocuments($documents, $request);
+
+        $clients = CompanyClient::where('user_id', $user->id)->orderBy('name')->get();
+        $groupByClient = $request->input('group') === 'client';
+
+        return view('company.invoices-index', compact('documents', 'clients', 'groupByClient'));
     }
 
     public function create()
@@ -253,6 +259,149 @@ class InvoiceController extends Controller
         return back()->with('success', 'Payment recorded and posted to the ledger.');
     }
 
+    public function clientReceipt(Request $request, int $client)
+    {
+        $user = Auth::user();
+        $profile = CompanyBooks::ensureProfile($user);
+        $model = CompanyClient::where('user_id', $user->id)->where('id', $client)->firstOrFail();
+
+        $validated = $request->validate([
+            'payment_date' => 'required|date|before_or_equal:today',
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|in:bank_transfer,stripe,other',
+            'reference' => 'nullable|string|max:120',
+        ]);
+
+        $paymentDate = $validated['payment_date'];
+        $amount = round((float) $validated['amount'], 2);
+        $note = 'Client receipt';
+        if (filled($validated['reference'] ?? null)) {
+            $note .= ' · '.$validated['reference'];
+        }
+
+        try {
+            CompanyLedger::assertDateOpen($user->id, $paymentDate);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        $applied = [];
+
+        try {
+            DB::transaction(function () use ($user, $profile, $model, $paymentDate, $amount, $note, $validated, &$applied) {
+                $documents = CompanyInvoice::query()
+                    ->where('user_id', $user->id)
+                    ->where('company_client_id', $model->id)
+                    ->orderBy('issue_date')
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                $ids = $documents->pluck('id');
+                if ($ids->isNotEmpty()) {
+                    CompanyPayment::where('user_id', $user->id)
+                        ->whereIn('company_invoice_id', $ids)
+                        ->lockForUpdate()
+                        ->get();
+                }
+
+                $documents->load([
+                    'payments' => fn ($q) => $q->where('user_id', $user->id)->orderBy('payment_date')->orderBy('id'),
+                    'childDocuments' => fn ($q) => $q->where('user_id', $user->id),
+                ]);
+
+                $lines = CompanyClientStatement::openStatement($documents)['rows']
+                    ->map(fn (array $row) => [
+                        'id' => (int) $row['id'],
+                        'due' => (float) $row['due'],
+                    ])
+                    ->all();
+
+                $openTotal = ReceiptSplit::openTotal($lines);
+                if ($openTotal <= 0.009) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'This client has nothing open to receive.',
+                    ]);
+                }
+                if ($amount - $openTotal > 0.009) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'This receipt is larger than the €'.number_format($openTotal, 2).' still open for this client.',
+                    ]);
+                }
+
+                $byId = $documents->keyBy('id');
+                foreach (ReceiptSplit::apply($lines, $amount) as $slice) {
+                    $document = $byId->get($slice['id']);
+                    if (! $document
+                        || (int) $document->user_id !== (int) $user->id
+                        || (int) $document->company_client_id !== (int) $model->id
+                    ) {
+                        throw ValidationException::withMessages([
+                            'amount' => 'That document is not on this client.',
+                        ]);
+                    }
+
+                    $payment = CompanyPayment::create([
+                        'user_id' => $user->id,
+                        'company_invoice_id' => $document->id,
+                        'amount' => $slice['amount'],
+                        'payment_date' => $paymentDate,
+                        'payment_method' => $validated['payment_method'],
+                        'notes' => $note,
+                        'is_transfer' => false,
+                    ]);
+
+                    CompanyLedger::postPayment($payment, $document);
+
+                    $paid = (float) CompanyPayment::where('user_id', $user->id)
+                        ->where('company_invoice_id', $document->id)
+                        ->sum('amount');
+                    $document->update([
+                        'amount_paid' => $paid,
+                        'status' => $paid + 0.009 >= (float) $document->total ? 'paid' : 'partial',
+                    ]);
+
+                    $detail = 'Applied to '.$document->document_number.'.';
+                    $convertedNumber = null;
+                    if ($document->type === 'rfp'
+                        && $slice['settles']
+                        && $document->status !== 'converted'
+                        && $paid + 0.009 >= (float) $document->total
+                    ) {
+                        $document->load('client');
+                        $invoice = $this->convertRfpToTaxInvoice($user, $profile, $document, $paymentDate);
+                        $convertedNumber = $invoice->document_number;
+                        $detail = 'Settled '.$document->document_number.' and converted it to '.$invoice->document_number.'.';
+                    }
+
+                    $applied[] = [
+                        'label' => $document->document_number,
+                        'amount' => $slice['amount'],
+                        'detail' => $detail,
+                        'converted' => $convertedNumber,
+                    ];
+                }
+            });
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        }
+
+        $converted = collect($applied)->pluck('converted')->filter()->values();
+        $message = 'Receipt of €'.number_format($amount, 2).' recorded.';
+        if ($converted->isNotEmpty()) {
+            $message .= ' Converted '.$converted->implode(', ').'.';
+        }
+
+        return redirect('/company/clients/'.$model->id)
+            ->with('success', $message)
+            ->with('receipt', [
+                'amount' => $amount,
+                'date' => $paymentDate,
+                'reference' => $validated['reference'] ?? null,
+                'lines' => $applied,
+            ]);
+    }
+
     public function credit(int $document)
     {
         $user = Auth::user();
@@ -362,6 +511,68 @@ class InvoiceController extends Controller
         $rfp->delete();
 
         return back()->with('success', 'Proforma '.$number.' deleted. It had no tax effect.');
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, CompanyInvoice>  $documents
+     * @return \Illuminate\Support\Collection<int, CompanyInvoice>
+     */
+    private function filterCompanyDocuments($documents, Request $request)
+    {
+        if ($request->filled('client_id')) {
+            $clientId = (int) $request->input('client_id');
+            $documents = $documents->filter(fn (CompanyInvoice $doc) => (int) $doc->company_client_id === $clientId)->values();
+        }
+
+        $type = (string) $request->input('type', '');
+        if (in_array($type, ['invoice', 'rfp'], true)) {
+            $documents = $documents->filter(fn (CompanyInvoice $doc) => $doc->type === $type)->values();
+        }
+
+        $needle = mb_strtolower(trim((string) $request->input('q', '')));
+        if ($needle !== '') {
+            $documents = $documents->filter(function (CompanyInvoice $doc) use ($needle) {
+                $linked = $doc->linkedDocument->document_number ?? '';
+                $hay = mb_strtolower(implode(' ', array_filter([
+                    $doc->document_number,
+                    (string) $doc->notes,
+                    $doc->client->name ?? '',
+                    $linked,
+                    $doc->coverageLabel(),
+                ])));
+
+                return str_contains($hay, $needle);
+            })->values();
+        }
+
+        $status = (string) $request->input('status', '');
+        if ($status === 'open') {
+            $documents = $documents->filter(fn (CompanyInvoice $doc) => $doc->balance() > 0.009)->values();
+        } elseif ($status === 'settled') {
+            $documents = $documents->filter(fn (CompanyInvoice $doc) => $doc->balance() <= 0.009)->values();
+        }
+
+        $sort = (string) $request->input('sort', 'date_desc');
+        if (! in_array($sort, ['date_desc', 'date_asc', 'value_desc', 'value_asc', 'client_asc'], true)) {
+            $sort = 'date_desc';
+        }
+        $groupByClient = $request->input('group') === 'client';
+
+        return $documents->sortBy(function (CompanyInvoice $doc) use ($sort, $groupByClient) {
+            $stamp = $doc->issue_date ? $doc->issue_date->timestamp : 0;
+            $secondary = match ($sort) {
+                'date_asc' => sprintf('%010d', $stamp),
+                'value_asc' => sprintf('%012.2f', (float) $doc->total),
+                'value_desc' => sprintf('%012.2f', 100000000 - (float) $doc->total),
+                'client_asc' => sprintf('%010d', 9999999999 - $stamp),
+                default => sprintf('%010d', 9999999999 - $stamp),
+            };
+            $name = ($groupByClient || $sort === 'client_asc')
+                ? mb_strtolower((string) ($doc->client->name ?? ''))
+                : '';
+
+            return $name.'|'.$secondary.'|'.sprintf('%010d', (int) $doc->id);
+        })->values();
     }
 
     /**

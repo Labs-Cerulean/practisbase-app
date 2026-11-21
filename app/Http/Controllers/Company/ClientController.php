@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Company;
 
 use App\Http\Controllers\Controller;
+use App\Models\CompanyBooksLock;
 use App\Models\CompanyClient;
 use App\Models\CompanyInvoice;
 use App\Support\CompanyBooks;
@@ -88,12 +89,22 @@ class ClientController extends Controller
 
         $statement = CompanyClientStatement::openStatement($documents);
         $history = CompanyClientStatement::transactionHistory($documents);
+        $lock = CompanyBooksLock::where('user_id', $user->id)->first();
+        $receiptLocked = $lock && now()->toDateString() <= $lock->locked_through->toDateString();
+        $receiptLines = collect($statement['rows'])->map(fn (array $row) => [
+            'label' => $row['label'],
+            'kind' => $row['kind'],
+            'due' => (float) $row['due'],
+        ])->values();
 
         return view('company.clients-show', [
             'client' => $model,
             'statement' => $statement,
             'history' => $history,
             'tab' => $tab,
+            'receiptLocked' => $receiptLocked,
+            'receiptLockLabel' => $lock ? $lock->locked_through->format('d M Y') : null,
+            'receiptLines' => $receiptLines,
         ]);
     }
 
