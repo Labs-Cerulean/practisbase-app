@@ -8,6 +8,7 @@ use App\Models\CompanyExpensePayment;
 use App\Models\CompanySupplier;
 use App\Support\CompanyBooks;
 use App\Support\CompanyComputerAllowance;
+use App\Support\CompanyExpenseFiles;
 use App\Support\CompanyExpenseMonths;
 use App\Support\CompanyLedger;
 use App\Support\CompanyStoredFile;
@@ -182,6 +183,7 @@ class ExpenseController extends Controller
             'suggestions' => $suggestions,
             'suggestedCount' => count(array_filter($suggestions)),
             'filtersOn' => $search !== '' || $supplierFilter !== null || $status !== 'active',
+            'linkedReceipts' => CompanyExpenseFiles::forExpenses((int) $user->id, $expenses),
         ]);
     }
 
@@ -823,9 +825,14 @@ class ExpenseController extends Controller
         $userId = (int) Auth::id();
         $model = CompanyExpense::where('user_id', $userId)->where('id', $expense)->firstOrFail();
 
+        $key = CompanyExpenseFiles::forExpense($model);
+        $stored = CompanyExpenseFiles::direct($model) === $key && $key !== null
+            ? $model->receipt_path
+            : $key;
+
         return $this->ownedFile(
-            $model->receipt_path,
-            TenantStorage::companyReceiptsPath($userId),
+            is_string($stored) ? $stored : $key,
+            CompanyExpenseFiles::prefixFor($userId, $key) ?? '',
             $request->boolean('download'),
             'receipt'
         );

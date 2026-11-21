@@ -15,6 +15,9 @@ class CompanyStoredFile
         'jpe' => 'image/jpeg',
         'jfif' => 'image/jpeg',
         'png' => 'image/png',
+        'webp' => 'image/webp',
+        'heic' => 'image/heic',
+        'heif' => 'image/heif',
     ];
 
     public static function extension(?string $path): ?string

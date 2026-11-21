@@ -1,7 +1,8 @@
 @php
     $receiptKind = null;
     $receiptUrl = null;
-    $receiptPath = \App\Support\CompanyStoredFile::owned($expense->receipt_path, \App\Support\TenantStorage::companyReceiptsPath((int) $expense->user_id));
+    $receiptPath = ($linkedReceipts[$expense->id] ?? null)
+        ?: \App\Support\CompanyStoredFile::owned($expense->receipt_path, \App\Support\TenantStorage::companyReceiptsPath((int) $expense->user_id));
     if ($receiptPath !== null) {
         $receiptKind = \App\Support\CompanyStoredFile::previewKind($receiptPath);
         $receiptUrl = '/company/expenses/'.$expense->id.'/receipt';
