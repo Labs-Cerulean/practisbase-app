@@ -15,6 +15,7 @@ use App\Models\CompanyPayment;
 use App\Models\CompanyPersonalReceipt;
 use App\Models\CompanyProfile;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -553,6 +554,8 @@ class CompanyLedger
     /**
      * Post any computer wear-and-tear slices whose date has arrived.
      * Safe to call often: each slice has one source key.
+     * Already-posted slices are one lookup for the whole user. The chart and
+     * the books lock are touched only when a slice still has to be written.
      */
     public static function syncComputerDepreciation(int $userId): void
     {
@@ -561,57 +564,105 @@ class CompanyLedger
         }
 
         self::$computerDepreciationSynced[$userId] = true;
-        self::ensureChartForUserId($userId);
 
         $expenses = CompanyExpense::where('user_id', $userId)
             ->where('category', 'computer')
             ->whereNull('reversed_at')
-            ->get();
+            ->get(['id', 'user_id', 'expense_date', 'category', 'description', 'amount', 'reversed_at']);
 
+        if ($expenses->isEmpty()) {
+            return;
+        }
+
+        $profile = CompanyProfile::where('user_id', $userId)->first();
+        $firstPeriodEnd = $profile && $profile->first_period_end
+            ? $profile->first_period_end->format('Y-m-d')
+            : CompanyBooks::FIRST_PERIOD_END;
         $asOf = now()->toDateString();
+        $pending = [];
+
         foreach ($expenses as $expense) {
-            self::postDueComputerDepreciation($expense, $asOf);
+            foreach (self::dueComputerSlices($expense, $asOf, $firstPeriodEnd) as $slice) {
+                $pending[self::depreciationSourceKey((int) $expense->id, (int) $slice['index'])] = $expense;
+            }
+        }
+
+        if ($pending === []) {
+            return;
+        }
+
+        $existing = CompanyJournalEntry::where('user_id', $userId)
+            ->whereIn('source_key', array_keys($pending))
+            ->pluck('source_key');
+
+        foreach ($existing as $key) {
+            unset($pending[$key]);
+        }
+
+        if ($pending === []) {
+            return;
+        }
+
+        self::ensureChartForUserId($userId);
+
+        $seen = [];
+        foreach ($pending as $expense) {
+            $seen[(int) $expense->id] = $expense;
+        }
+
+        foreach ($seen as $expense) {
+            self::postDueComputerDepreciation($expense, $asOf, $firstPeriodEnd);
         }
     }
 
-    public static function postDueComputerDepreciation(CompanyExpense $expense, string $asOf): void
+    public static function postDueComputerDepreciation(CompanyExpense $expense, string $asOf, ?string $firstPeriodEnd = null): void
     {
         if ($expense->category !== 'computer' || $expense->reversed_at) {
             return;
         }
 
-        $inService = $expense->expense_date instanceof \DateTimeInterface
-            ? $expense->expense_date->format('Y-m-d')
-            : (string) $expense->expense_date;
-        $profile = CompanyProfile::where('user_id', $expense->user_id)->first();
-        $firstPeriodEnd = $profile && $profile->first_period_end
-            ? $profile->first_period_end->format('Y-m-d')
-            : CompanyBooks::FIRST_PERIOD_END;
+        if ($firstPeriodEnd === null || $firstPeriodEnd === '') {
+            $profile = CompanyProfile::where('user_id', $expense->user_id)->first();
+            $firstPeriodEnd = $profile && $profile->first_period_end
+                ? $profile->first_period_end->format('Y-m-d')
+                : CompanyBooks::FIRST_PERIOD_END;
+        }
 
-        $due = CompanyComputerAllowance::dueSlices(
-            CompanyComputerAllowance::slices((float) $expense->amount, $inService, $firstPeriodEnd),
-            $asOf
-        );
-
-        foreach ($due as $slice) {
-            if ($slice['amount'] <= 0) {
-                continue;
-            }
-
+        foreach (self::dueComputerSlices($expense, $asOf, $firstPeriodEnd) as $slice) {
             try {
                 self::post(
-                    $expense->user_id,
+                    (int) $expense->user_id,
                     $slice['date'],
                     'Computer wear and tear: '.$expense->description,
                     self::computerDepreciationLines($slice['amount'], (string) $expense->description),
                     'company_expense_depreciation',
-                    $expense->id,
-                    'company_expense:'.$expense->id.':depreciation:'.$slice['index']
+                    (int) $expense->id,
+                    self::depreciationSourceKey((int) $expense->id, (int) $slice['index'])
                 );
             } catch (ValidationException) {
                 // This year's books are locked. The slice waits until they are opened.
             }
         }
+    }
+
+    /**
+     * @return list<array{index: int, date: string, amount: float}>
+     */
+    private static function dueComputerSlices(CompanyExpense $expense, string $asOf, string $firstPeriodEnd): array
+    {
+        $inService = $expense->expense_date instanceof \DateTimeInterface
+            ? $expense->expense_date->format('Y-m-d')
+            : (string) $expense->expense_date;
+
+        return CompanyComputerAllowance::dueSlices(
+            CompanyComputerAllowance::slices((float) $expense->amount, $inService, $firstPeriodEnd),
+            $asOf
+        );
+    }
+
+    private static function depreciationSourceKey(int $expenseId, int $index): string
+    {
+        return 'company_expense:'.$expenseId.':depreciation:'.$index;
     }
 
     public static function postDirectorRefund(CompanyExpense $expense): CompanyJournalEntry
@@ -1564,7 +1615,7 @@ class CompanyLedger
         if (abs($outside) >= 0.005) {
             $coversAsOf = ($pl['to'] ?? $asOfDate) === $asOfDate;
             $outsideLabel = $coversAsOf
-                ? 'Before '.\Illuminate\Support\Carbon::parse($periodStart)->format('d M Y')
+                ? 'Before '.Carbon::parse($periodStart)->format('d M Y')
                 : 'Outside this profit and loss';
             $groups['capital_reserves'][] = [
                 'account_code' => 'P&L',
