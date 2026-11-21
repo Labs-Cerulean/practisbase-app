@@ -9,6 +9,7 @@ use App\Models\MedicalVault;
 use App\Models\Patient;
 use App\Support\IssueCode;
 use App\Support\MedicalVaultCrypto;
+use App\Support\PatientIdentitySeal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,13 +28,17 @@ class StampableLedgerController extends Controller
         $patients = Patient::where('user_id', $user->id)
             ->where('vault_id', $vault->id)
             ->whereNull('archived_at')
-            ->get()
+            ->get(PatientIdentitySeal::listColumns())
             ->keyBy('id');
+        PatientIdentitySeal::attachPayloads($patients, $user->id);
 
         $patientNames = [];
         foreach ($patients as $patient) {
             try {
-                $payload = MedicalVaultCrypto::decrypt($patient->payload_ciphertext, $patient->payload_nonce, $key);
+                [$payload, $seal] = PatientIdentitySeal::open($patient, $key);
+                if ($seal) {
+                    PatientIdentitySeal::persist($user->id, $patient->id, $seal);
+                }
                 $patientNames[$patient->id] = $payload['display_name'] ?? 'Patient';
             } catch (\Throwable) {
                 $patientNames[$patient->id] = '[Unable to decrypt]';
