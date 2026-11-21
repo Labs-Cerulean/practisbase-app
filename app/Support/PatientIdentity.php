@@ -28,17 +28,10 @@ class PatientIdentity
         $leftId = self::normalizeId($idCard);
         $rightId = self::normalizeId($otherId);
 
-        if ($leftId !== '' && $rightId !== '') {
-            if ($leftId === $rightId && strlen($leftId) >= 5) {
-                return 'id';
-            }
-
-            $short = strlen($leftId) <= strlen($rightId) ? $leftId : $rightId;
-            $long = strlen($leftId) <= strlen($rightId) ? $rightId : $leftId;
-            $extra = strlen($long) - strlen($short);
-            if (strlen($short) >= 6 && $extra >= 1 && $extra <= 2 && str_starts_with($long, $short)) {
-                return 'id';
-            }
+        // Exact card only. A shorter prefix is someone still typing the number,
+        // not a second chart for the same person.
+        if ($leftId !== '' && $leftId === $rightId && strlen($leftId) >= 5) {
+            return 'id';
         }
 
         $left = self::normalizeName($name);
@@ -49,13 +42,6 @@ class PatientIdentity
 
         if ($left === $right) {
             return 'name';
-        }
-
-        if (mb_strlen($left) >= 8 && mb_strlen($right) >= 8) {
-            similar_text($left, $right, $percent);
-            if ($percent >= 92.0) {
-                return 'name';
-            }
         }
 
         return null;

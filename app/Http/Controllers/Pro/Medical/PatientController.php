@@ -596,7 +596,7 @@ class PatientController extends Controller
                     'id_card' => $row['id_card'],
                     'date_of_birth' => $dobFmt,
                     'archived' => $row['archived'],
-                    'reason' => $row['reason'] === 'id' ? 'Same ID card' : 'Same or very similar name',
+                    'reason' => $row['reason'] === 'id' ? 'Same ID card' : 'Same name',
                     'url' => '/pro/medical/patients/'.$row['id'],
                 ];
             }, $matches),
@@ -693,7 +693,9 @@ class PatientController extends Controller
      */
     private function identityMatches(int $userId, string $key, string $name, ?string $idCard, int $ignoreId = 0): array
     {
-        if (PatientIdentity::normalizeName($name) === '' && strlen(PatientIdentity::normalizeId($idCard)) < 5) {
+        $normalizedName = PatientIdentity::normalizeName($name);
+        $normalizedId = PatientIdentity::normalizeId($idCard);
+        if (mb_strlen($normalizedName) < 3 && strlen($normalizedId) < 5) {
             return [];
         }
 

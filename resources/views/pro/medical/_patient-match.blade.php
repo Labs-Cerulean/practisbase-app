@@ -20,7 +20,7 @@
                     @if(! empty($match['archived']))
                         · archived
                     @endif
-                    · {{ ($match['reason'] ?? '') === 'id' ? 'Same ID card' : 'Same or very similar name' }}
+                    · {{ ($match['reason'] ?? '') === 'id' ? 'Same ID card' : 'Same name' }}
                 </a>
             @endforeach
         </div>
@@ -45,9 +45,14 @@
         var idInput = form.querySelector('[name="id_card"]');
         var timer = null;
 
-        function enough(name, idCard) {
-            var idNorm = String(idCard || '').replace(/[^A-Za-z0-9]/g, '');
-            return String(name || '').trim().length >= 3 || idNorm.length >= 5;
+        function nameReady(name) {
+            var trimmed = String(name || '').trim().replace(/\s+/g, ' ');
+            return trimmed.length >= 3 && trimmed.indexOf(' ') !== -1;
+        }
+
+        function idReady(idCard) {
+            var idNorm = String(idCard || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+            return /^[0-9]{5,8}[A-Z]$/.test(idNorm) || idNorm.length >= 8;
         }
 
         function hide() {
@@ -90,7 +95,7 @@
         function lookup() {
             var name = nameInput ? nameInput.value : '';
             var idCard = idInput ? idInput.value : '';
-            if (!enough(name, idCard)) {
+            if (!nameReady(name) && !idReady(idCard)) {
                 hide();
                 return;
             }
